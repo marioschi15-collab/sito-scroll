@@ -1,3 +1,4 @@
+import { CAMBIO_USD_EUR } from '@spalla/schema';
 import { query as querySdk } from '@anthropic-ai/claude-agent-sdk';
 import type { SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import crypto from 'node:crypto';
@@ -7,6 +8,7 @@ import { erroreDaEccezione, erroreDaRisultato, type EventoErrore } from './error
 import { CodaEventi, traduciMessaggio } from './eventi.js';
 import { creaHooks, creaRegistroRuoli, primaRigaDi } from './hooks.js';
 import { costruisciOpzioni } from './opzioni-sdk.js';
+import { presentazioniInCorso } from './presentazioni.js';
 import { creaCanUseTool } from './permessi.js';
 import { creaServerSpalla } from './server-memoria.js';
 import { creaArchivioSessione } from './sessione.js';
@@ -26,7 +28,7 @@ export { descriviStrumento } from './eventi.js';
 export { primaRigaDi, percorsoRelativoSorvegliato, STRUMENTI_DI_SCRITTURA } from './hooks.js';
 export { testiAgent } from './testi.js';
 
-export const CAMBIO_USD_EUR_PREDEFINITO = 0.92;
+export const CAMBIO_USD_EUR_PREDEFINITO = CAMBIO_USD_EUR;
 
 /** Il testo che il binario riceve: etichetta di canale (docs/02 §3.1), testo, allegati. */
 export function componiPrompt(m: MessaggioIn): string {
@@ -77,6 +79,11 @@ export function creaAgentRuntime(deps: DipendenzeAgentRuntime): AgentRuntime {
 
   async function esegui(messaggio: MessaggioIn, invio: OpzioniInvio, tipo: TipoSessione, emetti: (e: EventoAssistente) => void): Promise<void> {
     const inizio = adesso();
+    // Fermato dall'utente mentre aspettava in coda: non parte nemmeno.
+    if (invio.annullamento?.aborted) {
+      logger.info('agente.scambio_annullato_prima', { tipo });
+      return;
+    }
     if (config.cervello.modalita === 'chiave_api' && sopraTetto()) {
       // Docs/05 §2.1: raggiunto il tetto, si fermano i lavori di sfondo e programmati; la conversazione continua
       // (chi paga con la chiave decide lui), con un avviso una volta al mese.
@@ -94,6 +101,9 @@ export function creaAgentRuntime(deps: DipendenzeAgentRuntime): AgentRuntime {
     const variabiliAuth = await auth.variabiliAmbiente();
     const riprendi = tipo === 'principale' ? archivio.leggi()?.id : undefined;
     const abort = new AbortController();
+    // [Fermati] dalla finestra: si ferma la query dell'SDK (niente altri passi né nuove richieste di permesso).
+    const suAnnullamento = (): void => abort.abort();
+    invio.annullamento?.addEventListener('abort', suAnnullamento, { once: true });
     let sessioneId: string | undefined = riprendi;
     let erroreOsservato: EventoErrore | undefined;
     let risultato: SDKResultMessage | undefined;
@@ -113,6 +123,7 @@ export function creaAgentRuntime(deps: DipendenzeAgentRuntime): AgentRuntime {
       descrivi: deps.descriviRichiesta,
       rispondiDomanda: invio.rispondiDomanda,
       adesso: () => adesso().getTime(),
+      cartellaLavoro: percorsi.cartellaLavoro,
     });
     const hooks = creaHooks({
       cartellaLavoro: percorsi.cartellaLavoro,
@@ -125,6 +136,7 @@ export function creaAgentRuntime(deps: DipendenzeAgentRuntime): AgentRuntime {
     const options = costruisciOpzioni({
       percorsi, runtime, variabiliAuth, modalita: config.cervello.modalita, livello: config.cervello.livello,
       tipo, invio, riprendi, canUseTool, hooks, serverSpalla, abort, logger,
+      presentazioniInCorso: tipo === 'principale' && presentazioniInCorso(percorsi.cartellaLavoro),
     });
 
     logger.info('agente.scambio_inizio', { tipo, canale: messaggio.canale, ripresa: Boolean(riprendi), ruolo: invio.ruolo });
@@ -138,12 +150,25 @@ export function creaAgentRuntime(deps: DipendenzeAgentRuntime): AgentRuntime {
         for (const evento of traduciMessaggio(m, percorsi.cartellaLavoro, contesto)) emetti(evento);
       }
     } catch (errore) {
+      if (invio.annullamento?.aborted && !risultato) {
+        // Fermato dall'utente: la conversazione continua dalla stessa sessione al prossimo messaggio.
+        if (tipo === 'principale' && sessioneId) archivio.salva(sessioneId);
+        logger.info('agente.scambio_fermato', { tipo });
+        return;
+      }
       // Dopo un result di errore l'SDK rilancia: il result basta a spiegare l'accaduto.
       if (!risultato) {
         logger.errore('agente.eccezione', { tipo, errore: errore instanceof Error ? errore.message : String(errore) });
         emetti(erroreOsservato ?? erroreDaEccezione(errore));
         return;
       }
+    } finally {
+      invio.annullamento?.removeEventListener('abort', suAnnullamento);
+    }
+    if (invio.annullamento?.aborted && !risultato) {
+      if (tipo === 'principale' && sessioneId) archivio.salva(sessioneId);
+      logger.info('agente.scambio_fermato', { tipo });
+      return;
     }
 
     if (!risultato) {

@@ -6,11 +6,14 @@ import type { AmbienteBinario } from './tipi.js';
 
 /**
  * Regole `allow` della sessione (docs/02 §3.2, docs/05 §4.3): Read/Write/Edit SOLO con percorso dentro la
- * cartella di lavoro ("./**"). Un nome nudo aggirerebbe il Broker per tutto il disco.
+ * cartella di lavoro ("./**"). Un nome nudo aggirerebbe il Broker per tutto il disco: per questo Glob e Grep NON
+ * sono qui (un "Grep" nudo cercherebbe in ~/Documenti senza scheda). Passano da `canUseTool`, che li consente da
+ * solo dentro la cartella di lavoro e manda al Broker il resto (permessi.ts). AskUserQuestion è gestito sempre da
+ * `canUseTool` (diventa chip), quindi non serve qui.
  */
 export const STRUMENTI_CONSENTITI: readonly string[] = [
   'Read(./**)', 'Write(./**)', 'Edit(./**)',
-  'Glob', 'Grep', 'WebSearch', 'WebFetch', 'Agent', 'AskUserQuestion', 'mcp__spalla__memoria_cerca',
+  'WebSearch', 'WebFetch', 'Agent', 'mcp__spalla__memoria_cerca',
 ];
 
 /** Tetto predefinito per i lavori di sfondo/programmati in modalità chiave API (docs/02 §3.2, docs/03 §8). */
@@ -31,11 +34,17 @@ export function modelloPer(modalita: ModalitaCervello, livello: LivelloModello |
 /**
  * Regole `deny` che nessun tipo di sessione e nessun ruolo può togliere: le impostazioni del progetto, le skill,
  * gli hook e `.mcp.json` non si riscrivono dalla conversazione; le credenziali del binario e il deposito dei
- * segreti non si leggono (docs/02 §2.3, §10.2; vedi protezioni.ts). Le sessioni di sfondo perdono anche la shell.
+ * segreti non si leggono (docs/02 §2.3, §10.2; vedi protezioni.ts). Le sessioni di sfondo perdono anche la shell,
+ * e così la sessione principale finché le presentazioni sono in corso (`senzaShell`): il rituale non ne ha bisogno.
+ * "PowerShell" è lo strumento shell di Claude Code su Windows senza Git Bash.
  */
-export function strumentiNegati(percorsi: Pick<Percorsi, 'configClaude' | 'segreti'>, tipo: TipoSessione): string[] {
+export function strumentiNegati(
+  percorsi: Pick<Percorsi, 'configClaude' | 'segreti'>,
+  tipo: TipoSessione,
+  senzaShell = false,
+): string[] {
   const fissi = [...regoleProtezioneCartella(), ...regoleProtezioneCredenziali(percorsi)];
-  return tipo === 'principale' ? fissi : ['Bash', ...fissi];
+  return tipo !== 'principale' || senzaShell ? ['Bash', 'PowerShell', ...fissi] : fissi;
 }
 
 export interface IngredientiOpzioni {
@@ -52,18 +61,20 @@ export interface IngredientiOpzioni {
   serverSpalla: McpServerConfig | undefined;
   abort: AbortController;
   logger: Logger;
+  /** True mentre il rituale di presentazione è in corso: la sessione principale non ha la shell. */
+  presentazioniInCorso?: boolean;
 }
 
 /** Le `Options` dell'SDK per una chiamata (docs/02 §3.2). Nessun `bypass`, mai. */
 export function costruisciOpzioni(i: IngredientiOpzioni): Options {
   const options: Options = {
     cwd: i.percorsi.cartellaLavoro,
-    // L'opzione env SOSTITUISCE l'ambiente: ambientePerBinario copia process.env e toglie ciò che non deve passare.
+    // L'opzione env SOSTITUISCE l'ambiente: ambientePerBinario passa solo le variabili di sistema ammesse più le nostre.
     env: ambientePerBinario(i.runtime, i.variabiliAuth),
     settingSources: ['project'],
     permissionMode: 'default',
     allowedTools: [...STRUMENTI_CONSENTITI],
-    disallowedTools: strumentiNegati(i.percorsi, i.tipo),
+    disallowedTools: strumentiNegati(i.percorsi, i.tipo, i.presentazioniInCorso === true),
     canUseTool: i.canUseTool,
     hooks: i.hooks,
     mcpServers: i.serverSpalla ? { spalla: i.serverSpalla } : {},

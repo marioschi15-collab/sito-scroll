@@ -24,6 +24,18 @@ export const permessi = {
     generico: (chi: string): string => `${chi} vuole usare uno strumento`,
   },
   anteprima: 'Anteprima',
+  /** Il testo esatto dell'azione, mostrato per intero PRIMA della spiegazione (docs/02 §6). */
+  dettaglio: {
+    comando: 'Il comando, per intero',
+    contenuto: 'Il testo, per intero',
+    prima: 'Prima:',
+    dopo: 'Dopo:',
+    /** Ciò che l'assistente dice del comando: una sua spiegazione, non una garanzia. */
+    spiegazione: 'Spiegazione dell\'assistente',
+    troppoLungo: 'È troppo lungo per mostrartelo per intero: per sicurezza non si può consentire.',
+    /** Su Telegram lo spazio è poco: per un testo lungo si decide dal computer. */
+    troppoLungoTelegram: 'È troppo lungo per mostrartelo qui: per sicurezza non lo faccio. Se serve, chiedimelo dal computer.',
+  },
   pulsanti: { consenti: 'Consenti', nega: 'Nega', siFallo: 'Sì, fallo', no: 'No' },
   /** Frasi restituite all'assistente (le riferisce all'utente in italiano). */
   esiti: {
@@ -35,6 +47,7 @@ export const permessi = {
     erroreCanale: 'Non sono riuscito a chiedere il permesso: non lo faccio.',
     terminaleChiuso: 'Terminale chiuso: nessuna conferma possibile, non lo faccio.',
     annullata: 'La richiesta non serve più: la conversazione si è interrotta prima della risposta.',
+    troppoLungo: 'Il comando o il testo è troppo lungo per mostrarlo per intero all\'utente: per sicurezza non lo faccio. Dividilo in parti più piccole.',
   },
   /** Riga aggiunta su Telegram sotto i pulsanti. */
   riservaTesto: (id: string): string => `Se i pulsanti non funzionano, rispondi "sì ${id}" oppure "no ${id}".`,

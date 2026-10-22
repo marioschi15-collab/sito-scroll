@@ -59,7 +59,7 @@ Ogni domanda ha: **id**, testo come viene posto, **tipo** (chip / chip multiple 
 | id | Domanda | Tipo | Chip | Scrive in |
 |---|---|---|---|---|
 | Q1 | Come vuoi che ti chiami? E ci diamo del tu? | testo + chip | [Del tu] [Del lei] | `IDENTITA.utente`, `IDENTITA.tu_lei` |
-| Q2 | E io come mi chiamo? Scegli tu: è il tuo assistente. | testo + chip | [Suggeriscimi 3 nomi] | `IDENTITA.nome`, `ANIMA` riga 1 |
+| Q2 | E io come mi chiamo? Scegli tu: è il tuo assistente. | testo + chip | [Suggeriscimi 3 nomi] [Lo scelgo io] | `IDENTITA.nome`, `ANIMA` riga 1 |
 | Q3 | Che tono preferisci quando ti scrivo e quando scrivo per te? | chip | [Diretto e pratico] [Caldo e informale] [Formale] [Un po' di ironia] | `ANIMA.tono`, `UTENTE` direttiva tono, `IDENTITA.emoji` (dedotto: "niente emoji" se Diretto/Formale, chiesto altrimenti) |
 | Q4 | Cosa fai per vivere? | chip | [Freelance / consulente] [Venditore / agente di commercio o immobiliare] [Titolare di piccola impresa o negozio] [Artigiano / professionista a progetto] [Altro: scrivilo] | **ramo**; `UTENTE.lavoro` |
 | Q4a | *(di ramo, una riga)* Cosa vendi/offri e a chi? | testo | — | `UTENTE.lavoro` |
@@ -270,7 +270,7 @@ Regole:
 >
 > **Marco:** Marco, del tu.
 >
-> **Assistente:** Ciao Marco. E io come mi chiamo? Scegli tu, è il tuo assistente. [Suggeriscimi 3 nomi]
+> **Assistente:** Ciao Marco. E io come mi chiamo? Scegli tu, è il tuo assistente. [Suggeriscimi 3 nomi] [Lo scelgo io]
 >
 > **Marco:** [Suggeriscimi 3 nomi]
 >

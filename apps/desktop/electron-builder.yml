@@ -1,0 +1,153 @@
+# Pacchetto e installer di Spalla (docs/02 §2.5 strada A e §9). Spiegazione completa: README-pacchetto.md.
+# Si lancia da apps/desktop DOPO `electron-vite build` (che produce out/main, out/preload, out/renderer):
+#   pnpm --filter @spalla/desktop exec electron-builder --mac --arm64   (oppure --x64, --win, --linux dir)
+#
+# appId è un SEGNAPOSTO: va fissato una volta per sempre prima della prima release firmata (cambiarlo dopo
+# fa vedere a macOS/Windows un'app diversa: permessi, notifiche e avvio al login ripartirebbero da zero).
+appId: it.spalla.desktop
+productName: Spalla
+copyright: Copyright © 2026 Spalla
+
+# Il package.json di sviluppo si chiama "@spalla/desktop": senza productName Electron userebbe quel nome per la
+# cartella dei suoi dati (es. ~/Library/Application Support/@spalla/desktop) e per il blocco a istanza singola,
+# che viene preso prima di app.setName(). Nel pacchetto il nome è "Spalla" fin dal primo istante.
+extraMetadata:
+  productName: Spalla
+
+directories:
+  output: release
+  buildResources: resources
+
+# Solo l'uscita di electron-vite; le dipendenze di produzione (node_modules) le aggiunge electron-builder
+# da sé, comprese quelle del workspace (@spalla/*) e il pacchetto per piattaforma con il binario di Claude Code.
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+  # Già incluse nel bundle della finestra (out/renderer): il processo principale non le importa.
+  - '!**/node_modules/{react,react-dom,scheduler}/**'
+  - '!**/node_modules/@xterm/**'
+  # Sorgenti C di SQLite: servono solo per compilare, a runtime basta build/Release/*.node.
+  - '!**/node_modules/better-sqlite3/{deps,src}/**'
+  # I modelli della cartella di lavoro viaggiano in extraResources (sotto): in node_modules electron-builder
+  # scarterebbe sempre i file .gitkeep, e con loro le cartelle vuote del modello (lavoro/*, memoria/temi, ...).
+  - '!**/node_modules/@spalla/workspace-templates/templates/**'
+
+# Modelli copiati in <risorse>/workspace-templates/templates (risorse = process.resourcesPath): cartellaTemplates()
+# di @spalla/schema risale da node_modules/@spalla/schema/dist e li trova lì. electron-builder scarta comunque
+# i .gitkeep anche qui: li rimette l'hook afterPack (resources/dopo-pacchetto.cjs), prima della firma.
+extraResources:
+  - from: ../../packages/workspace-templates/templates
+    to: workspace-templates/templates
+    filter:
+      - '**/*'
+afterPack: resources/dopo-pacchetto.cjs
+
+asar: true
+# Fuori da app.asar ciò che va eseguito o caricato come file vero:
+# - moduli nativi (spawn/dlopen non funzionano dentro l'archivio);
+# - il pacchetto per piattaforma dell'SDK con il binario `claude`, incluso SENZA modifiche (strada A):
+#   l'app lo indica all'SDK con il percorso in app.asar.unpacked (src/main/binario.ts, fuoriDaAsar).
+asarUnpack:
+  - '**/*.node'
+  - '**/node_modules/better-sqlite3/**'
+  - '**/node_modules/node-pty/**'
+  - '**/node_modules/sherpa-onnx-node/**'
+  - '**/node_modules/sherpa-onnx-*/**'
+  - '**/node_modules/@anthropic-ai/claude-agent-sdk-*/**'
+
+# Ricompila i moduli nativi per l'ABI di Electron e per l'architettura di destinazione (default di electron-builder).
+npmRebuild: true
+
+# Solo italiano (e inglese come riserva) tra le traduzioni di Chromium: installer più piccolo.
+electronLanguages:
+  - it
+  - en
+
+# Fusibili di Electron (sicurezza, docs/02 §10): niente modalità "node", niente NODE_OPTIONS né --inspect,
+# app caricata solo da app.asar con controllo di integrità. grantFileProtocolExtraPrivileges resta al default:
+# la finestra si carica da file:// con script ES module.
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+
+# Deep link spalla:// (docs/02 §4).
+protocols:
+  - name: Spalla
+    schemes:
+      - spalla
+
+# publish: lasciato non impostato di proposito (nel prototipo si caricano gli artefatti a mano o dalla CI con
+# --publish never). Dalla v1: provider github nel prototipo pubblico, poi generic su Cloudflare R2 (docs/02 §9.3).
+
+mac:
+  # Due DMG separati (arm64 e x64), niente universale: l'architettura NON è fissata qui, la sceglie la riga
+  # di comando (--arm64 / --x64; senza flag quella della macchina). Se la si fissa qui, il flag viene ignorato.
+  target:
+    - dmg
+  category: public.app-category.productivity
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
+  # Il binario di Claude Code è già firmato e notarizzato da Anthropic: non va MAI ri-firmato da noi
+  # (anche la firma ad-hoc delle build arm64 non firmate lo salterebbe). Espressioni regolari sul percorso.
+  signIgnore:
+    - 'claude-agent-sdk-darwin-(arm64|x64)/claude$'
+  # notarize: non impostato = la notarizzazione parte da sola solo se in ambiente ci sono le credenziali Apple
+  # (APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID, oppure APPLE_API_KEY/_ID/_ISSUER).
+  extendInfo:
+    NSMicrophoneUsageDescription: Spalla usa il microfono solo quando registri un messaggio vocale.
+    LSApplicationCategoryType: public.app-category.productivity
+
+dmg:
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  title: ${productName} ${version}
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # Le build Windows firmano ogni .exe in app.asar.unpacked: il binario di Claude Code (claude.exe, già
+  # firmato da Anthropic) resta escluso. Senza certificato (prototipo) non si firma nulla.
+  signExts:
+    - '!claude.exe'
+
+nsis:
+  artifactName: ${productName}-${version}-win-${arch}-setup.${ext}
+  # Installazione per l'utente (in %LOCALAPPDATA%\Programs, senza diritti di amministratore, docs/02 §9.1).
+  # Installer assistito: con oneClick false e perMachine false compare la pagina "per me / per tutti"
+  # con "solo per me" preselezionato (vedi README-pacchetto.md, punti aperti).
+  oneClick: false
+  perMachine: false
+  selectPerMachineByDefault: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Spalla
+  # I dati dell'utente (cartella Spalla nei Documenti e dati dell'app) non si cancellano mai disinstallando.
+  deleteAppDataOnUninstall: false
+  # Installer in italiano (LCID 1040).
+  installerLanguages:
+    - it_IT
+  language: '1040'
+  multiLanguageInstaller: false
+
+linux:
+  # Solo per sviluppo e prove: Linux non è una piattaforma supportata del prodotto.
+  target:
+    - AppImage
+  category: Office
+  executableName: spalla
+  synopsis: Assistente personale
+  # Basta il binario glibc: la copia musl (Alpine) non serve in un AppImage.
+  files:
+    - '!**/node_modules/@anthropic-ai/claude-agent-sdk-linux-*-musl/**'
+
+appImage:
+  artifactName: ${productName}-${version}-linux-${arch}.${ext}

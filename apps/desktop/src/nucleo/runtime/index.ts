@@ -53,21 +53,61 @@ export function variabiliFisse(): Record<string, string> {
 }
 
 /**
- * L'ambiente completo del processo del binario: `process.env` (l'opzione `env` dell'SDK SOSTITUISCE l'ambiente),
- * le variabili del runtime e quelle di autenticazione. Toglie ciò che non deve passare:
- * - `CLAUDE_CODE_SESSION_ID`: se Spalla gira dentro un'altra sessione di Claude Code (sviluppo), il binario non deve
- *   ereditarne l'id (env-vars.md);
- * - `ANTHROPIC_API_KEY` ereditata: il cervello usa solo la chiave scelta dall'utente (`variabiliAuth`) oppure, con
- *   l'abbonamento, il login del binario; una chiave trovata per caso nell'ambiente non deve decidere chi paga.
- * Unico punto per tutte le `query()` (sessioni e prova di collegamento), così le due strade non divergono.
+ * Variabili dell'ambiente di sistema che passano al binario quando la sua configurazione è isolata (produzione).
+ * Solo ciò che serve a far girare un programma e i suoi comandi (percorsi, cartelle temporanee, lingua, terminale,
+ * proxy e certificati aziendali, schermo per aprire il browser del login): nessuna credenziale, nessun indirizzo
+ * alternativo del servizio, nessuna impostazione di Claude Code ereditata (docs/02 §2.3.2-2.3.4).
+ * Confronto senza maiuscole/minuscole: su Windows "Path" e "PATH" sono la stessa variabile.
  */
-export function ambientePerBinario(runtime: Pick<RuntimeBinario, 'ambiente'> | undefined, variabiliAuth: Record<string, string>): Record<string, string> {
-  const env: Record<string, string | undefined> = { ...process.env };
-  delete env.CLAUDE_CODE_SESSION_ID;
-  delete env.ANTHROPIC_API_KEY;
+export const VARIABILI_AMMESSE: readonly string[] = [
+  'PATH', 'PATHEXT', 'HOME', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'USER', 'USERNAME', 'LOGNAME', 'SHELL',
+  'APPDATA', 'LOCALAPPDATA', 'PROGRAMDATA', 'PROGRAMFILES', 'PROGRAMFILES(X86)', 'PROGRAMW6432', 'COMMONPROGRAMFILES',
+  'SYSTEMROOT', 'SYSTEMDRIVE', 'WINDIR', 'COMSPEC', 'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE', 'OS',
+  'TEMP', 'TMP', 'TMPDIR',
+  'LANG', 'LANGUAGE', 'TZ', 'TERM', 'COLORTERM',
+  'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'ALL_PROXY', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR',
+  'DISPLAY', 'WAYLAND_DISPLAY', 'XDG_RUNTIME_DIR', 'DBUS_SESSION_BUS_ADDRESS', '__CF_USER_TEXT_ENCODING',
+];
+const PREFISSI_AMMESSI: readonly string[] = ['LC_'];
+
+/**
+ * Variabili che non devono MAI arrivare al binario, nemmeno in sviluppo con la configurazione ereditata (dove
+ * l'ambiente passa intero): l'id di una sessione di Claude Code in cui gira Spalla e una chiave API trovata per caso.
+ */
+const SEMPRE_TOLTE: readonly string[] = ['CLAUDE_CODE_SESSION_ID', 'ANTHROPIC_API_KEY'];
+
+/** True se la variabile d'ambiente di sistema può passare al binario isolato. */
+export function variabileAmmessa(nome: string): boolean {
+  const n = nome.toUpperCase();
+  return VARIABILI_AMMESSE.includes(n) || PREFISSI_AMMESSI.some((p) => n.startsWith(p));
+}
+
+/**
+ * L'ambiente completo del processo del binario (l'opzione `env` dell'SDK SOSTITUISCE l'ambiente): le variabili di
+ * sistema ammesse, poi le variabili fisse del runtime (CLAUDE_CONFIG_DIR isolato, niente aggiornamenti, ...) e infine
+ * quelle di autenticazione scelte dall'utente (`variabiliAuth`). Nient'altro:
+ * - niente token di accesso ereditati (quello OAuth di Claude Code, ANTHROPIC_AUTH_TOKEN, AWS_BEARER_TOKEN_BEDROCK) né CLAUDE_CODE_USE_*: un accesso
+ *   trovato nell'ambiente non deve dire "collegato" né decidere chi paga (docs/02 §2.3.2);
+ * - niente ANTHROPIC_BASE_URL né ANTHROPIC_CUSTOM_HEADERS: la chiave dell'utente va solo ad Anthropic (§2.3.4);
+ * - niente CLAUDE_CONFIG_DIR o CLAUDECODE ereditati, niente id di sessione di un Claude Code che ci ospita.
+ * Solo in sviluppo con `configEreditata` (SPALLA_CONFIG_EREDITATA=1, mai nell'app pacchettizzata) l'ambiente passa
+ * intero, meno SEMPRE_TOLTE: serve a usare il login di Claude Code della macchina.
+ * Unico punto per tutte le `query()` (sessioni, prova di collegamento) e per il pannello di collegamento.
+ */
+export function ambientePerBinario(
+  runtime: (Pick<RuntimeBinario, 'ambiente'> & { readonly configEreditata?: boolean }) | undefined,
+  variabiliAuth: Record<string, string>,
+  sistema: NodeJS.ProcessEnv = process.env,
+): Record<string, string> {
+  const ereditata = runtime?.configEreditata === true;
+  const env: Record<string, string> = {};
+  for (const [nome, valore] of Object.entries(sistema)) {
+    if (valore === undefined) continue;
+    if (SEMPRE_TOLTE.includes(nome.toUpperCase())) continue;
+    if (ereditata || variabileAmmessa(nome)) env[nome] = valore;
+  }
   Object.assign(env, runtime?.ambiente() ?? {}, variabiliAuth);
-  for (const chiave of Object.keys(env)) if (env[chiave] === undefined) delete env[chiave];
-  return env as Record<string, string>;
+  return env;
 }
 
 export function creaRuntimeBinario(percorsi: Percorsi, opzioni: OpzioniRuntimeBinario = {}): RuntimeBinario {

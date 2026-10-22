@@ -272,6 +272,25 @@
   max-height: 160px;
   overflow: auto;
 }
+/* Il testo esatto dell'azione: a capo e scorrevole, mai tagliato; più alto dell'anteprima. */
+.scheda-permesso pre.scheda-permesso__dettaglio {
+  max-height: 320px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.scheda-permesso pre.scheda-permesso__dettaglio:focus-visible {
+  outline: 2px solid var(--avviso);
+  outline-offset: 2px;
+}
+.scheda-permesso__spiegazione {
+  margin: 8px 0 0;
+  font-style: italic;
+}
+.scheda-permesso__avviso {
+  margin: 8px 0 0;
+  color: var(--errore);
+  font-weight: 550;
+}
 .chat__ingresso {
   border-top: 1px solid var(--bordo);
   background: var(--superficie);
@@ -447,4 +466,9 @@
 .qa__voce dd {
   margin: 4px 0 0;
   font-weight: 550;
+}
+
+ul.chat__allegati {
+  list-style: none;
+  padding: 0;
 }

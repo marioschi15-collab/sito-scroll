@@ -74,6 +74,13 @@ export interface RichiestaPermesso {
   descrizione: string;
   /** Anteprima breve (comando, percorso, prime righe), se utile. */
   anteprima?: string;
+  /**
+   * AGGIUNTA FACOLTATIVA: il testo esatto dell'azione (il comando della shell, il contenuto scritto o modificato),
+   * da mostrare per primo e per intero. Mai accorciato in silenzio: oltre il limite `troncato` è true e il Broker nega.
+   */
+  dettaglio?: DettaglioRichiesta;
+  /** AGGIUNTA FACOLTATIVA: la spiegazione scritta dall'assistente (es. `description` di Bash), da mostrare a parte come sua. */
+  spiegazione?: string;
   /** Ruolo che agisce, se noto (es. "contabile"); altrimenti l'assistente principale. */
   ruolo?: string;
   /** Canale da cui è nata la richiesta dell'utente. */
@@ -85,6 +92,15 @@ export interface RichiestaPermesso {
    * quando scatta, chi mostra la scheda la ritira e il Broker nega. Assente = nessun annullamento possibile.
    */
   annullamento?: AbortSignal;
+}
+
+export interface DettaglioRichiesta {
+  /** 'comando' per la shell; 'contenuto' per un file scritto o modificato. */
+  tipo: 'comando' | 'contenuto';
+  /** Il testo per intero, fino al limite (broker/descrizioni.ts, LIMITE_DETTAGLIO). */
+  testo: string;
+  /** True se l'originale superava il limite: chi mostra la scheda lo dice, e il Broker nega senza chiedere. */
+  troncato: boolean;
 }
 
 export type DecisionePermesso =
@@ -124,6 +140,8 @@ export interface DomandaUtente {
   intestazione?: string;
   opzioni: OpzioneDomanda[];
   multiSelezione: boolean;
+  /** AGGIUNTA FACOLTATIVA: per una scelta multipla, quante scelte al massimo (es. «fino a tre»); l'interfaccia lo fa rispettare. */
+  maxSelezioni?: number;
 }
 
 export interface RispostaUtente {
@@ -162,6 +180,11 @@ export interface OpzioniInvio {
   maxTurni?: number;
   /** Riga del diario per questo scambio al posto della prima riga del messaggio (es. "Presentazioni iniziate" per il rituale). */
   rigaDiario?: string;
+  /**
+   * AGGIUNTA FACOLTATIVA: quando scatta, l'esecuzione si ferma davvero (abort della `query()` dell'SDK): niente altri
+   * passi né nuove richieste di permesso. Già scattato prima dell'inizio = lo scambio non parte (es. [Fermati] in coda).
+   */
+  annullamento?: AbortSignal;
 }
 
 // ---------------------------------------------------------------------------------------------------------

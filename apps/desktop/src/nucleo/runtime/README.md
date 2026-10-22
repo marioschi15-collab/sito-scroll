@@ -10,10 +10,16 @@ Cosa fa (docs/02 §2.3, §2.5, §3.2):
 - `usaConfigEreditata: true` (solo sviluppo ed E2E) lascia `CLAUDE_CONFIG_DIR` non impostato, così il binario
   usa il login già presente sulla macchina. In produzione è sempre `false`.
 - `ambientePerBinario(runtime, variabiliAuth)`: l'ambiente completo da passare a `options.env` (che SOSTITUISCE
-  l'ambiente): `process.env` + `ambiente()` + variabili di autenticazione, **senza** `CLAUDE_CODE_SESSION_ID` (se Spalla
-  gira dentro un'altra sessione di Claude Code il binario non deve ereditarne l'id) e **senza** una `ANTHROPIC_API_KEY`
-  ereditata (il cervello usa solo la chiave scelta dall'utente o il login del binario). Lo usano sia le sessioni
-  (`agent/opzioni-sdk.ts`) sia la prova di collegamento (`auth/prova-collegamento.ts`), così non divergono.
+  l'ambiente). Con la configurazione isolata (produzione) parte da un ELENCO DI VARIABILI AMMESSE (`VARIABILI_AMMESSE`:
+  PATH, HOME/USERPROFILE, APPDATA, TEMP/TMP/TMPDIR, SystemRoot/ComSpec/PATHEXT, LANG/LC_*, TERM, SHELL, proxy e
+  certificati aziendali, DISPLAY/WAYLAND/DBUS per aprire il browser del login), poi `ambiente()` e le variabili di
+  autenticazione scelte dall'utente. Nient'altro passa: né token di accesso ereditati (OAuth di Claude Code,
+  `ANTHROPIC_AUTH_TOKEN`, Bedrock), né `CLAUDE_CODE_USE_*`, né `ANTHROPIC_BASE_URL`/`ANTHROPIC_CUSTOM_HEADERS` (la chiave
+  va solo ad Anthropic), né `CLAUDE_CONFIG_DIR`/`CLAUDECODE` ereditati. Solo in sviluppo con `configEreditata` passa
+  l'ambiente intero, meno `CLAUDE_CODE_SESSION_ID` e `ANTHROPIC_API_KEY`. Lo usano le sessioni (`agent/opzioni-sdk.ts`),
+  la prova di collegamento (`auth/prova-collegamento.ts`) e il pannello `/login` della Shell, così non divergono.
+- `percorsoEseguibile`: nell'app pacchettizzata la Shell lo passa SEMPRE (`avviaNucleo({ percorsoEseguibile })`, il
+  binario in `app.asar.unpacked`); diventa `pathToClaudeCodeExecutable` di ogni `query()`.
 
 Non legge mai dentro `CLAUDE_CONFIG_DIR`.
 

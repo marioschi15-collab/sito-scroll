@@ -53,17 +53,39 @@ export const principale = {
   pannello: {
     binarioNonTrovato: 'Non trovo il motore di Claude Code dentro Spalla: reinstalla l\'app oppure passa alla chiave API.',
     giaAperto: 'Il pannello è già aperto.',
+    /** Il pannello si apre solo per collegare l'abbonamento, e solo se non è già collegato. */
+    soloAbbonamento: 'Il pannello di collegamento serve solo per l\'abbonamento Claude: sceglilo prima nella schermata del cervello.',
+    giaCollegato: 'Il tuo abbonamento è già collegato: il pannello non serve.',
     terminale: 'xterm-256color',
   },
   chat: {
-    interrotto: 'Mi sono fermato. Il lavoro in corso finisce in silenzio; il prossimo messaggio parte pulito.',
+    interrotto: 'Mi sono fermato. Il prossimo messaggio parte pulito.',
     scambioDuplicato: 'Questo messaggio è già in corso.',
     scambioSconosciuto: 'Questa conversazione non è più in corso.',
     domandaSconosciuta: 'Questa domanda non aspetta più una risposta.',
     nuovaSessione: 'Argomento chiuso: il prossimo messaggio parte da zero, con la memoria riletta dai file.',
+    /** Va all'assistente (non all'utente) quando l'utente ferma lo scambio mentre c'era una domanda o un permesso in attesa. */
+    motivoInterrotto: "L'utente ha interrotto questo lavoro dalla finestra: fermati qui e non riprovare.",
+  },
+  presentazioni: {
+    /** Risposta del "primo colpo" (S4) nella pagina "Come mi sono presentato". */
+    sceltaPrimoColpo: (n: number, file?: string): string => (file ? `Scelta ${n}: ${file}` : `Scelta ${n}`),
   },
   errori: {
     parametriNonValidi: (dettaglio: string): string => `Richiesta non valida: ${dettaglio}`,
+    /** Il motivo per cui una richiesta della finestra non è valida, senza nomi di campi né parole inglesi. */
+    validazione: {
+      testoTroppoLungo: (n: number): string => `il testo è troppo lungo (massimo ${n.toLocaleString('it-IT')} caratteri).`,
+      testoMancante: 'manca il testo.',
+      testoTroppoCorto: (n: number): string => `il testo è troppo corto (almeno ${n} caratteri).`,
+      troppiElementi: (n: number): string => `troppi elementi (massimo ${n}).`,
+      pochiElementi: (n: number): string => `servono almeno ${n} elementi.`,
+      numeroTroppoGrande: (n: number): string => `il numero è troppo grande (massimo ${n.toLocaleString('it-IT')}).`,
+      numeroTroppoPiccolo: (n: number): string => `il numero è troppo piccolo (almeno ${n}).`,
+      formato: 'un valore non è nel formato atteso.',
+      scelta: 'un valore non è tra quelli ammessi.',
+      generico: 'un valore non è valido.',
+    },
     metodoSconosciuto: (nome: string): string => `Richiesta sconosciuta: ${nome}`,
     percorsoNonConsentito: 'Posso aprire solo file e cartelle dentro la cartella Spalla.',
     fileNonTrovato: (percorso: string): string => `Non trovo ${percorso}.`,

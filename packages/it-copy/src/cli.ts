@@ -72,7 +72,7 @@ export const cli = {
       { comando: '/aiuto', descrizione: 'questo elenco' },
       { comando: '/nuova', descrizione: 'chiude l\'argomento e ne apre uno nuovo, con la memoria riletta dai file' },
       { comando: '/stato', descrizione: 'argomento in corso, spesa del mese, presentazioni, Telegram' },
-      { comando: '/memoria', descrizione: 'contatori della memoria e ricostruzione dell\'indice' },
+      { comando: '/memoria', descrizione: 'contatori della memoria e riordino della ricerca' },
       { comando: '/telegram', descrizione: 'collega Telegram (procedura guidata) o conferma il codice del telefono' },
       { comando: '/ricomincia', descrizione: 'rifai le presentazioni, la squadra o tutto' },
       { comando: '/esci', descrizione: 'chiude il programma' },
@@ -100,10 +100,10 @@ export const cli = {
     sessione: (id?: string): string => (id ? `Argomento in corso: ${id}` : 'Nessun argomento in corso: il prossimo messaggio ne apre uno nuovo.'),
     memoria: (righe: number, tetto: number): string => `Memoria: ${righe}/${tetto} righe`,
     memoriaDettaglio: (file: number, blocchi: number, osservazione: string): string =>
-      `Indice della memoria: ${file} file, ${blocchi} passaggi (aggiornamento: ${osservazione}).`,
+      `Ricerca nella memoria: ${file} file, ${blocchi} passaggi (aggiornamento: ${osservazione}).`,
     memoriaContatori: (schede: number, diari: number, utenteCaratteri: number, utenteTetto: number): string =>
       `Schede: ${schede} · diari: ${diari} · profilo utente: ${utenteCaratteri}/${utenteTetto} caratteri`,
-    indiceRicostruito: 'Indice della memoria ricostruito.',
+    indiceRicostruito: 'Ricerca nella memoria rimessa in ordine.',
     onboarding: (stato: 'da_fare' | 'in_corso' | 'completato'): string =>
       ({ da_fare: 'Presentazioni: da fare', in_corso: 'Presentazioni: in corso', completato: 'Presentazioni: completate' })[stato],
     telegram: (username?: string): string => (username ? `Telegram: collegato come @${username}` : 'Telegram: non collegato'),

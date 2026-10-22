@@ -1,3 +1,9 @@
+/** Motori di riconoscimento della voce (id tecnici del Nucleo) → come li vede l'utente. Un id sconosciuto non si mostra. */
+export const NOMI_MOTORI_VOCE: Readonly<Record<string, string>> = {
+  'sherpa-parakeet': 'riconoscimento veloce sul computer',
+  'sherpa-whisper': 'riconoscimento accurato sul computer',
+};
+
 /**
  * Frasi della finestra desktop (renderer React): navigazione, chat, squadra, memoria, Telegram, impostazioni,
  * "Come mi sono presentato". Le schermate di S0 e del cervello stanno in `onboarding.s0` e `cervello`.
@@ -30,8 +36,17 @@ export const finestra = {
       pannelloInAvvio: 'Apro il pannello…',
       pannelloChiuso: 'Il pannello si è chiuso.',
       tornaAllaScelta: 'Torna alla scelta',
+      /** Solo sviluppo (SPALLA_CONFIG_EREDITATA=1): salta il pannello, il login della macchina è già pronto. */
+      giaCollegatoSviluppo: 'Sono già collegato',
     },
     motore: { continua: 'Inizia a parlare con il tuo assistente' },
+  },
+  /** Pannello di collegamento (terminale nella finestra). */
+  terminale: {
+    copiaLink: 'Copia il link di accesso',
+    apriLink: 'Apri il link nel browser',
+    linkCopiato: 'Link copiato: incollalo nel browser.',
+    suggerimentoCopia: 'Per copiare dal pannello: seleziona il testo e premi Ctrl+Maiusc+C (Cmd+C sul Mac).',
   },
   chat: {
     assistenteSenzaNome: 'Il tuo assistente',
@@ -40,6 +55,9 @@ export const finestra = {
     invia: 'Invia',
     interrompi: 'Fermati',
     nuovoArgomento: 'Nuovo argomento',
+    nuovoArgomentoNota: 'Chiude l\'argomento: il prossimo messaggio riparte da zero, con la memoria riletta dai file. Puoi anche scrivere /nuova.',
+    etichettaCasella: 'Il tuo messaggio',
+    vuota: (nome: string): string => `Scrivi qui sotto: ${nome} ti risponde. Puoi trascinare dei file nella finestra.`,
     argomentoChiuso: 'Argomento chiuso: il prossimo messaggio parte da zero, con la memoria riletta dai file.',
     staScrivendo: 'Sta scrivendo…',
     inCorso: 'Ci lavoro…',
@@ -47,20 +65,29 @@ export const finestra = {
     presentazioniConcluse: 'Presentazioni concluse.',
     presentazioniProblemi: (n: number): string =>
       n === 1 ? 'Ho trovato una cosa da sistemare nei file:' : `Ho trovato ${n} cose da sistemare nei file:`,
-    fine: (durataSec: number, costoUsd?: number): string => {
+    /** Riga sotto la risposta. La spesa (in euro) c'è solo con la chiave API: con l'abbonamento non si paga a risposta. */
+    fine: (durataSec: number, costoEur?: number): string => {
       const parti = [`${durataSec.toFixed(1).replace('.', ',')} s`];
-      if (costoUsd !== undefined) parti.push(`${(costoUsd < 0.01 ? costoUsd.toFixed(4) : costoUsd.toFixed(3)).replace('.', ',')} $`);
+      if (costoEur !== undefined) parti.push(costoEur < 0.01 ? 'meno di 0,01 €' : `circa ${costoEur.toFixed(2).replace('.', ',')} €`);
       return parti.join(' · ');
     },
     domanda: {
       confermaScelte: 'Conferma le scelte',
       rispostaData: (risposte: readonly string[]): string => `Hai risposto: ${risposte.join(', ')}`,
       inAttesa: 'Aspetto la tua risposta qui sotto.',
+      /** Casella dentro il riquadro: il testo va insieme alle scelte (es. «Del tu» + il nome). */
+      campo: 'La tua risposta, con parole tue',
+      invia: 'Rispondi',
+      suggerimentoCampo: 'Se scrivi qui e poi tocchi una scelta, arrivano insieme.',
+      massimo: (n: number): string => `Puoi sceglierne al massimo ${n}.`,
+      chiusa: 'Questa domanda non aspetta più una risposta.',
     },
     permesso: {
       consentito: 'Hai consentito.',
       negato: 'Hai detto di no.',
       ritirato: 'La richiesta non serve più.',
+      /** Motivo passato all'assistente quando l'utente preme [Nega] nella finestra. */
+      motivoNegato: 'L\'utente ha detto di no dalla finestra.',
     },
     allegati: {
       trascina: 'Lascia qui i file da allegare',
@@ -88,14 +115,17 @@ export const finestra = {
     gruppi: { profilo: 'Profilo', memoria: 'Memoria', temi: 'Schede', diario: 'Diario', altro: 'Altro' },
     cerca: 'Cerca nella memoria',
     cercaSegnaposto: 'Un nome, un cliente, un argomento…',
+    cercaPulsante: 'Cerca',
+    visore: 'Lettura del file',
     risultati: (n: number): string => (n === 0 ? 'Nessun ricordo trovato.' : n === 1 ? '1 ricordo trovato' : `${n} ricordi trovati`),
     chiudiRicerca: 'Chiudi la ricerca',
-    ricostruisci: 'Ricostruisci indice',
-    ricostruito: 'Indice della memoria ricostruito.',
+    ricostruisci: 'Rimetti in ordine la ricerca',
+    ricostruito: 'Ricerca nella memoria rimessa in ordine.',
     cosaSai: 'Cosa sai di me?',
     chiediCorrezione: (nome: string): string => `Chiedi a ${nome} di correggere`,
     testoCorrezione: (file: string): string => `Vorrei correggere qualcosa in ${file}: `,
     contatori: {
+      etichetta: 'Quanto è piena la memoria',
       memoria: (righe: number, tetto: number): string => `memoria: ${righe}/${tetto} righe`,
       profilo: (caratteri: number, tetto: number): string => `profilo: ${caratteri}/${tetto} caratteri`,
       schede: (n: number): string => (n === 1 ? '1 scheda' : `${n} schede`),
@@ -111,11 +141,14 @@ export const finestra = {
     sottotitolo: 'Il tuo assistente in tasca: scrivi o manda una nota vocale, ti risponde quando il computer è acceso.',
     stato: {
       collegato: (username: string): string => `Collegato come @${username}`,
+      collegatoSenzaNome: 'Collegato',
       nonCollegato: 'Non collegato',
       soloTe: 'Risponde solo a te.',
       aspettaCiao: 'Aspetta che tu gli scriva "ciao" dal telefono: ti manderà un codice da confermare qui.',
     },
     dueTocchi: 'Collega in due tocchi',
+    dueTocchiAttesa: 'Aspetto la conferma da Telegram: completa i due tocchi sul telefono.',
+    collega: 'Collega',
     dueTocchiNota: 'Si apre Telegram sul telefono o sul computer: due tocchi e il bot è pronto.',
     oppure: 'Oppure, con BotFather',
     comando: 'Comando da scrivere',
@@ -124,7 +157,9 @@ export const finestra = {
     copia: (cosa: string): string => `Copia ${cosa}`,
     pairing: {
       titolo: 'Qualcuno ha scritto al bot',
-      testo: (nome: string, codice: string): string => `${nome} ha scritto al bot e ha ricevuto il codice ${codice}. Sei tu?`,
+      testo: (nome: string): string => `${nome} ha scritto al bot e ha ricevuto un codice. Se sei tu, scrivi qui il codice che vedi su Telegram.`,
+      etichettaCodice: 'Codice ricevuto su Telegram',
+      codiceVuoto: 'Scrivi il codice che il bot ti ha mandato su Telegram.',
       scade: (ora: string): string => `Il codice vale fino alle ${ora}.`,
       conferma: 'Sì, sono io',
       ignora: 'No, non sono io',
@@ -142,6 +177,7 @@ export const finestra = {
       modalita: 'Collegamento',
       chiaveApi: 'Con la chiave API Anthropic',
       abbonamento: 'Abbonamento Claude',
+      beta: 'in beta',
       collegato: 'Collegato',
       nonCollegato: 'Non collegato',
       livello: 'Qualità',
@@ -188,7 +224,10 @@ export const finestra = {
       telegramVocali: 'Risposte vocali su Telegram',
       scarica: 'Scarica il modello per la voce',
       inDownload: 'Scarico il modello…',
-      pronta: (motore?: string): string => (motore ? `Voce pronta (${motore}).` : 'Voce pronta.'),
+      pronta: (motore?: string): string => {
+        const nome = motore ? NOMI_MOTORI_VOCE[motore] : undefined;
+        return nome ? `Voce pronta (${nome}).` : 'Voce pronta.';
+      },
       nonPronta: 'Il modello per capire la voce non è ancora scaricato.',
     },
     avvio: { titolo: 'Avvio', automatico: 'Avvia Spalla all\'accensione del computer' },

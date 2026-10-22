@@ -7,5 +7,6 @@ export const testiBroker = {
     nessunCanale: permessi.esiti.nessunCanale,
     erroreCanale: permessi.esiti.erroreCanale,
     annullata: permessi.esiti.annullata,
+    troppoLungo: permessi.esiti.troppoLungo,
   },
 } as const;

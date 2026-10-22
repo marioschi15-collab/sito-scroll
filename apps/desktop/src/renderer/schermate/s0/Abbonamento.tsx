@@ -5,6 +5,7 @@ import { Avviso } from '../../componenti/Avviso.js';
 import { Pulsante } from '../../componenti/Pulsante.js';
 import { Terminale } from '../../componenti/Terminale.js';
 import { messaggioErrore, spalla } from '../../stato/api.js';
+import { useStore } from '../../stato/store.js';
 import { Cornice } from './Cornice.js';
 
 interface Props {
@@ -21,6 +22,8 @@ export function Abbonamento({ onCollegato, onPreferiscoChiave, onIndietro }: Pro
   const [errorePannello, setErrorePannello] = useState<string | null>(null);
   const [verifica, setVerifica] = useState<'ferma' | 'inCorso'>('ferma');
   const [esito, setEsito] = useState<EsitoCollegamento | null>(null);
+  // Solo sviluppo: con il login della macchina ereditato (SPALLA_CONFIG_EREDITATA=1) il pannello non serve.
+  const accessoEreditato = useStore().stato?.sviluppo?.accessoEreditato === true;
 
   useEffect(() => {
     if (fase !== 'pannello') return;
@@ -45,12 +48,14 @@ export function Abbonamento({ onCollegato, onPreferiscoChiave, onIndietro }: Pro
     };
   }, [fase, t.nonCollegato]);
 
-  async function verificaOra(): Promise<void> {
+  async function verificaOra(saltaPannello = false): Promise<void> {
     setVerifica('inCorso');
     setEsito(null);
     try {
+      if (saltaPannello) await spalla().cervello.cambiaModalita('abbonamento');
       const r = await spalla().cervello.verifica();
       setEsito(r);
+      if (saltaPannello && r.ok) onCollegato();
     } catch (errore) {
       setEsito({ ok: false, messaggio: messaggioErrore(errore, t.nonCollegato), codice: 'altro' });
     } finally {
@@ -63,9 +68,16 @@ export function Abbonamento({ onCollegato, onPreferiscoChiave, onIndietro }: Pro
       <Cornice passo={4} totale={5} titolo={t.titolo}>
         <Avviso livello="attenzione">{t.avvisoBeta}</Avviso>
         <p className="attenuato">{t.limiti}</p>
+        {verifica === 'inCorso' ? <Avviso livello="info">{t.verificaInCorso}</Avviso> : null}
+        {esito && !esito.ok ? <Avviso livello="errore">{esito.messaggio}</Avviso> : null}
         <div className="procedura__piede">
           <Pulsante onClick={onIndietro}>{comuni.pulsanti.indietro}</Pulsante>
           <div className="riga-azioni" style={{ marginTop: 0 }}>
+            {accessoEreditato ? (
+              <Pulsante onClick={() => void verificaOra(true)} disabled={verifica === 'inCorso'}>
+                {finestra.s0.cervello.giaCollegatoSviluppo}
+              </Pulsante>
+            ) : null}
             <Pulsante onClick={onPreferiscoChiave}>{t.preferiscoChiave}</Pulsante>
             <Pulsante variante="primario" onClick={() => setFase('pannello')}>
               {t.continuo}

@@ -1,0 +1,6 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "noEmit": true, "rootDir": "..", "types": ["node"] },
+  "include": ["ipc-*.test.ts", "main-*.test.ts", "../src/main/**/*.ts", "../src/preload/**/*.ts", "../src/ipc/**/*.ts"],
+  "exclude": []
+}

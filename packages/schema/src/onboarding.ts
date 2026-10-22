@@ -68,6 +68,8 @@ export type Risposte = z.infer<typeof RisposteSchema>;
 export const MARCATORI_APP = {
   /** Apre il collegamento Telegram (due tocchi o procedura guidata). */
   APRI_TELEGRAM: '[[APRI:TELEGRAM]]',
+  /** Fine delle domande di profilo (Q1–Q6, o "Vai con i consigliati"): l'app toglie il pulsante fisso dei consigliati. */
+  FINE_PROFILO: '[[FINE:PROFILO]]',
 } as const;
 
 /** Prima riga che il rituale lascia in PRIMO-AVVIO.md quando non può cancellarlo: l'app lo rimuove. */

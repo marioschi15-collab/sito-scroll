@@ -3,14 +3,21 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "Spalla desktop: Nucleo (servizi) + CLI di sviluppo; la shell Electron arriva dopo il Nucleo",
+  "description": "Spalla desktop: Nucleo (servizi), shell Electron (finestra, barra, IPC) e CLI di sviluppo",
+  "main": "./out/main/index.js",
   "scripts": {
     "dev": "tsx src/cli/spalla-dev.ts",
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/renderer/tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/renderer/tsconfig.json && tsc -p test/tsconfig.shell.json",
     "test": "vitest run --passWithNoTests && vitest run -c vitest.renderer.config.ts --passWithNoTests",
     "typecheck:renderer": "tsc -p src/renderer/tsconfig.json",
-    "test:renderer": "vitest run -c vitest.renderer.config.ts"
+    "test:renderer": "vitest run -c vitest.renderer.config.ts",
+    "dev:app": "electron-vite dev",
+    "build:app": "electron-vite build",
+    "start:app": "electron-vite preview",
+    "smoke:finestra": "node test/e2e/finestra-smoke.mjs",
+    "rebuild:electron": "electron-builder install-app-deps",
+    "rebuild:node": "pnpm rebuild better-sqlite3"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.307",
@@ -47,6 +54,7 @@
     "electron-builder": "^26.15.3",
     "electron-vite": "^4.0.1",
     "jsdom": "^30.1.3",
+    "playwright-core": "1.64.1",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vite": "^7.3.7",

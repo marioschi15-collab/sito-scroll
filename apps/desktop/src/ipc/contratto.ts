@@ -32,16 +32,26 @@ export interface StatoApp {
   nomeAssistente?: string;
   nomeUtente?: string;
   versione: string;
-  /** Dove si trova la cartella visibile (mostrata all'utente in Impostazioni/Privacy). */
+  /** Dove si trova la cartella visibile, in forma leggibile ("~/Spalla"; mostrata all'utente in Impostazioni/Privacy). */
   cartellaLavoro: string;
   cervello: { modalita?: ModalitaCervello; livello: LivelloModello; tettoMensileEur: number | null; collegato: boolean };
   onboarding: StatoOnboarding;
+  /**
+   * AGGIUNTA FACOLTATIVA (correzioni G1): true quando il rituale ha finito le domande di profilo (marcatore
+   * [[FINE:PROFILO]]): la finestra toglie il pulsante fisso [Vai con i consigliati] (docs/05 §1.7: solo fino a Q6).
+   */
+  profiloCompletato?: boolean;
   telegram: { collegato: boolean; username?: string; inAttesaDiPairing: boolean };
   voce: { disponibile: boolean; motore?: string };
   /** Schermata da mostrare all'avvio, calcolata dal processo principale. */
   schermataIniziale: SchermataIniziale;
   /** Spesa del mese in euro (modalità chiave API) e se il tetto è stato raggiunto. */
   costi: { meseEur: number; sopraTetto: boolean };
+  /**
+   * Solo sviluppo (app non pacchettizzata): presente quando il binario usa il login di Claude Code della macchina
+   * (SPALLA_CONFIG_EREDITATA=1). La procedura iniziale mostra allora la scorciatoia [Sono già collegato].
+   */
+  sviluppo?: { accessoEreditato: boolean };
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -266,6 +276,11 @@ export interface ApiSpalla {
     notifica(cb: (n: { titolo: string; testo: string; livello: 'info' | 'avviso' | 'errore' }) => void): () => void;
     /** AGGIUNTA FACOLTATIVA (G1): il processo principale chiede alla finestra di aprire una sezione (es. il rituale ha scritto [[APRI:TELEGRAM]]). */
     apriSchermata?(cb: (s: { schermata: 'chat' | 'telegram' | 'impostazioni' | 'squadra' | 'memoria' }) => void): () => void;
+    /**
+     * AGGIUNTA FACOLTATIVA (correzioni G1): una domanda dell'assistente non aspetta più risposta (scambio finito,
+     * fermato o chiuso dal processo principale): la finestra spegne le chip e non ci manda più il testo scritto.
+     */
+    domandaChiusa?(cb: (d: { scambioId: string; id: string }) => void): () => void;
   };
 }
 

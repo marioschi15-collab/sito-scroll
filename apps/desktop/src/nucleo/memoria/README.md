@@ -36,6 +36,7 @@ e costruisce il **lavoro di riordino notturno** (archivista).
 |---|---|
 | `index.ts` | fabbrica del servizio, sincronizzazione (confronto data+dimensione), riparazione su corruzione |
 | `indice.ts` | SQLite FTS5 (`unicode61 remove_diacritics 2`), schema versionato, ricerca con bonus di recenza |
+| `sqlite.ts` | `apriDatabaseSql(file)`: `better-sqlite3`, oppure `node:sqlite` se il modulo nativo non si carica (Electron con il modulo compilato per Node) o con `SPALLA_SQLITE=integrato`; errori tradotti in `code: 'SQLITE_…'` |
 | `blocchi.ts` | spezza un Markdown per intestazioni in blocchi ≤ 1.600 caratteri; etichette dal frontmatter |
 | `query-fts.ts` | dalla domanda a un `MATCH` sicuro: parole tra virgolette, AND/OR/NOT, `-parola`, "frasi" |
 | `scansione.ts` | elenco dei `.md` in `profilo/` e `memoria/` (archivio incluso, file nascosti esclusi) |

@@ -4,7 +4,7 @@ import * as locales from 'zod/locales';
 // Messaggi di validazione in italiano per tutto il processo: l'app è italiana e i problemi arrivano all'utente.
 z.config(locales.it());
 
-export { TETTI_MEMORIA } from './tetti.js';
+export { TETTI_MEMORIA, CAMBIO_USD_EUR } from './tetti.js';
 export { ErroreSchema, formattaProblemi, type Esito } from './errori.js';
 export { separaFrontmatter, parseYamlOggetto, type FrontmatterSeparato } from './frontmatter.js';
 export {

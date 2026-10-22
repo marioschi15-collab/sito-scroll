@@ -113,19 +113,20 @@ export function FornitoreStore({ children }: { children: ReactNode }): ReactNode
     return () => annulla.forEach((f) => f());
   }, [aggiornaStato]);
 
-  const valore = useMemo<Store>(
+  // Azioni stabili (stessa identità a ogni render): chi le usa negli effetti non si riscrive a ogni cambio di stato.
+  const azioni = useMemo(
     () => ({
-      ...s,
-      vai: (sezione, bozza) => dispatch({ tipo: 'vai', sezione, bozza }),
+      vai: (sezione: Sezione, bozza?: string) => dispatch({ tipo: 'vai', sezione, bozza }),
       bozzaConsumata: () => dispatch({ tipo: 'bozzaConsumata' }),
-      notifica: (n) => dispatch({ tipo: 'notifica', notifica: n }),
-      chiudiNotifica: (id) => dispatch({ tipo: 'chiudiNotifica', id }),
+      notifica: (n: Omit<Notifica, 'id'>) => dispatch({ tipo: 'notifica', notifica: n }),
+      chiudiNotifica: (id: number) => dispatch({ tipo: 'chiudiNotifica', id }),
       proceduraFinita: () => dispatch({ tipo: 'proceduraFinita' }),
       aggiornaStato: () => aggiornaStato(false),
-      segnaRitualeAvviato: (valore) => dispatch({ tipo: 'ritualeAvviato', valore }),
+      segnaRitualeAvviato: (valore: boolean) => dispatch({ tipo: 'ritualeAvviato', valore }),
     }),
-    [s, aggiornaStato],
+    [aggiornaStato],
   );
+  const valore = useMemo<Store>(() => ({ ...s, ...azioni }), [s, azioni]);
 
   return <Contesto.Provider value={valore}>{children}</Contesto.Provider>;
 }

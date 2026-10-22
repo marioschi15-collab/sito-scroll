@@ -2,7 +2,7 @@
  * NUCLEO — composition root (docs/02 §3-4): costruisce e collega i servizi di lunga durata e restituisce le maniglie
  * alle interfacce (terminale di sviluppo oggi, shell Electron domani). Qui, e solo qui, i moduli si incontrano.
  */
-import { permessi as testiPermessi, telegram as testiTelegram } from '@spalla/it-copy';
+import { LINK_INFORMATIVA_PRIVACY, permessi as testiPermessi, telegram as testiTelegram } from '@spalla/it-copy';
 import type { Config } from '@spalla/schema';
 import { creaAgentRuntime, CAMBIO_USD_EUR_PREDEFINITO, type FunzioneQuery } from './agent/index.js';
 import { creaAuthAbbonamento, creaAuthChiaveApi, creaStoreSegreti, type StoreSegreti } from './auth/index.js';
@@ -38,6 +38,12 @@ export interface OpzioniNucleo {
   nomeProdotto?: string;
   /** Solo sviluppo/E2E: lascia CLAUDE_CONFIG_DIR ereditato. Predefinito: modalitaDev && SPALLA_CONFIG_EREDITATA=1. */
   usaConfigEreditata?: boolean;
+  /**
+   * Percorso del binario di Claude Code da dare all'SDK (query, prova di collegamento, lavori di sfondo).
+   * Nell'app pacchettizzata è OBBLIGATORIO: senza, l'SDK risolve da sé il pacchetto per piattaforma dentro
+   * app.asar e lo spawn fallisce (ENOTDIR). La Shell lo calcola con trovaBinarioClaude (già fuori da app.asar).
+   */
+  percorsoEseguibile?: string;
   /** Token del bot; altrimenti dai segreti, poi da TELEGRAM_BOT_TOKEN. */
   tokenTelegram?: string;
   /** False per non avviare Telegram anche se c'è un token (prove). */
@@ -75,7 +81,7 @@ export interface Nucleo {
   ferma(): Promise<void>;
 }
 
-const LINK_PRIVACY_PREDEFINITO = 'https://spalla.app/privacy';
+const LINK_PRIVACY_PREDEFINITO = LINK_INFORMATIVA_PRIVACY;
 
 function descriviErrore(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -93,7 +99,10 @@ export async function avviaNucleo(opzioni: OpzioniNucleo): Promise<Nucleo> {
   const usaConfigEreditata = opzioni.usaConfigEreditata ?? (modalitaDev && process.env.SPALLA_CONFIG_EREDITATA === '1');
 
   // Cartelle e ambiente del binario per primi: tutto il resto scrive lì sotto.
-  const runtimeBinario = creaRuntimeBinario(percorsi, { usaConfigEreditata });
+  const runtimeBinario = creaRuntimeBinario(percorsi, {
+    usaConfigEreditata,
+    ...(opzioni.percorsoEseguibile ? { percorsoEseguibile: opzioni.percorsoEseguibile } : {}),
+  });
   const logger = opzioni.logger ?? creaLoggerFile(percorsi.logs, { ancheSuStderr: modalitaDev, adesso });
 
   const lettura = opzioni.config ? undefined : leggiConfigurazione(percorsi.datiApp, logger);

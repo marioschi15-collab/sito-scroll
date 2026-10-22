@@ -117,6 +117,13 @@ pre {
   border-radius: var(--raggio-piccolo);
 }
 
+/* I titoli ricevono il focus via codice a ogni cambio di schermata (per i lettori di schermo): niente anello,
+   non sono controlli. */
+[tabindex='-1']:focus,
+[tabindex='-1']:focus-visible {
+  box-shadow: none;
+}
+
 .solo-lettore {
   position: absolute;
   width: 1px;

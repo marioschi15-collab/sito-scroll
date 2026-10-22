@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { assistente, cervello, cli, comuni, errori, finestra, onboarding, permessi, principale, telegram, voce } from './index.js';
 
 /** Parole da addetti ai lavori che non devono mai arrivare all'utente (docs/05 §1.12). */
-const GERGO = /\b(agente|agenti|prompt|token|MCP|hook|frontmatter|subagent|sottoagente)\b/i;
+const GERGO = /\b(agente|agenti|prompt|token|MCP|hook|frontmatter|subagent|sottoagente|indice|sherpa|parakeet|whisper|onnx)\b/i;
+/** Frasi inglesi della libreria di validazione che non devono arrivare alla finestra. */
+const INGLESE = /\b(Too big|Too small|Invalid|expected|Required|characters)\b/;
 const API = /\bAPI\b/;
 
 /** Raccoglie tutte le stringhe di un oggetto, chiamando le funzioni con argomenti di prova. */
@@ -39,11 +41,19 @@ describe('nessun gergo verso l\'utente', () => {
     it(`${nome}: niente agente/prompt/token/MCP/API`, () => {
       for (const [percorso, s] of stringhe(modulo, nome)) {
         expect(s, percorso).not.toMatch(GERGO);
+        expect(s, percorso).not.toMatch(INGLESE);
         // "API" è ammessa solo nelle schermate del cervello e nel nome della modalità "chiave API"
         if (!/chiave API/.test(s)) expect(s, percorso).not.toMatch(API);
       }
     });
   }
+
+  it('il motore della voce si mostra con un nome italiano, mai con l\'id tecnico', () => {
+    for (const id of ['sherpa-parakeet', 'sherpa-whisper', 'sherpa-onnx', 'nessuno']) {
+      expect(finestra.impostazioni.voce.pronta(id)).not.toMatch(GERGO);
+    }
+    expect(finestra.impostazioni.voce.pronta('sherpa-parakeet')).toBe('Voce pronta (riconoscimento veloce sul computer).');
+  });
 
   it('cervello: la parola API compare solo spiegata, e il resto è senza gergo', () => {
     for (const [percorso, s] of stringhe(cervello, 'cervello')) expect(s, percorso).not.toMatch(GERGO);

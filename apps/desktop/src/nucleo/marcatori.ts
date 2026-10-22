@@ -1,7 +1,7 @@
 import { MARCATORI_APP } from '@spalla/schema';
 
 /** I marcatori che l'assistente scrive da soli su una riga per chiedere qualcosa all'app (docs/05 S7). */
-export const MARCATORI_PREDEFINITI: readonly string[] = [MARCATORI_APP.APRI_TELEGRAM];
+export const MARCATORI_PREDEFINITI: readonly string[] = [MARCATORI_APP.APRI_TELEGRAM, MARCATORI_APP.FINE_PROFILO];
 
 /**
  * Toglie i marcatori dal testo prima che arrivi all'utente e ricorda quali ha incontrato.

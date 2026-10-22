@@ -10,3 +10,9 @@ export const TETTI_MEMORIA = {
   SQUADRA_RIGHE: 40,
   IDENTITA_RIGHE: 20,
 } as const;
+
+/**
+ * Cambio dollari → euro per mostrare le spese (l'SDK conta in dollari). Unico valore per Nucleo e finestra.
+ * Indicativo: la fattura vera la fa Anthropic sulla chiave dell'utente.
+ */
+export const CAMBIO_USD_EUR = 0.92;

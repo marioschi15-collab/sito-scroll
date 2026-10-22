@@ -37,9 +37,9 @@ export function ChiaveApi({ onCollegato, onIndietro }: { onCollegato(): void; on
     setInCorso(true);
     setEsito(null);
     try {
-      const api = spalla();
-      await api.cervello.cambiaModalita('chiave_api');
-      setEsito(await api.cervello.collegaChiaveApi(pulita, tetto, livello));
+      // Niente cambiaModalita prima: chi è in abbonamento e prova una chiave sbagliata non deve perdere la sua
+      // modalità. collegaChiaveApi scrive modalità e scelta SOLO se la chiave passa la prova.
+      setEsito(await spalla().cervello.collegaChiaveApi(pulita, tetto, livello));
     } catch (errore) {
       setEsito({ ok: false, messaggio: messaggioErrore(errore, cervello.verifica.generico('')), codice: 'altro' });
     } finally {
@@ -102,9 +102,9 @@ export function ChiaveApi({ onCollegato, onIndietro }: { onCollegato(): void; on
           </span>
         </div>
 
-        <Scelte nome="tetto" legenda={t.tetto.domanda} opzioni={t.tetto.opzioni} valore={tetto} onCambia={setTetto} />
+        <Scelte<number | null> nome="tetto" legenda={t.tetto.domanda} opzioni={t.tetto.opzioni} valore={tetto} onCambia={setTetto} />
         <p className="attenuato piccolo">{t.tetto.nota}</p>
-        <Scelte nome="qualita" legenda={t.qualita.domanda} opzioni={t.qualita.opzioni} valore={livello} onCambia={setLivello} />
+        <Scelte<LivelloModello> nome="qualita" legenda={t.qualita.domanda} opzioni={t.qualita.opzioni} valore={livello} onCambia={setLivello} />
         <p className="attenuato piccolo">{t.notaMax}</p>
 
         {inCorso ? <Avviso livello="info">{t.verificaInCorso}</Avviso> : null}

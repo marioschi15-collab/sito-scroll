@@ -1,8 +1,8 @@
 # 08 — Sviluppo: come si installa, si avvia e si prova il prototipo
 
-> Stato: prototipo "Nucleo + terminale di sviluppo", 22 ottobre 2026. La shell Electron non c'è ancora: tutto quello
-> che la finestra farà passa oggi da un terminale (`pnpm dev`) che usa gli stessi servizi, lo stesso Permission Broker e
-> le stesse regole. Le decisioni di architettura sono in [02](02-architettura.md); qui c'è solo il "come si fa girare".
+> Stato: prototipo "Nucleo + finestra Electron + terminale di sviluppo", 22 ottobre 2026. La finestra (§2-bis) e il
+> terminale (`pnpm dev`, §2) usano gli stessi servizi, lo stesso Permission Broker e le stesse regole. Le decisioni di
+> architettura sono in [02](02-architettura.md); qui c'è solo il "come si fa girare".
 
 ## 1. Prerequisiti
 
@@ -51,15 +51,51 @@ Comandi: `/nuova` (chiude l'argomento: la prossima riga apre una sessione nuova 
 `/memoria ricostruisci`), `/telegram` (vedi §4), `/aiuto`, `/esci`.
 
 Con l'abbonamento **senza** `SPALLA_CONFIG_EREDITATA=1` il binario usa la cartella isolata `dati-locali/claude`: il
-terminale stampa il comando `CLAUDE_CONFIG_DIR=… claude /login` da eseguire a parte (il pannello xterm arriverà con
-Electron).
+terminale stampa il comando `CLAUDE_CONFIG_DIR=… claude /login` da eseguire a parte (nella finestra c'è il pannello
+xterm, §2-bis).
+
+## 2-bis. La finestra (`pnpm dev:app`)
+
+```bash
+pnpm build:packages                                                    # una volta: schema e it-copy compilati
+SPALLA_HOME=/tmp/spalla-dev pnpm --filter @spalla/desktop dev:app      # electron-vite dev: ricarica a caldo della pagina
+SPALLA_HOME=/tmp/spalla-dev SPALLA_CONFIG_EREDITATA=1 pnpm --filter @spalla/desktop dev:app   # con il login della macchina
+pnpm --filter @spalla/desktop build:app                                # build di produzione in apps/desktop/out/
+pnpm --filter @spalla/desktop start:app                                # avvia la build di out/ (electron-vite preview)
+```
+
+Come è fatta (dettagli nei README di `apps/desktop/src/main`, `src/preload`, `src/renderer`):
+
+- **Processo principale** (`src/main/index.ts`): istanza singola, icona nella barra (l'app resta lì quando chiudi la
+  finestra; "Esci" dal menu dell'icona), sospensione/ripresa, avvio al login (solo app pacchettizzata). Il Nucleo gira
+  qui dentro (prototipo) dietro `HostNucleo` (`src/main/nucleo-host.ts`), la cucitura per il futuro `utilityProcess`.
+- **IPC**: il contratto è `src/ipc/contratto.ts` (`window.spalla`); ogni metodo è un `ipcMain.handle('gruppo.metodo')`
+  accettato solo dalla nostra pagina, con gli argomenti validati da zod (`src/ipc/schemi.ts`). Eventi:
+  `evento.<nome>`. La finestra non riceve mai segreti, input grezzi degli strumenti o percorsi assoluti fuori dalla
+  cartella di lavoro.
+- **Preload** (`src/preload`, CommonJS in sandbox): espone solo `window.spalla`.
+- **Pagina** (`src/renderer`, React 19): procedura S0 (benvenuto, privacy, avvio automatico, cervello con chiave API o
+  abbonamento e pannello `/login` in xterm.js, motore pronto), chat con streaming, chip, schede di permesso, allegati
+  trascinati, [Vai con i consigliati]; Squadra, Memoria, Telegram, Impostazioni, "Come mi sono presentato". Tema chiaro
+  e scuro con `prefers-color-scheme`; CSP stretta in `index.html` (in sviluppo electron-vite la allarga solo per la
+  ricarica a caldo).
+- **SQLite nella finestra.** `better-sqlite3` in `node_modules` è compilato per Node (le prove). Se nel processo di
+  Electron non si carica, l'indice della memoria passa da solo a `node:sqlite` (integrato in Electron 45, FTS5
+  compreso; nel log `memoria.motore_sqlite`). Niente più `rebuild:electron`/`rebuild:node` avanti e indietro per
+  sviluppare; nell'installer electron-builder ricompila comunque il modulo nativo. `node-pty` (pannello `/login`) usa
+  N-API e funziona in Electron senza ricompilare.
+- **Scorciatoia di sviluppo.** Con `SPALLA_CONFIG_EREDITATA=1` (solo app non pacchettizzata) la schermata
+  dell'abbonamento mostra **[Sono già collegato]**: salta il pannello e prova subito il collegamento con il login
+  della macchina. `SPALLA_MAX_TURNI=8` limita i passi di ogni scambio della finestra.
 
 ## 3. Variabili d'ambiente
 
 | Variabile | Effetto |
 |---|---|
-| `SPALLA_HOME` | Sposta cartella di lavoro, dati dell'app e dati locali sotto questa cartella (sviluppo e test). |
-| `SPALLA_CONFIG_EREDITATA=1` | Lascia `CLAUDE_CONFIG_DIR` quello della macchina: il binario trova il login di Claude Code già fatto. Solo sviluppo/E2E; in produzione la cartella è sempre isolata. |
+| `SPALLA_HOME` | Sposta cartella di lavoro, dati dell'app e dati locali sotto questa cartella (sviluppo e test). Nella finestra anche i dati di Chromium (`<SPALLA_HOME>/electron`), così una prova non si scontra con l'app aperta. |
+| `SPALLA_CONFIG_EREDITATA=1` | Lascia `CLAUDE_CONFIG_DIR` quello della macchina: il binario trova il login di Claude Code già fatto. Solo sviluppo/E2E; in produzione la cartella è sempre isolata. Nella finestra abilita [Sono già collegato]. |
+| `SPALLA_MAX_TURNI` | Solo finestra in sviluppo: tetto di passi per ogni scambio (prove a costo contenuto). |
+| `SPALLA_SQLITE=integrato` | Forza `node:sqlite` per l'indice della memoria (prove e diagnosi; di solito la scelta è automatica). |
 | `ANTHROPIC_API_KEY` | Nella prova `smoke:onboarding`: se presente, la prova usa la modalità chiave API con questa chiave. Nel terminale la chiave si incolla al primo avvio e vive nel deposito cifrato, non nell'ambiente. |
 | `TELEGRAM_BOT_TOKEN` | Token del bot: il Nucleo lo usa se nel deposito segreti non c'è ancora un token (`token_telegram`). In alternativa `/telegram`. |
 | `RUN_E2E=1` | Abilita i test che parlano davvero con Anthropic (`test/agent-e2e.test.ts`). |
@@ -91,14 +127,27 @@ pnpm test                   # vitest ovunque: offline, senza credenziali, SPALLA
 pnpm sicurezza              # scripts/verifica-sicurezza.mjs: niente lettura delle credenziali del binario, niente bypass
 pnpm test:e2e               # come pnpm test più agent-e2e (una riga attraverso il vero binario; serve un login)
 pnpm smoke:onboarding       # le presentazioni vere: rituale + tre risposte di Marco (docs/05 §5), controlla IDENTITA.md
+pnpm --filter @spalla/desktop test:renderer          # solo la pagina (jsdom + Testing Library); già dentro pnpm test
+pnpm --filter @spalla/desktop smoke:finestra         # la finestra vera, senza schermo (xvfb-run da sola su Linux)
+pnpm --filter @spalla/desktop smoke:finestra -- --onboarding   # passaggio vero fino alla chat (serve un login, vedi sotto)
 ```
+
+`smoke:finestra` (`apps/desktop/test/e2e/finestra-smoke.mjs`, Playwright `_electron`) fa la build, avvia l'app con
+`SPALLA_HOME` temporaneo, controlla che la pagina veda solo `window.spalla` (niente `require`/`process`), va da
+Benvenuto a Cervello e salva `finestra-benvenuto.png` e `finestra-cervello.png` (`--uscita <cartella>`, predefinita
+`<tmp>/spalla-finestra-smoke`; `--tieni` lascia la cartella di prova; il log del processo principale finisce accanto alle
+immagini). Con `--onboarding` imposta `SPALLA_CONFIG_EREDITATA=1` e `SPALLA_MAX_TURNI=8`, sceglie l'abbonamento, usa
+[Sono già collegato], apre la chat, lascia partire il rituale, consente i permessi che chiede, risponde "Marco" e
+"Del tu" alle prime due domande e salva `finestra-chat.png`.
 
 Per un modulo solo: `pnpm --filter @spalla/desktop exec vitest run test/<modulo>` (`runtime`, `auth`, `broker`,
 `scheduler`, `agent`, `cli`, `memoria`, `telegram`, `voce`, `onboarding`, `nucleo`). I pacchetti:
 `pnpm --filter @spalla/schema test`, `pnpm --filter @spalla/it-copy test`, `pnpm --filter @spalla/manager-bot test`.
 
-Numeri al 22 ottobre 2026: 264 test desktop (+1 E2E con `RUN_E2E=1`), 35 schema, 11 it-copy, 7 Worker; tutti verdi.
-La prova `smoke:onboarding` in questo ambiente: due scambi, 22 passi, 0,34 $, `profilo/IDENTITA.md` con "Bruno".
+Numeri al 22 ottobre 2026: 327 test desktop Node (+3 E2E con `RUN_E2E=1`) e 37 della pagina, 36 schema, 13 it-copy,
+7 Worker; tutti verdi. La prova `smoke:onboarding` in questo ambiente: due scambi, 22 passi, 0,34 $, `profilo/IDENTITA.md`
+con "Bruno". `smoke:finestra` passa sotto `xvfb-run` (Electron 45); con `--onboarding` il rituale fa le prime due
+domande nella finestra e chiede due permessi per comandi di sola lettura/modifica nella cartella.
 
 ## 6. Dove sta cosa
 
@@ -113,7 +162,11 @@ apps/desktop/src/nucleo/
   telegram/  voce/       bot grammY, pairing, BotFather, Managed Bots; trascrizione sherpa-onnx (D)
   onboarding/            semina, stato, messaggio iniziale, validazione, chiusura, ruoli (E)
 apps/desktop/src/cli/    terminale di sviluppo: pnpm dev, resa degli eventi, /telegram, logger su file
-apps/desktop/test/       vitest per modulo; test/e2e/onboarding-smoke.ts
+apps/desktop/src/ipc/    contratto.ts (window.spalla) e schemi.ts (zod, lato processo principale)
+apps/desktop/src/main/   processo principale Electron: finestra, barra, HostNucleo, ponte IPC, pannello /login, esporta
+apps/desktop/src/preload/   window.spalla (sandbox, CommonJS)
+apps/desktop/src/renderer/  la pagina React: S0, chat, sezioni
+apps/desktop/test/       vitest per modulo (+ renderer-*.test.tsx in jsdom); test/e2e/onboarding-smoke.ts, finestra-smoke.mjs
 packages/schema/         zod: ruoli, domande, config.json, stato.json, RISPOSTE.json, tetti, percorso dei modelli
 packages/it-copy/        TUTTE le frasi italiane mostrate all'utente (i moduli le importano da qui)
 packages/workspace-templates/templates/   ~/Spalla iniziale: CLAUDE.md, settings.json, ruoli, skill, PRIMO-AVVIO.md
@@ -131,7 +184,8 @@ I log sono righe JSON senza contenuti dei messaggi; chiavi e token vengono oscur
 | Funziona oggi | Note |
 |---|---|
 | Chat nel terminale con streaming, strumenti, fine scambio con costo | sessione principale ripresa per id, una al giorno |
-| Modalità chiave API (deposito cifrato, contatore mensile in euro con tetto) e abbonamento (login ereditato) | il pannello `/login` isolato è Electron-only |
+| Modalità chiave API (deposito cifrato, contatore mensile in euro con tetto) e abbonamento (login ereditato) | nella finestra: pannello `/login` isolato in xterm.js, prova della chiave prima di salvarla |
+| Finestra Electron: S0, chat (streaming, chip, schede di permesso, allegati, rituale, [Vai con i consigliati]), Squadra, Memoria, Telegram (BotFather e pairing), Impostazioni (esporta tutto, cartella, voce), "Come mi sono presentato"; barra con menu e stato | prove della pagina in jsdom, `smoke:finestra` sotto xvfb, pacchetto Linux `dir` avviato |
 | Permission Broker: schede in italiano nel terminale, pulsanti su Telegram, timeout 10 minuti, ruolo che agisce | mai bypass, nemmeno per i lavori programmati |
 | Domande con opzioni (AskUserQuestion → chip numerate; su Telegram pulsanti) | testo libero sempre permesso |
 | Memoria: indice FTS5 con bonus di recenza, osservatore dei file, tetti (hook), diario (hook Stop), `memoria_cerca` | indice ricostruibile, schema versionato |
@@ -142,12 +196,16 @@ I log sono righe JSON senza contenuti dei messaggi; chiavi e token vengono oscur
 
 | Segnaposto o fuori perimetro | Stato |
 |---|---|
-| Shell Electron (finestre, tray, hotkey, notifiche, `powerMonitor`, `safeStorage`, avvio al login, aggiornamenti) | non iniziata; il Nucleo è pensato per girare in un `utilityProcess` |
+| Shell Electron: Nucleo in un `utilityProcess` con MessagePort | per ora nel processo principale, dietro `HostNucleo` (ADR-012) |
+| `safeStorage` | non collegato: il deposito segreti resta quello a file (serve un'opzione di iniezione in `avviaNucleo`) |
+| Scorciatoia globale, link `spalla://`, aggiornamenti automatici, icona definitiva | fuori da questo passo (`spalla://` è solo dichiarato nel pacchetto) |
+| Interrompere davvero uno scambio ([Fermati]) | la finestra smette di mostrare gli eventi e risponde/nega ciò che è in attesa; manca un `interrompi` nell'AgentRuntime |
+| Prova diretta della chiave su HTTPS (Haiku) mentre il motore si scarica | la prova passa dal binario incluso (strada A) |
 | Buongiorno del mattino (`brief_mattino`) | base funzionante in `nucleo/brief.ts`, spenta (`config.brief.attivo: false`, docs/06 §2); al canale desktop arriva solo via `suBrief` |
 | Voce al computer (push-to-talk, TTS, risposte vocali su Telegram) | fuori perimetro; `/voce on` risponde "non disponibile" |
-| Managed Bots "due tocchi" | client + Worker pronti e testati, non collegati al terminale (manca il deploy del Worker e la finestra) |
+| Managed Bots "due tocchi" | client + Worker pronti e testati; la finestra mostra il percorso ma risponde "non ancora disponibile" (manca il deploy del Worker) |
 | Deposito segreti | AES-256-GCM con chiave derivata da utente@macchina: segnaposto di `safeStorage` |
-| Secondo utente Telegram, `/ricomincia` a tre ampiezze, pagina "Come mi sono presentato" | API pronte (`aggiungiProprietario`, `attivaRuolo`/`disattivaRuolo`, `RISPOSTE.json`), nessuna interfaccia |
+| Secondo utente Telegram | API pronta (`aggiungiProprietario`), nessuna interfaccia |
 | Fornitura del binario (strada C: download verificato) | si usa il binario incluso nell'SDK |
 
 ## 8. Cose da sapere
@@ -157,7 +215,9 @@ I log sono righe JSON senza contenuti dei messaggi; chiavi e token vengono oscur
   lo scrive sul suo stderr (nel log come `binario.stderr`). Hook, blocco `env`, `deny` e `ask` restano in vigore. Non è
   un problema per il prototipo: la stessa lista `allow` viene passata dall'SDK con `allowedTools` (docs/02 §3.2). Resta
   da decidere per Electron se e come marcare la cartella come fidata senza toccare la cartella di configurazione del
-  binario (vedi [07](07-rischi-e-domande-aperte.md)).
+  binario (vedi [07](07-rischi-e-domande-aperte.md)). `Bash` è in `ask`: se durante il rituale il modello usa un
+  comando (es. `cat` o `sed` su un file della cartella) invece di Read/Edit, nella finestra compare una scheda di
+  permesso; è il comportamento voluto, ma conviene spingere il rituale verso Read/Edit.
 - **Sessione dentro una sessione.** Se il terminale gira dentro un'altra sessione di Claude Code (es. da uno strumento di
   sviluppo), il binario erediterebbe `CLAUDE_CODE_SESSION_ID`: il runtime la toglie dall'ambiente del binario.
 - **Avviso `CLAUDE_SDK_CAN_USE_TOOL_SHADOWED`.** Voluto: le regole nude (Glob, Grep, WebSearch, WebFetch, Agent,
@@ -168,10 +228,9 @@ I log sono righe JSON senza contenuti dei messaggi; chiavi e token vengono oscur
 
 ## 9. Prossimi passi (M3-M4 del piano, [06](06-piano-prototipo.md))
 
-1. **Shell Electron**: `utilityProcess` che chiama `avviaNucleo`, IPC su MessagePort con schemi zod, finestra chat
-   (React) che consuma `Dispatcher.gestisci` con un `rispondiDomanda` a chip e un `CanaleConferme` "desktop"; tray;
-   `powerMonitor.on('resume') → scheduler.ripresaDalSonno()`; `safeStorage` al posto del deposito a file; pannello
-   xterm.js per `/login` nella cartella isolata; schermate S0 con i testi di `it-copy.cervello` e `it-copy.onboarding.s0`.
+1. **Shell Electron, seconda metà**: spostare il Nucleo in un `utilityProcess` (MessagePort, stessi schemi zod);
+   `safeStorage` al posto del deposito a file; `interrompi` vero nell'AgentRuntime; scorciatoia globale e `spalla://`;
+   prova in una finestra vera su macOS e Windows (finora solo Linux sotto xvfb).
 2. **Telegram "due tocchi"**: deploy del Worker, `creaClientManagedBots().avviaCollegamento()` dalla schermata
    Telegram, `canale.aggiungiProprietario(id)` alla consegna; `/ricomincia` e `/stop` cablati (`attivaRuolo`,
    `nuovaSessione`, interruzione della `query`).
@@ -181,3 +240,95 @@ I log sono righe JSON senza contenuti dei messaggi; chiavi e token vengono oscur
    Telegram; rispettare gli orari di silenzio.
 5. **Pipeline**: build firmate, `electron-builder`, strada C per il binario, migrazione dei modelli di spazio di lavoro
    all'aggiornamento.
+
+## 10. Pacchetto e installer
+
+> Configurazione: `apps/desktop/electron-builder.yml`; dettagli e scelte in
+> [`apps/desktop/README-pacchetto.md`](../apps/desktop/README-pacchetto.md). Decisioni in [02 §2.5 e §9](02-architettura.md).
+
+Nel prototipo il binario di Claude Code viaggia **dentro l'installer** (strada A di 02 §2.5): il pacchetto per
+piattaforma dell'SDK (`@anthropic-ai/claude-agent-sdk-<piattaforma>-<arch>`) viene copiato **senza modifiche** in
+`app.asar.unpacked` (fuori dall'archivio, perché `spawn()` non può eseguire file dentro `app.asar`) e non viene mai
+ri-firmato: `mac.signIgnore` su macOS, `win.signExts: ['!claude.exe']` su Windows.
+
+| Piattaforma | Cosa esce in `apps/desktop/release/` | Note |
+|---|---|---|
+| macOS Apple Silicon | `Spalla-<versione>-mac-arm64.dmg` | hardened runtime, entitlements in `resources/entitlements.mac.plist` |
+| macOS Intel | `Spalla-<versione>-mac-x64.dmg` | DMG separato, niente universale (02 §9.1) |
+| Windows x64 | `Spalla-<versione>-win-x64-setup.exe` | NSIS per l'utente, in italiano, senza diritti di amministratore |
+| Linux x64 | `Spalla-<versione>-linux-x86_64.AppImage` o cartella `linux-unpacked` | **solo per sviluppo e prove** |
+
+### 10.1 Costruire in locale
+
+Si costruisce sulla piattaforma (e architettura) di destinazione: pnpm installa solo il binario di Claude Code e i
+moduli nativi della macchina su cui gira.
+
+```bash
+pnpm install
+pnpm build:packages                                        # @spalla/schema e @spalla/it-copy in dist/
+pnpm --filter @spalla/desktop exec electron-vite build     # out/main, out/preload, out/renderer
+
+# poi, a seconda della macchina:
+CSC_IDENTITY_AUTO_DISCOVERY=false pnpm --filter @spalla/desktop exec electron-builder --mac --arm64 --publish never   # oppure --x64 su un Mac Intel
+pnpm --filter @spalla/desktop exec electron-builder --win --publish never                                         # su Windows
+pnpm --filter @spalla/desktop exec electron-builder --linux dir --publish never                                   # prova veloce: solo la cartella, niente installer
+```
+
+- **Moduli nativi.** electron-builder ricompila `better-sqlite3` (e gli altri moduli nativi) per Electron **dentro**
+  `node_modules`: dopo un pacchetto, le prove con Node (`pnpm test`) possono fallire con `NODE_MODULE_VERSION`. Si torna
+  indietro con `pnpm rebuild better-sqlite3`. Per controllare solo la struttura del pacchetto senza toccare
+  `node_modules`: aggiungere `-c.npmRebuild=false` (in questo ambiente anche `-c.electronDist=node_modules/electron/dist`).
+  L'app ottenuta si avvia lo stesso: l'indice della memoria ripiega su `node:sqlite` (§2-bis). Prova del 22 ottobre:
+  `linux-unpacked` avviato sotto `xvfb-run`, Nucleo partito, `verifica-hash-binario.mjs` OK (hash identici).
+- **Icona.** `apps/desktop/resources/icon.png` (1024×1024, segnaposto) si rigenera con `node scripts/genera-icone.mjs --forza`
+  (serve `ffmpeg`); electron-builder ne ricava `.icns` e `.ico` da solo.
+- **Modelli della cartella di lavoro.** Viaggiano in `extraResources` (`<risorse>/workspace-templates/templates`),
+  dove `cartellaTemplates()` li trova risalendo da `node_modules/@spalla/schema`; l'hook `resources/dopo-pacchetto.cjs`
+  rimette i `.gitkeep` che electron-builder scarta sempre.
+
+### 10.2 Il binario è davvero "non modificato"?
+
+```bash
+node scripts/verifica-hash-binario.mjs apps/desktop/release/mac-arm64/Spalla.app   # o release/win-unpacked, release/linux-unpacked
+# opzioni: --piattaforma darwin|win32|linux  --arch arm64|x64  (predefinite: quelle della macchina)
+```
+
+Lo script calcola lo SHA-256 del binario nel pacchetto dell'SDK in `node_modules` e di quello trovato nell'app, li
+confronta e controlla che stia in `app.asar.unpacked`; su macOS stampa anche chi lo ha firmato (`codesign`). Esce con 0
+se coincidono, 1 se il binario è stato toccato, 2 se manca qualcosa. Gira anche nella CI di release.
+
+### 10.3 Il flusso di release (`.github/workflows/release.yml`)
+
+- **Quando parte**: a mano (Actions → Release → Run workflow) o con un tag `v*` (es. `git tag v0.1.0 && git push --tags`).
+- **Su cosa**: `macos-latest` (arm64), `macos-15-intel` (x64), `windows-latest` (x64). Se l'etichetta Intel non fosse
+  più disponibile, la riserva è costruire l'x64 su `macos-latest` con `--x64`, aggiungendo
+  `supportedArchitectures: { os: [darwin], cpu: [arm64, x64] }` in `pnpm-workspace.yaml` perché pnpm scarichi anche il
+  binario x64 (lo script di verifica se ne accorge se manca).
+- **Passi**: `pnpm install --frozen-lockfile` → build dei pacchetti `@spalla/*` → `electron-vite build` →
+  `electron-builder --<mac|win> --<arch> --publish never` → verifica dell'hash del binario → caricamento di DMG/EXE come
+  artefatti (`actions/upload-artifact@v4`, 14 giorni) → riepilogo della corsa con dimensioni, esito della verifica e
+  avviso sulle build non firmate.
+- **Nessun segreto richiesto**: `CSC_IDENTITY_AUTO_DISCOVERY=false`, quindi niente firma. Su macOS Sequoia e successivi
+  l'utente deve passare da Impostazioni di Sistema → Privacy e sicurezza → "Apri comunque"; su Windows compare
+  SmartScreen ("Ulteriori informazioni" → "Esegui comunque") e Smart App Control blocca l'app senza eccezioni (02 §9.2).
+  Sono pacchetti per prove interne.
+- **Niente pubblicazione**: `publish` non è impostato in `electron-builder.yml`. Con gli aggiornamenti automatici
+  (02 §9.3) si aggiungerà il provider `github` (prototipo) o `generic` su Cloudflare R2 (v1), più il target `zip` su
+  macOS che serve a electron-updater.
+
+### 10.4 Quando arrivano i certificati: dove mettere i segreti
+
+Si aggiungono in GitHub → Settings → Secrets and variables → Actions, poi nel job di release si toglie
+`CSC_IDENTITY_AUTO_DISCOVERY: 'false'` e si passano come variabili d'ambiente (es. `CSC_LINK: ${{ secrets.CSC_LINK }}`),
+solo sulle righe della matrice che li usano.
+
+| Piattaforma | Segreti | A cosa servono |
+|---|---|---|
+| macOS (firma) | `CSC_LINK` (certificato "Developer ID Application" `.p12` in base64), `CSC_KEY_PASSWORD` | firma dell'app con hardened runtime |
+| macOS (notarizzazione) | `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` — oppure `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER` | `mac.notarize` non è impostato: electron-builder notarizza da solo quando trova queste variabili |
+| Windows (preferito) | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | Azure Artifact Signing; in `electron-builder.yml` va aggiunto `win.azureSignOptions` con `publisherName`, `endpoint`, `certificateProfileName`, `codeSigningAccountName` |
+| Windows (riserva) | `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD` | certificato OV in file; con un HSM in cloud (es. SimplySign) serve invece uno strumento di firma dedicato |
+
+Da verificare con la prima build firmata (02 §2.5, settimana 1): che la notarizzazione Apple accetti il binario di
+Claude Code firmato da Anthropic dentro la nostra app e che `signIgnore` lo lasci intatto (lo dice
+`verifica-hash-binario.mjs`).

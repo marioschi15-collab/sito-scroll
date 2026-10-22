@@ -72,7 +72,15 @@ export function creaBroker(opzioni: OpzioniBroker): BrokerEsteso {
   function completa(richiesta: RichiestaPermesso): RichiestaPermesso {
     if (richiesta.descrizione) return richiesta;
     const d = descriviRichiesta(richiesta.strumento, richiesta.input, richiesta.ruolo);
-    return { ...richiesta, descrizione: d.descrizione, anteprima: richiesta.anteprima ?? d.anteprima };
+    const dettaglio = richiesta.dettaglio ?? d.dettaglio;
+    const spiegazione = richiesta.spiegazione ?? d.spiegazione;
+    return {
+      ...richiesta,
+      descrizione: d.descrizione,
+      anteprima: richiesta.anteprima ?? d.anteprima,
+      ...(dettaglio ? { dettaglio } : {}),
+      ...(spiegazione ? { spiegazione } : {}),
+    };
   }
 
   /** Decisione del canale, oppure nega allo scadere del tempo o all'annullamento della sessione che ha chiesto. */
@@ -113,6 +121,11 @@ export function creaBroker(opzioni: OpzioniBroker): BrokerEsteso {
 
     async chiedi(richiestaGrezza) {
       const richiesta = completa(richiestaGrezza.id ? richiestaGrezza : { ...richiestaGrezza, id: nuovoId() });
+      // Un comando o un testo che non si può mostrare per intero non si chiede nemmeno: si nega (docs/02 §6).
+      if (richiesta.dettaglio?.troncato) {
+        logger.avviso('broker.dettaglio_troppo_lungo', { id: richiesta.id, strumento: richiesta.strumento });
+        return { esito: 'nega', motivo: testiBroker.motivi.troppoLungo };
+      }
       const canale = scegliCanale(richiesta.canaleOrigine);
       if (!canale) {
         logger.avviso('broker.nessun_canale', { id: richiesta.id, strumento: richiesta.strumento });

@@ -9,7 +9,8 @@ export { cervello } from './cervello.js';
 export { onboarding } from './onboarding.js';
 export { assistente, etichettaRuolo } from './assistente.js';
 export { voce } from './voce.js';
-export { finestra } from './finestra.js';
+export { finestra, NOMI_MOTORI_VOCE } from './finestra.js';
+export { LINK_INFORMATIVA_PRIVACY } from './prodotto.js';
 export { principale } from './principale.js';
 
 import { comuni } from './comuni.js';

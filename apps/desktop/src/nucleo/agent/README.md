@@ -12,9 +12,14 @@ dell'Agent SDK e traduce ciò che succede negli `EventoAssistente` del contratto
   oppure `tettoUsd`), modello `haiku`, oppure `agent: ruolo` quando si passa `ruolo` (il modello lo decide il
   frontmatter del ruolo).
 - **Opzioni SDK** (`opzioni-sdk.ts`): `cwd = cartellaLavoro`, `env = ambientePerBinario(runtime, auth)` (di `../runtime`:
-  `process.env` più le variabili del binario e di autenticazione, **senza** `CLAUDE_CODE_SESSION_ID` né una
-  `ANTHROPIC_API_KEY` ereditata per caso), `settingSources: ['project']`, `permissionMode: 'default'`, `allowedTools`
-  con regole di percorso `./**` (mai nomi nudi), `includePartialMessages`, `hooks`, `mcpServers.spalla`. Mai `bypass`.
+  solo le variabili di sistema ammesse più quelle del binario e di autenticazione), `settingSources: ['project']`,
+  `permissionMode: 'default'`, `allowedTools` con regole di percorso `./**` per Read/Write/Edit e senza Glob/Grep nudi
+  (`canUseTool` li consente da solo dentro la cartella e manda al Broker path fuori, "~" o modelli con ".."),
+  `includePartialMessages`, `hooks`, `mcpServers.spalla`, `abortController` legato a `OpzioniInvio.annullamento`
+  ([Fermati] ferma davvero). Mai `bypass`.
+- **Schede di permesso**: la richiesta porta `dettaglio` (il comando della shell o il testo scritto, per intero fino a
+  16 KB: mai accorciato in silenzio; oltre, il Broker nega senza chiedere) e `spiegazione` (la `description` del
+  modello, da mostrare a parte). Le domande a scelta multipla con «fino a tre» nel testo portano `maxSelezioni`.
 - **Protezioni fisse** (`protezioni.ts`, docs/02 §2.3 e §10.2): per OGNI sessione `disallowedTools` contiene
   `Edit(./.claude/settings.json)`, `Edit(./.claude/settings.local.json)`, `Edit(./.mcp.json)`, `Edit(./.claude/skills/**)`,
   `Edit(./.claude/hooks/**)` (una regola `Edit` copre anche Write e NotebookEdit; `Write(percorso)` non viene consultata

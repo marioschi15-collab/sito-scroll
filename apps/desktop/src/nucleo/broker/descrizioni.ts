@@ -1,14 +1,26 @@
 import os from 'node:os';
 import { comuni, etichettaRuolo, permessi } from '@spalla/it-copy';
+import type { DettaglioRichiesta } from '../contratti.js';
 
 export interface DescrizioneRichiesta {
   /** Frase per l'utente: "Il Contabile vuole scrivere in ~/Fatture/nota.md". */
   descrizione: string;
   /** Anteprima breve (comando, prime righe), se utile. */
   anteprima?: string;
+  /** Il testo esatto dell'azione, per intero (fino a LIMITE_DETTAGLIO): si mostra per primo. */
+  dettaglio?: DettaglioRichiesta;
+  /** Ciò che l'assistente dice dell'azione (description di Bash): si mostra a parte, come sua spiegazione. */
+  spiegazione?: string;
 }
 
 const LIMITE_ANTEPRIMA = 240;
+/** Oltre questo il dettaglio non si mostra per intero: il Broker nega senza chiedere (docs/02 §6). */
+export const LIMITE_DETTAGLIO = 16 * 1024;
+
+/** Il testo esatto, al massimo LIMITE_DETTAGLIO caratteri, con `troncato` se era più lungo (mai in silenzio). */
+export function dettaglio(tipo: DettaglioRichiesta['tipo'], testo: string): DettaglioRichiesta {
+  return testo.length > LIMITE_DETTAGLIO ? { tipo, testo: testo.slice(0, LIMITE_DETTAGLIO), troncato: true } : { tipo, testo, troncato: false };
+}
 
 function campo(input: unknown, nome: string): string | undefined {
   if (!input || typeof input !== 'object') return undefined;
@@ -60,23 +72,36 @@ export function descriviRichiesta(strumento: string, input: unknown, ruolo?: str
       return {
         descrizione: a.scrivere(chi, percorsoLeggibile(percorso ?? '?')),
         anteprima: contenuto ? primeRighe(contenuto) : undefined,
+        ...(contenuto !== undefined ? { dettaglio: dettaglio('contenuto', contenuto) } : {}),
       };
     }
     case 'Edit':
     case 'NotebookEdit': {
-      const vecchio = campo(input, 'old_string') ?? campo(input, 'new_source');
-      const nuovo = campo(input, 'new_string');
+      const vecchio = campo(input, 'old_string');
+      const nuovo = campo(input, 'new_string') ?? campo(input, 'new_source');
       const anteprima = vecchio !== undefined && nuovo !== undefined ? `− ${accorcia(vecchio, 100)}\n+ ${accorcia(nuovo, 100)}` : undefined;
-      return { descrizione: a.modificare(chi, percorsoLeggibile(percorso ?? '?')), anteprima };
+      const testo =
+        vecchio !== undefined && nuovo !== undefined
+          ? `${permessi.dettaglio.prima}\n${vecchio}\n\n${permessi.dettaglio.dopo}\n${nuovo}`
+          : nuovo;
+      return {
+        descrizione: a.modificare(chi, percorsoLeggibile(percorso ?? '?')),
+        anteprima,
+        ...(testo !== undefined ? { dettaglio: dettaglio('contenuto', testo) } : {}),
+      };
     }
     case 'Read':
       return { descrizione: a.leggere(chi, percorsoLeggibile(percorso ?? '?')) };
     case 'Bash': {
+      // Il comando viene PRIMA e per intero; la spiegazione la scrive il modello (può mentire o essere lunga):
+      // sta a parte, etichettata come sua, e non può spingere il comando fuori dalla vista.
       const comando = campo(input, 'command') ?? '';
       const spiegazione = campo(input, 'description');
       return {
         descrizione: a.eseguire(chi),
-        anteprima: accorcia(spiegazione ? `${spiegazione}\n$ ${comando}` : `$ ${comando}`),
+        anteprima: accorcia(`$ ${comando}`),
+        dettaglio: dettaglio('comando', comando),
+        ...(spiegazione?.trim() ? { spiegazione: accorcia(spiegazione.trim()) } : {}),
       };
     }
     case 'WebFetch':

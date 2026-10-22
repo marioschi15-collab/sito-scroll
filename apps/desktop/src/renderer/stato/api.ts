@@ -14,17 +14,15 @@ export function spallaDisponibile(): boolean {
   return typeof window !== 'undefined' && Boolean(window.spalla);
 }
 
-/**
- * Estensione facoltativa del contratto per gli allegati trascinati nella finestra: se il preload la espone
- * (`window.spalla.allegati.aggiungi`), la usiamo; altrimenti la chat mostra un avviso. Non è in contratto.ts.
- */
-export interface ApiAllegati {
-  aggiungi(file: File[]): Promise<string[]>;
-}
+type ApiAllegati = NonNullable<ApiSpalla['allegati']>;
 
+/**
+ * Allegati trascinati nella finestra (aggiunta facoltativa del contratto, `allegati.aggiungi`): se il preload la
+ * espone la usiamo; altrimenti la chat mostra un avviso.
+ */
 export function apiAllegati(): ApiAllegati | undefined {
-  const api = spalla() as ApiSpalla & { allegati?: Partial<ApiAllegati> };
-  return api.allegati && typeof api.allegati.aggiungi === 'function' ? (api.allegati as ApiAllegati) : undefined;
+  const a = spalla().allegati;
+  return a && typeof a.aggiungi === 'function' ? a : undefined;
 }
 
 /** Id casuale per gli scambi (uuid se il browser lo offre). */

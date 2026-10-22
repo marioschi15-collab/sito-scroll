@@ -265,10 +265,10 @@ describe('creaCli', () => {
     expect(u).toContain('Il codice non è giusto.');
     expect(u).toContain('Fatto: su Telegram @spalla_7k3p_bot risponde solo a te.');
     expect(memoria.ricostruisciIndice).toHaveBeenCalledTimes(1);
-    expect(u).toContain('Indice della memoria ricostruito.');
+    expect(u).toContain('Ricerca nella memoria rimessa in ordine.');
     expect(u).toContain('Memoria: 9/200 righe');
     expect(u).toContain('Schede: 3 · diari: 2 · profilo utente: 1200/4000 caratteri');
-    expect(u).toContain('Indice della memoria: 12 file, 40 passaggi (aggiornamento: fs.watch).');
+    expect(u).toContain('Ricerca nella memoria: 12 file, 40 passaggi (aggiornamento: fs.watch).');
     expect(u).toContain('/telegram collega Telegram');
     expect(u).toContain('/memoria contatori della memoria');
   });

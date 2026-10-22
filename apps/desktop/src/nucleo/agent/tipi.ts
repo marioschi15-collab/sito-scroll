@@ -1,5 +1,5 @@
 import type { Options, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
-import type { AuthProvider, Broker, LivelloModello, Logger, MemoryService, ModalitaCervello, Percorsi } from '../contratti.js';
+import type { AuthProvider, Broker, LivelloModello, Logger, MemoryService, ModalitaCervello, Percorsi, DettaglioRichiesta } from '../contratti.js';
 
 /** La `query()` dell'SDK, iniettabile nei test (il vero `query` restituisce un `Query`, che è compatibile). */
 export type FunzioneQuery = (parametri: {
@@ -22,10 +22,16 @@ export interface ConfigRuntime {
 export interface AmbienteBinario {
   readonly percorsoEseguibile: string | undefined;
   ambiente(): Record<string, string>;
+  /** Solo sviluppo: l'ambiente di sistema passa intero (vedi ambientePerBinario). Assente = isolato. */
+  readonly configEreditata?: boolean;
 }
 
 /** Costruisce la frase italiana di una richiesta di permesso (di norma `descriviRichiesta` del broker). */
-export type DescrittoreRichiesta = (strumento: string, input: unknown, ruolo?: string) => { descrizione: string; anteprima?: string };
+export type DescrittoreRichiesta = (
+  strumento: string,
+  input: unknown,
+  ruolo?: string,
+) => { descrizione: string; anteprima?: string; dettaglio?: DettaglioRichiesta; spiegazione?: string };
 
 export interface DipendenzeAgentRuntime {
   percorsi: Percorsi;

@@ -1,0 +1,169 @@
+name: Release
+# Pacchetti installabili di Spalla (docs/02 §2.5 strada A e §9; spiegazione in docs/08-sviluppo.md, "Pacchetto e installer").
+# Parte a mano (Actions → Release → Run workflow) o con un tag v* (es. v0.1.0). Non pubblica nulla:
+# carica DMG ed EXE come artefatti dell'esecuzione. Per ora NON firmati: nessun segreto richiesto.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    # bash anche su Windows (Git Bash): stesse virgolette e stessi comandi su tutte le macchine.
+    shell: bash
+
+# Le azioni restano fissate per tag (v4): vanno fissate per SHA del commit (docs/02 §10.2, catena di fornitura)
+# quando qualcuno con accesso a GitHub le verifica; uno SHA non verificato sarebbe peggio di un tag.
+jobs:
+  # Nessun installer da un commit rosso: le stesse verifiche della CI, prima di impacchettare.
+  verifiche:
+    name: Typecheck, test, controllo sicurezza
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm sicurezza
+
+  pacchetto:
+    name: ${{ matrix.nome }}
+    needs: verifiche
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Due DMG separati, ognuno costruito su una macchina della sua architettura: così pnpm installa il
+          # binario di Claude Code e i moduli nativi giusti senza compilazioni incrociate.
+          - nome: macOS Apple Silicon (arm64)
+            os: macos-latest
+            piattaforma: mac
+            piattaforma_node: darwin
+            arch: arm64
+            artefatti: apps/desktop/release/*.dmg
+          - nome: macOS Intel (x64)
+            os: macos-15-intel
+            piattaforma: mac
+            piattaforma_node: darwin
+            arch: x64
+            artefatti: apps/desktop/release/*.dmg
+          - nome: Windows (x64)
+            os: windows-latest
+            piattaforma: win
+            piattaforma_node: win32
+            arch: x64
+            artefatti: apps/desktop/release/*.exe
+    env:
+      # Niente firma finché non ci sono i certificati (docs/02 §9.2): electron-builder non cerca identità.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # Quando ci saranno, si aggiungono come segreti del repository (vedi docs/08-sviluppo.md):
+      # macOS:   CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
+      # Windows: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET (Azure Artifact Signing)
+      #          oppure WIN_CSC_LINK, WIN_CSC_KEY_PASSWORD (certificato OV)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        # la versione di pnpm viene dal campo packageManager di package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Dipendenze
+        run: pnpm install --frozen-lockfile
+
+      - name: Pacchetti del workspace (@spalla/*)
+        run: pnpm -r --filter "./packages/*" run build
+
+      - name: Build della finestra (electron-vite)
+        run: pnpm --filter @spalla/desktop exec electron-vite build
+
+      - name: Installer (electron-builder)
+        run: pnpm --filter @spalla/desktop exec electron-builder --${{ matrix.piattaforma }} --${{ matrix.arch }} --publish never
+
+      # Prova di funzionamento del pacchetto: l'app estratta avvia il binario di Claude Code dallo STESSO percorso
+      # che passa all'SDK (src/main/binario.ts, autoverificaBinario). Se finisse dentro app.asar lo spawn fallirebbe
+      # (ENOTDIR) e qui l'uscita sarebbe diversa da 0, prima di caricare un installer che non può rispondere.
+      - name: Prova del pacchetto (il binario parte dall'app)
+        timeout-minutes: 5
+        env:
+          ELECTRON_ENABLE_LOGGING: '1'
+        run: |
+          if [ "${{ matrix.piattaforma }}" = "mac" ]; then
+            app=$(ls -d apps/desktop/release/mac*/Spalla.app | head -n 1)
+            "$app/Contents/MacOS/Spalla" --autoverifica
+          else
+            apps/desktop/release/win-unpacked/Spalla.exe --autoverifica
+          fi
+
+      - name: Binario di Claude Code incluso senza modifiche
+        run: |
+          set -o pipefail
+          node scripts/verifica-hash-binario.mjs apps/desktop/release \
+            --piattaforma ${{ matrix.piattaforma_node }} --arch ${{ matrix.arch }} | tee verifica-hash.txt
+
+      - name: Carica gli artefatti
+        uses: actions/upload-artifact@v4
+        with:
+          name: Spalla-${{ matrix.piattaforma }}-${{ matrix.arch }}
+          path: ${{ matrix.artefatti }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Riepilogo
+        if: always()
+        run: |
+          {
+            echo "## ${{ matrix.nome }}"
+            echo
+            if compgen -G "${{ matrix.artefatti }}" > /dev/null; then
+              echo "Installer prodotti (artefatto \`Spalla-${{ matrix.piattaforma }}-${{ matrix.arch }}\`):"
+              echo
+              for f in ${{ matrix.artefatti }}; do
+                echo "- \`$(basename "$f")\` ($(du -h "$f" | cut -f1))"
+              done
+            else
+              echo "Nessun installer prodotto: guarda i passi precedenti."
+            fi
+            echo
+            echo "### Binario di Claude Code"
+            echo
+            if [ -f verifica-hash.txt ]; then
+              echo '```'
+              cat verifica-hash.txt
+              echo '```'
+            else
+              echo "Verifica non eseguita."
+            fi
+            echo
+            echo "### Attenzione: build NON firmata"
+            echo
+            echo "Finché non ci sono i certificati (docs/02 §9.2) il sistema operativo mostrerà avvisi all'apertura:"
+            echo
+            if [ "${{ matrix.piattaforma }}" = "mac" ]; then
+              echo "- **macOS** (Sequoia e successivi): il Control-clic non basta più. Si apre una volta l'app, si chiude l'avviso,"
+              echo "  poi Impostazioni di Sistema → Privacy e sicurezza → \"Apri comunque\". Notifiche e avvio al login funzionano solo con l'app firmata."
+            else
+              echo "- **Windows**: compare \"Windows ha protetto il PC\" (SmartScreen): \"Ulteriori informazioni\" → \"Esegui comunque\"."
+              echo "  Con Smart App Control attivo (Windows 11 installato da zero) l'app non firmata viene bloccata senza eccezioni."
+            fi
+            echo
+            echo "Sono pacchetti per prove interne, non da dare ai clienti."
+          } >> "$GITHUB_STEP_SUMMARY"

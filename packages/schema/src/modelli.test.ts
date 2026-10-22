@@ -169,7 +169,7 @@ describe('onboarding/domande.md', () => {
   it('ha le chip esatte di docs/05 §3.1 per Q1-Q4', () => {
     const q = (id: string) => banca.domande.find((d) => d.ramo === 'comune' && d.id === id)!;
     expect(q('Q1').chip).toEqual(['Del tu', 'Del lei']);
-    expect(q('Q2').chip).toEqual(['Suggeriscimi 3 nomi']);
+    expect(q('Q2').chip).toEqual(['Suggeriscimi 3 nomi', 'Lo scelgo io']);
     expect(q('Q3').chip).toEqual(['Diretto e pratico', 'Caldo e informale', 'Formale', "Un po' di ironia"]);
     expect(q('Q4').chip[0]).toBe('Freelance / consulente');
     expect(q('Q7').chip).toEqual(['Perfetto', 'Più corto', 'Più formale', 'Riscrivi']);

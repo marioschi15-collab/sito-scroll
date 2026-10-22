@@ -12,8 +12,8 @@ Cosa fa (docs/02 §2.2-2.3, ADR-002/003): due `AuthProvider` di pari dignità.
 - `provaCollegamento(variabili, { runtime?, query?, cwd?, timeoutMs? })` — una `query()` di una riga senza
   strumenti, `settingSources: []`, `persistSession: false`, `maxTurns: 1`; osserva solo se arriva un `result`
   e classifica l'errore (credenziali / limite / rete / tempo / altro). `query` è iniettabile nei test. L'ambiente è
-  `ambientePerBinario()` di `../runtime`, lo stesso delle sessioni vere: niente `CLAUDE_CODE_SESSION_ID` ereditato
-  (il sintomo "la prova adotta la sessione esterna" nel terminale di sviluppo), niente chiave trovata per caso.
+  `ambientePerBinario()` di `../runtime`, lo stesso delle sessioni vere: solo variabili di sistema ammesse, quindi
+  nessun accesso trovato nell'ambiente (token OAuth, chiave, indirizzo alternativo) può far dire "collegato" a torto.
 
 Cosa NON fa, per contratto (docs/02 §2.3 punto 2): non apre il file delle credenziali del binario, non imposta
 variabili di token di abbonamento, non usa `setup-token`. Il test `test/auth-sicurezza.test.ts` lo verifica

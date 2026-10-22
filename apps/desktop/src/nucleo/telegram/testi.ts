@@ -49,6 +49,8 @@ export interface TestiTelegram {
     richiestaVecchia: string;
     richiestaNonTua: string;
     domanda: { scriviRisposta: string; sceltaMultipla: string; nessunaRisposta: string };
+    /** Il testo esatto dell'azione nella scheda: etichetta della spiegazione, avviso se non ci sta. */
+    dettaglio: { spiegazione: string; troppoLungoTelegram: string };
   };
   /** Frasi brevi fuori dai blocchi sopra (`telegram.altro` di it-copy). */
   altro: {

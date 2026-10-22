@@ -29,6 +29,11 @@ export interface DipendenzeDispatcher {
 export interface DispatcherEsteso extends Dispatcher {
   /** Chiamato a fine scambio, una volta per marcatore trovato (es. "[[APRI:TELEGRAM]]" → apri il collegamento). */
   suMarcatore(marcatore: string, ascoltatore: AscoltatoreScambio): () => void;
+  /**
+   * Chiamato SUBITO, appena il marcatore compare nel testo (una volta per scambio), senza aspettare la fine: serve
+   * quando lo scambio continua a lungo (es. il rituale con le domande a chip dentro la stessa esecuzione).
+   */
+  suMarcatoreVisto(marcatore: string, ascoltatore: () => void): () => void;
   /** Chiamato dopo ogni scambio (anche quelli falliti). */
   dopoScambio(ascoltatore: AscoltatoreScambio): () => void;
   /** Scambi sulla sessione principale in attesa o in corso. */
@@ -46,6 +51,7 @@ export function creaDispatcher(deps: DipendenzeDispatcher): DispatcherEsteso {
   const marcatori = deps.marcatori ?? MARCATORI_PREDEFINITI;
   const ascoltatoriMarcatori = new Map<string, Set<AscoltatoreScambio>>();
   const ascoltatoriScambio = new Set<AscoltatoreScambio>();
+  const ascoltatoriVisti = new Map<string, Set<() => void>>();
   let coda: Promise<unknown> = Promise.resolve();
   let inCoda = 0;
 
@@ -70,6 +76,21 @@ export function creaDispatcher(deps: DipendenzeDispatcher): DispatcherEsteso {
     if (messaggio.canale !== 'sistema') broker.segnaAttivita(messaggio.canale);
     if (tipo === 'principale') deps.segnaleAttivita?.segna();
     const filtro = creaFiltroMarcatori(marcatori);
+    const giaVisti = new Set<string>();
+    /** Avvisa subito chi ascolta i marcatori appena comparsi nel testo. */
+    const avvisaVisti = (): void => {
+      for (const m of filtro.trovati()) {
+        if (giaVisti.has(m)) continue;
+        giaVisti.add(m);
+        for (const a of ascoltatoriVisti.get(m) ?? []) {
+          try {
+            a();
+          } catch (errore) {
+            logger.errore('dispatcher.marcatore_fallito', { errore: errore instanceof Error ? errore.message : String(errore) });
+          }
+        }
+      }
+    };
     let esito: EsitoScambio['esito'] = 'interrotto';
     let sessioneId: string | undefined;
     let costoUsd: number | undefined;
@@ -86,6 +107,7 @@ export function creaDispatcher(deps: DipendenzeDispatcher): DispatcherEsteso {
             const pulito = filtro.completo(evento.testo);
             if (pulito.trim() || !evento.testo.trim()) await consegna({ ...evento, testo: pulito });
           }
+          avvisaVisti();
           continue;
         }
         if (evento.tipo === 'fine') {
@@ -99,6 +121,7 @@ export function creaDispatcher(deps: DipendenzeDispatcher): DispatcherEsteso {
       }
       const resto = filtro.svuota();
       if (resto) await consegna({ tipo: 'testo', testo: resto, parziale: true });
+      avvisaVisti();
     } catch (errore) {
       // Chi consegna ha fallito (o il runtime ha lanciato): chi ascolta lo sa comunque, poi l'errore risale al chiamante.
       const scambio: EsitoScambio = { messaggio, tipo, esito: 'interrotto', marcatori: filtro.trovati(), sessioneId, costoUsd, durataMs: adesso() - inizio };
@@ -130,6 +153,13 @@ export function creaDispatcher(deps: DipendenzeDispatcher): DispatcherEsteso {
       const insieme = ascoltatoriMarcatori.get(marcatore) ?? new Set();
       insieme.add(ascoltatore);
       ascoltatoriMarcatori.set(marcatore, insieme);
+      return () => { insieme.delete(ascoltatore); };
+    },
+
+    suMarcatoreVisto(marcatore, ascoltatore) {
+      const insieme = ascoltatoriVisti.get(marcatore) ?? new Set();
+      insieme.add(ascoltatore);
+      ascoltatoriVisti.set(marcatore, insieme);
       return () => { insieme.delete(ascoltatore); };
     },
 

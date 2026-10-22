@@ -200,9 +200,13 @@ const session = query({
                                                       // stesse regole di .claude/settings.json (05 §4.3). ATTENZIONE alla sintassi
                                                       // documentata: "/percorso" NON è assoluto (è relativo alla cartella delle
                                                       // impostazioni); l'assoluto si scrive "//percorso", la home "~/percorso"
-      "Glob", "Grep", "WebSearch", "WebFetch", "Agent", "AskUserQuestion", "mcp__spalla__memoria_cerca",
+      "WebSearch", "WebFetch", "Agent", "mcp__spalla__memoria_cerca",
     ],                                                // mai Read/Write/Edit nudi qui: una allow senza percorso è valutata
-                                                      // prima di canUseTool e aggirerebbe il Broker (scritture fuori cartella)
+                                                      // prima di canUseTool e aggirerebbe il Broker (scritture fuori cartella).
+                                                      // Per lo stesso motivo niente "Glob"/"Grep" nudi (cercherebbero in tutto
+                                                      // il disco senza scheda): canUseTool li consente da solo dentro la
+                                                      // cartella di lavoro e manda al Broker path fuori, "~" o modelli con "..".
+                                                      // AskUserQuestion lo gestisce sempre canUseTool (chip).
     permissionMode: "default",
     canUseTool: broker.gestisci,                      // può restare in attesa a tempo indefinito
     hooks: { PostToolUse: [hookTettiMemoria], Stop: [hookDiario] },

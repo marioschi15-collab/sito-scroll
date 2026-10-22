@@ -104,6 +104,28 @@ describe('dispatcher', () => {
     expect(ordine.slice(-2)).toEqual(['dopo:fine:0.01', `marcatore:${MARCATORE}`]);
   });
 
+  it('[[FINE:PROFILO]]: chi ascolta "visto" è avvisato subito, a metà scambio, una volta sola; il testo resta pulito', async () => {
+    const FINE = MARCATORI_APP.FINE_PROFILO;
+    const { runtime } = runtimeFinto([[
+      { tipo: 'testo', testo: `Perfetto, ho tutto.\n${FINE}\n`, parziale: true },
+      { tipo: 'testo', testo: 'Ora facciamo una cosa vera.', parziale: true },
+      { tipo: 'testo', testo: `Perfetto, ho tutto.\n${FINE}\nOra facciamo una cosa vera.`, parziale: false },
+      { tipo: 'domanda', domanda: { id: 's4', testo: 'Scegli', opzioni: [], multiSelezione: false } },
+      { tipo: 'fine', sessioneId: 's', durataMs: 10 },
+    ]]);
+    const d = creaDispatcher({ runtime, broker: brokerFinto(), logger });
+    const ordine: string[] = [];
+    d.suMarcatoreVisto(FINE, () => ordine.push('visto'));
+    const testi: string[] = [];
+    await d.gestisci({ testo: 'Q6', canale: 'desktop' }, async (e) => {
+      ordine.push(e.tipo);
+      if (e.tipo === 'testo') testi.push(e.testo);
+    });
+    expect(ordine.filter((o) => o === 'visto')).toHaveLength(1);
+    expect(ordine.indexOf('visto')).toBeLessThan(ordine.indexOf('domanda'));
+    expect(testi.join('')).not.toContain('[[');
+  });
+
   it('le sessioni programmate non aspettano la coda principale; un errore non blocca la coda', async () => {
     let sblocca: () => void = () => undefined;
     const lenta = new Promise<void>((r) => { sblocca = r; });
@@ -265,6 +287,29 @@ describe('avviaNucleo', () => {
       await nucleo.ferma();
       if (configPrima === undefined) delete process.env.CLAUDE_CONFIG_DIR;
       else process.env.CLAUDE_CONFIG_DIR = configPrima;
+    }
+  });
+
+  it('in produzione passa all\'SDK il binario dato dalla Shell (fuori da app.asar) e ignora SPALLA_CONFIG_EREDITATA', async () => {
+    const percorsi = calcolaPercorsi();
+    fs.mkdirSync(percorsi.datiApp, { recursive: true });
+    fs.writeFileSync(path.join(percorsi.datiApp, 'config.json'), JSON.stringify({ cervello: { modalita: 'abbonamento', livello: 'equilibrato', tetto_mensile_eur: null } }));
+    const prima = process.env.SPALLA_CONFIG_EREDITATA;
+    process.env.SPALLA_CONFIG_EREDITATA = '1';
+    const binario = '/Applications/Spalla.app/Contents/Resources/app.asar.unpacked/node_modules/@anthropic-ai/claude-agent-sdk-darwin-arm64/claude';
+    const nucleo = await avviaNucleo({ percorsi, logger, modalitaDev: false, percorsoEseguibile: binario, avviaTelegram: false, motoreVoce: 'nessuno', query: copione('ok') });
+    try {
+      expect(nucleo.runtimeBinario.percorsoEseguibile).toBe(binario);
+      expect(nucleo.runtimeBinario.percorsoEseguibile).not.toMatch(/[\\/]app\.asar[\\/]/);
+      expect(nucleo.runtimeBinario.configEreditata).toBe(false);
+      expect(nucleo.runtimeBinario.ambiente().CLAUDE_CONFIG_DIR).toBe(percorsi.configClaude);
+      await nucleo.dispatcher.gestisci({ testo: 'ciao', canale: 'desktop' }, async () => undefined);
+      expect(catture.at(-1)?.pathToClaudeCodeExecutable).toBe(binario);
+      expect(catture.at(-1)?.env?.CLAUDE_CONFIG_DIR).toBe(percorsi.configClaude);
+    } finally {
+      await nucleo.ferma();
+      if (prima === undefined) delete process.env.SPALLA_CONFIG_EREDITATA;
+      else process.env.SPALLA_CONFIG_EREDITATA = prima;
     }
   });
 

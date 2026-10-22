@@ -6,7 +6,7 @@ _Ogni domanda ha un **id**, il **testo** come viene posto, il **tipo** (chip = u
 | id | Domanda | Tipo | Chip | Scrive in |
 |---|---|---|---|---|
 | Q1 | Come vuoi che ti chiami? E ci diamo del tu? | testo + chip | [Del tu] [Del lei] | IDENTITA: utente, tu/lei |
-| Q2 | E io come mi chiamo? Scegli tu: è il tuo assistente. | testo + chip | [Suggeriscimi 3 nomi] | IDENTITA: nome; ANIMA riga 1 |
+| Q2 | E io come mi chiamo? Scegli tu: è il tuo assistente. | testo + chip | [Suggeriscimi 3 nomi] [Lo scelgo io] | IDENTITA: nome; ANIMA riga 1 |
 | Q3 | Che tono preferisci quando ti scrivo e quando scrivo per te? | chip | [Diretto e pratico] [Caldo e informale] [Formale] [Un po' di ironia] | ANIMA: tono; UTENTE: direttiva tono; IDENTITA: emoji (dedotto "mai" se Diretto/Formale, chiesto altrimenti) |
 | Q4 | Cosa fai per vivere? | chip | [Freelance / consulente] [Venditore / agente di commercio o immobiliare] [Titolare di piccola impresa o negozio] [Artigiano / professionista a progetto] [Altro: scrivilo] | **ramo**; UTENTE: lavoro |
 | Q4a | *(di ramo, una riga)* Cosa vendi o offri, e a chi? | testo | — | UTENTE: lavoro |
@@ -126,7 +126,7 @@ domande:
     tipo: testo_chip
     intestazione: "Il mio nome"
     testo: "E io come mi chiamo? Scegli tu: è il tuo assistente."
-    chip: ["Suggeriscimi 3 nomi"]
+    chip: ["Suggeriscimi 3 nomi", "Lo scelgo io"]
     scrive_in: ["profilo/IDENTITA.md#nome", "profilo/ANIMA.md#riga1"]
     nota: "Mai scegliere il nome da solo. Se chiede suggerimenti: tre nomi italiani corti, poi sceglie l'utente. Marchi famosi (Jarvis, Alexa, Siri): soprannome privato, spiegazione, alternativa vicina."
   - id: Q3

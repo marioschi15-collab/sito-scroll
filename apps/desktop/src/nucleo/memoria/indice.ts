@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import Database from 'better-sqlite3';
 import type { Logger, RisultatoMemoria } from '../contratti.js';
 import type { Blocco } from './blocchi.js';
 import type { EspressioniFts } from './query-fts.js';
+import { apriDatabaseSql, type DatabaseSql, type IstruzioneSql } from './sqlite.js';
 
 /** Cambiarla fa ripartire l'indice da zero al prossimo avvio (è derivato: non si perde nulla). */
 export const VERSIONE_SCHEMA = '1';
@@ -59,13 +59,13 @@ export interface Indice {
 }
 
 interface Istruzioni {
-  elencoFile: Database.Statement;
-  cancellaBlocchi: Database.Statement;
-  inserisciBlocco: Database.Statement;
-  salvaFile: Database.Statement;
-  cancellaFile: Database.Statement;
-  cerca: Database.Statement;
-  conta: Database.Statement;
+  elencoFile: IstruzioneSql;
+  cancellaBlocchi: IstruzioneSql;
+  inserisciBlocco: IstruzioneSql;
+  salvaFile: IstruzioneSql;
+  cancellaFile: IstruzioneSql;
+  cerca: IstruzioneSql;
+  conta: IstruzioneSql;
 }
 
 interface RigaRicerca {
@@ -99,15 +99,15 @@ export function cancellaFileIndice(file: string): void {
 export function creaIndice(opzioni: OpzioniIndice): Indice {
   const { file, logger } = opzioni;
   const adesso = opzioni.adesso ?? (() => new Date());
-  let db: Database.Database | undefined;
+  let db: DatabaseSql | undefined;
   let istruzioni: Istruzioni | undefined;
 
-  function apriGrezzo(): Database.Database {
+  function apriGrezzo(): DatabaseSql {
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    return new Database(file);
+    return apriDatabaseSql(file, (motore, motivo) => logger.info('memoria.motore_sqlite', { motore, motivo: motivo ?? '' }));
   }
 
-  function prepara(d: Database.Database): Istruzioni {
+  function prepara(d: DatabaseSql): Istruzioni {
     return {
       elencoFile: d.prepare('SELECT file, modificato_ms AS modificatoMs, dimensione FROM file_indicizzati'),
       cancellaBlocchi: d.prepare('DELETE FROM blocchi WHERE file = ?'),
@@ -131,21 +131,21 @@ export function creaIndice(opzioni: OpzioniIndice): Indice {
     };
   }
 
-  function versioneSalvata(d: Database.Database): string | undefined {
+  function versioneSalvata(d: DatabaseSql): string | undefined {
     const riga = d.prepare('SELECT valore FROM meta WHERE chiave = ?').get('versione') as { valore: string } | undefined;
     return riga?.valore;
   }
 
-  function scriviVersione(d: Database.Database): void {
+  function scriviVersione(d: DatabaseSql): void {
     d.prepare('INSERT OR REPLACE INTO meta (chiave, valore) VALUES (?, ?)').run('versione', VERSIONE_SCHEMA);
   }
 
   function apri(): void {
     if (db) return;
-    let d: Database.Database | undefined;
+    let d: DatabaseSql | undefined;
     try {
       d = apriGrezzo();
-      if (d.pragma('quick_check', { simple: true }) !== 'ok') throw new Error('quick_check non superato');
+      if (d.controlloRapido() !== 'ok') throw new Error('quick_check non superato');
       d.exec(SCHEMA);
       const versione = versioneSalvata(d);
       if (versione === undefined) scriviVersione(d);
@@ -214,21 +214,21 @@ export function creaIndice(opzioni: OpzioniIndice): Indice {
     indicizza(fileRel, blocchi, modificatoMs, dimensione, archivio) {
       const s = richiedi();
       const modificato = new Date(modificatoMs).toISOString();
-      db!.transaction(() => {
+      db!.transazione(() => {
         s.cancellaBlocchi.run(fileRel);
         for (const b of blocchi) {
           s.inserisciBlocco.run({ titolo: b.titolo, testo: b.testo, etichette: b.etichette, contesto: b.contesto, file: fileRel, modificato, modificatoMs, archivio: archivio ? 1 : 0, ordine: b.ordine });
         }
         s.salvaFile.run({ file: fileRel, modificatoMs, dimensione, blocchi: blocchi.length, archivio: archivio ? 1 : 0 });
-      })();
+      });
     },
 
     rimuovi(fileRel) {
       const s = richiedi();
-      db!.transaction(() => {
+      db!.transazione(() => {
         s.cancellaBlocchi.run(fileRel);
         s.cancellaFile.run(fileRel);
-      })();
+      });
     },
 
     cerca(espressioni, k) {

@@ -7,6 +7,7 @@ import type { AuthProvider, Broker, DecisionePermesso, DomandaUtente, EventoAssi
 import { calcolaPercorsi } from '../src/nucleo/percorsi.js';
 import { creaRuntimeBinario } from '../src/nucleo/runtime/index.js';
 import { descriviRichiesta } from '../src/nucleo/broker/index.js';
+import { domandaUtenteDa, massimoDalTesto } from '../src/nucleo/agent/permessi.js';
 import {
   componiPrompt,
   creaAgentRuntime,
@@ -159,6 +160,30 @@ describe('flusso di uno scambio', () => {
     expect(ordine).toEqual(['inizio A', 'fine A', 'inizio B', 'fine B']);
   });
 
+  it('[Fermati]: l\'annullamento ferma la query dell\'SDK (abort), niente errore all\'utente, la sessione resta; già fermato in coda = non parte', async () => {
+    const catture: Options[] = [];
+    const controllo = new AbortController();
+    const agente = crea({
+      query: queryFinta(async function* (opzioni) {
+        yield init('sess-ferma');
+        yield delta('Lavoro...');
+        controllo.abort();
+        // L'SDK, ricevuto l'abort, interrompe il flusso con un'eccezione.
+        if (opzioni.abortController?.signal.aborted) throw new Error('Operation aborted');
+        yield risultato();
+      }, catture),
+    });
+    const eventi = await raccogli(agente.invia({ testo: 'vai', canale: 'desktop' }, { annullamento: controllo.signal }));
+    expect(catture[0]?.abortController?.signal.aborted).toBe(true);
+    expect(eventi.map((e) => e.tipo)).toEqual(['testo']);
+    expect(agente.sessioneCorrente()).toBe('sess-ferma');
+
+    const giaFermato = new AbortController();
+    giaFermato.abort();
+    expect(await raccogli(agente.invia({ testo: 'in coda', canale: 'desktop' }, { annullamento: giaFermato.signal }))).toEqual([]);
+    expect(catture).toHaveLength(1);
+  });
+
   it('il testo dei ruoli non arriva all\'utente; lo strumento porta il nome del ruolo', async () => {
     const agente = crea({
       query: queryFinta(async function* (options) {
@@ -190,7 +215,10 @@ describe('opzioni passate all\'SDK (docs/02 §3.2)', () => {
     expect(o.env?.PATH).toBe(process.env.PATH);
     expect(o.settingSources).toEqual(['project']);
     expect(o.permissionMode).toBe('default');
-    expect(o.allowedTools).toEqual(['Read(./**)', 'Write(./**)', 'Edit(./**)', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'Agent', 'AskUserQuestion', 'mcp__spalla__memoria_cerca']);
+    expect(o.allowedTools).toEqual(['Read(./**)', 'Write(./**)', 'Edit(./**)', 'WebSearch', 'WebFetch', 'Agent', 'mcp__spalla__memoria_cerca']);
+    // Nessun nome nudo che legga file: Glob e Grep passano da canUseTool (vedi "Glob e Grep fuori cartella").
+    expect(o.allowedTools).not.toContain('Glob');
+    expect(o.allowedTools).not.toContain('Grep');
     expect(o.includePartialMessages).toBe(true);
     expect(o.model).toBe('sonnet');
     expect(o.maxBudgetUsd).toBeUndefined();
@@ -208,6 +236,27 @@ describe('opzioni passate all\'SDK (docs/02 §3.2)', () => {
     ]);
     expect(o.disallowedTools).not.toContain('Bash');
     expect(o.disallowedTools?.at(-2)).toMatch(/^Read\(\/\/[^/]/); // due barre: assoluto dal disco, non dalla cartella delle impostazioni
+  });
+
+  it('sessione principale durante le presentazioni: niente shell (né Bash né PowerShell); dopo, la shell torna', async () => {
+    const catture: Options[] = [];
+    const agente = crea({ query: queryFinta(semplice, catture) });
+    const rituale = path.join(cartellaLavoro(), 'onboarding', 'PRIMO-AVVIO.md');
+    fs.mkdirSync(path.dirname(rituale), { recursive: true });
+
+    fs.writeFileSync(rituale, '# PRIMO AVVIO — rituale, non questionario\n');
+    await raccogli(agente.invia({ testo: 'ciao', canale: 'desktop' }));
+    expect(catture[0]?.disallowedTools?.slice(0, 2)).toEqual(['Bash', 'PowerShell']);
+    expect(catture[0]?.disallowedTools).toContain('Edit(./.claude/settings.json)');
+
+    fs.writeFileSync(rituale, '# Presentazioni completate il 2026-10-22\n');
+    await raccogli(agente.invia({ testo: 'ciao', canale: 'desktop' }));
+    expect(catture[1]?.disallowedTools).not.toContain('Bash');
+    expect(catture[1]?.disallowedTools).not.toContain('PowerShell');
+
+    fs.rmSync(rituale);
+    await raccogli(agente.invia({ testo: 'ciao', canale: 'desktop' }));
+    expect(catture[2]?.disallowedTools).not.toContain('Bash');
   });
 
   it('sessione programmata: haiku, senza shell, con tetto e turni; con ruolo usa l\'agente', async () => {
@@ -294,6 +343,29 @@ describe('permessi e domande', () => {
     expect(eventi[0]).toEqual({ tipo: 'permesso', richiesta });
   });
 
+  it('Glob e Grep: dentro la cartella di lavoro senza scheda; fuori (o "~", o un modello che esce) → Broker', async () => {
+    const { broker, chiedi } = brokerFinto('nega');
+    const esiti: Record<string, unknown> = {};
+    const agente = crea({
+      broker,
+      query: conCanUseTool(async (c) => {
+        esiti.grepQui = await c('Grep', { pattern: 'fattura' }, ctxTool);
+        esiti.grepSotto = await c('Grep', { pattern: 'x', path: 'memoria/temi' }, ctxTool);
+        esiti.globQui = await c('Glob', { pattern: '**/*.md' }, ctxTool);
+        esiti.grepHome = await c('Grep', { pattern: 'password', path: '~' }, ctxTool);
+        esiti.grepFuori = await c('Grep', { pattern: 'x', path: '/Users/marco/Documenti' }, ctxTool);
+        esiti.globSu = await c('Glob', { pattern: '../../**/*.pdf' }, ctxTool);
+        esiti.globAssoluto = await c('Glob', { pattern: '/etc/**' }, ctxTool);
+      }),
+    });
+    await raccogli(agente.invia({ testo: 'x', canale: 'desktop' }));
+    for (const k of ['grepQui', 'grepSotto', 'globQui']) expect(esiti[k]).toMatchObject({ behavior: 'allow' });
+    for (const k of ['grepHome', 'grepFuori', 'globSu', 'globAssoluto']) expect(esiti[k]).toMatchObject({ behavior: 'deny' });
+    const richieste = chiedi.mock.calls.map((c) => c[0] as RichiestaPermesso);
+    expect(richieste.map((r) => r.strumento)).toEqual(['Grep', 'Grep', 'Glob', 'Glob']);
+    expect(richieste[0]?.descrizione).toContain('cercare tra i file');
+  });
+
   it('nega → deny con il motivo', async () => {
     const { broker } = brokerFinto('nega');
     let esito: unknown;
@@ -355,6 +427,14 @@ describe('permessi e domande', () => {
     expect(viste[1]).toMatchObject({ testo: 'Quali canali?', multiSelezione: true, opzioni: [{ etichetta: 'Telegram' }, { etichetta: 'Voce' }] });
     expect(esito).toEqual({ behavior: 'allow', updatedInput: { questions: domande.questions, answers: { 'Come ti chiamo?': 'chiamami Marco', 'Quali canali?': 'Telegram, Voce' } } });
     expect(eventi.filter((e) => e.tipo === 'domanda')).toHaveLength(2);
+  });
+
+  it('«fino a tre» nel testo di una scelta multipla diventa maxSelezioni', () => {
+    expect(massimoDalTesto('Quali ti rubano più tempo? Scegline fino a tre, o dimmelo con parole tue.')).toBe(3);
+    expect(massimoDalTesto('Al massimo 2, grazie')).toBe(2);
+    expect(massimoDalTesto('Che strumenti usi?')).toBeUndefined();
+    expect(domandaUtenteDa({ question: 'Scegline fino a tre', multiSelect: true, options: [{ label: 'a' }, { label: 'b' }] }, 'x').maxSelezioni).toBe(3);
+    expect(domandaUtenteDa({ question: 'Scegline fino a tre', multiSelect: false, options: [{ label: 'a' }, { label: 'b' }] }, 'x')).not.toHaveProperty('maxSelezioni');
   });
 
   it('senza interfaccia per le domande risponde "scegli tu"', async () => {

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { finestra } from '@spalla/it-copy';
+import { etichettaRuolo, finestra } from '@spalla/it-copy';
 import type { Blocco } from '../../stato/chat.js';
 
 type BloccoUtente = Extract<Blocco, { tipo: 'utente' }>;
@@ -29,7 +29,8 @@ export function MessaggioAssistente({ blocco, nome }: { blocco: BloccoAssistente
 export function RigaStrumento({ descrizione, ruolo }: { descrizione: string; ruolo?: string }): ReactNode {
   return (
     <div className="riga-strumento">
-      · {ruolo ? `[${ruolo}] ` : ''}
+      <span aria-hidden="true">· </span>
+      {ruolo ? `${etichettaRuolo(ruolo)}: ` : ''}
       {descrizione}
     </div>
   );
@@ -50,6 +51,17 @@ export function RigaSistema({ testo, dettagli }: { testo: string; dettagli?: str
   );
 }
 
-export function RigaFine({ durataMs, costoUsd }: { durataMs: number; costoUsd?: number }): ReactNode {
-  return <div className="riga-fine">{finestra.chat.fine(durataMs / 1000, costoUsd)}</div>;
+/**
+ * Cambio dollari → euro mostrato nella finestra: lo stesso `CAMBIO_USD_EUR` di @spalla/schema (che la finestra non
+ * può importare: usa moduli di Node). Una prova li confronta.
+ */
+export const CAMBIO_VISTO = 0.92;
+
+/**
+ * Durata e, solo con la chiave API, la spesa di questa risposta in euro (docs/05 §1.10: costi detti onestamente).
+ * Con l'abbonamento l'SDK riporta un costo teorico che l'utente non paga: non si mostra.
+ */
+export function RigaFine({ durataMs, costoUsd, conChiaveApi }: { durataMs: number; costoUsd?: number; conChiaveApi: boolean }): ReactNode {
+  const costoEur = conChiaveApi && costoUsd !== undefined ? costoUsd * CAMBIO_VISTO : undefined;
+  return <div className="riga-fine">{finestra.chat.fine(durataMs / 1000, costoEur)}</div>;
 }

@@ -13,3 +13,5 @@ Thumbs.db
 .spalla-dev/
 models/
 tmp/
+# pacchetti e installer di electron-builder
+apps/desktop/release/

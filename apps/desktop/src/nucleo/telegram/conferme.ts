@@ -33,13 +33,27 @@ interface InAttesa {
   timer: NodeJS.Timeout;
 }
 
-/** Testo della scheda su Telegram: chi agisce, cosa vuole fare, anteprima, riserva a testo (docs/02 §6). */
+/** Spazio per il testo esatto dell'azione in un messaggio Telegram (limite 4096 caratteri, con margine per il resto). */
+export const LIMITE_DETTAGLIO_TELEGRAM = 3000;
+
+/** True se il testo esatto dell'azione non sta per intero in una scheda Telegram: si nega senza chiedere. */
+export function troppoLungoPerTelegram(richiesta: RichiestaPermesso): boolean {
+  return richiesta.dettaglio !== undefined && (richiesta.dettaglio.troncato || richiesta.dettaglio.testo.length > LIMITE_DETTAGLIO_TELEGRAM);
+}
+
+/**
+ * Testo della scheda su Telegram: chi agisce, cosa vuole fare, il comando (o il testo) PER INTERO, poi la spiegazione
+ * dell'assistente etichettata come sua, riserva a testo (docs/02 §6). Senza dettaglio: l'anteprima breve.
+ */
 export function schedaConferma(richiesta: RichiestaPermesso, testi: TestiTelegram): string {
   const righe = [`<b>${escapaHtml(richiesta.descrizione)}</b>`];
-  if (richiesta.anteprima) {
+  if (richiesta.dettaglio && !troppoLungoPerTelegram(richiesta)) {
+    righe.push(`<pre>${escapaHtml(richiesta.dettaglio.testo)}</pre>`);
+  } else if (richiesta.anteprima && !richiesta.dettaglio) {
     const anteprima = richiesta.anteprima.length > 700 ? `${richiesta.anteprima.slice(0, 700)}…` : richiesta.anteprima;
     righe.push(`<pre>${escapaHtml(anteprima)}</pre>`);
   }
+  if (richiesta.spiegazione) righe.push(`<i>${escapaHtml(testi.permessi.dettaglio.spiegazione)}:</i> ${escapaHtml(richiesta.spiegazione)}`);
   righe.push(escapaHtml(testi.permessi.riservaTesto(richiesta.id)));
   return righe.join('\n');
 }
@@ -76,6 +90,12 @@ export function creaConfermeTelegram(deps: DipendenzeConferme) {
     async chiediConferma(richiesta: RichiestaPermesso, timeoutMs: number): Promise<DecisionePermesso> {
       const chatId = deps.chatProprietario();
       if (chatId === undefined) return { esito: 'nega', motivo: testi.conferme.scaduta };
+      if (troppoLungoPerTelegram(richiesta)) {
+        // Non c'è spazio per mostrarlo tutto: niente pulsanti, si avvisa e si nega (si può chiedere dal computer).
+        await trasporto.invia(chatId, `<b>${escapaHtml(richiesta.descrizione)}</b>\n${escapaHtml(testi.permessi.dettaglio.troppoLungoTelegram)}`).catch(() => undefined);
+        logger.info('telegram.conferma_troppo_lunga', { id: richiesta.id });
+        return { esito: 'nega', motivo: testi.permessi.dettaglio.troppoLungoTelegram };
+      }
       return new Promise<DecisionePermesso>((risolvi) => {
         const timer = setTimeout(() => chiudi(richiesta.id, { esito: 'nega', motivo: testi.conferme.scaduta }, testi.conferme.scaduta), timeoutMs);
         timer.unref?.();

@@ -8,13 +8,26 @@ import type { DomandaUtente, EventoAssistente, RichiestaPermesso } from '../../n
  */
 
 /** La richiesta di permesso come arriva nella finestra (senza AbortSignal né input grezzo, che restano nel processo principale). */
-export type RichiestaPermessoVista = Pick<RichiestaPermesso, 'id' | 'strumento' | 'descrizione' | 'anteprima' | 'ruolo' | 'canaleOrigine' | 'creataIl'>;
+export type RichiestaPermessoVista = Pick<
+  RichiestaPermesso,
+  'id' | 'strumento' | 'descrizione' | 'anteprima' | 'dettaglio' | 'spiegazione' | 'ruolo' | 'canaleOrigine' | 'creataIl'
+>;
 
 export type Blocco =
   | { tipo: 'utente'; id: string; scambioId: string; testo: string; allegati?: string[] }
   | { tipo: 'assistente'; id: string; scambioId: string; testo: string; inCorso: boolean }
   | { tipo: 'strumento'; id: string; scambioId: string; descrizione: string; ruolo?: string }
-  | { tipo: 'domanda'; id: string; scambioId: string; domanda: DomandaUtente; risposta?: string[] }
+  | {
+      tipo: 'domanda';
+      id: string;
+      scambioId: string;
+      domanda: DomandaUtente;
+      risposta?: string[];
+      /** Scelte toccate ma non ancora inviate (scelta multipla): vanno con il testo scritto, anche dalla casella in fondo. */
+      selezione?: string[];
+      /** Lo scambio è finito, fermato o chiuso senza risposta: le chip si spengono e il testo non va più qui. */
+      chiusa?: boolean;
+    }
   | { tipo: 'permesso'; id: string; richiesta: RichiestaPermessoVista; esito?: 'consenti' | 'nega' | 'ritirato' }
   | { tipo: 'fine'; id: string; scambioId: string; durataMs: number; costoUsd?: number }
   | { tipo: 'errore'; id: string; scambioId: string; messaggio: string }
@@ -36,6 +49,8 @@ export type AzioneChat =
   | { tipo: 'permesso'; richiesta: RichiestaPermessoVista }
   | { tipo: 'permessoChiuso'; id: string }
   | { tipo: 'rispostaData'; domandaId: string; risposte: string[] }
+  | { tipo: 'selezione'; domandaId: string; etichette: string[] }
+  | { tipo: 'domandaChiusa'; domandaId: string }
   | { tipo: 'decisionePresa'; id: string; esito: 'consenti' | 'nega' }
   | { tipo: 'sistema'; testo: string; dettagli?: string[] }
   | { tipo: 'nuovoArgomento'; testo: string }
@@ -56,6 +71,11 @@ function aggiungi(stato: StatoChat, crea: (id: string) => Blocco): StatoChat {
 /** Chiude i blocchi assistente ancora aperti dello scambio. */
 function chiudiAperti(blocchi: Blocco[], scambioId: string): Blocco[] {
   return blocchi.map((b) => (b.tipo === 'assistente' && b.scambioId === scambioId && b.inCorso ? { ...b, inCorso: false } : b));
+}
+
+/** Spegne le domande rimaste senza risposta dello scambio (tutte se `scambioId` è undefined). */
+function chiudiDomande(blocchi: Blocco[], scambioId: string | undefined): Blocco[] {
+  return blocchi.map((b) => (b.tipo === 'domanda' && !b.risposta && !b.chiusa && (scambioId === undefined || b.scambioId === scambioId) ? { ...b, chiusa: true } : b));
 }
 
 function ultimo(stato: StatoChat): Blocco | undefined {
@@ -134,7 +154,7 @@ export function riduttoreChat(stato: StatoChat, azione: AzioneChat): StatoChat {
         case 'fine': {
           const chiuso: StatoChat = {
             ...stato,
-            blocchi: chiudiAperti(stato.blocchi, scambioId),
+            blocchi: chiudiDomande(chiudiAperti(stato.blocchi, scambioId), scambioId),
             scambioInCorso: stato.scambioInCorso === scambioId ? undefined : stato.scambioInCorso,
             ritualeInCorso: stato.scambioInCorso === scambioId ? false : stato.ritualeInCorso,
           };
@@ -149,7 +169,7 @@ export function riduttoreChat(stato: StatoChat, azione: AzioneChat): StatoChat {
         case 'errore': {
           const chiuso: StatoChat = {
             ...stato,
-            blocchi: chiudiAperti(stato.blocchi, scambioId),
+            blocchi: chiudiDomande(chiudiAperti(stato.blocchi, scambioId), scambioId),
             scambioInCorso: stato.scambioInCorso === scambioId ? undefined : stato.scambioInCorso,
             ritualeInCorso: stato.scambioInCorso === scambioId ? false : stato.ritualeInCorso,
           };
@@ -179,23 +199,40 @@ export function riduttoreChat(stato: StatoChat, azione: AzioneChat): StatoChat {
       };
     case 'sistema':
       return aggiungi(stato, (id) => ({ tipo: 'sistema', id, testo: azione.testo, ...(azione.dettagli ? { dettagli: azione.dettagli } : {}) }));
+    case 'selezione':
+      return {
+        ...stato,
+        blocchi: stato.blocchi.map((b) => (b.tipo === 'domanda' && b.domanda.id === azione.domandaId && !b.risposta && !b.chiusa ? { ...b, selezione: azione.etichette } : b)),
+      };
+    case 'domandaChiusa':
+      return {
+        ...stato,
+        blocchi: stato.blocchi.map((b) => (b.tipo === 'domanda' && b.domanda.id === azione.domandaId && !b.risposta ? { ...b, chiusa: true } : b)),
+      };
     case 'nuovoArgomento':
-      return aggiungi({ ...stato, scambioInCorso: undefined, ritualeInCorso: false }, (id) => ({ tipo: 'sistema', id, testo: azione.testo }));
+      return aggiungi({ ...stato, blocchi: chiudiDomande(stato.blocchi, undefined), scambioInCorso: undefined, ritualeInCorso: false }, (id) => ({
+        tipo: 'sistema',
+        id,
+        testo: azione.testo,
+      }));
     case 'interrotto':
       return {
         ...stato,
-        blocchi: chiudiAperti(stato.blocchi, azione.scambioId),
+        blocchi: chiudiDomande(chiudiAperti(stato.blocchi, azione.scambioId), azione.scambioId),
         scambioInCorso: stato.scambioInCorso === azione.scambioId ? undefined : stato.scambioInCorso,
         ritualeInCorso: false,
       };
   }
 }
 
-/** La domanda ancora senza risposta più recente, se c'è. */
+/**
+ * La domanda ancora aperta più recente, se c'è: senza risposta, non chiusa, e dello scambio in corso (o di uno
+ * scambio dell'app quando l'utente non ne ha uno in corso). Una domanda di uno scambio finito non "ruba" il messaggio.
+ */
 export function domandaInAttesa(stato: StatoChat): Extract<Blocco, { tipo: 'domanda' }> | undefined {
   for (let i = stato.blocchi.length - 1; i >= 0; i--) {
     const b = stato.blocchi[i];
-    if (b && b.tipo === 'domanda' && !b.risposta) return b;
+    if (b && b.tipo === 'domanda' && !b.risposta && !b.chiusa && (stato.scambioInCorso === undefined || b.scambioId === stato.scambioInCorso)) return b;
   }
   return undefined;
 }
