@@ -1,0 +1,13 @@
+{
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "types": [],
+    "allowJs": false
+  },
+  "include": ["./**/*.ts", "./**/*.tsx", "../ipc/contratto.ts", "../nucleo/contratti.ts", "../../test/renderer*.test.tsx", "../../test/renderer/**/*.ts", "../../test/renderer/**/*.tsx"]
+}

@@ -243,6 +243,15 @@ export interface ApiSpalla {
     prepara(): Promise<void>;
   };
 
+  /**
+   * AGGIUNTA FACOLTATIVA (G1): file trascinati nella finestra (oggetti `File` del browser, passati così come sono al
+   * preload, che ne ricava il percorso con `webUtils.getPathForFile`). Il processo principale li copia in
+   * lavoro/in-arrivo/ e restituisce i percorsi relativi da passare in `AvvioScambio.allegati`.
+   */
+  allegati?: {
+    aggiungi(file: ReadonlyArray<{ name: string }>): Promise<string[]>;
+  };
+
   /** Eventi dal processo principale. Restituiscono una funzione per annullare l'iscrizione. */
   on: {
     eventoScambio(cb: (e: EventoScambio) => void): () => void;
@@ -255,6 +264,8 @@ export interface ApiSpalla {
     statoApp(cb: (s: StatoApp) => void): () => void;
     voceAvanzamento(cb: (p: { frazione: number; messaggio: string }) => void): () => void;
     notifica(cb: (n: { titolo: string; testo: string; livello: 'info' | 'avviso' | 'errore' }) => void): () => void;
+    /** AGGIUNTA FACOLTATIVA (G1): il processo principale chiede alla finestra di aprire una sezione (es. il rituale ha scritto [[APRI:TELEGRAM]]). */
+    apriSchermata?(cb: (s: { schermata: 'chat' | 'telegram' | 'impostazioni' | 'squadra' | 'memoria' }) => void): () => void;
   };
 }
 
@@ -270,7 +281,8 @@ export type NomeInvoke =
   | `squadra.${keyof ApiSpalla['squadra']}`
   | `memoria.${keyof ApiSpalla['memoria']}`
   | `impostazioni.${keyof ApiSpalla['impostazioni']}`
-  | `voce.${keyof ApiSpalla['voce']}`;
+  | `voce.${keyof ApiSpalla['voce']}`
+  | `allegati.${keyof NonNullable<ApiSpalla['allegati']>}`;
 
 export type NomeEvento = `evento.${keyof ApiSpalla['on']}`;
 

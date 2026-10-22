@@ -1,0 +1,143 @@
+/* Base: colori come variabili, tema chiaro/scuro con prefers-color-scheme, tipografia di sistema, focus visibile. */
+:root {
+  color-scheme: light dark;
+  --sfondo: #faf7f2;
+  --superficie: #ffffff;
+  --superficie-2: #f1ebe2;
+  --bordo: #e3dbcf;
+  --bordo-forte: #c9bfb0;
+  --testo: #2b2622;
+  --testo-2: #6a6159;
+  --testo-3: #978c80;
+  --accento: #b4532a;
+  --accento-forte: #953f1c;
+  --accento-chiaro: #f7e6dc;
+  --accento-testo: #ffffff;
+  --secondario: #5f6f45;
+  --secondario-chiaro: #e8eddc;
+  --ok: #2e7d4f;
+  --ok-chiaro: #e3f2e8;
+  --avviso: #9a6b00;
+  --avviso-chiaro: #fbf1d6;
+  --errore: #b3261e;
+  --errore-chiaro: #fbe4e2;
+  --ombra: 0 1px 2px rgba(43, 38, 34, 0.06), 0 6px 20px rgba(43, 38, 34, 0.06);
+  --raggio: 12px;
+  --raggio-piccolo: 8px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --focus: 0 0 0 3px rgba(180, 83, 42, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sfondo: #1c1917;
+    --superficie: #262220;
+    --superficie-2: #2f2a27;
+    --bordo: #3b352f;
+    --bordo-forte: #5a5148;
+    --testo: #f1ece4;
+    --testo-2: #bdb3a6;
+    --testo-3: #8d8378;
+    --accento: #e2865f;
+    --accento-forte: #f0a384;
+    --accento-chiaro: #3a2a22;
+    --accento-testo: #1c1917;
+    --secondario: #a9bb86;
+    --secondario-chiaro: #2b3024;
+    --ok: #7fcf9c;
+    --ok-chiaro: #22362b;
+    --avviso: #e8c267;
+    --avviso-chiaro: #3a3321;
+    --errore: #f2938c;
+    --errore-chiaro: #3f2624;
+    --ombra: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.25);
+    --focus: 0 0 0 3px rgba(226, 134, 95, 0.45);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#radice {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--testo);
+  background: var(--sfondo);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.4em;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+h1 {
+  font-size: 1.9rem;
+}
+h2 {
+  font-size: 1.25rem;
+}
+h3 {
+  font-size: 1.05rem;
+}
+p {
+  margin: 0 0 0.9em;
+}
+a {
+  color: var(--accento);
+}
+code,
+pre {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+  border-radius: var(--raggio-piccolo);
+}
+
+.solo-lettore {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.attenuato {
+  color: var(--testo-2);
+}
+.piccolo {
+  font-size: 0.9rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

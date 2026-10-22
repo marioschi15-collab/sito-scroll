@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assistente, cervello, cli, comuni, errori, onboarding, permessi, telegram, voce } from './index.js';
+import { assistente, cervello, cli, comuni, errori, finestra, onboarding, permessi, principale, telegram, voce } from './index.js';
 
 /** Parole da addetti ai lavori che non devono mai arrivare all'utente (docs/05 §1.12). */
 const GERGO = /\b(agente|agenti|prompt|token|MCP|hook|frontmatter|subagent|sottoagente)\b/i;
@@ -34,7 +34,7 @@ function stringhe(valore: unknown, percorso = ''): Array<[string, string]> {
 }
 
 describe('nessun gergo verso l\'utente', () => {
-  const moduli = { comuni, errori, permessi, telegram, cli, onboarding, assistente, voce };
+  const moduli = { comuni, errori, permessi, telegram, cli, onboarding, assistente, voce, finestra, principale };
   for (const [nome, modulo] of Object.entries(moduli)) {
     it(`${nome}: niente agente/prompt/token/MCP/API`, () => {
       for (const [percorso, s] of stringhe(modulo, nome)) {

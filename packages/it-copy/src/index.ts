@@ -9,6 +9,8 @@ export { cervello } from './cervello.js';
 export { onboarding } from './onboarding.js';
 export { assistente, etichettaRuolo } from './assistente.js';
 export { voce } from './voce.js';
+export { finestra } from './finestra.js';
+export { principale } from './principale.js';
 
 import { comuni } from './comuni.js';
 import { errori } from './errori.js';
@@ -19,6 +21,8 @@ import { cervello } from './cervello.js';
 import { onboarding } from './onboarding.js';
 import { assistente } from './assistente.js';
 import { voce } from './voce.js';
+import { finestra } from './finestra.js';
+import { principale } from './principale.js';
 
 /** Un solo oggetto con tutto, per chi preferisce `testi.telegram.start(...)`. */
 export const testi = {
@@ -32,4 +36,6 @@ export const testi = {
   onboarding,
   assistente,
   voce,
+  finestra,
+  principale,
 } as const;
