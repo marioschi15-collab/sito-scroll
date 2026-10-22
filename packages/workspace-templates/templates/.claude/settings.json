@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(./**)",
+      "Write(./**)",
+      "Edit(./**)",
+      "Glob",
+      "Grep",
+      "WebSearch",
+      "WebFetch",
+      "Agent",
+      "AskUserQuestion",
+      "mcp__spalla__memoria_cerca"
+    ],
+    "ask": ["Bash"],
+    "deny": [
+      "Read(~/Library/Application Support/{{NOME_PRODOTTO}}/claude/**)",
+      "Read(~/Library/Application Support/{{NOME_PRODOTTO}}/secrets.bin)",
+      "Read(~/AppData/Local/{{NOME_PRODOTTO}}/claude/**)",
+      "Read(~/AppData/Local/{{NOME_PRODOTTO}}/secrets.bin)",
+      "Read(~/.local/share/spalla/claude/**)",
+      "Read(~/.local/share/spalla/secrets.bin)",
+      "Edit(./.claude/settings.json)",
+      "Edit(./.claude/settings.local.json)",
+      "Edit(./.mcp.json)",
+      "Edit(./.claude/skills/**)",
+      "Edit(./.claude/hooks/**)",
+      "Bash(rm -rf*)",
+      "Bash(rm -fr*)",
+      "Bash(rm -r *)",
+      "Bash(sudo*)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(sh *)",
+      "Bash(bash *)",
+      "Bash(security*)",
+      "Bash(reg *)",
+      "Bash(regedit*)"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1",
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "3"
+  }
+}

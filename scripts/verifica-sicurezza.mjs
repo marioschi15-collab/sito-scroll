@@ -2,6 +2,8 @@
 // Controllo statico richiesto da docs/02 §2.3 e §10: il nostro codice non deve mai
 // leggere le credenziali del binario, impostare token di abbonamento, usare bypassPermissions,
 // né scrivere regole di permesso con percorsi assoluti a una sola barra ("/Users/...").
+// In più, alcune protezioni DEVONO restare: le regole deny sui file che il binario usa anche in una
+// sessione SDK (settings, skill, hook, .mcp.json) nei modelli e nel codice che costruisce le opzioni.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -18,7 +20,33 @@ const regole = [
   { nome: 'regola di permesso con percorso assoluto a una barra', re: /"(Read|Write|Edit)\(\/(Users|home|C:)/, eccezioni: [] },
 ];
 
+/** Presenze obbligatorie: se una sparisce (refactor, "pulizia"), il controllo fallisce. */
+const richiesti = [
+  {
+    file: 'packages/workspace-templates/templates/.claude/settings.json',
+    frammenti: ['"Edit(./.claude/settings.json)"', '"Edit(./.claude/settings.local.json)"', '"Edit(./.mcp.json)"', '"Edit(./.claude/skills/**)"', '"Edit(./.claude/hooks/**)"', '"ask": ["Bash"]'],
+  },
+  {
+    file: 'apps/desktop/src/nucleo/agent/protezioni.ts',
+    frammenti: ["'.claude/settings.json'", "'.claude/settings.local.json'", "'.mcp.json'", "'.claude/skills/'", "'.claude/hooks/'"],
+  },
+  {
+    file: 'apps/desktop/src/nucleo/agent/opzioni-sdk.ts',
+    frammenti: ['regoleProtezioneCartella(', 'regoleProtezioneCredenziali(', "permissionMode: 'default'"],
+  },
+  {
+    file: 'apps/desktop/src/nucleo/agent/hooks.ts',
+    frammenti: ["permissionDecision: 'deny'", 'percorsoProtetto('],
+  },
+];
+
 const problemi = [];
+for (const r of richiesti) {
+  let testo;
+  try { testo = readFileSync(join(radice, r.file), 'utf8'); } catch { problemi.push(`${r.file}: file richiesto mancante`); continue; }
+  for (const f of r.frammenti) if (!testo.includes(f)) problemi.push(`${r.file}: manca la protezione ${f}`);
+}
+
 function visita(cartella) {
   for (const nome of readdirSync(cartella)) {
     if (ignora.has(nome)) continue;

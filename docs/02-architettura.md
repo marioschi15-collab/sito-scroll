@@ -315,7 +315,7 @@ L'albero del repository sta in **un solo posto**: [06 §4](06-piano-prototipo.md
 
 ## 6. Permission Broker: come l'assistente chiede permesso
 
-Le regole in `.claude/settings.json` permettono senza chiedere: leggere/scrivere/modificare dentro `~/Spalla`, cercare sul web, usare `memoria_cerca`. Negano sempre: leggere la cartella `claude/` del binario e `secrets.bin`, comandi shell distruttivi (`rm -rf`, `sudo`, `curl ... | sh`, modifiche al registro, al portachiavi). Tutto il resto arriva al Broker tramite `canUseTool`:
+Le regole in `.claude/settings.json` permettono senza chiedere: leggere/scrivere/modificare dentro `~/Spalla`, cercare sul web, usare `memoria_cerca`. Negano sempre: leggere la cartella `claude/` del binario e `secrets.bin`; riscrivere `.claude/settings.json`, `.mcp.json`, le skill e gli hook (il binario li usa anche in una sessione SDK: un contenuto ostile non deve poterli cambiare; il Nucleo ripete queste regole in `disallowedTools` e con un hook `PreToolUse`); i comandi shell più pericolosi nella forma in cui il modello li scrive di solito (`rm -rf`, `sudo`, `curl`, `wget`, `sh`, modifiche al registro, al portachiavi). Le regole `Bash` non sono un confine di sicurezza (una regola non combacia con `/bin/rm` o con `sh -c '…'`): il confine è che ogni comando shell passa dal Broker (`"ask": ["Bash"]`). Tutto il resto arriva al Broker tramite `canUseTool`:
 
 ```mermaid
 sequenceDiagram

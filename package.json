@@ -6,9 +6,13 @@
   "packageManager": "pnpm@10.28.0",
   "engines": { "node": ">=22" },
   "scripts": {
+    "build:packages": "pnpm -r --filter './packages/*' run build",
     "build": "pnpm -r --filter './packages/*' --filter './apps/*' run build",
-    "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm -r run test",
-    "dev": "pnpm --filter @spalla/desktop run dev"
+    "typecheck": "pnpm build:packages && pnpm -r run typecheck",
+    "test": "pnpm build:packages && pnpm -r run test",
+    "test:e2e": "pnpm build:packages && RUN_E2E=1 pnpm --filter @spalla/desktop run test",
+    "smoke:onboarding": "pnpm build:packages && pnpm --filter @spalla/desktop exec tsx test/e2e/onboarding-smoke.ts",
+    "dev": "pnpm build:packages && pnpm --filter @spalla/desktop run dev",
+    "sicurezza": "node scripts/verifica-sicurezza.mjs"
   }
 }

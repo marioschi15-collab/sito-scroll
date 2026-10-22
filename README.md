@@ -1,6 +1,6 @@
 # Spalla (nome di lavoro) — assistente personale con onboarding automatico
 
-> **Stato**: design finale approvato il 22 ottobre 2026. Nessuna riga di codice ancora: questo repository contiene la documentazione di prodotto e di architettura in italiano. Il prototipo (8 settimane) parte dal piano in `docs/06`.
+> **Stato**: design finale approvato il 22 ottobre 2026; **prototipo in costruzione** (ottobre 2026). Il repository contiene la documentazione di prodotto e di architettura in italiano (`docs/01-07`) e il codice del prototipo: il "Nucleo" (motore con Agent SDK, memoria, ruoli, onboarding, Telegram, vocali) con un terminale di prova. La finestra Electron è il passo successivo. Come provarlo: `docs/08-sviluppo.md`.
 
 ## Cos'è
 
@@ -19,6 +19,7 @@ Per chi: liberi professionisti, venditori e titolari di micro-imprese italiane, 
 | 05 | [docs/05-onboarding.md](docs/05-onboarding.md) | I primi dieci minuti: principi, fasi, banca domande completa con le ramificazioni per mestiere, i file generati, il dialogo completo in italiano, i casi limite, come si cambia dopo |
 | 06 | [docs/06-piano-prototipo.md](docs/06-piano-prototipo.md) | Il prototipo in 8 settimane: perimetro, stack, struttura del codice, spike della settimana 0, milestone con criteri di accettazione, protocollo con i primi 5 utenti, go/no-go, cosa resta fuori |
 | 07 | [docs/07-rischi-e-domande-aperte.md](docs/07-rischi-e-domande-aperte.md) | Registro dei rischi con mitigazioni, incertezze dichiarate con posizione e riserva, domande per il fondatore, traccia della lettera ad Anthropic, lista di sorveglianza |
+| 08 | [docs/08-sviluppo.md](docs/08-sviluppo.md) | Come installare, avviare il terminale di prova, eseguire i test; cosa funziona e cosa è ancora da fare |
 | — | [docs/fonti.md](docs/fonti.md) | Tutte le fonti, per argomento, con una riga di nota e il livello di confidenza |
 
 ## Come leggerli

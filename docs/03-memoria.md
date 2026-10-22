@@ -280,7 +280,7 @@ L'hook riporta anche nell'app un contatore "memoria: 9/200 righe" visibile nella
 
 ## 8. Riordino notturno ("riordino", precedente *dreaming* di OpenClaw)
 
-Un lavoro programmato alle **03:00** (o alla prima pausa dopo il risveglio del PC) apre una sessione SDK breve con il ruolo **archivista** su **Haiku 5.5**, `maxTurns: 8`, `maxBudgetUsd: 0.10`, `omitClaudeMd: true` per risparmiare contesto:
+Un lavoro programmato alle **03:00** (o alla prima pausa dopo il risveglio del PC) apre una sessione SDK breve con il ruolo **archivista** come agente principale (`options.agent`) su **Haiku 5.5**, `maxTurns: 8`, `maxBudgetUsd: 0.10`. Nota (verificata su sub-agents.md, 22 ottobre 2026): `omitClaudeMd` è **ignorato** quando il ruolo gira come agente principale, quindi la sessione notturna carica comunque `CLAUDE.md` e i suoi `@import` (profilo, indice, agenda: ~4.000 token stabili, per lo più in cache); il frontmatter dell'archivista lo tiene solo per il caso in cui venga chiamato come sotto-agente. Il messaggio di apertura ripete le regole in forma operativa, non perché manchino:
 
 1. Legge gli ultimi 7 diari, `MEMORIA.md`, `UTENTE.md`, `agenda.md` e le memorie dei ruoli.
 2. **Promuove**: preferenze ripetute almeno due volte → direttiva in `UTENTE.md` (sostituendo la vecchia al suo posto); fatti durevoli → riga in `MEMORIA.md` + scheda; voci spuntate dell'agenda → archivio.

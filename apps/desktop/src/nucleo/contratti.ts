@@ -80,6 +80,11 @@ export interface RichiestaPermesso {
   canaleOrigine: Canale;
   /** Momento della richiesta (ms epoch). */
   creataIl: number;
+  /**
+   * Segnale di annullamento della sessione che ha fatto la richiesta (tetto raggiunto, chiusura, errore):
+   * quando scatta, chi mostra la scheda la ritira e il Broker nega. Assente = nessun annullamento possibile.
+   */
+  annullamento?: AbortSignal;
 }
 
 export type DecisionePermesso =
@@ -153,6 +158,10 @@ export interface OpzioniInvio {
   tettoUsd?: number;
   /** Ruolo da eseguire come agente principale (es. "archivista" per il riordino notturno). */
   ruolo?: string;
+  /** Numero massimo di passi (giri di strumenti) per questa esecuzione; assente = predefiniti del tipo di sessione. */
+  maxTurni?: number;
+  /** Riga del diario per questo scambio al posto della prima riga del messaggio (es. "Presentazioni iniziate" per il rituale). */
+  rigaDiario?: string;
 }
 
 // ---------------------------------------------------------------------------------------------------------

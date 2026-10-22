@@ -1,0 +1,19 @@
+# Bot gestore Telegram di Spalla (docs/02 §8.2). Deploy: vedi README.md.
+name = "spalla-bot-gestore"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+# Richieste e consegne cifrate, con TTL di 10 minuti (nessun contenuto delle chat).
+[[kv_namespaces]]
+binding = "COPPIE"
+id = "SOSTITUIRE_CON_ID_KV"
+
+[vars]
+PREFISSO_USERNAME = "spalla"
+TTL_SECONDI = "600"
+
+# Segreti (mai nel file): wrangler secret put BOT_GESTORE_TOKEN ; wrangler secret put WEBHOOK_SECRET
+
+[observability]
+enabled = false
