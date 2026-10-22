@@ -79,11 +79,11 @@ Come è fatta (dettagli nei README di `apps/desktop/src/main`, `src/preload`, `s
   trascinati, [Vai con i consigliati]; Squadra, Memoria, Telegram, Impostazioni, "Come mi sono presentato". Tema chiaro
   e scuro con `prefers-color-scheme`; CSP stretta in `index.html` (in sviluppo electron-vite la allarga solo per la
   ricarica a caldo).
-- **SQLite nella finestra.** `better-sqlite3` in `node_modules` è compilato per Node (le prove). Se nel processo di
-  Electron non si carica, l'indice della memoria passa da solo a `node:sqlite` (integrato in Electron 45, FTS5
-  compreso; nel log `memoria.motore_sqlite`). Niente più `rebuild:electron`/`rebuild:node` avanti e indietro per
-  sviluppare; nell'installer electron-builder ricompila comunque il modulo nativo. `node-pty` (pannello `/login`) usa
-  N-API e funziona in Electron senza ricompilare.
+- **SQLite nella finestra.** Dentro Electron (finestra e app installata) l'indice della memoria usa sempre
+  `node:sqlite`, integrato in Electron 45 (SQLite 3.53 con FTS5, `unicode61` e `bm25`; nel log `memoria.motore_sqlite`).
+  `better-sqlite3` è solo una dipendenza di sviluppo per le prove con Node e il terminale: non entra nell'installer e
+  non va mai ricompilato per Electron (non supporta ancora Electron 45). `node-pty` (pannello `/login`) e
+  `sherpa-onnx-node` usano N-API e arrivano già compilati per piattaforma: nessuna ricompilazione.
 - **Scorciatoia di sviluppo.** Con `SPALLA_CONFIG_EREDITATA=1` (solo app non pacchettizzata) la schermata
   dell'abbonamento mostra **[Sono già collegato]**: salta il pannello e prova subito il collegamento con il login
   della macchina. `SPALLA_MAX_TURNI=8` limita i passi di ogni scambio della finestra.
@@ -274,12 +274,12 @@ pnpm --filter @spalla/desktop exec electron-builder --win --publish never       
 pnpm --filter @spalla/desktop exec electron-builder --linux dir --publish never                                   # prova veloce: solo la cartella, niente installer
 ```
 
-- **Moduli nativi.** electron-builder ricompila `better-sqlite3` (e gli altri moduli nativi) per Electron **dentro**
-  `node_modules`: dopo un pacchetto, le prove con Node (`pnpm test`) possono fallire con `NODE_MODULE_VERSION`. Si torna
-  indietro con `pnpm rebuild better-sqlite3`. Per controllare solo la struttura del pacchetto senza toccare
-  `node_modules`: aggiungere `-c.npmRebuild=false` (in questo ambiente anche `-c.electronDist=node_modules/electron/dist`).
-  L'app ottenuta si avvia lo stesso: l'indice della memoria ripiega su `node:sqlite` (§2-bis). Prova del 22 ottobre:
-  `linux-unpacked` avviato sotto `xvfb-run`, Nucleo partito, `verifica-hash-binario.mjs` OK (hash identici).
+- **Moduli nativi.** `npmRebuild: false`: electron-builder non ricompila nulla e non tocca `node_modules`, quindi
+  `pnpm test` continua a funzionare dopo un pacchetto. Motivo: i moduli nativi dell'app (`node-pty`, `sherpa-onnx-node`)
+  usano N-API e hanno binari precompilati per Mac e Windows; `better-sqlite3` non è nell'app (§2-bis). La prima
+  release del 22 ottobre falliva proprio qui: la ricompilazione di `better-sqlite3` per Electron 45 non compila.
+  Prova del 22 ottobre con `npmRebuild: false`: `linux-unpacked` costruito, `--autoverifica` OK (binario di Claude
+  Code fuori da `app.asar`), avvio sotto `xvfb-run` con Nucleo partito e memoria sul motore integrato.
 - **Icona.** `apps/desktop/resources/icon.png` (1024×1024, segnaposto) si rigenera con `node scripts/genera-icone.mjs --forza`
   (serve `ffmpeg`); electron-builder ne ricava `.icns` e `.ico` da solo.
 - **Modelli della cartella di lavoro.** Viaggiano in `extraResources` (`<risorse>/workspace-templates/templates`),

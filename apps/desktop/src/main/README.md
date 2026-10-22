@@ -20,7 +20,6 @@ finestra (React, sandbox) ──window.spalla──▶ preload ──ipcRenderer
 | `pnpm dev:app` | `electron-vite dev`: finestra con aggiornamento a caldo (la CSP si allarga solo in sviluppo per il plugin React) |
 | `pnpm build:app` | `electron-vite build` → `out/main/index.js` (ESM), `out/preload/index.cjs` (CommonJS), `out/renderer/` |
 | `pnpm start:app` | `electron-vite preview`: la build appena fatta |
-| `pnpm rebuild:electron` / `pnpm rebuild:node` | ricompila `better-sqlite3` per Electron / di nuovo per Node; di solito non serve più (vedi "Moduli nativi") |
 | `pnpm smoke:finestra` | prova a fumo della finestra sotto xvfb con Playwright (`test/e2e/finestra-smoke.mjs`; `-- --onboarding` per il passaggio vero) |
 | `pnpm exec vitest run test/ipc test/main` | prove di schemi, preload, host con Nucleo finto, zip, pannello, allegati, binario |
 | `pnpm typecheck` | include `test/tsconfig.shell.json` (le prove di tipo: preload ≡ `ApiSpalla`, schemi ≡ `NomeInvoke`) |
@@ -92,12 +91,12 @@ finestra (React, sandbox) ──window.spalla──▶ preload ──ipcRenderer
 
 ## Moduli nativi (importante per `dev:app`)
 
-`better-sqlite3` è compilato per Node (vitest). Electron 45 ha un ABI diverso (NODE_MODULE_VERSION 150) e per lui non
-esistono ancora binari precompilati. L'indice della memoria lo gestisce da solo (`nucleo/memoria/sqlite.ts`): se il
-modulo nativo non si carica, passa a `node:sqlite` (integrato in Electron 45, stessa SQLite con FTS5) e lo scrive nel
-log (`memoria.motore_sqlite`). Quindi `dev:app`, `smoke:finestra` e un pacchetto con `npmRebuild=false` partono senza
-ricompilare nulla; `pnpm rebuild:electron` resta per chi vuole il modulo nativo anche in sviluppo (poi
-`pnpm rebuild:node` per tornare alle prove). `node-pty` e `sherpa-onnx-node` usano N-API e vanno bene per entrambi.
+`better-sqlite3` è solo una dipendenza di sviluppo, compilata per Node (vitest e terminale). Electron 45 ha un ABI
+diverso (NODE_MODULE_VERSION 150) e `better-sqlite3` non si compila ancora per lui. Dentro Electron l'indice della
+memoria usa quindi sempre `node:sqlite` (integrato in Electron 45, SQLite 3.53 con FTS5) e lo scrive nel log
+(`memoria.motore_sqlite`); il modulo nativo si carica a richiesta solo fuori da Electron (`nucleo/memoria/sqlite.ts`).
+`dev:app`, `smoke:finestra` e il pacchetto (`npmRebuild: false`) partono senza ricompilare nulla. `node-pty` e
+`sherpa-onnx-node` usano N-API e vanno bene sia in Node sia in Electron.
 
 ## Verificato in questo ambiente
 

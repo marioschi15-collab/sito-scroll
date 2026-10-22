@@ -45,8 +45,9 @@ Uscita in `apps/desktop/release/` (ignorata da git).
   dopo `pnpm typecheck && pnpm test && pnpm sicurezza` (job `verifiche`, richiesto da `pacchetto`).
   In alternativa a `extraResources` (citato in docs/02) si è scelto `asarUnpack`: stessa posizione "fuori
   dall'archivio", ma la risoluzione dei moduli dall'SDK continua a funzionare senza percorsi speciali.
-- **Moduli nativi** (`better-sqlite3`, `node-pty`, `sherpa-onnx-node` e i suoi pacchetti per piattaforma) e ogni
-  `*.node` in `asarUnpack`; `npmRebuild: true` li ricompila per l'ABI di Electron e l'architettura di destinazione.
+- **Moduli nativi** (`node-pty`, `sherpa-onnx-node` e i suoi pacchetti per piattaforma) e ogni `*.node` in
+  `asarUnpack`. `npmRebuild: false`: usano N-API e arrivano precompilati per Mac e Windows, quindi nessuna
+  ricompilazione per Electron. `better-sqlite3` non è nell'app (dipendenza di sviluppo): la memoria usa `node:sqlite`.
 - **File inclusi**: solo `out/**` (electron-vite) più le dipendenze di produzione. Esclusi `react`, `react-dom`,
   `scheduler`, `@xterm/*` (già nel bundle della finestra; il processo principale non li importa), i sorgenti C di
   SQLite e le mappe `.map`.
@@ -80,9 +81,8 @@ Uscita in `apps/desktop/release/` (ignorata da git).
   `out/renderer`, l'SDK, `@spalla/schema` e `@spalla/it-copy` con `dist/`; in `app.asar.unpacked` solo i moduli
   nativi e `claude-agent-sdk-linux-x64` (niente copia musl); modelli con i 13 `.gitkeep` nelle risorse;
   `verifica-hash-binario.mjs` → hash identici (SHA-256 `356733f1…ad58`, 292 MB); fusibili applicati.
-- Avvio dell'app pacchettizzata con `xvfb-run`: processo principale e finestra partono, la cartella dati è
-  `~/.config/Spalla`; il Nucleo si ferma su `better-sqlite3` ("Module did not self-register"), come atteso con
-  `npmRebuild=false` (modulo compilato per Node). In CI la ricompilazione per Electron è attiva.
+- Avvio dell'app pacchettizzata con `xvfb-run` (22 ottobre, `npmRebuild: false`): `--autoverifica` OK, processo
+  principale e finestra partono, Nucleo avviato, memoria sul motore integrato `node:sqlite`, arresto pulito.
 - Dimensioni (Linux x64): `app.asar` 28 MB, `app.asar.unpacked` ~316 MB, di cui ~279 MB il binario di Claude Code.
 
 ## Punti aperti

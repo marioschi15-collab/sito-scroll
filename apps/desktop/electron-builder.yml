@@ -27,8 +27,6 @@ files:
   # Già incluse nel bundle della finestra (out/renderer): il processo principale non le importa.
   - '!**/node_modules/{react,react-dom,scheduler}/**'
   - '!**/node_modules/@xterm/**'
-  # Sorgenti C di SQLite: servono solo per compilare, a runtime basta build/Release/*.node.
-  - '!**/node_modules/better-sqlite3/{deps,src}/**'
   # I modelli della cartella di lavoro viaggiano in extraResources (sotto): in node_modules electron-builder
   # scarterebbe sempre i file .gitkeep, e con loro le cartelle vuote del modello (lavoro/*, memoria/temi, ...).
   - '!**/node_modules/@spalla/workspace-templates/templates/**'
@@ -50,14 +48,17 @@ asar: true
 #   l'app lo indica all'SDK con il percorso in app.asar.unpacked (src/main/binario.ts, fuoriDaAsar).
 asarUnpack:
   - '**/*.node'
-  - '**/node_modules/better-sqlite3/**'
   - '**/node_modules/node-pty/**'
   - '**/node_modules/sherpa-onnx-node/**'
   - '**/node_modules/sherpa-onnx-*/**'
   - '**/node_modules/@anthropic-ai/claude-agent-sdk-*/**'
 
-# Ricompila i moduli nativi per l'ABI di Electron e per l'architettura di destinazione (default di electron-builder).
-npmRebuild: true
+# Nessuna ricompilazione per Electron: i moduli nativi rimasti usano N-API (ABI stabile tra Node ed Electron) e
+# arrivano già compilati per piattaforma: node-pty 1.1 (prebuilds darwin-arm64/x64, win32-x64/arm64) e
+# sherpa-onnx-node (pacchetti sherpa-onnx-<piattaforma>). better-sqlite3 non c'è: è una dipendenza di sviluppo e la
+# memoria nell'app usa node:sqlite (src/nucleo/memoria/sqlite.ts). Ricompilare scaricherebbe gli header di Electron e
+# fallirebbe su better-sqlite3, che non supporta ancora Electron 45.
+npmRebuild: false
 
 # Solo italiano (e inglese come riserva) tra le traduzioni di Chromium: installer più piccolo.
 electronLanguages:

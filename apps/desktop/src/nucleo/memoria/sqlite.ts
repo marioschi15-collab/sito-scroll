@@ -1,15 +1,17 @@
-import Database from 'better-sqlite3';
+import { createRequire } from 'node:module';
+import type Database from 'better-sqlite3';
 import type { DatabaseSync, StatementSync } from 'node:sqlite';
 
 /**
  * Il piccolo sottoinsieme di SQLite che serve all'indice della memoria, con due motori:
- * - `better-sqlite3` (predefinito): modulo nativo, compilato per la versione di Node che lo carica;
- * - `node:sqlite` (integrato in Node 22.13+ ed Electron 45): stessa libreria SQLite, FTS5 compreso.
+ * - `node:sqlite` (integrato in Node 22.13+ ed Electron 45: SQLite 3.53 con FTS5, unicode61 e bm25): è il motore
+ *   della finestra e dell'app installata, SEMPRE quando il processo è Electron;
+ * - `better-sqlite3`: modulo nativo usato solo nei test e nel terminale di sviluppo (Node). È una dipendenza di
+ *   sviluppo: l'installer non lo contiene e non lo ricompila (non si compila ancora per l'ABI di Electron 45).
  *
- * Perché due: lo stesso `node_modules` serve ai test (Node) e alla finestra (Electron), che hanno ABI diverse.
- * Se il modulo nativo non si carica (es. "Module did not self-register", NODE_MODULE_VERSION diversa) si passa
- * da soli al motore integrato, una volta per processo. L'app pacchettizzata ha il modulo ricompilato per Electron.
- * `SPALLA_SQLITE=integrato` forza il motore integrato (test e diagnosi).
+ * Il modulo nativo si carica a richiesta (createRequire), mai all'avvio: nell'app installata non esiste.
+ * Se non si carica (assente, NODE_MODULE_VERSION diversa) si passa da soli al motore integrato, una volta per
+ * processo. `SPALLA_SQLITE=integrato` forza il motore integrato (test e diagnosi).
  */
 
 export interface IstruzioneSql {
@@ -48,18 +50,36 @@ export function motoreSqlAttuale(): MotoreSql | undefined {
  */
 export function apriDatabaseSql(file: string, allaScelta?: (motore: MotoreSql, motivo?: string) => void): DatabaseSql {
   if (process.env.SPALLA_SQLITE === 'integrato') return apriIntegrato(file);
+  if (process.versions.electron) {
+    // Finestra e app installata: sempre il motore integrato di Electron (better-sqlite3 non c'è o ha l'ABI di Node).
+    if (motoreScelto !== 'integrato') {
+      motoreScelto = 'integrato';
+      allaScelta?.('integrato', 'Electron');
+    }
+    return apriIntegrato(file);
+  }
   if (motoreScelto === 'integrato') return apriIntegrato(file);
+  let Costruttore: typeof Database;
   try {
-    const db = new Database(file);
+    Costruttore = createRequire(import.meta.url)('better-sqlite3') as typeof Database;
+  } catch (errore) {
+    return ripiega(file, errore, allaScelta);
+  }
+  try {
+    const db = new Costruttore(file);
     motoreScelto = 'better-sqlite3';
     return avvolgiBetter(db);
   } catch (errore) {
     // Un errore di SQLite (file non apribile, permessi) resta un errore: si ripiega solo se manca il modulo nativo.
-    if (errore instanceof Database.SqliteError) throw errore;
-    motoreScelto = 'integrato';
-    allaScelta?.('integrato', errore instanceof Error ? errore.message.split('\n')[0] : String(errore));
-    return apriIntegrato(file);
+    if (errore instanceof Costruttore.SqliteError) throw errore;
+    return ripiega(file, errore, allaScelta);
   }
+}
+
+function ripiega(file: string, errore: unknown, allaScelta?: (motore: MotoreSql, motivo?: string) => void): DatabaseSql {
+  motoreScelto = 'integrato';
+  allaScelta?.('integrato', errore instanceof Error ? errore.message.split('\n')[0] : String(errore));
+  return apriIntegrato(file);
 }
 
 // ---------- better-sqlite3 ----------

@@ -15,8 +15,8 @@ await nucleo.ferma();
 2. Logger su file (`cli/logger.ts`), o quello passato.
 3. `config.json` con `ConfigSchema` (`configurazione.ts`: predefiniti per i campi mancanti, file rotto → predefiniti e avviso).
 4. Deposito segreti e `AuthProvider` (chiave API o abbonamento, da `config.cervello.modalita`).
-5. `MemoryService` (indice + osservatore), avviato subito. L'indice usa `better-sqlite3` e, se il modulo nativo non si
-   carica (es. dentro Electron con il modulo compilato per Node), `node:sqlite` (`memoria/sqlite.ts`).
+5. `MemoryService` (indice + osservatore), avviato subito. L'indice usa `node:sqlite` dentro Electron (sempre) e
+   `better-sqlite3` nelle prove con Node, con ripiego su `node:sqlite` se il modulo nativo non si carica (`memoria/sqlite.ts`).
 6. Permission Broker e `AgentRuntime` (con `descriviRichiesta` del broker e la memoria per hook e `memoria_cerca`).
 7. Onboarding (`creaOnboarding`), senza seminare: lo fa l'interfaccia con `prepara()` prima del primo messaggio.
 8. **Dispatcher** (`dispatcher.ts`): coda unica sulla sessione principale per tutti i canali; eventi al canale chiamante;
