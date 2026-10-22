@@ -1,6 +1,6 @@
 # Spalla (nome di lavoro) — assistente personale con onboarding automatico
 
-> **Stato**: design finale approvato il 22 ottobre 2026; **prototipo in costruzione** (ottobre 2026). Il repository contiene la documentazione di prodotto e di architettura in italiano (`docs/01-07`) e il codice del prototipo: il "Nucleo" (motore con Agent SDK, memoria, ruoli, onboarding, Telegram, vocali) con un terminale di prova. La finestra Electron è il passo successivo. Come provarlo: `docs/08-sviluppo.md`.
+> **Stato**: design finale approvato il 22 ottobre 2026; **prototipo funzionante** (ottobre 2026), da provare con i primi utenti. Il repository contiene la documentazione di prodotto e di architettura in italiano (`docs/01-07`) e il codice: il "Nucleo" (motore con Agent SDK, memoria, ruoli, onboarding, Telegram, vocali), la finestra desktop Electron (primo avvio, chat, squadra, memoria, Telegram, impostazioni) e gli installer per Mac e Windows, per ora **non firmati**. Come provarlo e costruirlo: `docs/08-sviluppo.md`.
 
 ## Cos'è
 
