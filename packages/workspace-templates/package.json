@@ -1,0 +1,9 @@
+{
+  "name": "@spalla/workspace-templates",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Modelli italiani dello spazio di lavoro ~/Spalla: CLAUDE.md, profilo, catalogo ruoli, skill, rituale di onboarding, banca domande, settings.json",
+  "files": ["templates"],
+  "scripts": { "typecheck": "echo ok", "test": "echo ok", "build": "echo ok" }
+}

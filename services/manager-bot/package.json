@@ -1,0 +1,9 @@
+{
+  "name": "@spalla/manager-bot",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Worker: bot gestore Telegram per la creazione del bot utente in due tocchi (Managed Bots, Bot API 9.6). Consegna una tantum del token cifrato; nessun contenuto.",
+  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run --passWithNoTests", "build": "echo ok" },
+  "devDependencies": { "typescript": "^5.6.0", "vitest": "^3.0.0", "@cloudflare/workers-types": "^4.2025.0" }
+}

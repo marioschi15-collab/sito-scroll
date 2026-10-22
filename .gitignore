@@ -1,0 +1,15 @@
+node_modules/
+dist/
+out/
+*.log
+*.sqlite
+*.sqlite-journal
+.env
+.env.*
+coverage/
+.DS_Store
+Thumbs.db
+# dati e modelli locali di sviluppo
+.spalla-dev/
+models/
+tmp/

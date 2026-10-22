@@ -1,0 +1,37 @@
+{
+  "name": "@spalla/desktop",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Spalla desktop: Nucleo (servizi) + CLI di sviluppo; la shell Electron arriva dopo il Nucleo",
+  "scripts": {
+    "dev": "tsx src/cli/spalla-dev.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.307",
+    "@spalla/schema": "workspace:*",
+    "@spalla/it-copy": "workspace:*",
+    "@spalla/workspace-templates": "workspace:*",
+    "better-sqlite3": "^12.0.0",
+    "croner": "^9.0.0",
+    "grammy": "^1.46.0",
+    "@grammyjs/auto-retry": "^2.0.0",
+    "@grammyjs/files": "^1.1.0",
+    "ogg-opus-decoder": "^1.7.0",
+    "yaml": "^2.6.0",
+    "zod": "^4.0.0"
+  },
+  "optionalDependencies": {
+    "sherpa-onnx-node": "^1.13.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}
