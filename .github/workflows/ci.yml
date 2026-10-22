@@ -17,7 +17,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r run build --filter './packages/*'
+      - run: pnpm build:packages
       - run: pnpm typecheck
       - run: pnpm test
       - name: Controllo anti-credenziali e regole di permesso
