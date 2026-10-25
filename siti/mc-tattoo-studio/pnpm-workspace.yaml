@@ -1,0 +1,4 @@
+# Il sito è un progetto a sé: questo file lo tiene fuori dal workspace di Spalla nella radice del repository.
+packages: []
+onlyBuiltDependencies:
+  - esbuild
