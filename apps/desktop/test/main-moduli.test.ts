@@ -25,6 +25,22 @@ afterEach(() => {
   fs.rmSync(radice, { recursive: true, force: true });
 });
 
+/** Collegamento a una cartella, anche su Windows senza Modalità sviluppatore: lì basta una giunzione. */
+function collegaCartella(destinazione: string, collegamento: string): void {
+  fs.symlinkSync(destinazione, collegamento, process.platform === 'win32' ? 'junction' : 'dir');
+}
+
+/** Collegamento a un file: su Windows serve la Modalità sviluppatore, senza la prova lo salta (false). */
+function collegaFile(destinazione: string, collegamento: string): boolean {
+  try {
+    fs.symlinkSync(destinazione, collegamento, 'file');
+    return true;
+  } catch (e) {
+    if (process.platform === 'win32' && (e as NodeJS.ErrnoException).code === 'EPERM') return false;
+    throw e;
+  }
+}
+
 /** Lettore ZIP minimo per la prova: directory centrale → voci decompresse. */
 function leggiZip(file: string): Map<string, Buffer | null> {
   const b = fs.readFileSync(file);
@@ -58,7 +74,7 @@ describe('esporta: zip della cartella di lavoro', () => {
     fs.writeFileSync(path.join(cartella, 'CLAUDE.md'), '# Regole\n'.repeat(200));
     fs.writeFileSync(path.join(cartella, 'memoria', 'temi', 'perché-così.md'), 'àèìòù € ✓');
     fs.writeFileSync(path.join(cartella, 'vuoto.txt'), '');
-    fs.symlinkSync('/etc', path.join(cartella, 'collegamento'));
+    collegaCartella(os.tmpdir(), path.join(cartella, 'collegamento'));
     const zip = path.join(radice, 'copia.zip');
     const esito = await scriviZip(cartella, zip);
     expect(esito).toMatchObject({ file: 3, saltati: ['collegamento'] });
@@ -121,7 +137,7 @@ describe('allegati trascinati', () => {
   it('risolviDentro: niente uscite, nemmeno con un collegamento simbolico', () => {
     const lavoro = path.join(radice, 'Spalla');
     fs.mkdirSync(lavoro);
-    fs.symlinkSync(radice, path.join(lavoro, 'scappatoia'));
+    collegaCartella(radice, path.join(lavoro, 'scappatoia'));
     expect(risolviDentro(lavoro, 'memoria/a.md')).toBe(path.join(lavoro, 'memoria', 'a.md'));
     expect(risolviDentro(lavoro, '../x')).toBeUndefined();
     expect(risolviDentro(lavoro, '/etc/passwd')).toBeUndefined();
@@ -148,12 +164,12 @@ describe('apriNelSistema: solo cartelle e documenti noti si aprono', () => {
       expect(await comeAprire(path.join(dir, 'Programma.app'), 'darwin')).toBe('mostra');
       expect(await comeAprire(comando, 'darwin')).toBe('mostra');
       expect(await comeAprire(f('senza-estensione', 0o755), 'darwin')).toBe('mostra');
-      expect(await comeAprire(f('eseguibile.pdf', 0o755), 'linux')).toBe('mostra');
+      // Windows non ha il permesso di esecuzione: lì chmod 0o755 non lascia traccia nel file.
+      if (process.platform !== 'win32') expect(await comeAprire(f('eseguibile.pdf', 0o755), 'linux')).toBe('mostra');
       for (const e of ['.webloc', '.inetloc', '.fileloc', '.scf', '.library-ms', '.appref-ms', '.iso', '.vhdx', '.chm', '.msp']) {
         expect(await comeAprire(f(`a${e}`), 'win32'), e).toBe('mostra');
       }
-      fs.symlinkSync(comando, path.join(dir, 'report.pdf'));
-      expect(await comeAprire(path.join(dir, 'report.pdf'), 'darwin')).toBe('mostra');
+      if (collegaFile(comando, path.join(dir, 'report.pdf'))) expect(await comeAprire(path.join(dir, 'report.pdf'), 'darwin')).toBe('mostra');
       await expect(comeAprire(path.join(dir, 'manca.md'))).rejects.toThrow();
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

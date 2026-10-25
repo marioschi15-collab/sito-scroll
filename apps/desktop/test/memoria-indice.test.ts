@@ -215,6 +215,8 @@ describe('riparazione e ricostruzione', () => {
   it('ricostruisce da zero dopo la cancellazione del file sqlite', async () => {
     const s = servizio();
     await s.avvia();
+    // Windows non cancella un file aperto: lì il file sparisce solo ad app chiusa.
+    if (process.platform === 'win32') await s.ferma();
     fs.rmSync(percorsi.indiceMemoria, { force: true });
     expect(fs.existsSync(percorsi.indiceMemoria)).toBe(false);
     await s.ricostruisciIndice();

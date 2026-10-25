@@ -464,6 +464,8 @@ describe('hook', () => {
     const fileMaiuscolo = path.join(percorsi.cartellaLavoro, 'Profilo', 'UTENTE.md');
     fs.mkdirSync(path.dirname(fileMaiuscolo), { recursive: true });
     fs.writeFileSync(fileMaiuscolo, 'contenuto maiuscolo');
+    // Dove le maiuscole non contano (Windows, macOS) è lo stesso file: ora contiene "contenuto maiuscolo".
+    const contenutoMinuscolo = fs.readFileSync(file, 'utf8');
     const esiti: unknown[] = [];
     const agente = crea({ memoria, query: conHooks(async (h) => {
       const hook = h.PostToolUse?.[0]?.hooks[0] as HookCallback;
@@ -478,8 +480,8 @@ describe('hook', () => {
     }) });
     await raccogli(agente.invia({ testo: 'x', canale: 'desktop' }));
     expect(controllaTetti).toHaveBeenCalledTimes(3);
-    expect(controllaTetti).toHaveBeenNthCalledWith(1, 'profilo/UTENTE.md', 'contenuto scritto');
-    expect(controllaTetti).toHaveBeenNthCalledWith(2, 'profilo/UTENTE.md', 'contenuto scritto');
+    expect(controllaTetti).toHaveBeenNthCalledWith(1, 'profilo/UTENTE.md', contenutoMinuscolo);
+    expect(controllaTetti).toHaveBeenNthCalledWith(2, 'profilo/UTENTE.md', contenutoMinuscolo);
     expect(controllaTetti).toHaveBeenNthCalledWith(3, 'Profilo/UTENTE.md', 'contenuto maiuscolo');
     const blocco = { decision: 'block', reason: 'UTENTE.md supera 4.000 caratteri: unisci le direttive simili.' };
     expect(esiti).toEqual([blocco, {}, blocco, blocco, {}]);

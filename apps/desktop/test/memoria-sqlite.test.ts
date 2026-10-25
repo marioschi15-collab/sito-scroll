@@ -85,12 +85,15 @@ describe.each(MOTORI)('indice della memoria con il motore %s', (motore) => {
     const file = path.join(cartella, 'rotto.sqlite');
     fs.writeFileSync(file, 'questo non è un database SQLite '.repeat(200));
     let errore: unknown;
+    let db: ReturnType<typeof apriDatabaseSql> | undefined;
     try {
-      const db = apriDatabaseSql(file);
+      db = apriDatabaseSql(file);
       db.controlloRapido();
-      db.close();
     } catch (e) {
       errore = e;
+    } finally {
+      // Aperto, il file resterebbe bloccato su Windows e l'indice non potrebbe ripararlo.
+      db?.close();
     }
     expect(eErroreCorruzione(errore)).toBe(true);
 

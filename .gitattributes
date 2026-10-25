@@ -1,0 +1,10 @@
+# Ritorni a capo sempre LF, anche su Windows: i test leggono YAML e blocchi dai .md.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
+*.onnx binary
+*.wav binary
+*.ogg binary
+*.zip binary
