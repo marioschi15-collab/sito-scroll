@@ -1,0 +1,74 @@
+/* src/stili/pie.css — PiePagina: marchio gigante a contorno, riga legale, "Torna su", spazio per la barra in basso. */
+
+.pie { position: relative; }
+
+/* ---------- Marchio che sale dalla maschera ---------- */
+/* La maschera ha la stessa misura di carattere del marchio, così il padding in em segue il marchio
+   e non taglia le grazie né la parte bassa delle lettere. */
+.pie__maschera {
+  overflow: hidden;
+  padding-block: 0.12em;
+  font-size: clamp(8rem, 30vw, 26rem);
+}
+.pie__marchio {
+  font-family: var(--font-titoli);
+  font-weight: 400;
+  font-size: 1em;
+  line-height: 0.8;
+  letter-spacing: -0.03em;
+  text-align: center;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--piombo);
+}
+
+/* ---------- Riga ---------- */
+.pie__riga {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding-block: var(--s-7) var(--s-6);
+  border-top: 1px solid var(--linea);
+}
+
+.pie__su {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--bersaglio-minimo);
+  color: var(--testo);
+  text-decoration: none;
+}
+/* Sottolineatura che cresce al passaggio del mouse (sempre visibile dove il mouse non c'è). */
+.pie__su::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  height: 1px;
+  background: var(--testo);
+  transform: scaleX(1);
+  transform-origin: left center;
+  transition: transform var(--durata-rapida) var(--ease-rapida);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .pie__su::after { transform: scaleX(0); }
+  .pie__su:hover::after,
+  .pie__su:focus-visible::after { transform: scaleX(1); }
+}
+
+/* Sotto i 1024px la barra "Prenota" è fissa in basso: questo spazio non le fa coprire nulla. */
+.pie__spazio { height: calc(var(--altezza-barra-prenota) + var(--zona-sicura-basso)); }
+
+@media (min-width: 1024px) {
+  .pie__riga {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-6);
+  }
+  .pie__spazio { height: 0; }
+}

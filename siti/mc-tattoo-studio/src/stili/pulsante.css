@@ -1,0 +1,109 @@
+/* src/stili/pulsante.css — Pulsante e Icona. Si animano solo transform e opacity. */
+
+/* ---------- Icona ---------- */
+.icona {
+  display: inline-block;               /* base.css mette gli svg a block: qui stanno nel testo */
+  flex-shrink: 0;
+  vertical-align: -0.125em;
+}
+
+/* ---------- Pulsante: base ---------- */
+.pulsante {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: var(--altezza-pulsante);
+  padding-block: var(--s-2);
+  padding-inline: 24px;
+  border: 1px solid transparent;       /* invisibile, ma con forced-colors diventa il contorno del pulsante */
+  border-radius: var(--raggio-piccolo);
+  font-family: var(--font-testo);
+  font-size: var(--fs-pulsante);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: var(--spaziatura-pulsante);
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--durata-istante) var(--ease-rapida);
+}
+
+/* Lo strato del passaggio: riempie il pulsante sotto il testo e cambia solo opacità. */
+.pulsante::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--durata-micro) var(--ease-rapida);
+}
+
+.pulsante:active { transform: scale(0.98); }
+
+.pulsante--piccola {
+  min-height: var(--altezza-pulsante-piccolo);
+  padding-inline: 18px;
+}
+
+.pulsante--larga { width: 100%; }
+
+.pulsante__testo { min-width: 0; }
+
+.pulsante__icona { font-size: 1.25em; }
+
+/* ---------- primario ---------- */
+.pulsante--primario {
+  background: var(--primario-sfondo);
+  color: var(--primario-testo);
+}
+.pulsante--primario::before { background: var(--primario-sopra); }
+.pulsante--primario:focus-visible::before { opacity: 1; }
+
+/* ---------- secondario ---------- */
+.pulsante--secondario {
+  background: transparent;
+  border-color: var(--bordo);
+  color: var(--testo);
+}
+.pulsante--secondario::before { background: var(--testo); }
+.pulsante--secondario:focus-visible::before { opacity: 0.08; }
+
+/* ---------- testo: un link con la sottolineatura sempre visibile ---------- */
+.pulsante--testo {
+  min-height: var(--bersaglio-minimo);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--testo);
+  overflow: visible;
+}
+.pulsante--testo::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  height: 1px;
+  background: var(--testo);
+  pointer-events: none;
+}
+
+/* ---------- Freccia che avanza ---------- */
+.pulsante__icona--freccia-destra {
+  transition: transform var(--durata-rapida) var(--ease-rapida);
+}
+.pulsante:focus-visible .pulsante__icona--freccia-destra { transform: translateX(4px); }
+
+/* ---------- Passaggio del mouse (solo dove esiste davvero) ---------- */
+@media (hover: hover) {
+  .pulsante--primario:hover::before { opacity: 1; }
+  .pulsante--secondario:hover::before { opacity: 0.08; }
+  .pulsante:hover .pulsante__icona--freccia-destra { transform: translateX(4px); }
+}

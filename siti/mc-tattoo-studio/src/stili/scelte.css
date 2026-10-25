@@ -1,0 +1,75 @@
+/* src/stili/scelte.css — GruppoScelte: pillole con l'evidenza che scivola sotto la voce scelta. */
+
+.scelte {
+  min-width: 0;                        /* un fieldset non deve allargare la griglia */
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.scelte__legenda {
+  display: block;
+  padding: 0;
+  margin-bottom: var(--s-3);
+}
+
+/* Nel modulo la legenda è come le etichette dei campi; nei filtri è una t-etichetta secondaria. */
+.scelte--radio .scelte__legenda {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--testo);
+}
+
+.scelte__elenco {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.scelte__voce {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--bersaglio-minimo);
+  padding: 0 18px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-pillola);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--testo);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Il colore del testo cambia di colpo; l'evidenza scivola (Motion, 0,3 s). */
+.scelte__voce[data-scelta="true"] {
+  color: var(--evidenza-testo);
+  border-color: var(--evidenza-sfondo);
+}
+
+.scelte__evidenza {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: var(--evidenza-sfondo);
+  z-index: -1;
+}
+
+.scelte__voce:has(input:focus-visible),
+.scelte__voce:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) {
+  .scelte__voce:not([data-scelta="true"]):hover { border-color: var(--testo); }
+}
+
+/* Contrasto elevato di Windows: lo sfondo dell'evidenza verrebbe tolto, la scelta si segna con i colori di sistema. */
+@media (forced-colors: active) {
+  .scelte__evidenza { forced-color-adjust: none; background: Highlight; }
+  .scelte__voce[data-scelta="true"] { forced-color-adjust: none; color: HighlightText; border-color: Highlight; }
+}

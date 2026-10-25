@@ -1,0 +1,188 @@
+/* src/stili/token.css — unica fonte di colori, caratteri, misure e tempi. */
+
+/* Caratteri di riserva con metriche vicine: riducono lo spostamento quando arrivano i font veri. */
+@font-face {
+  font-family: "Bodoni Riserva";
+  src: local("Georgia");
+  size-adjust: 90%;
+}
+@font-face {
+  font-family: "Grotesk Riserva";
+  src: local("Arial");
+  size-adjust: 101%;
+}
+
+:root {
+  /* ---------- Colori: SOLO grigi neutri (R = G = B) ---------- */
+  --bianco: #FFFFFF;      /* passepartout, biglietto, testo su pulsante nero */
+  --carta: #F0F0F0;       /* sfondo delle sezioni chiare; testo principale su nero */
+  --nebbia: #E3E3E3;      /* sfondo della galleria */
+  --perla: #D6D6D6;       /* pulsante primario chiaro al passaggio (su nero) */
+  --filo: #CCCCCC;        /* linee sottili su chiaro; "lavato" nei disegni (decorativo) */
+  --argento: #B3B3B3;     /* copia stencil e puntinato chiaro nei disegni (decorativo) */
+  --piombo: #7A7A7A;      /* bordi funzionali su qualsiasi sfondo (>= 3,3:1). MAI testo */
+  --grafite: #575757;     /* testo secondario su chiaro */
+  --ferro: #444444;       /* copia stencil su nero (decorativo) */
+  --ardesia: #333333;     /* pulsante primario nero al passaggio (su chiaro) */
+  --fumo: #2E2E2E;        /* linee sottili su nero; "lavato" su nero (decorativo) */
+  --carbone: #1C1C1C;     /* superfici su nero: anteprima, scheda */
+  --cenere: #A3A3A3;      /* testo secondario su nero */
+  --inchiostro: #111111;  /* testo principale su chiaro, tratto dei disegni, pulsante primario */
+  --notte: #0A0A0A;       /* sfondo delle sezioni nere */
+
+  /* ---------- Alias semantici: tema chiaro (predefinito) ---------- */
+  --sfondo: var(--carta);
+  --superficie: var(--bianco);
+  --testo: var(--inchiostro);
+  --testo-2: var(--grafite);
+  --linea: var(--filo);
+  --bordo: var(--piombo);
+  --focus: var(--inchiostro);
+  --primario-sfondo: var(--inchiostro);
+  --primario-testo: var(--bianco);
+  --primario-sopra: var(--ardesia);
+  --evidenza-sfondo: var(--inchiostro);   /* pillola selezionata */
+  --evidenza-testo: var(--bianco);
+  --tratto: var(--inchiostro);            /* linee dei disegni */
+  --pieno: var(--inchiostro);             /* campiture nere dei disegni */
+  --lavato: var(--filo);                  /* campiture grigie dei disegni */
+  --tratto-2: var(--argento);             /* puntinato chiaro, schizzo */
+  --stencil: var(--argento);              /* copia stencil sfalsata */
+  --velo: rgb(10 10 10 / 0.92);           /* sfondo dietro la scheda */
+
+  /* ---------- Caratteri ---------- */
+  --font-titoli: "Bodoni Moda", "Bodoni Riserva", Georgia, "Times New Roman", serif;
+  --font-testo: "Schibsted Grotesk", "Grotesk Riserva", Arial, Helvetica, sans-serif;
+
+  /* ---------- Scala tipografica ---------- */
+  --fs-marchio: clamp(5.5rem, 2rem + 18vw, 14rem);           /* "M.C." — Bodoni 400, interl. 0.82, -0.03em */
+  --fs-h2: clamp(2.5rem, 1.5rem + 4.2vw, 5.5rem);            /* titoli di sezione — Bodoni 400, 1.0, -0.02em */
+  --fs-indice: clamp(2.25rem, 0.9rem + 5.6vw, 6.5rem);       /* nomi dell'indice — Bodoni 400, 0.95, -0.02em */
+  --fs-manifesto: clamp(1.75rem, 1.1rem + 2.6vw, 3.5rem);    /* manifesto — Bodoni 400, 1.15, -0.01em */
+  --fs-numero: clamp(3rem, 2rem + 4vw, 6rem);                /* numeri dei passi — Bodoni 400, 1 */
+  --fs-h3: clamp(1.75rem, 1.4rem + 0.9vw, 2.25rem);          /* h3, titolo scheda — Bodoni 400, 1.15, -0.005em */
+  --fs-domanda: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);     /* domande — Grotesk 500, 1.35 */
+  --fs-intro: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);       /* paragrafo introduttivo — Grotesk 400, 1.5 */
+  --fs-corpo: clamp(1rem, 0.96rem + 0.18vw, 1.0625rem);      /* corpo — Grotesk 400, 1.65 */
+  --fs-piccolo: 0.875rem;                                    /* didascalie — Grotesk 400, 1.5, 0.01em */
+  --fs-etichetta: 0.8125rem;                                 /* etichette — Grotesk 500 MAIUSCOLO, 1.2, 0.16em */
+  --fs-pulsante: 0.8125rem;                                  /* pulsanti — Grotesk 500 MAIUSCOLO, 1, 0.08em */
+  --fs-campo: max(1rem, 16px);                               /* campi: mai sotto 16px (niente zoom su iPhone) */
+
+  --interlinea-marchio: 0.82;
+  --interlinea-titolo: 1;
+  --interlinea-indice: 0.95;
+  --interlinea-manifesto: 1.15;
+  --interlinea-h3: 1.15;
+  --interlinea-intro: 1.5;
+  --interlinea-corpo: 1.65;
+  --spaziatura-etichetta: 0.16em;
+  --spaziatura-pulsante: 0.08em;
+  --misura: 60ch;                                            /* lunghezza massima delle righe */
+
+  /* ---------- Spaziature (base 4/8) ---------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 96px;
+  --s-10: 128px;
+  --spazio-sezione: clamp(5rem, 3rem + 7vw, 10rem);          /* padding verticale delle sezioni */
+
+  /* ---------- Impaginazione ---------- */
+  --contenitore: 1440px;
+  --margine: clamp(1rem, 4vw, 5rem);                         /* 16px sul telefono */
+  --gap: clamp(1rem, 2vw, 2rem);
+  --altezza-barra: 56px;                                     /* 64px da 1024px in su */
+  --altezza-barra-prenota: 76px;                             /* 52 + 12 + 12, più la zona sicura */
+  --zona-sicura-basso: env(safe-area-inset-bottom, 0px);
+  --bersaglio-minimo: 44px;
+  --altezza-pulsante: 52px;
+  --altezza-pulsante-piccolo: 44px;
+  --altezza-campo: 48px;
+  --sfalsamento-galleria: 0px;                               /* 64px tablet, 96px desktop */
+
+  /* ---------- Raggi ---------- */
+  --raggio-nessuno: 0;
+  --raggio-piccolo: 2px;
+  --raggio-pillola: 999px;
+
+  /* ---------- Ombre (solo grigi, mai animate) ---------- */
+  --ombra-carta: 0 1px 2px rgb(0 0 0 / 0.08), 0 16px 32px -16px rgb(0 0 0 / 0.28);
+  --ombra-anteprima: 0 24px 48px -12px rgb(0 0 0 / 0.6);
+
+  /* ---------- Livelli ---------- */
+  --z-base: 0;
+  --z-sopra: 1;
+  --z-anteprima: 50;
+  --z-barra-prenota: 90;
+  --z-menu: 200;
+  --z-barra: 210;          /* sopra il menu: "Chiudi" resta nella barra */
+  --z-scheda: 300;
+  --z-avviso: 400;
+  --z-salta: 500;
+
+  /* ---------- Tempi e curve (gli stessi di src/movimento/costanti.ts) ---------- */
+  --durata-istante: 120ms;
+  --durata-micro: 200ms;
+  --durata-rapida: 300ms;
+  --durata-media: 600ms;
+  --durata-lenta: 900ms;
+  --ease-uscita: cubic-bezier(0.22, 1, 0.36, 1);   /* comparse, rivelazioni */
+  --ease-tratto: cubic-bezier(0.65, 0, 0.35, 1);   /* linee che si disegnano */
+  --ease-rapida: cubic-bezier(0.33, 1, 0.68, 1);   /* passaggio del mouse, piccoli riscontri */
+  --ease-via: cubic-bezier(0.55, 0, 1, 0.45);      /* uscite */
+}
+
+@media (min-width: 640px) {
+  :root { --sfalsamento-galleria: 64px; }
+}
+@media (min-width: 1024px) {
+  :root { --altezza-barra: 64px; --sfalsamento-galleria: 96px; }
+}
+
+/* ---------- Tema nero: si applica a ogni sezione con data-tema="nero" ---------- */
+[data-tema="nero"] {
+  --sfondo: var(--notte);
+  --superficie: var(--carbone);
+  --testo: var(--carta);
+  --testo-2: var(--cenere);
+  --linea: var(--fumo);
+  --bordo: var(--piombo);
+  --focus: var(--bianco);
+  --primario-sfondo: var(--carta);
+  --primario-testo: var(--notte);
+  --primario-sopra: var(--perla);
+  --evidenza-sfondo: var(--carta);
+  --evidenza-testo: var(--notte);
+  --tratto: var(--carta);
+  --pieno: var(--carta);
+  --lavato: var(--fumo);
+  --tratto-2: var(--piombo);
+  --stencil: var(--ferro);
+}
+
+/* Il tema chiaro si può forzare dentro una sezione nera (pannello della rondine, biglietto). */
+[data-tema="chiaro"] {
+  --sfondo: var(--carta);
+  --superficie: var(--bianco);
+  --testo: var(--inchiostro);
+  --testo-2: var(--grafite);
+  --linea: var(--filo);
+  --bordo: var(--piombo);
+  --focus: var(--inchiostro);
+  --primario-sfondo: var(--inchiostro);
+  --primario-testo: var(--bianco);
+  --primario-sopra: var(--ardesia);
+  --evidenza-sfondo: var(--inchiostro);
+  --evidenza-testo: var(--bianco);
+  --tratto: var(--inchiostro);
+  --pieno: var(--inchiostro);
+  --lavato: var(--filo);
+  --tratto-2: var(--argento);
+  --stencil: var(--argento);
+}

@@ -1,3 +1,13 @@
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { motion } from 'motion/react';
-createRoot(document.getElementById('radice')!).render(<motion.h1 animate={{ opacity: 1 }} initial={{ opacity: 0 }}>Prova</motion.h1>);
+import './stili/token.css';
+import './stili/base.css';
+import { App } from './App.js';
+
+const radice = document.getElementById('radice');
+if (!radice) throw new Error('Manca l’elemento #radice in index.html');
+createRoot(radice).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);

@@ -1,0 +1,88 @@
+/* src/stili/base.css — reset, tipografia di base, griglia, focus, utilità, movimento ridotto e stampa. */
+
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scrollbar-gutter: stable;           /* bloccare lo scorrimento non sposta la pagina */
+  background: var(--notte);           /* niente bordi bianchi oltre la fine della pagina */
+}
+html.pagina-bloccata { overflow: hidden; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body {
+  overflow-x: clip;                   /* MAI hidden: romperebbe position: sticky */
+  font-family: var(--font-testo);
+  font-size: var(--fs-corpo);
+  line-height: var(--interlinea-corpo);
+  color: var(--testo);
+  background: var(--sfondo);
+  -webkit-font-smoothing: antialiased;
+  font-optical-sizing: auto;
+}
+img, svg { display: block; max-width: 100%; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+[data-tema] { background: var(--sfondo); color: var(--testo); }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+[tabindex="-1"]:focus-visible { outline: none; }  /* titoli che ricevono il focus da programma */
+::selection { background: var(--testo); color: var(--sfondo); }
+
+.contenitore { width: 100%; max-width: var(--contenitore); margin-inline: auto; padding-inline: var(--margine); }
+.griglia { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: var(--gap); }
+@media (min-width: 640px) { .griglia { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .griglia { grid-template-columns: repeat(12, minmax(0, 1fr)); } }
+
+.sezione { padding-block: var(--spazio-sezione); scroll-margin-top: var(--altezza-barra); position: relative; }
+
+.t-h2 { font-family: var(--font-titoli); font-weight: 400; font-size: var(--fs-h2); line-height: var(--interlinea-titolo); letter-spacing: -0.02em; text-wrap: balance; }
+.t-h3 { font-family: var(--font-titoli); font-weight: 400; font-size: var(--fs-h3); line-height: var(--interlinea-h3); letter-spacing: -0.005em; }
+.t-intro { font-size: var(--fs-intro); line-height: var(--interlinea-intro); max-width: var(--misura); text-wrap: pretty; }
+.t-corpo { font-size: var(--fs-corpo); line-height: var(--interlinea-corpo); max-width: var(--misura); }
+.t-piccolo { font-size: var(--fs-piccolo); line-height: 1.5; letter-spacing: 0.01em; color: var(--testo-2); }
+.t-etichetta { font-size: var(--fs-etichetta); font-weight: 500; line-height: 1.2; letter-spacing: var(--spaziatura-etichetta); text-transform: uppercase; }
+.t-secondario { color: var(--testo-2); }
+em { font-style: italic; padding-inline: 0.06em; }
+.t-h2 em, .t-h3 em { font-family: var(--font-titoli); }
+
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Le transizioni CSS si spengono con il movimento ridotto; Motion è gestito da MotionConfig e da useMovimentoRidotto. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* In stampa: carta bianca e inchiostro, anche nelle sezioni nere (i colori vengono solo da token.css). */
+@media print {
+  .navigazione, .barra-prenota, .menu-telefono, .fascia-prova, .apertura__scorri { display: none !important; }
+  [data-tema="nero"] {
+    --sfondo: var(--bianco);
+    --superficie: var(--bianco);
+    --testo: var(--inchiostro);
+    --testo-2: var(--grafite);
+    --linea: var(--filo);
+    --focus: var(--inchiostro);
+    --primario-sfondo: var(--inchiostro);
+    --primario-testo: var(--bianco);
+    --evidenza-sfondo: var(--inchiostro);
+    --evidenza-testo: var(--bianco);
+    --tratto: var(--inchiostro);
+    --pieno: var(--inchiostro);
+    --lavato: var(--filo);
+    --tratto-2: var(--argento);
+    --stencil: var(--argento);
+  }
+  html, body, [data-tema] { background: var(--bianco) !important; color: var(--inchiostro) !important; }
+  * { opacity: 1 !important; }
+  /* Dentro gli SVG le trasformazioni sono geometria (testi ruotati dei disegni), non movimento: restano. */
+  :not(svg *) { transform: none !important; }
+}

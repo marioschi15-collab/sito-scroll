@@ -1,0 +1,42 @@
+/* src/stili/etichetta.css — Etichetta, IntestazioneSezione, LineaCrescente, Rivela. */
+
+/* ---------- LineaCrescente ---------- */
+.linea-crescente {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: var(--linea);
+  transform-origin: left center;
+}
+.linea-crescente--centro { transform-origin: center center; }
+
+/* ---------- Etichetta: linea sopra, testo 12px sotto ---------- */
+.etichetta {
+  grid-column: 1 / -1;
+  margin-bottom: var(--s-6);
+}
+.etichetta__testo { margin-top: var(--s-3); }
+
+/* ---------- IntestazioneSezione ---------- */
+.intestazione {
+  grid-column: 1 / -1;
+  margin-bottom: var(--s-8);
+}
+@media (min-width: 1024px) {
+  .intestazione { margin-bottom: var(--s-9); }
+}
+.intestazione__titolo { max-width: 18ch; }
+.intestazione__intro { margin-top: var(--s-5); }
+/* Quello che segue titolo e introduzione (i children, es. un link) sta alla stessa distanza. */
+.intestazione__titolo ~ * { margin-top: var(--s-5); }
+
+/* ---------- Rivela: parole che salgono da sotto una maschera ---------- */
+.rivela__maschera {
+  display: inline-block;
+  overflow: hidden;
+  padding-block: 0.12em;     /* non taglia le lettere che scendono sotto la riga né gli accenti maiuscoli */
+  margin-block: -0.12em;
+  vertical-align: top;
+}
+.rivela__parola { display: inline-block; }
+.rivela__parola em { padding-inline: 0.06em; }

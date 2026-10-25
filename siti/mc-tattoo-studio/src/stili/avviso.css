@@ -1,0 +1,24 @@
+/* src/stili/avviso.css — AvvisoBreve: pillola fissa in basso, sopra la barra "Prenota" del telefono. */
+
+.avviso__pillola {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(var(--altezza-barra-prenota) + var(--zona-sicura-basso) + var(--s-4));
+  z-index: var(--z-avviso);
+  width: fit-content;
+  max-width: calc(100% - 2 * var(--margine));
+  margin-inline: auto;
+  padding: var(--s-3) 20px;
+  border: 1px solid transparent;       /* con forced-colors diventa il contorno della pillola */
+  border-radius: var(--raggio-pillola);
+  background: var(--inchiostro);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Colore forzato: t-piccolo altrimenti userebbe il testo secondario del tema. */
+.avviso .avviso__pillola { color: var(--bianco); }
+
+@media (min-width: 1024px) {
+  .avviso__pillola { bottom: var(--s-6); }
+}
