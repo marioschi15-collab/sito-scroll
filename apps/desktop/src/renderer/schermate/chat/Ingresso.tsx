@@ -11,6 +11,8 @@ interface Props {
   onInvia(testo: string): Promise<void>;
   onNuovoArgomento(): void;
   inCorso: boolean;
+  /** Una domanda dell'assistente aspetta risposta: il testo scritto qui risponde a lei (lo dice il segnaposto). */
+  domandaAperta?: boolean;
   onInterrompi(): void;
   mostraConsigliati: boolean;
 }
@@ -28,7 +30,7 @@ export function nomeFile(percorso: string): string {
  * Casella di scrittura: Invio invia, Maiusc+Invio va a capo; "/nuova" apre un nuovo argomento.
  * Accanto, durante le presentazioni, il pulsante fisso [Vai con i consigliati] che invia esattamente quel testo.
  */
-export function Ingresso({ allegati, onTogliAllegato, bozza, onBozzaConsumata, onInvia, onNuovoArgomento, inCorso, onInterrompi, mostraConsigliati }: Props): ReactNode {
+export function Ingresso({ allegati, onTogliAllegato, bozza, onBozzaConsumata, onInvia, onNuovoArgomento, inCorso, onInterrompi, mostraConsigliati, domandaAperta }: Props): ReactNode {
   const [testo, setTesto] = useState('');
   const area = useRef<HTMLTextAreaElement>(null);
 
@@ -82,7 +84,7 @@ export function Ingresso({ allegati, onTogliAllegato, bozza, onBozzaConsumata, o
           className="area-testo"
           rows={2}
           value={testo}
-          placeholder={finestra.chat.segnaposto}
+          placeholder={domandaAperta ? finestra.chat.segnapostoDomanda : finestra.chat.segnaposto}
           maxLength={100_000}
           onChange={(e) => setTesto(e.target.value)}
           onKeyDown={tasto}

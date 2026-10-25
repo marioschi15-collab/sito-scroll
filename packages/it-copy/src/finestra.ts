@@ -52,6 +52,8 @@ export const finestra = {
     assistenteSenzaNome: 'Il tuo assistente',
     tu: 'Tu',
     segnaposto: 'Scrivi qui. Invio per inviare, Maiusc+Invio per andare a capo.',
+    /** Segnaposto della casella mentre una domanda aspetta risposta: il testo scritto risponde a quella domanda. */
+    segnapostoDomanda: 'Scrivi qui la tua risposta, oppure tocca una scelta qui sopra.',
     invia: 'Invia',
     interrompi: 'Fermati',
     nuovoArgomento: 'Nuovo argomento',
@@ -75,10 +77,8 @@ export const finestra = {
       confermaScelte: 'Conferma le scelte',
       rispostaData: (risposte: readonly string[]): string => `Hai risposto: ${risposte.join(', ')}`,
       inAttesa: 'Aspetto la tua risposta qui sotto.',
-      /** Casella dentro il riquadro: il testo va insieme alle scelte (es. «Del tu» + il nome). */
-      campo: 'La tua risposta, con parole tue',
-      invia: 'Rispondi',
-      suggerimentoCampo: 'Se scrivi qui e poi tocchi una scelta, arrivano insieme.',
+      /** Sotto le chip: si risponde anche con parole proprie, nella casella in fondo (una sola casella in tutta la chat). */
+      suggerimento: 'Oppure scrivi la tua risposta nella casella qui sotto.',
       massimo: (n: number): string => `Puoi sceglierne al massimo ${n}.`,
       chiusa: 'Questa domanda non aspetta più una risposta.',
     },

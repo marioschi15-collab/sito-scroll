@@ -35,8 +35,10 @@ vengono da `@spalla/it-copy` (`finestra`, `onboarding`, `cervello`, `telegram`, 
   (`cambiaModalita('abbonamento')` + `verifica()`). Alla fine `app.stato()` e si apre la chat.
 - **Chat**: Invio invia, Maiusc+Invio va a capo, `/nuova` (o [Nuovo argomento]) chiama `chat.nuovaSessione()`. Se c'è
   una domanda APERTA dello scambio in corso, il testo scritto è la risposta (`chat.rispondi`), insieme alle chip già
-  toccate. Ogni domanda ha una casella nel riquadro: testo e chip arrivano insieme (Q1: «Del tu, Marco»); scelta
-  singola: un tocco risponde; multipla: si conferma, al massimo `maxSelezioni` se c'è («fino a tre»). Le domande di uno
+  toccate. C'è una sola casella in tutta la chat: il riquadro della domanda ha solo le chip e il suggerimento di
+  scrivere in fondo (mentre la domanda aspetta, il segnaposto lo dice). Scelta singola: un tocco risponde; multipla: si
+  conferma, al massimo `maxSelezioni` se c'è («fino a tre»). Mentre l'assistente aspetta una risposta o un permesso
+  non si mostra «Ci lavoro…», e la riga «Ti faccio una domanda» non compare (c'è già il riquadro). Le domande di uno
   scambio finito, fermato o chiuso (`evento.domandaChiusa`, facoltativo) si spengono e non ricevono più il testo.
   Permessi come schede con chi agisce, descrizione, il comando o il testo PER INTERO in un riquadro scorrevole, poi la
   spiegazione dell'assistente etichettata come sua, [Consenti] [Nega] (`permessi.decidi`; [Consenti] spento se il

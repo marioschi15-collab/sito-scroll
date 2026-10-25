@@ -5,7 +5,7 @@ import { Pulsante } from '../../componenti/Pulsante.js';
 import { apiAllegati, messaggioErrore } from '../../stato/api.js';
 import { useChat } from '../../stato/chatContesto.js';
 import { useStore } from '../../stato/store.js';
-import type { Blocco } from '../../stato/chat.js';
+import { domandaInAttesa, type Blocco } from '../../stato/chat.js';
 import { Domanda } from './Domanda.js';
 import { Ingresso } from './Ingresso.js';
 import { MessaggioAssistente, MessaggioUtente, RigaFine, RigaSistema, RigaStrumento } from './Messaggio.js';
@@ -83,6 +83,9 @@ export function Chat(): ReactNode {
   }
 
   const attesaPrimaParola = chat.stato.ritualeInCorso && !blocchi.some((b) => b.tipo === 'assistente');
+  // Quando l'assistente aspetta una risposta o un permesso, tocca all'utente: niente "Ci lavoro…" (prova su Windows, 25/10).
+  const domandaAperta = Boolean(domandaInAttesa(chat.stato));
+  const tocaAllUtente = domandaAperta || blocchi.some((b) => b.tipo === 'permesso' && !b.esito);
 
   return (
     <section
@@ -111,7 +114,7 @@ export function Chat(): ReactNode {
             <VoceChat key={b.id} blocco={b} nome={nome} />
           ))}
           {attesaPrimaParola ? <p className="riga-sistema">{finestra.chat.presentazioniInCorso}</p> : null}
-          {chat.stato.scambioInCorso && !attesaPrimaParola ? (
+          {chat.stato.scambioInCorso && !attesaPrimaParola && !tocaAllUtente ? (
             <p className="riga-strumento" role="status">
               {finestra.chat.inCorso}
             </p>
@@ -141,6 +144,7 @@ export function Chat(): ReactNode {
         }}
         onNuovoArgomento={() => void chat.nuovoArgomento()}
         inCorso={Boolean(chat.stato.scambioInCorso)}
+        domandaAperta={domandaAperta}
         onInterrompi={() => void chat.interrompi()}
         mostraConsigliati={chat.mostraConsigliati}
       />

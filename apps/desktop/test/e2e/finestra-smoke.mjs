@@ -200,9 +200,11 @@ async function onboardingVero(pagina, titolo, pulsante) {
     if (!attesa.domanda.test(testoDomanda)) throw new Error(`attesa ${attesa.id} (${attesa.domanda}), arrivata: «${testoDomanda.slice(0, 200)}»`);
     const chip = riquadro.locator('button.chip:not([disabled])', { hasText: attesa.chip });
     if ((await chip.count()) === 0) throw new Error(`${attesa.id}: manca la chip ${attesa.chip} in «${testoDomanda.slice(0, 200)}»`);
-    await riquadro.getByLabel(finestra.chat.domanda.campo).fill(attesa.testo);
-    await chip.first().click();
-    passo(`  → "${attesa.testo}" + chip ${attesa.chip}`);
+    // Una sola casella (quella in fondo): il testo scritto lì risponde alla domanda aperta.
+    const casella = pagina.getByRole('textbox', { name: finestra.chat.etichettaCasella });
+    await casella.fill(attesa.testo);
+    await casella.press('Enter');
+    passo(`  → "${attesa.testo}" dalla casella in fondo (chip ${attesa.chip} presente)`);
     const conferma = riquadro.getByText(finestra.chat.domanda.rispostaData([]).replace(/:\s*$/, ''), { exact: false });
     await conferma.waitFor({ timeout: ATTESA });
     const data = await conferma.innerText();

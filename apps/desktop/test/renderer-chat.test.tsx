@@ -237,22 +237,42 @@ describe('la chat nella finestra', () => {
     expect(finto.api.chat.rispondi).toHaveBeenCalledWith({ id: 'd1', scambioId: 's1', risposte: ['Diretto e pratico', 'Formale'] });
   });
 
-  it('testo + chip nello stesso riquadro: il nome scritto arriva insieme a [Del tu]', async () => {
+  it('una sola casella: la chip risponde da sola, il testo si scrive in fondo e risponde alla domanda aperta', async () => {
     const finto = creaSpallaFinta(COMPLETATO);
     await apriChat(finto);
     const utente = userEvent.setup();
     const q1: DomandaUtente = { id: 'q1', testo: 'Come vuoi che ti chiami? E ci diamo del tu?', intestazione: 'Nome', opzioni: [{ etichetta: 'Del tu' }, { etichetta: 'Del lei' }], multiSelezione: false };
     act(() => finto.emetti('domanda', { scambioId: 's1', domanda: q1 }));
     const gruppo = screen.getByRole('group', { name: 'Nome' });
-    await utente.type(within(gruppo).getByLabelText(finestra.chat.domanda.campo), 'Marco');
+    // Nel riquadro nessuna casella di testo: solo le scelte e il suggerimento verso la casella in fondo.
+    expect(within(gruppo).queryByRole('textbox')).toBeNull();
+    expect(within(gruppo).getByText(finestra.chat.domanda.suggerimento)).toBeTruthy();
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    const casella = screen.getByRole('textbox', { name: finestra.chat.etichettaCasella }) as HTMLTextAreaElement;
+    expect(casella.placeholder).toBe(finestra.chat.segnapostoDomanda);
     await utente.click(within(gruppo).getByRole('button', { name: 'Del tu' }));
-    expect(finto.api.chat.rispondi).toHaveBeenCalledWith({ id: 'q1', scambioId: 's1', risposte: ['Del tu', 'Marco'] });
+    expect(finto.api.chat.rispondi).toHaveBeenCalledWith({ id: 'q1', scambioId: 's1', risposte: ['Del tu'] });
 
-    // Solo testo nel riquadro, con Invio.
+    // Solo testo, dalla casella in fondo, con Invio.
     act(() => finto.emetti('domanda', { scambioId: 's1', domanda: { ...q1, id: 'q2', intestazione: 'Il mio nome' } }));
-    const secondo = screen.getByRole('group', { name: 'Il mio nome' });
-    await utente.type(within(secondo).getByLabelText(finestra.chat.domanda.campo), 'Bruno{Enter}');
+    await utente.type(casella, 'Bruno{Enter}');
     expect(finto.api.chat.rispondi).toHaveBeenLastCalledWith({ id: 'q2', scambioId: 's1', risposte: ['Bruno'] });
+  });
+
+  it('mentre aspetta una risposta: niente "Ci lavoro…" e niente riga "Ti faccio una domanda"', async () => {
+    const finto = creaSpallaFinta(COMPLETATO);
+    await apriChat(finto);
+    const utente = userEvent.setup();
+    await utente.type(screen.getByRole('textbox', { name: finestra.chat.etichettaCasella }), 'ciao{Enter}');
+    const scambioId = (finto.api.chat.invia as unknown as { mock: { calls: [{ scambioId: string }][] } }).mock.calls[0]![0].scambioId;
+    expect(screen.getByText(finestra.chat.inCorso)).toBeTruthy();
+    act(() => finto.emetti('eventoScambio', { scambioId, evento: { tipo: 'strumento', nome: 'AskUserQuestion', descrizione: 'Ti faccio una domanda' } }));
+    act(() => finto.emetti('domanda', { scambioId, domanda: DOMANDA }));
+    expect(screen.queryByText('Ti faccio una domanda')).toBeNull();
+    expect(screen.queryByText(finestra.chat.inCorso)).toBeNull();
+    await utente.click(screen.getByRole('button', { name: 'Formale' }));
+    act(() => finto.emetti('eventoScambio', { scambioId, evento: { tipo: 'strumento', nome: 'Read', descrizione: 'Leggo profilo/UTENTE.md' } }));
+    expect(screen.getByText(finestra.chat.inCorso)).toBeTruthy();
   });
 
   it('scelta multipla: «fino a tre» si rispetta; le chip toccate non si perdono scrivendo nella casella in fondo', async () => {

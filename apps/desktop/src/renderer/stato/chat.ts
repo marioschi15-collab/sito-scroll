@@ -139,6 +139,8 @@ export function riduttoreChat(stato: StatoChat, azione: AzioneChat): StatoChat {
           return testo(stato, scambioId, evento);
         case 'strumento': {
           const s = { ...stato, blocchi: chiudiAperti(stato.blocchi, scambioId) };
+          // La domanda si vede già come riquadro con le chip: la riga "Ti faccio una domanda" sarebbe un doppione.
+          if (evento.nome === 'AskUserQuestion') return s;
           return aggiungi(s, (id) => ({
             tipo: 'strumento',
             id,

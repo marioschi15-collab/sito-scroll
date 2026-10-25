@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { finestra, permessi } from '@spalla/it-copy';
 import type { DomandaUtente } from '../../../nucleo/contratti.js';
 import { Pulsante } from '../../componenti/Pulsante.js';
@@ -15,40 +15,27 @@ interface Props {
 }
 
 /**
- * Una domanda dell'assistente resa a chip, con una casella nel riquadro (docs/05 §1.2):
- * - scelta singola: un tocco risponde; se nella casella c'è del testo, chip e testo arrivano insieme
- *   (Q1 «Come ti chiamo? Del tu?» → «Del tu, Marco»);
- * - scelta multipla: si toccano le chip (al massimo `maxSelezioni`, se c'è) e si conferma; il testo si aggiunge;
- * - Invio nella casella risponde con il testo (e le scelte già toccate). Le scelte non si perdono mai.
+ * Una domanda dell'assistente resa a chip (docs/05 §1.2). Nel riquadro solo le scelte: la risposta con parole
+ * proprie si scrive nella casella in fondo alla chat, l'unica, che risponde alla domanda aperta (chatContesto.invia).
+ * Prima c'era una seconda casella nel riquadro: nella prova su Windows del 25/10 due caselle confondevano.
+ * - scelta singola: un tocco risponde;
+ * - scelta multipla: si toccano le chip (al massimo `maxSelezioni`, se c'è) e si conferma; se invece si scrive
+ *   nella casella in fondo, le scelte già toccate arrivano insieme al testo. Le scelte non si perdono mai.
  */
 export function Domanda({ domanda, risposta, chiusa: chiusaSenzaRisposta, selezione = [], onSeleziona, onRispondi }: Props): ReactNode {
-  const [testo, setTesto] = useState('');
-  const idCampo = useId();
   const risposto = risposta !== undefined;
   const chiusa = risposto || chiusaSenzaRisposta === true;
   const massimo = domanda.multiSelezione ? domanda.maxSelezioni : undefined;
   const pieno = massimo !== undefined && selezione.length >= massimo;
 
-  function conTesto(scelte: string[]): string[] {
-    const t = testo.trim();
-    return t ? [...scelte, t] : scelte;
-  }
-
   function tocca(etichetta: string): void {
     if (chiusa) return;
     if (!domanda.multiSelezione) {
-      onRispondi(conTesto([etichetta]));
+      onRispondi([etichetta]);
       return;
     }
     if (selezione.includes(etichetta)) onSeleziona(selezione.filter((e) => e !== etichetta));
     else if (!pieno) onSeleziona([...selezione, etichetta]);
-  }
-
-  function inviaTesto(e: FormEvent): void {
-    e.preventDefault();
-    if (chiusa) return;
-    const risposte = conTesto(domanda.multiSelezione ? selezione : []);
-    if (risposte.length > 0) onRispondi(risposte);
   }
 
   return (
@@ -85,34 +72,14 @@ export function Domanda({ domanda, risposta, chiusa: chiusaSenzaRisposta, selezi
           {finestra.chat.domanda.chiusa}
         </p>
       ) : (
-        <form className="blocco-domanda__risposta" onSubmit={inviaTesto} noValidate>
-          <label className="campo__etichetta piccolo" htmlFor={idCampo}>
-            {finestra.chat.domanda.campo}
-          </label>
-          <div className="riga-azioni" style={{ marginTop: 4 }}>
-            <input
-              id={idCampo}
-              className="ingresso"
-              type="text"
-              value={testo}
-              maxLength={2000}
-              onChange={(e) => setTesto(e.target.value)}
-              aria-describedby={`${idCampo}-nota`}
-            />
-            {domanda.multiSelezione ? (
-              <Pulsante variante="primario" piccolo type="submit" disabled={selezione.length === 0 && !testo.trim()}>
-                {finestra.chat.domanda.confermaScelte}
-              </Pulsante>
-            ) : (
-              <Pulsante piccolo type="submit" disabled={!testo.trim()}>
-                {finestra.chat.domanda.invia}
-              </Pulsante>
-            )}
-          </div>
-          <span id={`${idCampo}-nota`} className="attenuato piccolo">
-            {domanda.multiSelezione ? permessi.domanda.scriviRisposta : finestra.chat.domanda.suggerimentoCampo}
-          </span>
-        </form>
+        <div className="riga-azioni" style={{ marginTop: 4 }}>
+          {domanda.multiSelezione ? (
+            <Pulsante variante="primario" piccolo onClick={() => onRispondi(selezione)} disabled={selezione.length === 0}>
+              {finestra.chat.domanda.confermaScelte}
+            </Pulsante>
+          ) : null}
+          <span className="attenuato piccolo">{finestra.chat.domanda.suggerimento}</span>
+        </div>
       )}
     </div>
   );
