@@ -1,0 +1,250 @@
+/* src/stili/base.css — caratteri, colori vivi, impaginazione di base.
+   Tavolozza: nero, grigi, bianco carta e un solo rosso giapponese (#C8102E). */
+
+@font-face {
+  font-family: "Serif Riserva";
+  src: local("Georgia");
+  size-adjust: 92%;
+}
+
+:root {
+  /* Colori vivi: la regia li riscrive mentre si scorre (regia/Regia.tsx). */
+  --sfondo: #0A0A0A;
+  --testo: #F4F2EE;
+  --accento: #C8102E;
+  --bande: 0;
+
+  --nero: #0A0A0A;
+  --inchiostro: #111111;
+  --grafite: #2B2B2B;
+  --piombo: #6B6B6B;
+  --nebbia: #BDBDBD;
+  --cenere: #E6E4E0;
+  --carta: #F4F2EE;
+  --rosso: #C8102E;
+
+  --f-titoli: "Instrument Serif", "Serif Riserva", Georgia, serif;
+  --f-testo: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --f-mano: "Caveat", "Segoe Print", cursive;
+
+  --margine: clamp(1.1rem, 0.5rem + 2.4vw, 3rem);
+  --fs-gigante: clamp(4.2rem, 1rem + 13vw, 15.5rem);
+  --fs-titolo: clamp(3.4rem, 1.4rem + 7vw, 9rem);
+  --fs-medio: clamp(1.9rem, 1.1rem + 3vw, 4.2rem);
+  --fs-corpo: clamp(1rem, 0.95rem + 0.25vw, 1.18rem);
+  --fs-piccolo: 0.72rem;
+
+  --curva: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--sfondo);
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: clip;
+}
+html.bloccata {
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  background: var(--sfondo);
+  color: var(--testo);
+  font-family: var(--f-testo);
+  font-size: var(--fs-corpo);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+h1,
+h2,
+h3,
+p,
+dl,
+dd,
+ol {
+  margin: 0;
+}
+
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--f-titoli);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 0.9;
+}
+
+::selection {
+  background: var(--rosso);
+  color: var(--carta);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accento);
+  outline-offset: 4px;
+}
+
+.etichetta {
+  font-family: var(--f-testo);
+  font-size: var(--fs-piccolo);
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.corsivo {
+  font-family: var(--f-titoli);
+  font-style: italic;
+}
+
+.in-rosso {
+  color: var(--rosso);
+}
+
+.salta {
+  position: fixed;
+  left: var(--margine);
+  top: 0.75rem;
+  z-index: 200;
+  padding: 0.7rem 1rem;
+  background: var(--testo);
+  color: var(--sfondo);
+  transform: translateY(-200%);
+  transition: transform 0.3s var(--curva);
+}
+.salta:focus-visible {
+  transform: none;
+}
+
+.fondale {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--sfondo);
+}
+
+/* ---------- Titoli che salgono parola per parola ---------- */
+.rivela {
+  display: block;
+}
+.rivela__riga {
+  display: block;
+}
+.rivela__maschera {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding: 0.04em 0.06em 0.12em;
+  margin: -0.04em -0.06em -0.12em;
+}
+.rivela__parola {
+  display: inline-block;
+  transform-origin: 0 100%;
+  will-change: transform;
+}
+.rivela__maschera + .rivela__maschera {
+  margin-left: 0.2em;
+}
+
+.parola {
+  transition: color 0.3s;
+}
+
+/* ---------- Pulsanti e collegamenti ---------- */
+.pulsante {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.15rem 1.7rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: background-color 0.4s var(--curva), color 0.4s var(--curva), border-color 0.4s;
+}
+.pulsante:hover {
+  background: var(--testo);
+  color: var(--sfondo);
+}
+.pulsante--pieno {
+  background: var(--rosso);
+  border-color: var(--rosso);
+  color: var(--carta);
+}
+.pulsante--pieno:hover {
+  background: var(--carta);
+  border-color: var(--carta);
+  color: var(--nero);
+}
+.pulsante__freccia {
+  transition: transform 0.4s var(--curva);
+}
+.pulsante:hover .pulsante__freccia {
+  transform: translateX(4px);
+}
+
+.collegamento {
+  text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 100% 1px no-repeat;
+  transition: background-size 0.5s var(--curva);
+  padding-bottom: 2px;
+}
+.collegamento:hover {
+  background-size: 0 1px;
+  background-position: 100% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
