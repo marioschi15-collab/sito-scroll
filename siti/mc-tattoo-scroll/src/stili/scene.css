@@ -246,8 +246,8 @@
   white-space: nowrap;
 }
 .idea__nota--1 {
-  right: calc(100% + 1.4rem);
-  bottom: 22%;
+  left: 3%;
+  top: -2.8rem;
   rotate: -6deg;
 }
 .idea__nota--2 {
