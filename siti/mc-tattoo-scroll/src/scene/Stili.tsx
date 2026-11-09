@@ -4,6 +4,7 @@ import type { ComponentType, ReactElement } from 'react';
 import { motion, useTransform } from 'motion/react';
 import type { MotionValue } from 'motion/react';
 import { Scena } from '../movimento/Scena.js';
+import { STILI_FINE, STILI_INIZIO, centroStile } from '../regia/capitoli.js';
 import { DisegnoBlackwork, DisegnoDotwork, DisegnoFineLine, DisegnoGiapponese, DisegnoLettering } from '../arte/disegniStili.js';
 
 interface Stile {
@@ -13,18 +14,13 @@ interface Stile {
   Disegno: ComponentType<{ p: MotionValue<number>; className?: string }>;
 }
 
+// L'ordine segue quello dei colori in regia/capitoli.ts (COLORI_STILI).
 const STILI: readonly Stile[] = [
   {
     nome: 'Giapponese',
     testo: 'Onde, carpe, fiori e vento: grandi composizioni che seguono il corpo e si leggono da lontano.',
     ideale: 'schiena, braccio, gamba',
     Disegno: DisegnoGiapponese,
-  },
-  {
-    nome: 'Blackwork',
-    testo: 'Neri pieni e geometrie nette. Contrasto forte, segno deciso, niente di superfluo.',
-    ideale: 'avambraccio, polpaccio, coperture',
-    Disegno: DisegnoBlackwork,
   },
   {
     nome: 'Fine line',
@@ -44,11 +40,17 @@ const STILI: readonly Stile[] = [
     ideale: 'spalla, coscia, schiena',
     Disegno: DisegnoDotwork,
   },
+  {
+    nome: 'Blackwork',
+    testo: 'Neri pieni e geometrie nette. Contrasto forte, segno deciso, niente di superfluo.',
+    ideale: 'avambraccio, polpaccio, coperture',
+    Disegno: DisegnoBlackwork,
+  },
 ];
 
-const INIZIO = 0.08;
-const FINE = 0.92;
-const centro = (i: number): number => INIZIO + (i / (STILI.length - 1)) * (FINE - INIZIO);
+const INIZIO = STILI_INIZIO;
+const FINE = STILI_FINE;
+const centro = centroStile;
 
 export function Stili(): ReactElement {
   return <Scena id="stili">{(p, ridotto) => <Contenuto p={p} ridotto={ridotto} />}</Scena>;

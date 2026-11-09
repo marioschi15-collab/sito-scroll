@@ -105,8 +105,8 @@
   color: var(--carta);
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 6rem var(--margine) 2rem;
+  justify-content: safe center;
+  padding: 5.5rem var(--margine) 2rem;
   overflow-y: auto;
 }
 .indice__lista {
@@ -128,7 +128,8 @@
 }
 .indice__titolo {
   font-family: var(--f-titoli);
-  font-size: clamp(2.1rem, 1.2rem + 3.8vw, 5rem);
+  /* la misura segue l'altezza dello schermo: le nove voci devono starci tutte */
+  font-size: clamp(1.6rem, 6.4svh, 4.4rem);
   line-height: 1.05;
   transition: transform 0.5s var(--curva), color 0.3s;
 }

@@ -10,17 +10,19 @@ import type { Fotogramma } from '../movimento/useCamera.js';
 import { Koi } from '../arte/Koi.js';
 import { TestaCapitolo } from './TestaCapitolo.js';
 
+// La scena entra in dissolvenza (fino a circa 0,18): il primo segno nasce mentre la pagina compare.
 const CAMERA: readonly Fotogramma[] = [
   { p: 0, s: 3.1, fx: 585, fy: 255, r: -4 },
-  { p: 0.32, s: 2, fx: 520, fy: 420, r: -2 },
-  { p: 0.68, s: 1.05, fx: 500, fy: 520, r: 0 },
+  { p: 0.14, s: 3, fx: 585, fy: 270, r: -4 },
+  { p: 0.4, s: 2, fx: 520, fy: 420, r: -2 },
+  { p: 0.72, s: 1.05, fx: 500, fy: 520, r: 0 },
   { p: 1, s: 0.98, fx: 500, fy: 520, r: 0 },
 ];
 
 const NOTE = [
-  { testo: 'più movimento nella coda', classe: 'idea__nota--1', da: 0.5 },
-  { testo: 'il sole: rosso pieno ●', classe: 'idea__nota--2', da: 0.6 },
-  { testo: 'spalla → avambraccio', classe: 'idea__nota--3', da: 0.7 },
+  { testo: 'più movimento nella coda', classe: 'idea__nota--1', da: 0.56 },
+  { testo: 'il sole: rosso pieno ●', classe: 'idea__nota--2', da: 0.66 },
+  { testo: 'spalla → avambraccio', classe: 'idea__nota--3', da: 0.76 },
 ] as const;
 
 export function Idea(): ReactElement {
@@ -28,22 +30,22 @@ export function Idea(): ReactElement {
 }
 
 function Contenuto({ p, ridotto }: { p: MotionValue<number>; ridotto: boolean }): ReactElement {
-  const tratto = useTransform(p, [0.04, 0.86], [0, 1]);
+  const tratto = useTransform(p, [0.03, 0.88], [0, 1]);
   const camera = useCamera(p, CAMERA);
-  const sigillo = useTransform(p, [0.86, 0.92], [0, 1]);
-  const sigilloScala = useTransform(p, [0.86, 0.92], [1.6, 1]);
+  const sigillo = useTransform(p, [0.89, 0.94], [0, 1]);
+  const sigilloScala = useTransform(p, [0.89, 0.94], [1.6, 1]);
   const foglioY = useTransform(p, [0, 1], ['3%', '-3%']);
   return (
     <div className="idea">
       <div className="idea__testo">
-        <TestaCapitolo numero="I" titolo="L’idea" p={p} ridotto={ridotto} />
-        <Finestra p={p} entra={[0.06, 0.16]} ridotto={ridotto} className="idea__corpo">
+        <TestaCapitolo numero="I" titolo="L’idea" p={p} ridotto={ridotto} entra={[0.02, 0.1]} />
+        <Finestra p={p} entra={[0.08, 0.16]} ridotto={ridotto} className="idea__corpo">
           <p>
             Tutto comincia da una frase detta a voce bassa: un ricordo, un nome, una data. La ascoltiamo con calma, poi il
             pennello prova a darle una forma.
           </p>
         </Finestra>
-        <Finestra p={p} entra={[0.42, 0.54]} ridotto={ridotto} className="idea__citazione">
+        <Finestra p={p} entra={[0.46, 0.56]} ridotto={ridotto} className="idea__citazione">
           <p className="corsivo">«Una carpa che risale la corrente. Perché io non mi sono mai arreso.»</p>
         </Finestra>
       </div>

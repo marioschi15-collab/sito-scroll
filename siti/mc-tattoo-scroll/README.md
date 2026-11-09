@@ -5,15 +5,18 @@ verso il sole rosso) in sette capitoli. Colori: solo nero, grigi, bianco carta e
 
 | Scena | Cosa succede scorrendo | Colore |
 | --- | --- | --- |
-| Prologo — Il vuoto | il titolo si apre, il sole rosso cresce e dal centro si apre la carta | nero → bianco |
-| I — L’idea | la carpa si disegna a pennello; la camera parte dall’occhio e si allontana | bianco carta |
-| II — Lo stencil | una barra di luce stampa il disegno a rovescio, poi il foglio si gira | grigio → grafite |
-| III — L’ago | bande da cinema; la camera segue la punta dell’ago lungo la linea | nero |
-| IV — Il rosso | sorge il sole, le chiazze si colorano, la camera si tuffa nel rosso | nero → rosso |
-| Manifesto | le parole si accendono una alla volta | rosso |
-| V — Gli stili | panoramica orizzontale su cinque stili, ognuno col suo disegno | bianco, nero, grigio, rosso |
+| Prologo — Il vuoto | il titolo si apre, il sole rosso cresce e dal centro si allarga la carta come una macchia | nero → bianco |
+| I — L’idea | la pagina compare in dissolvenza; la carpa si disegna a pennello mentre la camera parte dall’occhio e si allontana | bianco carta |
+| II — Lo stencil | una barra di luce stampa il disegno a rovescio, poi il foglio si gira e si posa sulla pelle | grigio → quasi nero |
+| III — L’ago | stessa inquadratura, senza stacco: si accende la luce, la camera si avvicina, scendono le bande da cinema e l’inquadratura segue la punta dell’ago | nero |
+| IV — Il rosso | ancora senza stacco: sorge il sole, le chiazze si colorano, la camera si tuffa nel rosso | nero → rosso |
+| Manifesto | le parole si accendono una alla volta | rosso → nero |
+| V — Gli stili | panoramica orizzontale su cinque stili, ognuno col suo disegno e il suo colore, con stacchi netti | bianco, nero, rosso, grigi |
 | VI — Il rito | i quattro passi, con il numero che scorre come un rullino | bianco |
 | VII — Il tuo segno | invito a prenotare, contatti, orari | nero e rosso |
+
+Stencil, ago e rosso sono un’unica ripresa: la carpa resta ferma sullo schermo mentre un capitolo sfuma nel
+successivo. Il rosso confina solo con colori scuri, così nei passaggi non compare mai il rosa.
 
 ## Vederlo
 

@@ -1,11 +1,12 @@
 // src/arte/Koi.tsx — la carpa che risale verso il sole, in tutte le sue vite: pennellate d'inchiostro
 // che si tracciano, stencil che si stampa, chiazze rosse che si riempiono, sole che sorge.
 // Ogni strato si accende solo se gli si passa il suo avanzamento (da 0 a 1).
-import { useId, useLayoutEffect, useRef } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import { motion, useTransform } from 'motion/react';
+import { motion, useMotionValueEvent, useTransform } from 'motion/react';
 import type { MotionValue } from 'motion/react';
 import { koi, SOLE, chiazze, corpo } from './koi.js';
+import { macchia } from './geometria.js';
 import type { Linea, Pennellata } from './koi.js';
 import { TAVOLOZZA } from '../regia/capitoli.js';
 
@@ -14,7 +15,8 @@ export type Punta = (q: number) => { x: number; y: number };
 export interface PropsKoi {
   tratto?: MotionValue<number>;
   inchiostro?: string;
-  stencil?: MotionValue<number>;
+  /** Stencil che si stampa (avanzamento) oppure già stampato e fermo (true). */
+  stencil?: MotionValue<number> | true;
   coloreStencil?: string;
   rosso?: MotionValue<number>;
   sole?: MotionValue<number> | number;
@@ -48,10 +50,6 @@ export function Koi(props: PropsKoi): ReactElement {
         <clipPath id={`${id}-corpo`} clipPathUnits="userSpaceOnUse">
           <path d={corpo} />
         </clipPath>
-        <filter id={`${id}-ruvido`} x="-40%" y="-40%" width="180%" height="180%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="7" />
-          <feDisplacementMap in="SourceGraphic" scale="30" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
         <filter id={`${id}-bagliore`} x="-10%" y="-600%" width="120%" height="1300%">
           <feGaussianBlur stdDeviation="7" />
         </filter>
@@ -73,7 +71,11 @@ export function Koi(props: PropsKoi): ReactElement {
         </g>
       ) : null}
       {props.rosso ? <StratoRosso id={id} p={props.rosso} /> : null}
-      {props.stencil ? <StratoStencil id={id} p={props.stencil} colore={props.coloreStencil ?? TAVOLOZZA.cenere} /> : null}
+      {props.stencil === true ? (
+        <LineeStencil id={id} colore={props.coloreStencil ?? TAVOLOZZA.cenere} />
+      ) : props.stencil ? (
+        <StratoStencil id={id} p={props.stencil} colore={props.coloreStencil ?? TAVOLOZZA.cenere} />
+      ) : null}
       {props.tratto ? <StratoInchiostro id={id} p={props.tratto} colore={props.inchiostro ?? TAVOLOZZA.inchiostro} onPunta={props.onPunta} /> : null}
     </svg>
   );
@@ -93,8 +95,22 @@ function Sole({ p }: { p: MotionValue<number> | number }): ReactElement {
   );
 }
 
+/** 0 = non ancora cominciata, 1 = si sta tracciando, 2 = finita. */
+type Fase = 0 | 1 | 2;
+const faseDi = (pn: Pennellata, v: number): Fase => (v <= pn.da ? 0 : v >= pn.a ? 2 : 1);
+const fasiA = (v: number): Fase[] => koi.pennellate.map((pn) => faseDi(pn, v));
+
 function StratoInchiostro({ id, p, colore, onPunta }: { id: string; p: MotionValue<number>; colore: string; onPunta?: PropsKoi['onPunta'] }): ReactElement {
   const guide = useRef<(SVGPathElement | null)[]>([]);
+  // Una maschera costa: la usa solo la pennellata che si sta tracciando in questo momento.
+  // Quelle finite sono sagome piene e basta, quelle non cominciate non ci sono.
+  const [fasi, setFasi] = useState<Fase[]>(() => fasiA(p.get()));
+  useMotionValueEvent(p, 'change', (v) => {
+    setFasi((prima) => {
+      const ora = fasiA(v);
+      return ora.every((f, i) => f === prima[i]) ? prima : ora;
+    });
+  });
 
   useLayoutEffect(() => {
     if (!onPunta) return;
@@ -119,18 +135,27 @@ function StratoInchiostro({ id, p, colore, onPunta }: { id: string; p: MotionVal
 
   return (
     <g>
+      {onPunta ? (
+        // Linee guida invisibili: servono solo a sapere dov'è la punta dell'ago.
+        <g visibility="hidden" fill="none">
+          {koi.pennellate.map((pn, i) => (
+            <path
+              key={i}
+              d={pn.guida}
+              ref={(el) => {
+                guide.current[i] = el;
+              }}
+            />
+          ))}
+        </g>
+      ) : null}
       <g fill={colore}>
-        {koi.pennellate.map((pn, i) => (
-          <PennellataAnimata
-            key={i}
-            id={`${id}-p${i}`}
-            pn={pn}
-            p={p}
-            rifGuida={(el) => {
-              guide.current[i] = el;
-            }}
-          />
-        ))}
+        {koi.pennellate.map((pn, i) => {
+          const fase = fasi[i] ?? 0;
+          if (fase === 0) return null;
+          if (fase === 2) return <path key={i} d={pn.d} />;
+          return <PennellataAnimata key={i} id={`${id}-p${i}`} pn={pn} p={p} />;
+        })}
       </g>
       <g fill="none" stroke={colore} strokeLinecap="round" strokeLinejoin="round">
         <g clipPath={`url(#${id}-corpo)`}>
@@ -153,22 +178,20 @@ function StratoInchiostro({ id, p, colore, onPunta }: { id: string; p: MotionVal
   );
 }
 
-function PennellataAnimata({ id, pn, p, rifGuida }: { id: string; pn: Pennellata; p: MotionValue<number>; rifGuida: (el: SVGPathElement | null) => void }): ReactElement {
+function PennellataAnimata({ id, pn, p }: { id: string; pn: Pennellata; p: MotionValue<number> }): ReactElement {
   const pathLength = useTransform(p, [pn.da, pn.a], [0, 1]);
-  const opacity = useTransform(p, [pn.da, pn.da + 0.003], [0, 1]);
   const r = pn.riquadro;
   return (
     <>
       <mask id={id} maskUnits="userSpaceOnUse" x={r.x} y={r.y} width={r.w} height={r.h}>
         <motion.path
-          ref={rifGuida}
           d={pn.guida}
           fill="none"
           stroke="#fff"
           strokeWidth={pn.larghezza * 2.6 + 6}
           strokeLinecap="butt"
           strokeLinejoin="round"
-          style={{ pathLength, opacity }}
+          style={{ pathLength }}
         />
       </mask>
       <path d={pn.d} mask={`url(#${id})`} />
@@ -188,39 +211,52 @@ function Goccia({ cx, cy, r, da, p }: { cx: number; cy: number; r: number; da: n
   return <motion.circle cx={cx} cy={cy} r={r} style={{ scale, transformBox: 'fill-box', transformOrigin: 'center' }} />;
 }
 
+function LineeStencil({ id, colore }: { id: string; colore: string }): ReactElement {
+  return (
+    <g fill="none" stroke={colore} strokeLinecap="round" strokeLinejoin="round">
+      {koi.pennellate.map((pn, i) => (
+        <path key={i} d={pn.guida} strokeWidth={2.4} />
+      ))}
+      <g clipPath={`url(#${id}-corpo)`} opacity="0.75">
+        {koi.linee.filter(SCAGLIE).map((l, i) => (
+          <path key={i} d={l.d} strokeWidth={1.4} />
+        ))}
+      </g>
+      {koi.linee
+        .filter((l) => !SCAGLIE(l))
+        .map((l, i) => (
+          <path key={i} d={l.d} strokeWidth={1.4} opacity="0.8" />
+        ))}
+      <g transform="translate(-3 2)" opacity="0.28">
+        {koi.pennellate.map((pn, i) => (
+          <path key={i} d={pn.guida} strokeWidth={1.2} />
+        ))}
+      </g>
+    </g>
+  );
+}
+
 function StratoStencil({ id, p, colore }: { id: string; p: MotionValue<number>; colore: string }): ReactElement {
   const altezza = useTransform(p, [0, 1], [0, 1040]);
   const barra = useTransform(p, [0, 1], [-20, 1020]);
   const barraVisibile = useTransform(p, [0, 0.03, 0.96, 1], [0, 1, 1, 0]);
+  // A stampa finita la barra di luce (che ha una sfocatura) esce del tutto dal disegno.
+  const [inStampa, setInStampa] = useState(() => p.get() < 1);
+  useMotionValueEvent(p, 'change', (v) => setInStampa(v < 1));
   return (
     <g>
       <clipPath id={`${id}-scan`} clipPathUnits="userSpaceOnUse">
         <motion.rect x="-50" y="-20" width="1100" height={altezza} />
       </clipPath>
-      <g clipPath={`url(#${id}-scan)`} fill="none" stroke={colore} strokeLinecap="round" strokeLinejoin="round">
-        {koi.pennellate.map((pn, i) => (
-          <path key={i} d={pn.guida} strokeWidth={2.4} />
-        ))}
-        <g clipPath={`url(#${id}-corpo)`} opacity="0.75">
-          {koi.linee.filter(SCAGLIE).map((l, i) => (
-            <path key={i} d={l.d} strokeWidth={1.4} />
-          ))}
-        </g>
-        {koi.linee
-          .filter((l) => !SCAGLIE(l))
-          .map((l, i) => (
-            <path key={i} d={l.d} strokeWidth={1.4} opacity="0.8" />
-          ))}
-        <g transform="translate(-3 2)" opacity="0.28">
-          {koi.pennellate.map((pn, i) => (
-            <path key={i} d={pn.guida} strokeWidth={1.2} />
-          ))}
-        </g>
+      <g clipPath={`url(#${id}-scan)`}>
+        <LineeStencil id={id} colore={colore} />
       </g>
-      <motion.g style={{ opacity: barraVisibile }}>
-        <motion.rect x="-60" width="1120" height="14" y={barra} fill={colore} filter={`url(#${id}-bagliore)`} />
-        <motion.rect x="-60" width="1120" height="2" y={barra} fill="#FFFFFF" />
-      </motion.g>
+      {inStampa ? (
+        <motion.g style={{ opacity: barraVisibile }}>
+          <motion.rect x="-60" width="1120" height="14" y={barra} fill={colore} filter={`url(#${id}-bagliore)`} />
+          <motion.rect x="-60" width="1120" height="2" y={barra} fill="#FFFFFF" />
+        </motion.g>
+      ) : null}
     </g>
   );
 }
@@ -229,18 +265,26 @@ function StratoRosso({ id, p }: { id: string; p: MotionValue<number> }): ReactEl
   return (
     <g clipPath={`url(#${id}-corpo)`}>
       {chiazze.map((c, i) => (
-        <Chiazza key={i} id={`${id}-c${i}`} filtro={`${id}-ruvido`} c={c} p={p} da={i * 0.16} />
+        <Chiazza key={i} id={`${id}-c${i}`} c={c} p={p} da={i * 0.16} seme={31 + i * 7} />
       ))}
     </g>
   );
 }
 
-function Chiazza({ id, filtro, c, p, da }: { id: string; filtro: string; c: (typeof chiazze)[number]; p: MotionValue<number>; da: number }): ReactElement {
-  const r = useTransform(p, [da, da + 0.45], [0, c.r * 1.9]);
+/** Il rosso si allarga come inchiostro: una macchia dal bordo irregolare che cresce dal centro della chiazza. */
+function Chiazza({ id, c, p, da, seme }: { id: string; c: (typeof chiazze)[number]; p: MotionValue<number>; da: number; seme: number }): ReactElement {
+  const forma = useMemo(() => macchia(seme, 0.34), [seme]);
+  const scale = useTransform(p, [da, da + 0.45], [0, (c.r * 2.1) / 100]);
+  const [fase, setFase] = useState<Fase>(() => (p.get() <= da ? 0 : p.get() >= da + 0.45 ? 2 : 1));
+  useMotionValueEvent(p, 'change', (v) => setFase(v <= da ? 0 : v >= da + 0.45 ? 2 : 1));
+  if (fase === 0) return <></>;
+  if (fase === 2) return <path d={c.d} fill={TAVOLOZZA.rosso} />;
   return (
     <>
-      <mask id={id} maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="1000">
-        <motion.circle cx={c.c[0]} cy={c.c[1]} r={r} fill="#fff" filter={`url(#${filtro})`} />
+      <mask id={id} maskUnits="userSpaceOnUse" x={c.c[0] - c.r * 2.6} y={c.c[1] - c.r * 2.6} width={c.r * 5.2} height={c.r * 5.2}>
+        <g transform={`translate(${c.c[0]} ${c.c[1]})`}>
+          <motion.path d={forma} fill="#fff" style={{ scale }} />
+        </g>
       </mask>
       <path d={c.d} fill={TAVOLOZZA.rosso} mask={`url(#${id})`} />
     </>

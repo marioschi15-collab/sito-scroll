@@ -59,3 +59,9 @@ export function useCamera(p: MotionValue<number>, fotogrammi: readonly Fotogramm
   const rotate = useTransform(p, (v) => interpola(fotogrammi, v).r);
   return { scale, x, y, rotate };
 }
+
+/**
+ * L'inquadratura "a figura intera" del disegno grande. È il punto d'incontro delle scene in
+ * dissolvenza: "Lo stencil" ci finisce, "L'ago" ci parte e ci torna, "Il rosso" ci comincia.
+ */
+export const VISTA_INTERA = { s: 0.92, fx: 500, fy: 540 } as const;

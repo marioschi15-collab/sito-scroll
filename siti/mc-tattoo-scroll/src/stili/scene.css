@@ -27,6 +27,15 @@
   grid-area: auto;
 }
 
+/* Il riquadro del disegno grande: identico in "Lo stencil", "L'ago" e "Il rosso", perché la
+   carpa deve trovarsi nello stesso punto quando una scena sfuma nell'altra. */
+.quadro {
+  position: relative;
+  width: min(84svh, 92vw);
+  aspect-ratio: 1;
+  will-change: transform;
+}
+
 /* ---------- Testa di capitolo ---------- */
 .testa-capitolo__numero {
   display: flex;
@@ -82,7 +91,6 @@
   line-height: 0.86;
   text-align: center;
   color: var(--carta);
-  text-shadow: 0 0 60px rgb(10 10 10 / 0.35);
 }
 .prologo__riga {
   display: block;
@@ -198,13 +206,10 @@
   inset: 4%;
   overflow: hidden;
 }
-.idea__camera,
-.ago__camera,
-.rosso__camera {
+.idea__camera {
   position: absolute;
   inset: 0;
   will-change: transform;
-  transform-origin: 50% 50%;
 }
 .idea__koi,
 .ago__koi,
@@ -314,17 +319,24 @@
 }
 .stencil__palco3d {
   position: absolute;
-  inset: 0 0 0 26vw;
+  inset: 0;
   display: grid;
   place-items: center;
   perspective: 1400px;
 }
-.stencil__foglio {
-  width: min(88svh, 66vw);
-  aspect-ratio: 1;
+.stencil__scosta {
+  /* --k va da 1 (foglio spostato per far posto al testo) a 0 (al centro, dove comincia "L'ago") */
+  --k: 1;
+  --scosta-x: 15vw;
+  --scosta-y: 0svh;
+  translate: calc(var(--scosta-x) * var(--k)) calc(var(--scosta-y) * var(--k));
+  transform-style: preserve-3d;
+}
+.stencil__alone {
+  position: absolute;
+  inset: -6%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0) 68%);
-  will-change: transform;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0) 68%);
 }
 .stencil__testo {
   position: absolute;
@@ -362,12 +374,9 @@
   .stencil__corpo {
     font-size: 0.98rem;
   }
-  .stencil__palco3d {
-    inset: 0;
-  }
-  .stencil__foglio {
-    width: 92vw;
-    margin-top: -18svh;
+  .stencil__scosta {
+    --scosta-x: 0vw;
+    --scosta-y: -17svh;
   }
 }
 
@@ -376,23 +385,13 @@
   position: relative;
   height: 100%;
 }
-.ago__luce {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 60% 55% at 50% 50%, rgb(244 242 238 / 0.08), transparent 70%);
-}
 .ago__inquadratura {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
 }
-.ago__inquadratura > .ago__camera {
-  position: relative;
-  inset: auto;
-  width: min(84svh, 92vw);
-  aspect-ratio: 1;
-}
+
 .ago__vignetta {
   position: absolute;
   inset: 0;
@@ -410,12 +409,17 @@
   /* la punta dell'ago è nell'angolo in basso a sinistra del disegno */
   translate: 0 -100%;
   pointer-events: none;
-  filter: drop-shadow(-30px 40px 30px rgb(0 0 0 / 0.55));
 }
 .ago__vibra {
   width: 100%;
   height: 100%;
+  /* L'ombra sta sul disegno fermo dentro lo strato che vibra: così non viene ricalcolata a ogni scatto. */
+  will-change: transform;
   animation: vibra 0.07s linear infinite;
+}
+.ago__vibra svg {
+  overflow: visible;
+  filter: drop-shadow(-30px 40px 30px rgb(0 0 0 / 0.55));
 }
 @keyframes vibra {
   0% { transform: translate(0, 0); }
@@ -443,8 +447,7 @@
   font-size: 1.15rem;
   max-width: 24rem;
   padding: 0.9rem 1.1rem;
-  background: rgb(10 10 10 / 0.72);
-  backdrop-filter: blur(6px);
+  background: rgb(10 10 10 / 0.84);
   border-left: 2px solid var(--rosso);
 }
 .ago__lettura {
@@ -496,12 +499,7 @@
   display: grid;
   place-items: center;
 }
-.rosso__inquadratura > .rosso__camera {
-  position: relative;
-  inset: auto;
-  width: min(86svh, 94vw);
-  aspect-ratio: 1;
-}
+
 .rosso__testo {
   position: absolute;
   left: var(--margine);
@@ -547,9 +545,8 @@
     text-shadow: 0 0 30px rgb(10 10 10 / 0.8);
   }
   .rosso__corpo {
-    background: rgb(10 10 10 / 0.72);
+    background: rgb(10 10 10 / 0.84);
     padding: 0.9rem 1rem;
-    backdrop-filter: blur(6px);
     font-size: 0.98rem;
   }
   .rosso__testo .testa-capitolo__titolo {
@@ -567,6 +564,7 @@
   gap: 2rem;
 }
 .manifesto__cerchio {
+  will-change: transform;
   position: absolute;
   right: -8vmin;
   top: -8vmin;
@@ -589,7 +587,7 @@
 }
 .parola--evidenza {
   font-style: italic;
-  color: var(--nero);
+  color: var(--accento);
 }
 .manifesto__firma {
   font-size: 2rem;
@@ -816,6 +814,7 @@
   translate: 0;
 }
 .rito__timbro {
+  will-change: transform;
   position: absolute;
   right: var(--margine);
   top: 5rem;
@@ -937,7 +936,7 @@
   font-size: 0.9rem;
 }
 .piede {
-  padding: 2rem var(--margine) calc(var(--margine) + 2.4rem);
+  padding: 2rem var(--margine) calc(var(--margine) + 3.4rem);
   overflow: hidden;
 }
 .piede__marchio {

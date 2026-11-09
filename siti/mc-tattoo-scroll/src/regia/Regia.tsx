@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from 'react';
 import Lenis from 'lenis';
 import { motionValue, useReducedMotion } from 'motion/react';
 import type { MotionValue } from 'motion/react';
-import { CAPITOLI } from './capitoli.js';
+import { CAPITOLI, SOVRAPPOSTE } from './capitoli.js';
 import { daEsadecimale, fondi } from './colore.js';
 import type { Rgb } from './colore.js';
 import { morbido } from '../arte/geometria.js';
@@ -42,6 +42,7 @@ export function Regia({ children }: { children: ReactNode }): ReactElement {
   const elementi = useRef(new Map<string, HTMLElement>());
   const fermate = useRef<Fermata[]>([]);
   const inizi = useRef<number[]>([]);
+  const destinazioni = useRef(new Map<string, number>());
   const lenis = useRef<Lenis | null>(null);
   const [attivo, setAttivo] = useState(0);
   const attivoRef = useRef(0);
@@ -49,32 +50,40 @@ export function Regia({ children }: { children: ReactNode }): ReactElement {
 
   const misura = useCallback(() => {
     const vh = window.innerHeight;
-    const lista: Fermata[] = [];
-    const tops: number[] = [];
+    let lista: Fermata[] = [];
+    const soglie: number[] = [];
+    const arrivi = new Map<string, number>();
     for (const cap of CAPITOLI) {
       const el = elementi.current.get(cap.id);
       if (!el) {
-        tops.push(Number.POSITIVE_INFINITY);
+        soglie.push(Number.POSITIVE_INFINITY);
         continue;
       }
       const r = el.getBoundingClientRect();
       const top = r.top + window.scrollY;
       const corsa = Math.max(1, r.height - vh);
-      tops.push(top);
-      for (const t of cap.tappe) {
-        lista.push({
-          // La prima tappa arriva poco prima che la scena copra lo schermo: il colore cambia mentre entra.
-          y: t.p === 0 ? top - vh * 0.35 : top + t.p * corsa,
-          sfondo: daEsadecimale(t.sfondo),
-          testo: daEsadecimale(t.testo),
-          accento: daEsadecimale(t.accento),
-          bande: t.bande ?? 0,
-        });
-      }
+      const sovrapposta = cap.dissolvenza === true && r.height > vh * 1.5;
+      // Una scena in dissolvenza "comincia" a metà della dissolvenza; le altre quando sono a mezza schermata.
+      soglie.push(sovrapposta ? top + vh * SOVRAPPOSTE * 0.5 : top - vh * 0.5);
+      // Dove portare chi sceglie il capitolo dall'indice: dentro la scena, a dissolvenza finita.
+      arrivi.set(cap.id, sovrapposta ? top + vh * (SOVRAPPOSTE + 0.2) : top);
+      const nuove: Fermata[] = cap.tappe.map((t) => ({
+        // La prima tappa arriva poco prima che la scena copra lo schermo: il colore cambia mentre entra.
+        // Una scena in dissolvenza invece prende il comando proprio dove la dissolvenza comincia.
+        y: t.p === 0 && !sovrapposta ? top - vh * 0.35 : top + t.p * corsa,
+        sfondo: daEsadecimale(t.sfondo),
+        testo: daEsadecimale(t.testo),
+        accento: daEsadecimale(t.accento),
+        bande: t.bande ?? 0,
+      }));
+      // Dal suo primo colore in poi comanda la scena nuova, anche se è sovrapposta alla precedente.
+      const primo = nuove[0];
+      if (primo) lista = lista.filter((f) => f.y < primo.y);
+      lista.push(...nuove);
     }
-    lista.sort((a, b) => a.y - b.y);
     fermate.current = lista;
-    inizi.current = tops;
+    inizi.current = soglie;
+    destinazioni.current = arrivi;
   }, []);
 
   const aggiorna = useCallback(() => {
@@ -90,16 +99,19 @@ export function Regia({ children }: { children: ReactNode }): ReactElement {
       const a = f[i]!;
       const b = f[i + 1] ?? a;
       const t = b === a || y <= a.y ? 0 : morbido((y - a.y) / Math.max(1, b.y - a.y));
+      // Lo sfondo sfuma; testo e accento invece scattano a metà strada: sfumando passerebbero per un
+      // grigio uguale allo sfondo e le scritte sparirebbero per un momento.
+      const scatto = Math.min(1, Math.max(0, (t - 0.46) / 0.08));
       const s = document.documentElement.style;
       s.setProperty('--sfondo', fondi(a.sfondo, b.sfondo, t));
-      s.setProperty('--testo', fondi(a.testo, b.testo, t));
-      s.setProperty('--accento', fondi(a.accento, b.accento, t));
+      s.setProperty('--testo', fondi(a.testo, b.testo, scatto));
+      s.setProperty('--accento', fondi(a.accento, b.accento, scatto));
       s.setProperty('--bande', (a.bande + (b.bande - a.bande) * t).toFixed(3));
     }
 
     const tops = inizi.current;
     let k = 0;
-    for (let j = 0; j < tops.length; j++) if (tops[j]! - vh * 0.5 <= y) k = j;
+    for (let j = 0; j < tops.length; j++) if (tops[j]! <= y) k = j;
     if (k !== attivoRef.current) {
       attivoRef.current = k;
       setAttivo(k);
@@ -150,14 +162,14 @@ export function Regia({ children }: { children: ReactNode }): ReactElement {
 
   const vai = useCallback(
     (id: string) => {
-      const el = elementi.current.get(id);
-      if (!el) return;
+      const y = destinazioni.current.get(id);
+      if (y === undefined) return;
       const l = lenis.current;
       if (l) {
         l.start();
-        l.scrollTo(el, { duration: 2, easing: (t: number) => 1 - Math.pow(1 - t, 4) });
+        l.scrollTo(y, { duration: 2, easing: (t: number) => 1 - Math.pow(1 - t, 4) });
       } else {
-        el.scrollIntoView({ behavior: ridotto ? 'auto' : 'smooth' });
+        window.scrollTo({ top: y, behavior: ridotto ? 'auto' : 'smooth' });
       }
     },
     [ridotto],

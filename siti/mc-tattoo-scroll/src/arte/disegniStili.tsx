@@ -82,49 +82,52 @@ export function DisegnoGiapponese({ p, className }: PropsDisegno): ReactElement 
   );
 }
 
-// ———————————————————————————— Blackwork: geometria sacra ————————————————————————————
+// ———————————————————————————— Blackwork: rosone a neri pieni ————————————————————————————
 const GEO = (() => {
   const cx = 200;
   const cy = 200;
-  const cerchi = [150, 118, 64, 22].map((r) => `M${cx} ${cy - r} A${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r}`);
-  const petali: string[] = [];
+  const P = (ang: number, r: number): string => `${(cx + Math.cos(ang) * r).toFixed(1)} ${(cy + Math.sin(ang) * r).toFixed(1)}`;
+  const cerchio = (r: number): string => `M${cx} ${cy - r} A${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r} Z`;
+  const stella = (punte: number, fuori: number, dentro: number, rot: number): string => {
+    let d = '';
+    for (let i = 0; i < punte * 2; i++) {
+      const a = rot + (i / (punte * 2)) * Math.PI * 2;
+      d += `${i === 0 ? 'M' : 'L'}${P(a, i % 2 === 0 ? fuori : dentro)}`;
+    }
+    return `${d}Z`;
+  };
+  // Stella nera a dodici punte con il cuore vuoto; dentro, una stella più piccola piena.
+  const stellaGrande = `${stella(12, 132, 78, -Math.PI / 2)} ${cerchio(58)}`;
+  const stellaPiccola = stella(6, 44, 20, -Math.PI / 2);
+  const cerchi = [156, 146].map(cerchio);
+  const raggi: string[] = [];
   for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
-    const b = a + Math.PI / 12;
-    const c = a - Math.PI / 12;
-    const P = (ang: number, r: number): string => `${(cx + Math.cos(ang) * r).toFixed(1)} ${(cy + Math.sin(ang) * r).toFixed(1)}`;
-    petali.push(`M${P(b, 64)} Q${P(a, 150)} ${P(a, 118)} Q${P(a, 150)} ${P(c, 64)}`);
+    const a = -Math.PI / 2 + ((i + 0.5) / 12) * Math.PI * 2;
+    raggi.push(`M${P(a, 82)} L${P(a, 144)}`);
   }
-  const triangoli = [0, Math.PI].map((rot) => {
-    const pts = [0, 1, 2].map((k) => {
-      const a = rot - Math.PI / 2 + (k * Math.PI * 2) / 3;
-      return `${(cx + Math.cos(a) * 118).toFixed(1)} ${(cy + Math.sin(a) * 118).toFixed(1)}`;
-    });
-    return `M${pts[0]} L${pts[1]} L${pts[2]} Z`;
-  });
   const punti: { x: number; y: number; r: number }[] = [];
-  for (let i = 0; i < 36; i++) {
-    const a = (i / 36) * Math.PI * 2;
-    punti.push({ x: cx + Math.cos(a) * 168, y: cy + Math.sin(a) * 168, r: i % 3 === 0 ? 4 : 2.2 });
+  for (let i = 0; i < 48; i++) {
+    const a = (i / 48) * Math.PI * 2;
+    punti.push({ x: cx + Math.cos(a) * 172, y: cy + Math.sin(a) * 172, r: i % 4 === 0 ? 4.4 : 1.9 });
   }
-  return { cerchi, petali, triangoli, punti };
+  return { stellaGrande, stellaPiccola, cerchi, raggi, punti };
 })();
 
 export function DisegnoBlackwork({ p, className }: PropsDisegno): ReactElement {
-  const pieno = useTransform(p, [0.55, 0.85], [0, 1]);
+  const pieno = useTransform(p, [0.42, 0.7], [0, 1]);
+  const cuore = useTransform(p, [0.6, 0.85], [0, 1]);
   return (
     <svg className={className} {...svgBase}>
       {GEO.cerchi.map((d, i) => (
-        <Tratto key={i} d={d} p={p} da={0.05 + i * 0.06} a={0.35 + i * 0.06} w={i === 0 ? 3 : 2} />
+        <Tratto key={i} d={d} p={p} da={0.04 + i * 0.05} a={0.36 + i * 0.05} w={i === 0 ? 4 : 1.5} />
       ))}
-      {GEO.triangoli.map((d, i) => (
-        <Tratto key={`t${i}`} d={d} p={p} da={0.3 + i * 0.08} a={0.6 + i * 0.08} w={2} />
+      <Tratto d={GEO.stellaGrande} p={p} da={0.12} a={0.5} w={2} />
+      <motion.path d={GEO.stellaGrande} fill="currentColor" fillRule="evenodd" style={{ opacity: pieno }} />
+      {GEO.raggi.map((d, i) => (
+        <Tratto key={`r${i}`} d={d} p={p} da={0.4 + i * 0.012} a={0.56 + i * 0.012} w={1.5} />
       ))}
-      {GEO.petali.map((d, i) => (
-        <Tratto key={`p${i}`} d={d} p={p} da={0.35 + i * 0.025} a={0.6 + i * 0.025} w={2.4} />
-      ))}
-      <motion.circle cx="200" cy="200" r="22" fill="currentColor" style={{ opacity: pieno }} />
-      <Compare p={p} da={0.7} a={0.95}>
+      <motion.path d={GEO.stellaPiccola} fill="currentColor" style={{ scale: cuore, opacity: cuore, transformBox: 'fill-box', transformOrigin: 'center' }} />
+      <Compare p={p} da={0.72} a={0.95}>
         <g fill="currentColor">
           {GEO.punti.map((q, i) => (
             <circle key={i} cx={q.x} cy={q.y} r={q.r} />
@@ -218,48 +221,99 @@ export function DisegnoLettering({ p, className }: PropsDisegno): ReactElement {
   );
 }
 
-// ———————————————————————————— Dotwork: luna fatta di punti ————————————————————————————
+// ———————————————————————————— Dotwork: una luna fatta solo di punti ————————————————————————————
+// Niente contorno: la forma nasce dalla densità dei punti, più fitti dove batte la luce.
 const LUNA = (() => {
   const c = casuale(21);
-  const punti: { x: number; y: number; r: number; k: number }[] = [];
   const cx = 200;
   const cy = 200;
-  const R = 130;
-  while (punti.length < 1300) {
-    const x = cx - R + c() * R * 2;
-    const y = cy - R + c() * R * 2;
-    const d = Math.hypot(x - cx, y - cy) / R;
-    if (d > 1) continue;
-    // luce da sinistra in alto: più punti a destra in basso
-    const z = Math.sqrt(1 - d * d);
-    const nx = (x - cx) / R;
-    const ny = (y - cy) / R;
-    const luce = Math.max(0, -0.6 * nx - 0.5 * ny + 0.62 * z);
-    const ombra = 1 - luce;
-    if (c() > Math.pow(ombra, 1.6) * 0.95 + 0.04) continue;
-    punti.push({ x, y, r: 1 + c() * 1.4, k: (x - cx + R) / (2 * R) });
+  const R = 128;
+  const FASCE = 12;
+  const fasce: { x: string; y: string; r: string }[][] = Array.from({ length: FASCE }, () => []);
+  // tre "mari" più scuri sulla superficie
+  const mari = [
+    { x: -0.3, y: -0.25, r: 0.3 },
+    { x: 0.2, y: 0.1, r: 0.24 },
+    { x: -0.1, y: 0.42, r: 0.2 },
+  ];
+  let quanti = 0;
+  let tentativi = 0;
+  while (quanti < 2600 && tentativi < 60000) {
+    tentativi++;
+    const nx = c() * 2 - 1;
+    const ny = c() * 2 - 1;
+    const d2 = nx * nx + ny * ny;
+    if (d2 > 1) continue;
+    const nz = Math.sqrt(1 - d2);
+    // luce da sinistra in alto, con un filo di luce radente sul bordo in ombra
+    let luce = Math.max(0, -0.62 * nx - 0.5 * ny + 0.6 * nz);
+    luce = Math.pow(luce, 1.5) + 0.05 + 0.16 * Math.pow(1 - nz, 3);
+    for (const m of mari) {
+      const dm = Math.hypot(nx - m.x, ny - m.y) / m.r;
+      if (dm < 1) luce *= 0.4 + 0.6 * dm * dm;
+    }
+    if (c() > luce) continue;
+    const fascia = Math.min(FASCE - 1, Math.floor(((nx + ny + 2) / 4) * FASCE));
+    fasce[fascia]!.push({ x: (cx + nx * R).toFixed(1), y: (cy + ny * R).toFixed(1), r: (0.55 + c() * 0.95).toFixed(2) });
+    quanti++;
   }
-  return punti;
+  // anello di punti e qualche stella lontana
+  const anello = Array.from({ length: 96 }, (_, i) => {
+    const a = (i / 96) * Math.PI * 2;
+    const x = cx + Math.cos(a) * 168;
+    const y = cy + Math.sin(a) * 168 * 0.32 + 6;
+    return { x: x.toFixed(1), y: y.toFixed(1), r: i % 6 === 0 ? '1.8' : '0.9', dietro: Math.sin(a) < 0, coperto: Math.hypot(x - cx, y - cy) < R + 4 };
+  }).filter((q) => !(q.dietro && q.coperto));
+  const stelle = Array.from({ length: 26 }, () => ({ x: (10 + c() * 380).toFixed(1), y: (10 + c() * 380).toFixed(1), r: (0.5 + c() * 0.9).toFixed(2) })).filter(
+    (q) => Math.hypot(+q.x - cx, +q.y - cy) > R + 26,
+  );
+  return { fasce, anello, stelle };
 })();
 
 export function DisegnoDotwork({ p, className }: PropsDisegno): ReactElement {
   return (
     <svg className={className} {...svgBase}>
-      <Tratto d="M200 70 A130 130 0 1 1 199.9 70" p={p} da={0.02} a={0.3} w={1.4} />
       <g fill="currentColor">
-        {Array.from({ length: 10 }, (_, fascia) => (
-          <Compare key={fascia} p={p} da={0.2 + fascia * 0.06} a={0.32 + fascia * 0.06}>
-            <g>
-              {LUNA.filter((q) => Math.min(9, Math.floor(q.k * 10)) === fascia).map((q, i) => (
-                <circle key={i} cx={q.x.toFixed(1)} cy={q.y.toFixed(1)} r={q.r.toFixed(2)} />
-              ))}
-            </g>
-          </Compare>
+        <Compare p={p} da={0.05} a={0.3}>
+          <g opacity="0.7">
+            {LUNA.stelle.map((q, i) => (
+              <circle key={i} cx={q.x} cy={q.y} r={q.r} />
+            ))}
+          </g>
+        </Compare>
+        <Compare p={p} da={0.55} a={0.8}>
+          <g opacity="0.55">
+            {LUNA.anello.filter((q) => q.dietro).map((q, i) => (
+              <circle key={i} cx={q.x} cy={q.y} r={q.r} />
+            ))}
+          </g>
+        </Compare>
+        {LUNA.fasce.map((fascia, k) => (
+          <Fascia key={k} p={p} da={0.1 + k * 0.045} punti={fascia} />
         ))}
+        <Compare p={p} da={0.6} a={0.85}>
+          <g>
+            {LUNA.anello.filter((q) => !q.dietro).map((q, i) => (
+              <circle key={i} cx={q.x} cy={q.y} r={q.r} />
+            ))}
+          </g>
+        </Compare>
       </g>
-      <Compare p={p} da={0.8} a={0.95}>
-        <circle cx="330" cy="330" r="9" fill={TAVOLOZZA.rosso} />
+      <Compare p={p} da={0.82} a={0.96}>
+        <circle cx="332" cy="92" r="7" fill={TAVOLOZZA.rosso} />
       </Compare>
     </svg>
+  );
+}
+
+/** Una fascia della luna: compare tutta insieme, da in alto a sinistra verso in basso a destra. */
+function Fascia({ p, da, punti }: { p: MotionValue<number>; da: number; punti: readonly { x: string; y: string; r: string }[] }): ReactElement {
+  const opacity = useTransform(p, [da, da + 0.14], [0, 1]);
+  return (
+    <motion.g style={{ opacity }}>
+      {punti.map((q, i) => (
+        <circle key={i} cx={q.x} cy={q.y} r={q.r} />
+      ))}
+    </motion.g>
   );
 }
