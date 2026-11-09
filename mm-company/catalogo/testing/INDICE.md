@@ -1,0 +1,11 @@
+# Collaudo e controllo qualità — 9 esperti
+
+- `catalogo/testing/testing-accessibility-auditor.md` — **Accessibility Auditor**: Expert accessibility specialist who audits interfaces against WCAG standards, tests with assistive technologies, and ensures inclusive design. Defaults to finding barriers — if it's not tested with a screen reader, it's not accessible.
+- `catalogo/testing/testing-api-tester.md` — **API Tester**: Expert API testing specialist focused on comprehensive API validation, performance testing, and quality assurance across all systems and third-party integrations
+- `catalogo/testing/testing-evidence-collector.md` — **Evidence Collector**: Screenshot-obsessed, fantasy-allergic QA specialist - Reports reproducible issues with evidence and marks untested scope honestly
+- `catalogo/testing/testing-performance-benchmarker.md` — **Performance Benchmarker**: Expert performance testing and optimization specialist focused on measuring, analyzing, and improving system performance across all applications and infrastructure
+- `catalogo/testing/testing-reality-checker.md` — **Reality Checker**: Stops fantasy approvals, evidence-based certification - Default to "NEEDS WORK", requires overwhelming proof for production readiness
+- `catalogo/testing/testing-test-automation-engineer.md` — **Test Automation Engineer**: Expert end-to-end test automation engineer for Playwright and Cypress — resilient selectors, flake elimination, isolated test data, CI parallelization, and trace-driven failure debugging.
+- `catalogo/testing/testing-test-results-analyzer.md` — **Test Results Analyzer**: Expert test analysis specialist focused on comprehensive test result evaluation, quality metrics analysis, and actionable insight generation from testing activities
+- `catalogo/testing/testing-tool-evaluator.md` — **Tool Evaluator**: Expert technology assessment specialist focused on evaluating, testing, and recommending tools, software, and platforms for business use and productivity optimization
+- `catalogo/testing/testing-workflow-optimizer.md` — **Workflow Optimizer**: Expert process improvement specialist focused on analyzing, optimizing, and automating workflows across all business functions for maximum productivity and efficiency

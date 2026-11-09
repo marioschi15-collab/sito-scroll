@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["Read(./**)", "Edit(./progetti/**)", "Edit(./azienda/memoria/**)", "WebSearch", "WebFetch"],
+    "ask": ["Bash", "Edit(./azienda/REGOLE.md)", "Edit(./CLAUDE.md)", "Edit(./.claude/**)", "Edit(./catalogo/**)"]
+  }
+}
