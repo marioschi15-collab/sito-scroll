@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a1f44">
+<title>Boccone — mangia, cresci, sopravvivi</title>
+<style>
+  html, body {
+    margin: 0; height: 100%; overflow: hidden; background: #0a1f44; color: #fff;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent; overscroll-behavior: none;
+    font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+  #hud {
+    position: fixed; left: 0; right: 0; top: 0; pointer-events: none;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) calc(env(safe-area-inset-right, 0px) + 12px) 0 calc(env(safe-area-inset-left, 0px) + 12px);
+    display: none;
+  }
+  #hud.visibile { display: block; }
+  .riga { display: flex; align-items: center; gap: 10px; }
+  .tondo {
+    pointer-events: auto; width: 44px; height: 44px; flex: none; border-radius: 50%; border: 0; padding: 0;
+    background: rgba(8, 20, 48, .55); color: #fff; font-size: 18px; font-weight: 800; font-family: inherit;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .25);
+  }
+  .tondo:active { transform: scale(.92); }
+  #avanzamento { flex: 1; min-width: 0; }
+  #etichette { display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; font-size: 12px; font-weight: 700; opacity: .92; margin-bottom: 4px; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+  #barra { height: 12px; border-radius: 8px; background: rgba(8, 20, 48, .55); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .25); overflow: hidden; }
+  #barra i { display: block; height: 100%; width: 0%; border-radius: 8px; background: linear-gradient(90deg, #35e0c8, #ffe066); transition: width .25s; }
+  #effetti { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; min-height: 26px; }
+  .gettone { font-size: 13px; font-weight: 800; padding: 4px 10px; border-radius: 14px; background: rgba(8, 20, 48, .6); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .3); }
+  .gettone.molt { color: #ffe066; } .gettone.cal { color: #ff9ecb; } .gettone.scu { color: #9be7ff; }
+
+  .velo {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
+    padding: calc(env(safe-area-inset-top, 0px) + 20px) 24px calc(env(safe-area-inset-bottom, 0px) + 20px);
+    background: radial-gradient(ellipse at center, rgba(6, 16, 40, .55), rgba(6, 16, 40, .86));
+  }
+  .velo.visibile { display: flex; }
+  .scheda { max-width: 340px; width: 100%; }
+  h1 { font-size: 54px; line-height: 1; margin: 0 0 8px; font-weight: 900; letter-spacing: -1px; color: #35e0c8; text-shadow: 0 4px 0 #0b6f7a, 0 10px 24px rgba(0, 0, 0, .45); }
+  h2 { font-size: 34px; line-height: 1.1; margin: 0 0 10px; font-weight: 900; text-shadow: 0 3px 0 rgba(0, 0, 0, .35); }
+  p { margin: 0 0 14px; font-size: 16px; line-height: 1.4; opacity: .95; }
+  .regole { list-style: none; padding: 0; margin: 18px 0 22px; text-align: left; font-size: 15px; line-height: 1.35; }
+  .regole li { display: flex; gap: 10px; align-items: center; padding: 8px 12px; margin-bottom: 8px; border-radius: 14px; background: rgba(255, 255, 255, .08); }
+  .regole b { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: #0a1f44; }
+  .verde { background: #7cf29a; } .rosso { background: #ff7b7b; } .giallo { background: #ffe066; }
+  .grande {
+    pointer-events: auto; width: 100%; border: 0; border-radius: 20px; padding: 16px 20px; font-family: inherit;
+    font-size: 21px; font-weight: 900; color: #06303a; background: linear-gradient(#5ff0dc, #22c9b6);
+    box-shadow: 0 6px 0 #0b7f86, 0 14px 26px rgba(0, 0, 0, .4);
+  }
+  .grande:active { transform: translateY(4px); box-shadow: 0 2px 0 #0b7f86, 0 6px 12px rgba(0, 0, 0, .4); }
+  .secondario { margin-top: 14px; background: none; border: 0; color: #fff; opacity: .8; font-family: inherit; font-size: 15px; font-weight: 700; padding: 10px; text-decoration: underline; }
+  .record { font-size: 14px; opacity: .8; margin-top: 16px; }
+  .numero { font-size: 44px; font-weight: 900; color: #ffe066; margin: 4px 0 14px; text-shadow: 0 3px 0 rgba(0, 0, 0, .35); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div class="riga">
+    <button class="tondo" id="btnPausa" aria-label="Pausa">II</button>
+    <div id="avanzamento">
+      <div id="etichette"><span id="etLivello">Livello 1</span><span id="etGigante"></span></div>
+      <div id="barra"><i id="barraPiena"></i></div>
+    </div>
+    <button class="tondo" id="btnSuono" aria-label="Suoni">♪</button>
+  </div>
+  <div id="effetti"></div>
+</div>
+
+<div class="velo visibile" id="veloMenu">
+  <div class="scheda">
+    <h1>Boccone</h1>
+    <p>Mangia, cresci, sopravvivi.</p>
+    <ul class="regole">
+      <li><b class="verde">12</b><span>Numero <strong>verde</strong>: è più piccolo di te, mangialo.</span></li>
+      <li><b class="rosso">99</b><span>Numero <strong>rosso</strong>: è più grosso di te, scappa!</span></li>
+      <li><b class="giallo">×5</b><span>Le bolle regalano aiuti: moltiplicatore, calamita, scudo.</span></li>
+    </ul>
+    <button class="grande" id="btnGioca">Gioca</button>
+    <div class="record" id="recordMenu"></div>
+    <p style="font-size:13px;opacity:.7;margin-top:14px">Trascina il dito sullo schermo per nuotare.</p>
+  </div>
+</div>
+
+<div class="velo" id="veloPausa">
+  <div class="scheda">
+    <h2>In pausa</h2>
+    <p>Riprendi fiato, il mare ti aspetta.</p>
+    <button class="grande" id="btnRiprendi">Riprendi</button>
+    <button class="secondario" id="btnRicomincia">Ricomincia il livello</button>
+  </div>
+</div>
+
+<div class="velo" id="veloPerso">
+  <div class="scheda">
+    <h2>Ti hanno mangiato!</h2>
+    <p>Eri arrivato a</p>
+    <div class="numero" id="numPerso">0</div>
+    <button class="grande" id="btnRiprova">Riprova</button>
+    <div class="record" id="recordPerso"></div>
+  </div>
+</div>
+
+<div class="velo" id="veloVinto">
+  <div class="scheda">
+    <h2>Hai mangiato il gigante!</h2>
+    <p id="testoVinto">Livello superato.</p>
+    <div class="numero" id="numVinto">0</div>
+    <button class="grande" id="btnProssimo">Prossimo livello</button>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ---------- Basi ----------
+const $ = id => document.getElementById(id);
+const cv = $('c');
+const ctx = cv.getContext('2d');
+const MONDO = 2400;
+const TAU = Math.PI * 2;
+const caso = (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a);
+const intero = (a, b) => Math.floor(caso(a, b + 1));
+const limita = (v, a, b) => v < a ? a : v > b ? b : v;
+const numero = n => Math.round(n).toLocaleString('it-IT');
+
+let vw = 0, vh = 0, dpr = 1;
+function ridimensiona() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  vw = window.innerWidth; vh = window.innerHeight;
+  cv.width = Math.round(vw * dpr); cv.height = Math.round(vh * dpr);
+}
+window.addEventListener('resize', ridimensiona);
+ridimensiona();
+
+// ---------- Ambienti ----------
+const AMBIENTI = [
+  { nome: 'Laguna blu', alto: '#2a78b8', basso: '#0a1f44', sabbia: '#c9a877', alga: '#2fbf8a', roccia: '#10284f' },
+  { nome: 'Foresta di alghe', alto: '#2f9a78', basso: '#052c2e', sabbia: '#a9b27a', alga: '#b5e05a', roccia: '#06383a' },
+  { nome: 'Abisso viola', alto: '#5a3f9e', basso: '#0c0724', sabbia: '#8f7aa8', alga: '#ff7bd0', roccia: '#1a1040' },
+];
+
+// ---------- Specie ----------
+const SPECIE = {
+  ghiozzo:   { lx: 1.25, ly: .80, c1: '#7bd66b', c2: '#dcf7ae', pinna: '#3f9b4a' },
+  scatola:   { lx: 1.05, ly: .95, c1: '#f2b84b', c2: '#fff0b8', pinna: '#c9792b', spine: true },
+  barracuda: { lx: 1.70, ly: .58, c1: '#8f6bff', c2: '#e3d9ff', pinna: '#5a3fd0', righe: true },
+  gigante:   { lx: 1.20, ly: 1.0, c1: '#4a3470', c2: '#8a5aa0', pinna: '#2a1a44', lanterna: true },
+};
+
+function configLivello(n) {
+  const d = Math.min(n - 1, 10);
+  return {
+    ambiente: AMBIENTI[(n - 1) % AMBIENTI.length],
+    fasce: [
+      { specie: 'ghiozzo',   min: 20,   max: 60,   quanti: 11 + Math.min(d, 4), r: 26, vel: 118 + d * 6, senso: 250 + d * 10 },
+      { specie: 'scatola',   min: 220,  max: 650,  quanti: 9 + Math.min(d, 3),  r: 42, vel: 132 + d * 6, senso: 310 + d * 10 },
+      { specie: 'barracuda', min: 2400, max: 7000, quanti: 7 + Math.min(d, 3),  r: 58, vel: 148 + d * 6, senso: 370 + d * 10 },
+    ],
+    gigante: { specie: 'gigante', potenza: 30000 + (n - 1) * 15000, r: 130, vel: 128 + d * 5, senso: 430 },
+  };
+}
+
+// ---------- Memoria locale (solo record) ----------
+let record = { livello: 1, potenza: 0 };
+try { const r = JSON.parse(localStorage.getItem('boccone-record')); if (r && r.livello) record = r; } catch (e) {}
+function salvaRecord() { try { localStorage.setItem('boccone-record', JSON.stringify(record)); } catch (e) {} }
+
+// ---------- Suoni ----------
+let audio = null, muto = false;
+function avviaAudio() {
+  if (audio) { if (audio.state === 'suspended') audio.resume().catch(() => {}); return; }
+  try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
+}
+function suono(f1, f2, durata, tipo = 'sine', volume = .07) {
+  if (muto || !audio || audio.state !== 'running') return;
+  try {
+    const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime;
+    o.type = tipo; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f2), t + durata);
+    g.gain.setValueAtTime(volume, t); g.gain.exponentialRampToValueAtTime(.0001, t + durata);
+    o.connect(g).connect(audio.destination); o.start(t); o.stop(t + durata + .02);
+  } catch (e) {}
+}
+let ultimoGnam = 0;
+function gnam(grosso) {
+  const ora = performance.now();
+  if (!grosso && ora - ultimoGnam < 55) return;
+  ultimoGnam = ora;
+  if (grosso) { suono(180, 520, .16, 'triangle', .12); suono(90, 60, .2, 'sine', .1); }
+  else suono(520 + caso(240), 900 + caso(300), .06, 'sine', .04);
+}
+function vibra(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+
+// ---------- Stato ----------
+const G = {
+  stato: 'menu', livello: 1, t: 0, cfg: configLivello(1),
+  hero: null, banchi: [], pesciolini: [], predatori: [], bolle: [], particelle: [], testi: [],
+  cam: { x: MONDO / 2, y: MONDO / 2, z: 1 }, scossa: 0,
+  molt: 1, moltT: 0, calamitaT: 0, scudo: false,
+  accumulo: 0, accumuloT: 0, bollaT: 0, decoro: null,
+};
+window.boccone = G;
+
+const raggioHero = p => 18 * (1 + .7 * Math.log10(p + 1));
+
+function puntoLontano(distanza, margine = 160) {
+  const h = G.hero;
+  for (let i = 0; i < 40; i++) {
+    const x = caso(margine, MONDO - margine), y = caso(margine, MONDO - margine);
+    if (!h || Math.hypot(x - h.x, y - h.y) > distanza) return { x, y };
+  }
+  return { x: h.x < MONDO / 2 ? MONDO - margine : margine, y: h.y < MONDO / 2 ? MONDO - margine : margine };
+}
+
+function nuovoPredatore(fascia, gigante) {
+  const p = puntoLontano(gigante ? 900 : 520, fascia.r + 60);
+  return {
+    specie: fascia.specie, fascia, gigante: !!gigante, x: p.x, y: p.y, ang: caso(TAU), vAtt: 0,
+    p: gigante ? fascia.potenza : intero(fascia.min, fascia.max), r: fascia.r,
+    f: caso(TAU), giro: caso(-1, 1), stordito: 0, nasce: 1,
+  };
+}
+
+function nuovaBolla() {
+  const p = puntoLontano(280, 140), x = Math.random();
+  const tipo = x < .35 ? 'x2' : x < .5 ? 'x5' : x < .8 ? 'calamita' : 'scudo';
+  return { tipo, x: p.x, y: p.y, f: caso(TAU) };
+}
+
+function creaLivello() {
+  const cfg = G.cfg = configLivello(G.livello);
+  G.t = 0; G.molt = 1; G.moltT = 0; G.calamitaT = 0; G.scudo = false; G.accumulo = 0; G.scossa = 0; G.bollaT = 4;
+  G.particelle.length = 0; G.testi.length = 0;
+  G.hero = { x: MONDO / 2, y: MONDO / 2, vx: 0, vy: 0, ang: 0, p: 1, r: raggioHero(1), bocca: 0, pulsa: 0, invul: 3, vivo: true };
+
+  G.banchi = []; G.pesciolini = [];
+  for (let b = 0; b < 14; b++) {
+    const banco = { x: caso(250, MONDO - 250), y: caso(250, MONDO - 250), ang: caso(TAU), vel: caso(22, 42), raggio: caso(120, 190) };
+    if (b === 0) { banco.x = MONDO / 2 + 150; banco.y = MONDO / 2 - 60; }
+    G.banchi.push(banco);
+    for (let i = 0; i < 60; i++) {
+      const a = caso(TAU), d = Math.sqrt(Math.random()) * banco.raggio;
+      G.pesciolini.push({
+        b: banco, a, d, w: caso(.15, .5) * (Math.random() < .5 ? -1 : 1),
+        x: banco.x + Math.cos(a) * d, y: banco.y + Math.sin(a) * d, vx: 0, vy: 0,
+        c: intero(0, 2), f: caso(TAU), morto: 0,
+      });
+    }
+  }
+
+  G.predatori = [];
+  for (const fascia of cfg.fasce) for (let i = 0; i < fascia.quanti; i++) G.predatori.push(nuovoPredatore(fascia));
+  G.predatori.push(nuovoPredatore(cfg.gigante, true));
+
+  G.bolle = [];
+  for (let i = 0; i < 5; i++) G.bolle.push(nuovaBolla());
+
+  // Decorazioni fisse del fondale
+  const dec = { alghe: [], rocce: [], ombre: [] };
+  for (let i = 0; i < 46; i++) dec.alghe.push({ x: caso(0, MONDO), h: caso(70, 190), f: caso(TAU), l: caso(8, 16) });
+  for (let i = 0; i < 16; i++) dec.rocce.push({ x: caso(0, MONDO), w: caso(70, 190), h: caso(40, 110) });
+  for (let i = 0; i < 14; i++) dec.ombre.push({ x: caso(-200, MONDO + 200), y: caso(200, MONDO), w: caso(160, 420), h: caso(90, 240) });
+  G.decoro = dec;
+
+  G.cam.x = G.hero.x; G.cam.y = G.hero.y;
+}
+
+// ---------- Comandi ----------
+const leva = { attiva: false, id: null, x0: 0, y0: 0, x: 0, y: 0 };
+const tasti = new Set();
+cv.addEventListener('pointerdown', e => {
+  if (G.stato !== 'gioco') return;
+  leva.attiva = true; leva.id = e.pointerId; leva.x0 = leva.x = e.clientX; leva.y0 = leva.y = e.clientY;
+  try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+});
+cv.addEventListener('pointermove', e => {
+  if (!leva.attiva || e.pointerId !== leva.id) return;
+  leva.x = e.clientX; leva.y = e.clientY;
+  // La base della leva segue il dito se si allontana troppo
+  const dx = leva.x - leva.x0, dy = leva.y - leva.y0, d = Math.hypot(dx, dy);
+  if (d > 70) { leva.x0 += dx / d * (d - 70); leva.y0 += dy / d * (d - 70); }
+});
+const rilascia = e => { if (e.pointerId === leva.id) leva.attiva = false; };
+cv.addEventListener('pointerup', rilascia);
+cv.addEventListener('pointercancel', rilascia);
+window.addEventListener('keydown', e => {
+  tasti.add(e.key.toLowerCase());
+  if (e.key === 'Escape' || e.key.toLowerCase() === 'p') { if (G.stato === 'gioco') pausa(); else if (G.stato === 'pausa') riprendi(); }
+});
+window.addEventListener('keyup', e => tasti.delete(e.key.toLowerCase()));
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+function direzione() {
+  let x = 0, y = 0;
+  if (leva.attiva) {
+    x = (leva.x - leva.x0) / 55; y = (leva.y - leva.y0) / 55;
+  } else {
+    if (tasti.has('arrowleft') || tasti.has('a')) x -= 1;
+    if (tasti.has('arrowright') || tasti.has('d')) x += 1;
+    if (tasti.has('arrowup') || tasti.has('w')) y -= 1;
+    if (tasti.has('arrowdown') || tasti.has('s')) y += 1;
+  }
+  const m = Math.hypot(x, y);
+  if (m > 1) { x /= m; y /= m; }
+  return { x, y };
+}
+
+// ---------- Effetti ----------
+function scoppio(x, y, colore, quanti, forza) {
+  for (let i = 0; i < quanti && G.particelle.length < 220; i++) {
+    const a = caso(TAU), v = caso(.3, 1) * forza;
+    G.particelle.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vita: caso(.35, .8), eta: 0, r: caso(2, 6), c: colore });
+  }
+}
+function testo(x, y, scritta, colore, grande) {
+  if (G.testi.length > 40) G.testi.shift();
+  G.testi.push({ x, y, s: scritta, c: colore, eta: 0, grande: !!grande });
+}
+
+function guadagna(base, x, y, grosso) {
+  const h = G.hero, g = Math.max(1, Math.round(base * G.molt));
+  h.p += g; h.r = raggioHero(h.p); h.bocca = 1; h.pulsa = grosso ? 1 : Math.max(h.pulsa, .35);
+  if (grosso) { testo(x, y, '+' + numero(g), '#ffe066', true); G.scossa = Math.max(G.scossa, 6); vibra(25); }
+  else { G.accumulo += g; }
+  gnam(grosso);
+}
+
+function colpito(nemico) {
+  const h = G.hero;
+  if (h.invul > 0) return;
+  if (G.scudo) {
+    G.scudo = false; h.invul = 1.6; nemico.stordito = 1.4;
+    const a = Math.atan2(nemico.y - h.y, nemico.x - h.x);
+    nemico.x += Math.cos(a) * 90; nemico.y += Math.sin(a) * 90; nemico.ang = a;
+    scoppio(h.x, h.y, '#9be7ff', 26, 320); testo(h.x, h.y - h.r, 'Scudo!', '#9be7ff', true);
+    suono(700, 200, .25, 'square', .06); G.scossa = 10; vibra(60);
+    return;
+  }
+  h.vivo = false; G.stato = 'perso'; leva.attiva = false;
+  scoppio(h.x, h.y, '#35e0c8', 40, 380); scoppio(h.x, h.y, '#ffffff', 20, 260);
+  suono(320, 50, .5, 'sawtooth', .09); G.scossa = 16; vibra(180);
+  if (h.p > record.potenza) record.potenza = h.p;
+  salvaRecord();
+  setTimeout(() => {
+    if (G.stato !== 'perso') return;
+    $('numPerso').textContent = numero(h.p);
+    $('recordPerso').textContent = 'Il tuo massimo: ' + numero(record.potenza) + ' · livello ' + record.livello;
+    mostra('veloPerso');
+  }, 850);
+}
+
+function vittoria() {
+  const h = G.hero;
+  G.stato = 'vinto'; leva.attiva = false;
+  for (let i = 0; i < 6; i++) scoppio(h.x + caso(-120, 120), h.y + caso(-120, 120), ['#ffe066', '#ff9ecb', '#35e0c8', '#ffffff'][i % 4], 30, 420);
+  suono(392, 784, .18, 'triangle', .1); setTimeout(() => suono(523, 1046, .22, 'triangle', .1), 160); setTimeout(() => suono(659, 1318, .35, 'triangle', .1), 340);
+  vibra(120);
+  if (h.p > record.potenza) record.potenza = h.p;
+  if (G.livello + 1 > record.livello) record.livello = G.livello + 1;
+  salvaRecord();
+  setTimeout(() => {
+    if (G.stato !== 'vinto') return;
+    $('testoVinto').textContent = 'Livello ' + G.livello + ' superato. Sei arrivato a';
+    $('numVinto').textContent = numero(h.p);
+    mostra('veloVinto');
+  }, 1300);
+}
+
+// ---------- Aggiornamento ----------
+function aggiorna(dt) {
+  G.t += dt;
+  const h = G.hero, inGioco = G.stato === 'gioco';
+
+  // Protagonista
+  if (inGioco) {
+    const d = direzione(), vel = 250 + (h.r - 22) * 1.3;
+    const k = Math.min(1, dt * 8);
+    h.vx += (d.x * vel - h.vx) * k; h.vy += (d.y * vel - h.vy) * k;
+    h.x = limita(h.x + h.vx * dt, h.r, MONDO - h.r); h.y = limita(h.y + h.vy * dt, h.r, MONDO - h.r);
+    if (Math.hypot(h.vx, h.vy) > 12) h.ang = Math.atan2(h.vy, h.vx);
+    h.invul = Math.max(0, h.invul - dt);
+    if (G.moltT > 0) { G.moltT -= dt; if (G.moltT <= 0) G.molt = 1; }
+    if (G.calamitaT > 0) G.calamitaT -= dt;
+  } else if (G.stato === 'menu') {
+    // Nel menu il mare vive e la visuale passeggia
+    h.x = MONDO / 2 + Math.cos(G.t * .12) * 500; h.y = MONDO / 2 + Math.sin(G.t * .17) * 500;
+  }
+  h.bocca = Math.max(0, h.bocca - dt * 5); h.pulsa = Math.max(0, h.pulsa - dt * 4);
+
+  // Banchi di pesciolini
+  for (const b of G.banchi) {
+    b.ang += caso(-1, 1) * dt * .8;
+    b.x += Math.cos(b.ang) * b.vel * dt; b.y += Math.sin(b.ang) * b.vel * dt;
+    const m = b.raggio + 60;
+    if (b.x < m || b.x > MONDO - m || b.y < m || b.y > MONDO - m) b.ang = Math.atan2(MONDO / 2 - b.y, MONDO / 2 - b.x);
+  }
+  const calamita = inGioco && G.calamitaT > 0, fuga = h.r + 85, presa = h.r * .9 + 5, risucchio = h.r + 30;
+  const smorza = Math.max(0, 1 - 3 * dt);
+  for (const f of G.pesciolini) {
+    if (f.morto > 0) {
+      f.morto -= dt;
+      if (f.morto <= 0) {
+        if (Math.hypot(f.b.x - h.x, f.b.y - h.y) > 620) { f.x = f.b.x + Math.cos(f.a) * f.d; f.y = f.b.y + Math.sin(f.a) * f.d; f.vx = f.vy = 0; f.morto = 0; }
+        else f.morto = 1.5;
+      }
+      continue;
+    }
+    f.a += f.w * dt;
+    const tx = f.b.x + Math.cos(f.a) * f.d, ty = f.b.y + Math.sin(f.a) * f.d;
+    f.vx += (tx - f.x) * 4 * dt; f.vy += (ty - f.y) * 4 * dt;
+    if (inGioco) {
+      const dx = f.x - h.x, dy = f.y - h.y, d = Math.hypot(dx, dy) || 1;
+      if (d < presa) {
+        f.morto = caso(5, 11); guadagna(1, f.x, f.y, false);
+        if (G.particelle.length < 120) scoppio(f.x, f.y, '#ffffff', 2, 90);
+        continue;
+      }
+      if (calamita && d < 420) { const s = 1500 * dt / d; f.vx -= dx * s; f.vy -= dy * s; }
+      else if (d < risucchio) { const s = 900 * dt / d; f.vx -= dx * s; f.vy -= dy * s; }
+      else if (d < fuga) { const s = 520 * dt / d * (1 - d / fuga); f.vx += dx * s; f.vy += dy * s; }
+    }
+    f.vx *= smorza; f.vy *= smorza;
+    const v = Math.hypot(f.vx, f.vy), vmax = calamita ? 420 : 140;
+    if (v > vmax) { f.vx *= vmax / v; f.vy *= vmax / v; }
+    f.x += f.vx * dt; f.y += f.vy * dt;
+  }
+
+  // Pesci grossi
+  for (let i = G.predatori.length - 1; i >= 0; i--) {
+    const e = G.predatori[i];
+    e.f += dt * 7; e.nasce = Math.max(0, e.nasce - dt * 1.5);
+    let vel = e.fascia.vel * .38, verso = null;
+    if (e.stordito > 0) { e.stordito -= dt; vel = 0; }
+    else if (inGioco) {
+      const dx = h.x - e.x, dy = h.y - e.y, d = Math.hypot(dx, dy);
+      if (d < e.fascia.senso + h.r + e.r) {
+        if (e.p >= h.p) { verso = Math.atan2(dy, dx); vel = e.fascia.vel; }
+        else { verso = Math.atan2(-dy, -dx); vel = e.fascia.vel * (e.gigante ? .6 : .85); }
+      }
+    }
+    const m = e.r + 40;
+    if (e.x < m || e.x > MONDO - m || e.y < m || e.y > MONDO - m) {
+      const centro = Math.atan2(MONDO / 2 - e.y, MONDO / 2 - e.x);
+      if (verso === null || e.p < h.p) verso = centro;
+    }
+    if (verso === null) {
+      if (Math.random() < dt * .6) e.giro = caso(-1, 1);
+      e.ang += e.giro * dt * .7;
+    } else {
+      let diff = ((verso - e.ang + Math.PI * 3) % TAU) - Math.PI;
+      e.ang += limita(diff, -3.2 * dt, 3.2 * dt);
+    }
+    e.vAtt += (vel - e.vAtt) * Math.min(1, dt * 3);
+    e.x = limita(e.x + Math.cos(e.ang) * e.vAtt * dt, e.r, MONDO - e.r);
+    e.y = limita(e.y + Math.sin(e.ang) * e.vAtt * dt, e.r, MONDO - e.r);
+
+    // Non si accavallano tra loro
+    for (let j = i - 1; j >= 0; j--) {
+      const o = G.predatori[j], dx = o.x - e.x, dy = o.y - e.y, min = (e.r + o.r) * .9, d2 = dx * dx + dy * dy;
+      if (d2 < min * min && d2 > .01) {
+        const d = Math.sqrt(d2), s = (min - d) / d * .5 * Math.min(1, dt * 6);
+        const pe = o.r / (e.r + o.r), po = 1 - pe;
+        e.x -= dx * s * pe * 2; e.y -= dy * s * pe * 2; o.x += dx * s * po * 2; o.y += dy * s * po * 2;
+      }
+    }
+
+    if (inGioco && e.nasce <= 0) {
+      const d = Math.hypot(h.x - e.x, h.y - e.y);
+      if (d < (h.r + e.r) * .72) {
+        if (h.p > e.p) {
+          scoppio(e.x, e.y, SPECIE[e.specie].c1, e.gigante ? 60 : 18, e.gigante ? 520 : 260);
+          guadagna(e.p * .5, e.x, e.y - e.r, true);
+          G.predatori.splice(i, 1);
+          if (e.gigante) { vittoria(); return; }
+          const fascia = e.fascia;
+          setTimeout(() => { if (G.cfg.fasce.includes(fascia) && G.stato !== 'menu') G.predatori.push(nuovoPredatore(fascia)); }, 2500);
+        } else colpito(e);
+      }
+    }
+  }
+
+  // Bolle con gli aiuti
+  if (inGioco) {
+    G.bollaT -= dt;
+    if (G.bollaT <= 0) { G.bollaT = 4.5; if (G.bolle.length < 6) G.bolle.push(nuovaBolla()); }
+    for (let i = G.bolle.length - 1; i >= 0; i--) {
+      const b = G.bolle[i];
+      if (Math.hypot(b.x - h.x, b.y - h.y) < h.r + 30) {
+        G.bolle.splice(i, 1);
+        scoppio(b.x, b.y, '#ffffff', 16, 240); suono(660, 1320, .22, 'triangle', .09); vibra(20);
+        if (b.tipo === 'x2' || b.tipo === 'x5') {
+          const m = b.tipo === 'x2' ? 2 : 5;
+          G.molt = Math.max(G.moltT > 0 ? G.molt : 1, m); G.moltT = 8;
+          testo(b.x, b.y, 'Tutto ×' + m + '!', '#ffe066', true);
+        } else if (b.tipo === 'calamita') { G.calamitaT = 9; testo(b.x, b.y, 'Calamita!', '#ff9ecb', true); }
+        else { G.scudo = true; testo(b.x, b.y, 'Scudo!', '#9be7ff', true); }
+      }
+    }
+    // I "+1" dei pesciolini escono a gruppi, per non riempire lo schermo
+    G.accumuloT -= dt;
+    if (G.accumulo > 0 && G.accumuloT <= 0) {
+      testo(h.x + caso(-h.r, h.r), h.y - h.r - 6, '+' + numero(G.accumulo), '#b9ffd0', false);
+      G.accumulo = 0; G.accumuloT = .28;
+    }
+  }
+
+  // Particelle e scritte
+  for (let i = G.particelle.length - 1; i >= 0; i--) {
+    const p = G.particelle[i];
+    p.eta += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 1 - 2.5 * dt; p.vy *= 1 - 2.5 * dt;
+    if (p.eta >= p.vita) G.particelle.splice(i, 1);
+  }
+  for (let i = G.testi.length - 1; i >= 0; i--) {
+    const s = G.testi[i]; s.eta += dt; s.y -= 46 * dt;
+    if (s.eta > 1) G.testi.splice(i, 1);
+  }
+
+  // Visuale: segue il protagonista e si allarga quando cresce
+  const base = Math.min(vw, vh) / 400;
+  const zBersaglio = G.stato === 'menu' ? base * .8 : base * Math.pow(22 / h.r, .55);
+  G.cam.z += (zBersaglio - G.cam.z) * Math.min(1, dt * 2.5);
+  const kc = Math.min(1, dt * 6);
+  G.cam.x += (h.x - G.cam.x) * kc; G.cam.y += (h.y - G.cam.y) * kc;
+  G.scossa = Math.max(0, G.scossa - dt * 30);
+}
+
+// ---------- Disegno delle creature ----------
+function disegnaProtagonista(r, t, bocca, scudo, lampeggia) {
+  // Pallino: un pesce palla turchese. Disegnato in unità dove il corpo ha raggio 1.
+  ctx.save(); ctx.scale(r, r);
+  if (lampeggia) ctx.globalAlpha = .55;
+  const coda = Math.sin(t * 11) * .35;
+  ctx.fillStyle = '#ffd24a';
+  ctx.save(); ctx.translate(-.9, 0); ctx.rotate(coda);
+  ctx.beginPath(); ctx.moveTo(.1, 0); ctx.quadraticCurveTo(-.5, -.75, -.85, -.55); ctx.quadraticCurveTo(-.55, 0, -.85, .55); ctx.quadraticCurveTo(-.5, .75, .1, 0); ctx.fill();
+  ctx.restore();
+  // Spine sul dorso
+  ctx.fillStyle = '#0c8f9c';
+  for (let i = 0; i < 7; i++) {
+    const a = -Math.PI * .95 + i * .33;
+    ctx.beginPath(); ctx.moveTo(Math.cos(a - .09) * .96, Math.sin(a - .09) * .96); ctx.lineTo(Math.cos(a) * 1.22, Math.sin(a) * 1.22); ctx.lineTo(Math.cos(a + .09) * .96, Math.sin(a + .09) * .96); ctx.fill();
+  }
+  // Corpo
+  const g = ctx.createRadialGradient(.25, -.35, .1, 0, 0, 1.1);
+  g.addColorStop(0, '#7ff5e2'); g.addColorStop(.6, '#2fd3c0'); g.addColorStop(1, '#0e9aa7');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 1, 0, TAU); ctx.fill();
+  // Pancia chiara
+  ctx.save(); ctx.beginPath(); ctx.arc(0, 0, 1, 0, TAU); ctx.clip();
+  ctx.fillStyle = '#fff6d6'; ctx.beginPath(); ctx.ellipse(.1, .95, 1.05, .62, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+  // Pinna laterale
+  ctx.fillStyle = '#ffd24a';
+  ctx.save(); ctx.translate(-.15, .3); ctx.rotate(.5 + Math.sin(t * 9) * .3);
+  ctx.beginPath(); ctx.ellipse(-.22, 0, .3, .15, 0, 0, TAU); ctx.fill(); ctx.restore();
+  // Guancia
+  ctx.fillStyle = 'rgba(255,120,150,.55)'; ctx.beginPath(); ctx.arc(.38, .2, .16, 0, TAU); ctx.fill();
+  // Occhio
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(.42, -.3, .3, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#18233f'; ctx.beginPath(); ctx.arc(.5, -.28, .16, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(.55, -.35, .06, 0, TAU); ctx.fill();
+  // Bocca
+  ctx.fillStyle = '#6a1238'; ctx.beginPath(); ctx.ellipse(.8, .22, .1 + .2 * bocca, .07 + .3 * bocca, 0, 0, TAU); ctx.fill();
+  if (scudo) {
+    ctx.strokeStyle = 'rgba(155,231,255,.9)'; ctx.lineWidth = .08; ctx.beginPath(); ctx.arc(0, 0, 1.4 + Math.sin(t * 5) * .04, 0, TAU); ctx.stroke();
+    ctx.fillStyle = 'rgba(155,231,255,.14)'; ctx.fill();
+  }
+  ctx.restore();
+}
+
+function disegnaPredatore(e, t, minaccioso) {
+  const s = SPECIE[e.specie], lx = s.lx, ly = s.ly;
+  ctx.save(); ctx.scale(e.r, e.r);
+  const coda = Math.sin(e.f) * .3;
+  // Coda
+  ctx.fillStyle = s.pinna;
+  ctx.save(); ctx.translate(-lx * .9, 0); ctx.rotate(coda);
+  ctx.beginPath(); ctx.moveTo(.15, 0); ctx.lineTo(-.7, -ly * .95); ctx.quadraticCurveTo(-.4, 0, -.7, ly * .95); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // Pinna sul dorso
+  ctx.beginPath(); ctx.moveTo(-lx * .45, -ly * .8); ctx.quadraticCurveTo(-lx * .2, -ly * 1.75, lx * .25, -ly * .85); ctx.closePath(); ctx.fill();
+  if (s.spine) {
+    for (let i = 0; i < 9; i++) {
+      const a = Math.PI * .15 + i * .34 + Math.PI;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a - .1) * lx * .95, Math.sin(a - .1) * ly * .95); ctx.lineTo(Math.cos(a) * lx * 1.25, Math.sin(a) * ly * 1.25); ctx.lineTo(Math.cos(a + .1) * lx * .95, Math.sin(a + .1) * ly * .95); ctx.fill();
+    }
+  }
+  // Corpo
+  const g = ctx.createLinearGradient(0, -ly, 0, ly);
+  g.addColorStop(0, s.c1); g.addColorStop(.55, s.c1); g.addColorStop(1, s.c2);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, lx, ly, 0, 0, TAU); ctx.fill();
+  if (s.righe) {
+    ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, lx, ly, 0, 0, TAU); ctx.clip();
+    ctx.fillStyle = 'rgba(40,20,120,.28)';
+    for (let i = -3; i < 3; i++) ctx.fillRect(i * .45 - .1, -ly, .16, ly * 1.2);
+    ctx.restore();
+  }
+  // Pinna laterale
+  ctx.fillStyle = s.pinna;
+  ctx.save(); ctx.translate(-lx * .1, ly * .35); ctx.rotate(.5 + Math.sin(e.f * .8) * .25);
+  ctx.beginPath(); ctx.ellipse(-.2, 0, .28, .13, 0, 0, TAU); ctx.fill(); ctx.restore();
+  // Bocca con i denti
+  const mx = lx * .52, my = ly * .28, ml = lx * .44;
+  ctx.fillStyle = '#3b0d1e';
+  ctx.beginPath(); ctx.moveTo(mx, my - .02); ctx.quadraticCurveTo(mx + ml * .6, my + ly * .1, mx + ml, my - ly * .12); ctx.quadraticCurveTo(mx + ml * .55, my + ly * .5, mx, my + ly * .22); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#fff';
+  const denti = e.gigante ? 6 : 4;
+  for (let i = 0; i < denti; i++) {
+    const u = (i + .5) / denti, x = mx + ml * u, y = my + ly * (.06 - .15 * u * u);
+    ctx.beginPath(); ctx.moveTo(x - ml * .09, y - .02); ctx.lineTo(x + ml * .09, y - .02); ctx.lineTo(x, y + ly * .2); ctx.fill();
+  }
+  // Occhio
+  const ox = lx * .55, oy = -ly * .28, or = Math.min(.26, ly * .3);
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ox, oy, or, 0, TAU); ctx.fill();
+  ctx.fillStyle = minaccioso ? '#c81e3a' : '#18233f'; ctx.beginPath(); ctx.arc(ox + or * .25, oy, or * .5, 0, TAU); ctx.fill();
+  if (minaccioso) {
+    ctx.strokeStyle = s.pinna; ctx.lineWidth = or * .45; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(ox - or * 1.1, oy - or * 1.25); ctx.lineTo(ox + or * 1.1, oy - or * .55); ctx.stroke();
+  }
+  if (s.lanterna) {
+    const lx2 = lx * 1.25, ly2 = -ly * 1.25 + Math.sin(t * 2.2) * .06;
+    ctx.strokeStyle = s.pinna; ctx.lineWidth = .06; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(lx * .3, -ly * .9); ctx.quadraticCurveTo(lx * .7, -ly * 1.9, lx2, ly2); ctx.stroke();
+    const gl = ctx.createRadialGradient(lx2, ly2, 0, lx2, ly2, .55);
+    gl.addColorStop(0, 'rgba(255,240,150,.95)'); gl.addColorStop(.3, 'rgba(255,220,90,.5)'); gl.addColorStop(1, 'rgba(255,220,90,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(lx2, ly2, .55, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#fff7c2'; ctx.beginPath(); ctx.arc(lx2, ly2, .11, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Pesciolini: disegnati una volta sola su piccole immagini, poi copiati
+const COLORI_PESCIOLINI = ['#ffd1e8', '#ffe9a8', '#c9f0ff'];
+const figurine = [];
+(function preparaFigurine() {
+  for (let c = 0; c < 3; c++) for (let fr = 0; fr < 2; fr++) for (let dir = 0; dir < 2; dir++) {
+    const im = document.createElement('canvas'); im.width = 54; im.height = 36;
+    const x = im.getContext('2d');
+    x.translate(27, 18); if (dir) x.scale(-1, 1); x.scale(3, 3);
+    x.fillStyle = COLORI_PESCIOLINI[c];
+    x.beginPath(); x.moveTo(-3.5, 0); x.lineTo(-8, fr ? -3.6 : -2.4); x.lineTo(-8, fr ? 2.4 : 3.6); x.closePath(); x.fill();
+    x.beginPath(); x.ellipse(0, 0, 5.2, 3.3, 0, 0, TAU); x.fill();
+    x.fillStyle = 'rgba(255,255,255,.75)'; x.beginPath(); x.ellipse(.5, 1.2, 3.6, 1.5, 0, 0, TAU); x.fill();
+    x.fillStyle = '#18233f'; x.beginPath(); x.arc(2.6, -.7, 1, 0, TAU); x.fill();
+    figurine.push(im);
+  }
+})();
+
+function disegnaIconaBolla(tipo) {
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (tipo === 'x2' || tipo === 'x5') {
+    ctx.font = '900 26px ui-rounded, system-ui, sans-serif';
+    ctx.lineWidth = 5; ctx.strokeStyle = '#8a4b00'; ctx.lineJoin = 'round';
+    const s = tipo === 'x2' ? '×2' : '×5';
+    ctx.strokeText(s, 0, 1); ctx.fillStyle = '#ffe066'; ctx.fillText(s, 0, 1);
+  } else if (tipo === 'calamita') {
+    ctx.lineCap = 'butt'; ctx.lineWidth = 9; ctx.strokeStyle = '#ff5c9a';
+    ctx.beginPath(); ctx.arc(0, 2, 11, 0, Math.PI); ctx.moveTo(-11, 2); ctx.lineTo(-11, -9); ctx.moveTo(11, 2); ctx.lineTo(11, -9); ctx.stroke();
+    ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-11, -9); ctx.lineTo(-11, -15); ctx.moveTo(11, -9); ctx.lineTo(11, -15); ctx.stroke();
+  } else {
+    ctx.fillStyle = '#9be7ff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(13, -9); ctx.quadraticCurveTo(13, 9, 0, 16); ctx.quadraticCurveTo(-13, 9, -13, -9); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+}
+
+// ---------- Disegno della scena ----------
+const bollicine = Array.from({ length: 34 }, () => ({ x: Math.random(), y: Math.random(), r: caso(1.5, 5), v: caso(.02, .07), f: caso(TAU) }));
+
+function etichetta(x, y, scritta, sfondo, px) {
+  ctx.font = '900 ' + px + 'px ui-rounded, system-ui, sans-serif';
+  const w = ctx.measureText(scritta).width + px * .9, hh = px * 1.45;
+  ctx.fillStyle = sfondo;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x - w / 2, y - hh / 2, w, hh, hh / 2); else ctx.rect(x - w / 2, y - hh / 2, w, hh);
+  ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(scritta, x, y + px * .04);
+}
+
+function disegna() {
+  const { cam, hero: h, cfg } = G, amb = cfg.ambiente, t = G.t, z = cam.z;
+  const sx = G.scossa > 0 ? caso(-1, 1) * G.scossa : 0, sy = G.scossa > 0 ? caso(-1, 1) * G.scossa : 0;
+  const aSchermoX = x => (x - cam.x) * z + vw / 2 + sx, aSchermoY = y => (y - cam.y) * z + vh / 2 + sy;
+
+  // Acqua
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const prof = limita(cam.y / MONDO, 0, 1);
+  const sf = ctx.createLinearGradient(0, -vh * prof, 0, vh * (2 - prof));
+  sf.addColorStop(0, amb.alto); sf.addColorStop(1, amb.basso);
+  ctx.fillStyle = sf; ctx.fillRect(0, 0, vw, vh);
+  // Raggi di luce
+  ctx.fillStyle = 'rgba(255,255,255,.045)';
+  for (let i = 0; i < 5; i++) {
+    const bx = ((i * .27 + .1) * vw - cam.x * .12 + Math.sin(t * .3 + i) * 30) % (vw * 1.3);
+    const x0 = (bx + vw * 1.3) % (vw * 1.3) - vw * .15, l = 40 + i * 14;
+    ctx.beginPath(); ctx.moveTo(x0, 0); ctx.lineTo(x0 + l, 0); ctx.lineTo(x0 + l * 2.4 - 120, vh); ctx.lineTo(x0 - 160, vh); ctx.fill();
+  }
+
+  // Mondo
+  ctx.setTransform(z * dpr, 0, 0, z * dpr, (vw / 2 - cam.x * z + sx) * dpr, (vh / 2 - cam.y * z + sy) * dpr);
+  const mw = vw / 2 / z, mh = vh / 2 / z;
+  const visibile = (x, y, m) => x > cam.x - mw - m && x < cam.x + mw + m && y > cam.y - mh - m && y < cam.y + mh + m;
+
+  // Ombre lontane
+  ctx.fillStyle = 'rgba(0,10,30,.16)';
+  for (const o of G.decoro.ombre) {
+    const x = o.x + (cam.x - MONDO / 2) * .45, y = o.y + (cam.y - MONDO / 2) * .45;
+    if (visibile(x, y, o.w)) { ctx.beginPath(); ctx.ellipse(x, y, o.w, o.h, 0, 0, TAU); ctx.fill(); }
+  }
+  // Confini: roccia ai lati, superficie in alto, sabbia in basso
+  ctx.fillStyle = amb.roccia;
+  ctx.fillRect(-2000, -2000, 2000, MONDO + 4000); ctx.fillRect(MONDO, -2000, 2000, MONDO + 4000);
+  ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(-2000, -2000, MONDO + 4000, 2000);
+  if (cam.y + mh > MONDO - 260) {
+    for (const r of G.decoro.rocce) if (visibile(r.x, MONDO, r.w)) {
+      ctx.fillStyle = amb.roccia; ctx.beginPath(); ctx.ellipse(r.x, MONDO + 6, r.w, r.h, 0, Math.PI, TAU); ctx.fill();
+    }
+    ctx.strokeStyle = amb.alga; ctx.lineCap = 'round';
+    for (const a of G.decoro.alghe) if (visibile(a.x, MONDO, 60)) {
+      const o = Math.sin(t * 1.3 + a.f) * 22;
+      ctx.lineWidth = a.l; ctx.beginPath(); ctx.moveTo(a.x, MONDO + 4); ctx.quadraticCurveTo(a.x - o, MONDO - a.h * .5, a.x + o, MONDO - a.h); ctx.stroke();
+    }
+    ctx.fillStyle = amb.sabbia; ctx.fillRect(-2000, MONDO, MONDO + 4000, 2000);
+  }
+
+  // Bolle con gli aiuti
+  for (const b of G.bolle) {
+    if (!visibile(b.x, b.y, 50)) continue;
+    const by = b.y + Math.sin(t * 2 + b.f) * 6;
+    ctx.save(); ctx.translate(b.x, by);
+    const gb = ctx.createRadialGradient(-8, -10, 2, 0, 0, 30);
+    gb.addColorStop(0, 'rgba(255,255,255,.75)'); gb.addColorStop(.5, 'rgba(160,230,255,.28)'); gb.addColorStop(1, 'rgba(120,210,255,.5)');
+    ctx.fillStyle = gb; ctx.beginPath(); ctx.arc(0, 0, 30, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2; ctx.stroke();
+    disegnaIconaBolla(b.tipo);
+    ctx.restore();
+  }
+
+  // Pesciolini
+  const quadro = Math.floor(t * 8);
+  for (const f of G.pesciolini) {
+    if (f.morto > 0 || !visibile(f.x, f.y, 12)) continue;
+    const dir = f.vx < -2 ? 1 : 0, fr = (quadro + (f.f > Math.PI ? 1 : 0)) & 1;
+    ctx.drawImage(figurine[f.c * 4 + fr * 2 + dir], f.x - 11, f.y - 7.5, 22, 15);
+  }
+
+  // Pesci grossi
+  for (const e of G.predatori) {
+    if (!visibile(e.x, e.y, e.r * 2.2)) continue;
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.ang);
+    if (Math.cos(e.ang) < 0) ctx.scale(1, -1);
+    if (e.nasce > 0) ctx.globalAlpha = 1 - e.nasce;
+    disegnaPredatore(e, t, e.p >= h.p);
+    ctx.restore();
+  }
+
+  // Protagonista
+  if (h.vivo && G.stato !== 'menu') {
+    ctx.save(); ctx.translate(h.x, h.y);
+    const versoSinistra = Math.cos(h.ang) < 0;
+    ctx.rotate(versoSinistra ? h.ang - Math.PI : h.ang);
+    if (versoSinistra) ctx.scale(-1, 1);
+    const lampeggia = h.invul > 0 && Math.floor(t * 10) % 2 === 0;
+    disegnaProtagonista(h.r * (1 + h.pulsa * .12), t, h.bocca, G.scudo, lampeggia);
+    ctx.restore();
+    if (G.calamitaT > 0) {
+      ctx.strokeStyle = 'rgba(255,158,203,' + (.25 + .15 * Math.sin(t * 8)) + ')'; ctx.lineWidth = 3;
+      const rr = h.r + 20 + ((t * 120) % 120);
+      ctx.beginPath(); ctx.arc(h.x, h.y, rr, 0, TAU); ctx.stroke();
+    }
+  }
+
+  // Particelle
+  for (const p of G.particelle) {
+    ctx.globalAlpha = 1 - p.eta / p.vita; ctx.fillStyle = p.c;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // --- Sopra tutto, in misure di schermo ---
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Bollicine
+  ctx.fillStyle = 'rgba(255,255,255,.22)';
+  for (const b of bollicine) {
+    b.y -= b.v * .016; if (b.y < -.05) { b.y = 1.05; b.x = Math.random(); }
+    const x = ((b.x * vw - cam.x * z * .3) % vw + vw) % vw + Math.sin(t * 2 + b.f) * 4;
+    ctx.beginPath(); ctx.arc(x, b.y * vh, b.r, 0, TAU); ctx.fill();
+  }
+
+  if (G.stato !== 'menu') {
+    // Numeri sui pesci grossi
+    for (const e of G.predatori) {
+      if (!visibile(e.x, e.y, e.r * 2) || e.nasce > .5) continue;
+      const px = limita(e.r * z * .42, 12, 30), pericolo = e.p >= h.p;
+      etichetta(aSchermoX(e.x), aSchermoY(e.y - e.r * SPECIE[e.specie].ly) - px * 1.5, numero(e.p), pericolo ? 'rgba(214,40,70,.92)' : 'rgba(26,160,90,.92)', px);
+    }
+    // Numero del protagonista
+    if (h.vivo) etichetta(aSchermoX(h.x), aSchermoY(h.y - h.r) - 18, numero(h.p), 'rgba(12,40,90,.88)', 15 + h.pulsa * 4);
+    // Freccia verso il gigante quando è fuori schermo e sei pronto
+    const gig = G.predatori.find(e => e.gigante);
+    if (gig && G.stato === 'gioco' && !visibile(gig.x, gig.y, 0)) {
+      const a = Math.atan2(gig.y - h.y, gig.x - h.x), rr = Math.min(vw, vh) * .4;
+      ctx.save(); ctx.translate(vw / 2 + Math.cos(a) * rr, vh / 2 + Math.sin(a) * rr); ctx.rotate(a);
+      ctx.fillStyle = h.p > gig.p ? 'rgba(124,242,154,.9)' : 'rgba(255,123,123,.75)';
+      ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -10); ctx.lineTo(-3, 0); ctx.lineTo(-8, 10); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Scritte che salgono
+  for (const s of G.testi) {
+    const px = s.grande ? 24 : 16;
+    ctx.globalAlpha = s.eta < .7 ? 1 : 1 - (s.eta - .7) / .3;
+    ctx.font = '900 ' + px + 'px ui-rounded, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(8,20,48,.8)';
+    const x = aSchermoX(s.x), y = aSchermoY(s.y);
+    ctx.strokeText(s.s, x, y); ctx.fillStyle = s.c; ctx.fillText(s.s, x, y);
+  }
+  ctx.globalAlpha = 1;
+
+  // Leva
+  if (leva.attiva && G.stato === 'gioco') {
+    ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 3; ctx.fillStyle = 'rgba(255,255,255,.08)';
+    ctx.beginPath(); ctx.arc(leva.x0, leva.y0, 55, 0, TAU); ctx.fill(); ctx.stroke();
+    let dx = leva.x - leva.x0, dy = leva.y - leva.y0; const d = Math.hypot(dx, dy);
+    if (d > 55) { dx *= 55 / d; dy *= 55 / d; }
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc(leva.x0 + dx, leva.y0 + dy, 24, 0, TAU); ctx.fill();
+  }
+}
+
+// ---------- Cruscotto ----------
+const cache = {};
+function scrivi(id, proprieta, valore) {
+  const k = id + proprieta;
+  if (cache[k] !== valore) { cache[k] = valore; if (proprieta === 'width') $(id).style.width = valore; else $(id)[proprieta] = valore; }
+}
+function aggiornaCruscotto() {
+  const h = G.hero, gig = G.cfg.gigante.potenza;
+  scrivi('etLivello', 'textContent', 'Livello ' + G.livello + ' · ' + G.cfg.ambiente.nome);
+  scrivi('etGigante', 'textContent', 'Gigante ' + numero(gig));
+  scrivi('barraPiena', 'width', Math.min(100, Math.log(h.p + 1) / Math.log(gig + 2) * 100).toFixed(1) + '%');
+  let s = '';
+  if (G.moltT > 0) s += '<span class="gettone molt">×' + G.molt + ' · ' + Math.ceil(G.moltT) + ' s</span>';
+  if (G.calamitaT > 0) s += '<span class="gettone cal">Calamita · ' + Math.ceil(G.calamitaT) + ' s</span>';
+  if (G.scudo) s += '<span class="gettone scu">Scudo</span>';
+  scrivi('effetti', 'innerHTML', s);
+}
+
+// ---------- Schermate ----------
+const VELI = ['veloMenu', 'veloPausa', 'veloPerso', 'veloVinto'];
+function mostra(id) { for (const v of VELI) $(v).classList.toggle('visibile', v === id); }
+function gioca() { avviaAudio(); creaLivello(); G.stato = 'gioco'; mostra(null); $('hud').classList.add('visibile'); }
+function pausa() { if (G.stato !== 'gioco') return; G.stato = 'pausa'; leva.attiva = false; mostra('veloPausa'); }
+function riprendi() { if (G.stato !== 'pausa') return; avviaAudio(); G.stato = 'gioco'; mostra(null); }
+
+$('btnGioca').addEventListener('click', gioca);
+$('btnRiprova').addEventListener('click', gioca);
+$('btnRicomincia').addEventListener('click', gioca);
+$('btnProssimo').addEventListener('click', () => { G.livello++; gioca(); });
+$('btnPausa').addEventListener('click', pausa);
+$('btnRiprendi').addEventListener('click', riprendi);
+$('btnSuono').addEventListener('click', () => { muto = !muto; $('btnSuono').style.opacity = muto ? .45 : 1; if (!muto) avviaAudio(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pausa(); });
+
+if (record.potenza > 0) $('recordMenu').textContent = 'Il tuo massimo: ' + numero(record.potenza) + ' · livello ' + record.livello;
+if (record.livello > 1) G.livello = record.livello;
+
+// ---------- Ciclo ----------
+creaLivello();
+let prima = performance.now();
+function ciclo(ora) {
+  const dt = Math.min(.034, (ora - prima) / 1000); prima = ora;
+  if (G.stato !== 'pausa') aggiorna(dt);
+  disegna();
+  if (G.stato !== 'menu') aggiornaCruscotto();
+  requestAnimationFrame(ciclo);
+}
+requestAnimationFrame(ciclo);
+})();
+</script>
+</body>
+</html>
