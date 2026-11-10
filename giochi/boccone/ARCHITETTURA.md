@@ -21,8 +21,8 @@ giochi/boccone/
       01-cast.js          B.cast: l'elenco di tutti gli abitanti con dati di gioco e indicazioni di disegno
       05-progressi.js     B.progressi: salvataggio, perle, potenziamenti, eroi, acquario, traguardi, impostazioni
       10-pittura.js       B.pittura: la cassetta degli attrezzi per disegnare (NON si modifica dopo la scelta dello stile)
-      20-specie/*.js      i modelli: pesci, giganti, banchi, pericoli
-      25-eroi/*.js        i protagonisti
+      20-specie/<id>.js   i modelli: pesci, giganti, banchi, pericoli — UN FILE PER MODELLO, col nome dell'id
+      25-eroi/<id>.js     i protagonisti, un file per eroe
       29-provvisorie.js   modelli e ambienti provvisori per tutto ciò che nel cast non ha ancora un modello vero
       30-ambienti/*.js    gli ambienti (sfondi e scenari)
       40-… 59-…           il motore (figurine, disegno, mondo, livelli, giganti)
@@ -169,7 +169,9 @@ B.ambienti.registra({
 
 ## 5. Il gioco: che cosa deve avere
 
-**Avventura.** 8 ambienti × 5 livelli = 40 livelli (`n` da 1 a 40; ambiente di ordine `ceil(n/5)`).
+**Avventura.** Fino a 8 ambienti × 5 livelli. Sono giocabili solo gli ambienti elencati in `B.cast.aperti` (in
+quell'ordine: il livello `n` appartiene all'ambiente `aperti[ceil(n/5) − 1]`); gli altri compaiono sulla mappa come
+"in arrivo". L'elenco si allunga man mano che i modelli veri di un ambiente sono pronti.
 Nei livelli 1–4 di ogni ambiente l'obiettivo è crescere e mangiare il **capobranco** (un esemplare enorme con la
 corona di una specie di taglia 5 di quell'ambiente). Il livello 5 è il **gigante** dell'ambiente, con i suoi attacchi:
 servono tre morsi, e a ogni morso si infuria. In ogni livello l'eroe riparte da 1.

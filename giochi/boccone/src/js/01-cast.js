@@ -150,5 +150,8 @@ B.cast = {
   /* Raggi (in unità di mondo) per taglia 1..5 e raggio dei giganti. */
   raggi: [24, 36, 50, 66, 84], raggioGigante: 150,
   livelliPerAmbiente: 5,
+  /* Gli ambienti giocabili, in ordine: quelli non elencati compaiono sulla mappa come "in arrivo".
+     Si allunga man mano che i modelli veri di un ambiente sono pronti. */
+  aperti: ['laguna', 'alghe', 'relitto', 'mare_aperto', 'ghiacci', 'rovine', 'vulcano', 'abisso'],
 };
 })();
