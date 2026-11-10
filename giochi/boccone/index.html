@@ -6,88 +6,173 @@
 <meta name="theme-color" content="#0a1f44">
 <title>Boccone — mangia, cresci, sopravvivi</title>
 <style>
+  :root { --sopra: env(safe-area-inset-top, 0px); --sotto: env(safe-area-inset-bottom, 0px); --sx: env(safe-area-inset-left, 0px); --dx: env(safe-area-inset-right, 0px); }
   html, body {
     margin: 0; height: 100%; overflow: hidden; background: #0a1f44; color: #fff;
     touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent; overscroll-behavior: none;
     font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
-  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  button { font-family: inherit; color: inherit; -webkit-appearance: none; appearance: none; }
 
-  #hud {
-    position: fixed; left: 0; right: 0; top: 0; pointer-events: none;
-    padding: calc(env(safe-area-inset-top, 0px) + 10px) calc(env(safe-area-inset-right, 0px) + 12px) 0 calc(env(safe-area-inset-left, 0px) + 12px);
-    display: none;
-  }
+  /* ----- Cruscotto ----- */
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; }
   #hud.visibile { display: block; }
+  #alto { padding: calc(var(--sopra) + 10px) calc(var(--dx) + 12px) 0 calc(var(--sx) + 12px); }
   .riga { display: flex; align-items: center; gap: 10px; }
-  .tondo {
-    pointer-events: auto; width: 44px; height: 44px; flex: none; border-radius: 50%; border: 0; padding: 0;
-    background: rgba(8, 20, 48, .55); color: #fff; font-size: 18px; font-weight: 800; font-family: inherit;
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .25);
-  }
+  .vetro { background: rgba(8, 20, 48, .58); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .22); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .tondo { pointer-events: auto; width: 44px; height: 44px; flex: none; border-radius: 50%; border: 0; padding: 0; font-size: 16px; font-weight: 900; }
   .tondo:active { transform: scale(.92); }
   #avanzamento { flex: 1; min-width: 0; }
-  #etichette { display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; font-size: 12px; font-weight: 700; opacity: .92; margin-bottom: 4px; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
-  #barra { height: 12px; border-radius: 8px; background: rgba(8, 20, 48, .55); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .25); overflow: hidden; }
+  #etichette { display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; font-size: 12px; font-weight: 800; margin-bottom: 4px; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+  #etLivello { overflow: hidden; text-overflow: ellipsis; }
+  #barra { height: 13px; border-radius: 8px; overflow: hidden; }
   #barra i { display: block; height: 100%; width: 0%; border-radius: 8px; background: linear-gradient(90deg, #35e0c8, #ffe066); transition: width .25s; }
-  #effetti { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; min-height: 26px; }
-  .gettone { font-size: 13px; font-weight: 800; padding: 4px 10px; border-radius: 14px; background: rgba(8, 20, 48, .6); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .3); }
-  .gettone.molt { color: #ffe066; } .gettone.cal { color: #ff9ecb; } .gettone.scu { color: #9be7ff; }
+  #frenesia { height: 5px; border-radius: 4px; margin-top: 4px; overflow: hidden; background: rgba(8, 20, 48, .45); }
+  #frenesia i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #ff9d3b, #ff4f7b); }
+  #perle { flex: none; height: 44px; border-radius: 22px; padding: 0 14px 0 10px; display: flex; align-items: center; gap: 7px; font-weight: 900; font-size: 16px; }
+  .perla { width: 16px; height: 16px; border-radius: 50%; flex: none; display: inline-block; background: radial-gradient(circle at 35% 30%, #fff, #ffd9f0 45%, #d58fc0); box-shadow: 0 0 6px rgba(255, 200, 240, .7); }
+  #sotto { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; min-height: 28px; }
+  #cuori { font-size: 21px; letter-spacing: 2px; text-shadow: 0 2px 3px rgba(0, 0, 0, .5); margin-right: 4px; }
+  #cuori .pieno { color: #ff5c7a; } #cuori .vuoto { color: rgba(255, 255, 255, .28); }
+  .gettone { font-size: 13px; font-weight: 800; padding: 4px 10px; border-radius: 14px; }
+  .gettone.molt { color: #ffe066; } .gettone.cal { color: #ff9ecb; } .gettone.scu { color: #9be7ff; } .gettone.fre { color: #ffb05c; }
 
+  #btnScatto {
+    pointer-events: auto; position: absolute; right: calc(var(--dx) + 18px); bottom: calc(var(--sotto) + 26px);
+    width: 84px; height: 84px; border-radius: 50%; border: 0; padding: 0; --car: 100%;
+    background: conic-gradient(#35e0c8 var(--car), rgba(8, 20, 48, .6) 0);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .4);
+  }
+  #btnScatto span { position: absolute; inset: 6px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 900; letter-spacing: .5px; background: radial-gradient(circle at 40% 30%, #1e4d8c, #0b2350); }
+  #btnScatto.pronto span { background: radial-gradient(circle at 40% 30%, #2aa7a0, #0b5f6c); }
+  #btnScatto:active { transform: scale(.93); }
+
+  #annuncio { position: absolute; left: 0; right: 0; top: 26%; text-align: center; opacity: 0; padding: 0 20px; }
+  #annuncio.vai { animation: annuncio var(--durata, 2.4s) ease-out both; }
+  #annuncio b { display: block; font-size: 34px; font-weight: 900; line-height: 1.05; text-shadow: 0 3px 0 rgba(0, 0, 0, .35), 0 8px 22px rgba(0, 0, 0, .5); }
+  #annuncio span { display: inline-block; margin-top: 8px; font-size: 15px; font-weight: 800; padding: 6px 14px; border-radius: 16px; background: rgba(8, 20, 48, .6); }
+  @keyframes annuncio { 0% { opacity: 0; transform: scale(.6); } 12% { opacity: 1; transform: scale(1.08); } 20% { transform: scale(1); } 82% { opacity: 1; } 100% { opacity: 0; transform: translateY(-16px); } }
+
+  /* ----- Schermate ----- */
   .velo {
     position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
-    padding: calc(env(safe-area-inset-top, 0px) + 20px) 24px calc(env(safe-area-inset-bottom, 0px) + 20px);
-    background: radial-gradient(ellipse at center, rgba(6, 16, 40, .55), rgba(6, 16, 40, .86));
+    padding: calc(var(--sopra) + 16px) 22px calc(var(--sotto) + 16px); overflow-y: auto; touch-action: pan-y;
+    background: radial-gradient(ellipse at center, rgba(6, 16, 40, .5), rgba(6, 16, 40, .88));
   }
   .velo.visibile { display: flex; }
-  .scheda { max-width: 340px; width: 100%; }
-  h1 { font-size: 54px; line-height: 1; margin: 0 0 8px; font-weight: 900; letter-spacing: -1px; color: #35e0c8; text-shadow: 0 4px 0 #0b6f7a, 0 10px 24px rgba(0, 0, 0, .45); }
-  h2 { font-size: 34px; line-height: 1.1; margin: 0 0 10px; font-weight: 900; text-shadow: 0 3px 0 rgba(0, 0, 0, .35); }
-  p { margin: 0 0 14px; font-size: 16px; line-height: 1.4; opacity: .95; }
-  .regole { list-style: none; padding: 0; margin: 18px 0 22px; text-align: left; font-size: 15px; line-height: 1.35; }
-  .regole li { display: flex; gap: 10px; align-items: center; padding: 8px 12px; margin-bottom: 8px; border-radius: 14px; background: rgba(255, 255, 255, .08); }
-  .regole b { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: #0a1f44; }
-  .verde { background: #7cf29a; } .rosso { background: #ff7b7b; } .giallo { background: #ffe066; }
+  .scheda { max-width: 350px; width: 100%; margin: auto; }
+  h1 { font-size: 60px; line-height: 1; margin: 0 0 6px; font-weight: 900; letter-spacing: -1.5px; color: #35e0c8; text-shadow: 0 4px 0 #0b6f7a, 0 12px 26px rgba(0, 0, 0, .5); }
+  h2 { font-size: 32px; line-height: 1.1; margin: 0 0 10px; font-weight: 900; text-shadow: 0 3px 0 rgba(0, 0, 0, .35); }
+  p { margin: 0 0 12px; font-size: 16px; line-height: 1.4; opacity: .95; }
   .grande {
-    pointer-events: auto; width: 100%; border: 0; border-radius: 20px; padding: 16px 20px; font-family: inherit;
+    pointer-events: auto; width: 100%; border: 0; border-radius: 20px; padding: 15px 20px;
     font-size: 21px; font-weight: 900; color: #06303a; background: linear-gradient(#5ff0dc, #22c9b6);
     box-shadow: 0 6px 0 #0b7f86, 0 14px 26px rgba(0, 0, 0, .4);
   }
   .grande:active { transform: translateY(4px); box-shadow: 0 2px 0 #0b7f86, 0 6px 12px rgba(0, 0, 0, .4); }
-  .secondario { margin-top: 14px; background: none; border: 0; color: #fff; opacity: .8; font-family: inherit; font-size: 15px; font-weight: 700; padding: 10px; text-decoration: underline; }
-  .record { font-size: 14px; opacity: .8; margin-top: 16px; }
-  .numero { font-size: 44px; font-weight: 900; color: #ffe066; margin: 4px 0 14px; text-shadow: 0 3px 0 rgba(0, 0, 0, .35); }
+  .medio { width: 100%; margin-top: 14px; border: 0; border-radius: 16px; padding: 12px 16px; font-size: 16px; font-weight: 800; background: rgba(255, 255, 255, .12); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .25); }
+  .medio:active { transform: scale(.97); }
+  .coppia { display: flex; gap: 10px; } .coppia .medio { flex: 1; }
+  .numero { font-size: 44px; font-weight: 900; color: #ffe066; margin: 2px 0 10px; text-shadow: 0 3px 0 rgba(0, 0, 0, .35); }
+  .piccolo { font-size: 14px; opacity: .8; }
+  #scegliLivello { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 16px 0 16px; }
+  #scegliLivello .tondo { background: rgba(255, 255, 255, .12); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .25); }
+  #scegliLivello .tondo:disabled { opacity: .25; }
+  #livelloScelto { min-width: 170px; }
+  #livelloScelto b { display: block; font-size: 24px; font-weight: 900; }
+  #livelloScelto span { font-size: 13px; opacity: .85; }
+  .stelle { font-size: 22px; letter-spacing: 3px; color: #ffe066; } .stelle i { font-style: normal; color: rgba(255, 255, 255, .25); }
+  #stelleVinto { font-size: 50px; margin: 2px 0 8px; }
+  .borsa { display: inline-flex; align-items: center; gap: 7px; font-weight: 900; font-size: 17px; padding: 7px 14px; border-radius: 18px; background: rgba(255, 255, 255, .1); }
+  .elenco { list-style: none; padding: 0; margin: 12px 0; text-align: left; font-size: 14px; line-height: 1.3; }
+  .elenco li { display: flex; gap: 10px; align-items: center; padding: 7px 12px; margin-bottom: 6px; border-radius: 14px; background: rgba(255, 255, 255, .08); }
+  .elenco li.fatto { background: rgba(124, 242, 154, .16); } .elenco li b { flex: none; width: 22px; text-align: center; color: #7cf29a; }
+  .regole b { flex: none; width: 34px !important; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: #0a1f44 !important; }
+  .verde { background: #7cf29a; } .rosso { background: #ff7b7b; } .giallo { background: #ffe066; }
+
+  /* ----- Negozio ----- */
+  #veloNegozio .scheda { max-width: 380px; }
+  .voce { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; margin-bottom: 8px; border-radius: 16px; background: rgba(255, 255, 255, .08); }
+  .voce div { flex: 1; min-width: 0; } .voce strong { display: block; font-size: 16px; } .voce small { display: block; font-size: 12.5px; opacity: .8; }
+  .tacche { margin-top: 4px; display: flex; gap: 4px; } .tacche i { width: 16px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .2); } .tacche i.on { background: #35e0c8; }
+  .compra { flex: none; min-width: 78px; border: 0; border-radius: 14px; padding: 9px 10px; font-size: 15px; font-weight: 900; color: #3a2400; background: linear-gradient(#ffe98a, #ffc93b); box-shadow: 0 4px 0 #b9860f; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .compra:active { transform: translateY(3px); box-shadow: 0 1px 0 #b9860f; }
+  .compra:disabled { filter: grayscale(1); opacity: .5; }
+  .compra.fatto { background: rgba(255, 255, 255, .14); color: #fff; box-shadow: none; }
+  #vestiti { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 6px 0 14px; }
+  #vestiti button { border: 0; padding: 6px 2px 8px; border-radius: 14px; background: rgba(255, 255, 255, .08); font-size: 11px; font-weight: 800; }
+  #vestiti button.scelto { box-shadow: inset 0 0 0 2.5px #35e0c8; background: rgba(53, 224, 200, .16); }
+  #vestiti canvas { width: 52px; height: 52px; display: block; margin: 0 auto 2px; }
+  #vestiti .prezzo { display: flex; align-items: center; justify-content: center; gap: 4px; color: #ffe066; } #vestiti .perla { width: 10px; height: 10px; }
+  h3 { margin: 16px 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; opacity: .7; text-align: left; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 
 <div id="hud">
-  <div class="riga">
-    <button class="tondo" id="btnPausa" aria-label="Pausa">II</button>
-    <div id="avanzamento">
-      <div id="etichette"><span id="etLivello">Livello 1</span><span id="etGigante"></span></div>
-      <div id="barra"><i id="barraPiena"></i></div>
+  <div id="alto">
+    <div class="riga">
+      <button class="tondo vetro" id="btnPausa" aria-label="Pausa">II</button>
+      <div id="avanzamento">
+        <div id="etichette"><span id="etLivello"></span><span id="etGigante"></span></div>
+        <div id="barra" class="vetro"><i id="barraPiena"></i></div>
+        <div id="frenesia"><i id="frenesiaPiena"></i></div>
+      </div>
+      <div id="perle" class="vetro"><i class="perla"></i><span id="numPerle">0</span></div>
     </div>
-    <button class="tondo" id="btnSuono" aria-label="Suoni">♪</button>
+    <div id="sotto"><span id="cuori"></span><span id="effetti" style="display:contents"></span></div>
   </div>
-  <div id="effetti"></div>
+  <div id="annuncio"><b id="annTitolo"></b><span id="annSotto"></span></div>
+  <button id="btnScatto" class="pronto" aria-label="Scatto"><span>SCATTO</span></button>
 </div>
 
 <div class="velo visibile" id="veloMenu">
   <div class="scheda">
     <h1>Boccone</h1>
     <p>Mangia, cresci, sopravvivi.</p>
-    <ul class="regole">
-      <li><b class="verde">12</b><span>Numero <strong>verde</strong>: è più piccolo di te, mangialo.</span></li>
-      <li><b class="rosso">99</b><span>Numero <strong>rosso</strong>: è più grosso di te, scappa!</span></li>
-      <li><b class="giallo">×5</b><span>Le bolle regalano aiuti: moltiplicatore, calamita, scudo.</span></li>
-    </ul>
+    <div id="scegliLivello">
+      <button class="tondo" id="btnLivMeno" aria-label="Livello precedente">◀</button>
+      <div id="livelloScelto"><b id="livNome"></b><span id="livAmbiente"></span><div class="stelle" id="livStelle"></div></div>
+      <button class="tondo" id="btnLivPiu" aria-label="Livello successivo">▶</button>
+    </div>
     <button class="grande" id="btnGioca">Gioca</button>
-    <div class="record" id="recordMenu"></div>
-    <p style="font-size:13px;opacity:.7;margin-top:14px">Trascina il dito sullo schermo per nuotare.</p>
+    <div class="coppia">
+      <button class="medio" id="btnNegozio">Negozio</button>
+      <button class="medio" id="btnComeSiGioca">Come si gioca</button>
+    </div>
+    <p style="margin-top:16px"><span class="borsa"><i class="perla"></i><span id="perleMenu">0</span></span></p>
+    <div class="piccolo" id="recordMenu"></div>
+  </div>
+</div>
+
+<div class="velo" id="veloAiuto">
+  <div class="scheda">
+    <h2>Come si gioca</h2>
+    <ul class="elenco regole">
+      <li><b class="verde">12</b><span>Numero <strong>verde</strong>: è più piccolo di te, mangialo e cresci.</span></li>
+      <li><b class="rosso">99</b><span>Numero <strong>rosso</strong>: è più grosso di te. Se ti tocca perdi un cuore.</span></li>
+      <li><b class="giallo">×5</b><span>Le <strong>bolle</strong> regalano aiuti: moltiplicatore, calamita, scudo, perle, cuori.</span></li>
+      <li><b class="giallo">⚡</b><span>Il tasto <strong>Scatto</strong> ti dà uno sprint per scappare o per acchiappare.</span></li>
+      <li><b class="rosso">!</b><span>Le <strong>meduse</strong> pungono sempre, anche se sei enorme.</span></li>
+      <li><b class="verde">♛</b><span>Diventa più grosso del <strong>gigante</strong> con la corona e mangialo per passare il livello.</span></li>
+    </ul>
+    <p class="piccolo">Trascina il dito in un punto qualsiasi dello schermo per nuotare. Con le perle compri potenziamenti nel negozio.</p>
+    <button class="grande" id="btnAiutoChiudi">Ho capito</button>
+  </div>
+</div>
+
+<div class="velo" id="veloNegozio">
+  <div class="scheda">
+    <h2>Negozio</h2>
+    <span class="borsa"><i class="perla"></i><span id="perleNegozio">0</span></span>
+    <h3>Potenziamenti</h3>
+    <div id="potenziamenti"></div>
+    <h3>Aspetto</h3>
+    <div id="vestiti"></div>
+    <button class="grande" id="btnNegozioChiudi">Fatto</button>
   </div>
 </div>
 
@@ -96,7 +181,11 @@
     <h2>In pausa</h2>
     <p>Riprendi fiato, il mare ti aspetta.</p>
     <button class="grande" id="btnRiprendi">Riprendi</button>
-    <button class="secondario" id="btnRicomincia">Ricomincia il livello</button>
+    <div class="coppia">
+      <button class="medio" id="btnSuono">Suoni: accesi</button>
+      <button class="medio" id="btnRicomincia">Ricomincia</button>
+    </div>
+    <button class="medio" id="btnEsci">Torna all'inizio</button>
   </div>
 </div>
 
@@ -105,17 +194,26 @@
     <h2>Ti hanno mangiato!</h2>
     <p>Eri arrivato a</p>
     <div class="numero" id="numPerso">0</div>
+    <p><span class="borsa"><i class="perla"></i><span id="perlePerso">+0</span></span></p>
     <button class="grande" id="btnRiprova">Riprova</button>
-    <div class="record" id="recordPerso"></div>
+    <div class="coppia">
+      <button class="medio" id="btnNegozioPerso">Negozio</button>
+      <button class="medio" id="btnMenuPerso">Inizio</button>
+    </div>
   </div>
 </div>
 
 <div class="velo" id="veloVinto">
   <div class="scheda">
     <h2>Hai mangiato il gigante!</h2>
-    <p id="testoVinto">Livello superato.</p>
-    <div class="numero" id="numVinto">0</div>
+    <div class="stelle" id="stelleVinto"></div>
+    <ul class="elenco" id="traguardi"></ul>
+    <p><span class="borsa"><i class="perla"></i><span id="perleVinto">+0</span></span></p>
     <button class="grande" id="btnProssimo">Prossimo livello</button>
+    <div class="coppia">
+      <button class="medio" id="btnNegozioVinto">Negozio</button>
+      <button class="medio" id="btnMenuVinto">Inizio</button>
+    </div>
   </div>
 </div>
 
@@ -123,16 +221,21 @@
 (() => {
 'use strict';
 
-// ---------- Basi ----------
+// =====================================================================
+//  Basi
+// =====================================================================
 const $ = id => document.getElementById(id);
 const cv = $('c');
 const ctx = cv.getContext('2d');
-const MONDO = 2400;
+const MONDO = 2600;
 const TAU = Math.PI * 2;
 const caso = (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a);
 const intero = (a, b) => Math.floor(caso(a, b + 1));
 const limita = (v, a, b) => v < a ? a : v > b ? b : v;
-const numero = n => Math.round(n).toLocaleString('it-IT');
+const scegli = lista => lista[Math.floor(Math.random() * lista.length)];
+const numero = n => n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + ' mln' : Math.round(n).toLocaleString('it-IT');
+const tela = (w, h) => { const t = document.createElement('canvas'); t.width = w; t.height = h; return t; };
+const CARATTERE = 'ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
 
 let vw = 0, vh = 0, dpr = 1;
 function ridimensiona() {
@@ -143,150 +246,229 @@ function ridimensiona() {
 window.addEventListener('resize', ridimensiona);
 ridimensiona();
 
-// ---------- Ambienti ----------
+// =====================================================================
+//  Salvataggio (resta su questo telefono)
+// =====================================================================
+const S = { livelloMax: 1, perle: 0, pot: { vel: 0, scatto: 0, cal: 0, cuori: 0, bolle: 0 }, vestito: 0, vestiti: [true, false, false, false, false], stelle: {}, record: 0, muto: false, visto: false };
+try {
+  const letto = JSON.parse(localStorage.getItem('boccone-salvataggio'));
+  if (letto && typeof letto === 'object') { Object.assign(S.pot, letto.pot || {}); delete letto.pot; Object.assign(S, letto); }
+} catch (e) {}
+function salva() { try { localStorage.setItem('boccone-salvataggio', JSON.stringify(S)); } catch (e) {} }
+
+// =====================================================================
+//  Ambienti, specie, negozio
+// =====================================================================
 const AMBIENTI = [
-  { nome: 'Laguna blu', alto: '#2a78b8', basso: '#0a1f44', sabbia: '#c9a877', alga: '#2fbf8a', roccia: '#10284f' },
-  { nome: 'Foresta di alghe', alto: '#2f9a78', basso: '#052c2e', sabbia: '#a9b27a', alga: '#b5e05a', roccia: '#06383a' },
-  { nome: 'Abisso viola', alto: '#5a3f9e', basso: '#0c0724', sabbia: '#8f7aa8', alga: '#ff7bd0', roccia: '#1a1040' },
+  { nome: 'Laguna blu',       alto: '#3fa0dc', basso: '#0b2a5c', sabbia: '#e2c48d', alga: '#2fbf8a', roccia: '#123063', corallo: ['#ff7b8a', '#ffb05c', '#c58bff'] },
+  { nome: 'Foresta di alghe', alto: '#3fb58c', basso: '#06302f', sabbia: '#b9c08a', alga: '#b5e05a', roccia: '#0a3f3d', corallo: ['#ffd24a', '#ff8f5a', '#7be0d0'] },
+  { nome: 'Barriera rosa',    alto: '#5b8fe0', basso: '#2a1650', sabbia: '#f0c9c0', alga: '#ff8fc0', roccia: '#33205e', corallo: ['#ff6fa8', '#ffd24a', '#7ad9ff'] },
+  { nome: 'Relitto al tramonto', alto: '#e08a5b', basso: '#2b1436', sabbia: '#c9a877', alga: '#8fd08a', roccia: '#3a1c3f', corallo: ['#ffcf5c', '#ff7b6b', '#b6f27a'] },
+  { nome: 'Abisso viola',     alto: '#5a3f9e', basso: '#0c0724', sabbia: '#8f7aa8', alga: '#ff7bd0', roccia: '#1c1146', corallo: ['#6ff0ff', '#ff7bd0', '#b79cff'] },
 ];
 
-// ---------- Specie ----------
+// lx, ly: mezza lunghezza e mezza altezza del corpo (in "raggi"). vel/senso: carattere della specie.
 const SPECIE = {
-  ghiozzo:   { lx: 1.25, ly: .80, c1: '#7bd66b', c2: '#dcf7ae', pinna: '#3f9b4a' },
-  scatola:   { lx: 1.05, ly: .95, c1: '#f2b84b', c2: '#fff0b8', pinna: '#c9792b', spine: true },
-  barracuda: { lx: 1.70, ly: .58, c1: '#8f6bff', c2: '#e3d9ff', pinna: '#5a3fd0', righe: true },
-  gigante:   { lx: 1.20, ly: 1.0, c1: '#4a3470', c2: '#8a5aa0', pinna: '#2a1a44', lanterna: true },
+  ghiozzo:    { nome: 'Ghiozzi',        lx: 1.20, ly: .80, c1: '#6fcf5f', c2: '#e2f9b5', cp: '#3f9b4a', cs: '#256b33', coda: 'tonda', dorso: 'bassa', motivo: 'macchie', cm: 'rgba(30,90,40,.35)' },
+  acciuga:    { nome: 'Acciughe',       lx: 1.50, ly: .52, c1: '#6fa8d8', c2: '#f2f8ff', cp: '#4a7fb5', cs: '#2d557f', coda: 'forca', dorso: 'bassa', motivo: 'fascia', cm: 'rgba(255,255,255,.55)', vel: 1.15 },
+  farfalla:   { nome: 'Pesci farfalla', lx: .98,  ly: 1.0, c1: '#fff3b0', c2: '#ffffff', cp: '#ffb23b', cs: '#b9790f', coda: 'tonda', dorso: 'vela',  motivo: 'bande',  cm: 'rgba(30,30,50,.8)', timido: true },
+  scatola:    { nome: 'Pesci scatola',  lx: 1.05, ly: .92, c1: '#f2b84b', c2: '#fff3c4', cp: '#c9792b', cs: '#8f4f12', coda: 'tonda', dorso: 'nessuno', motivo: 'macchie', cm: 'rgba(140,70,10,.4)', extra: ['spine'] },
+  triglia:    { nome: 'Triglie',        lx: 1.30, ly: .70, c1: '#ff8a7a', c2: '#ffe9e0', cp: '#e0524a', cs: '#a6322e', coda: 'forca', dorso: 'bassa', motivo: 'righe',  cm: 'rgba(170,30,40,.28)', extra: ['baffi'] },
+  pappagallo: { nome: 'Pesci pappagallo', lx: 1.25, ly: .86, c1: '#e85aa8', c2: '#ffd9ec', cp: '#3b7de0', cs: '#8f2a66', coda: 'luna',  dorso: 'bassa', motivo: 'squame', cm: 'rgba(120,20,90,.25)' },
+  barracuda:  { nome: 'Barracuda',      lx: 1.75, ly: .52, c1: '#8f6bff', c2: '#ebe3ff', cp: '#5a3fd0', cs: '#3a2796', coda: 'forca', dorso: 'bassa', motivo: 'righe',  cm: 'rgba(50,25,140,.3)', denti: 6, vel: 1.15 },
+  pietra:     { nome: 'Pesci pietra',   lx: 1.15, ly: .92, c1: '#a8785a', c2: '#ecd3b8', cp: '#7a4f38', cs: '#4f3022', coda: 'tonda', dorso: 'spine', motivo: 'macchie', cm: 'rgba(70,35,20,.4)', vel: .88, senso: 1.25 },
+  cernia:     { nome: 'Cernie',         lx: 1.30, ly: .92, c1: '#5c9a86', c2: '#d9f0e0', cp: '#3a6f5f', cs: '#234a40', coda: 'tonda', dorso: 'spine', motivo: 'macchie', cm: 'rgba(20,60,50,.4)', denti: 5 },
+  luccio:     { nome: 'Lucci',          lx: 1.80, ly: .54, c1: '#4f8f4a', c2: '#e6f2c0', cp: '#c9792b', cs: '#2a5a2a', coda: 'forca', dorso: 'bassa', motivo: 'macchie', cm: 'rgba(230,240,160,.5)', denti: 6, vel: 1.12 },
+  spada:      { nome: 'Pesci spada',    lx: 1.55, ly: .62, c1: '#3d5fa8', c2: '#e3ecff', cp: '#27407a', cs: '#1a2c58', coda: 'luna',  dorso: 'vela',  motivo: 'nessuno', extra: ['spada'], vel: 1.18 },
+  tonno:      { nome: 'Tonni',          lx: 1.45, ly: .78, c1: '#27407a', c2: '#dfe8f5', cp: '#ffcf3b', cs: '#152447', coda: 'luna',  dorso: 'bassa', motivo: 'fascia', cm: 'rgba(255,255,255,.25)', denti: 5 },
+  // I giganti
+  lanterna:   { nome: 'La Lanterna',    lx: 1.20, ly: 1.0, c1: '#4a3470', c2: '#9a6ab0', cp: '#2a1a44', cs: '#170d2a', coda: 'tonda', dorso: 'spine', motivo: 'macchie', cm: 'rgba(20,10,40,.4)', denti: 8, extra: ['lanterna', 'corona'] },
+  drago:      { nome: 'Il Pesce Drago', lx: 1.70, ly: .72, c1: '#c8324a', c2: '#ffd0a8', cp: '#7a1430', cs: '#4a0a1c', coda: 'forca', dorso: 'spine', motivo: 'righe',  cm: 'rgba(80,0,20,.35)', denti: 8, extra: ['baffi', 'corona'] },
+  piovra:     { nome: 'La Piovra',      lx: 1.10, ly: .90, c1: '#e0527a', c2: '#ffc0d0', cp: '#b0305a', cs: '#701a3a', piovra: true },
 };
+const VASCHE = [['ghiozzo', 'acciuga', 'farfalla'], ['scatola', 'triglia', 'pappagallo'], ['barracuda', 'pietra', 'triglia'], ['cernia', 'luccio', 'barracuda'], ['spada', 'tonno', 'cernia']];
+const GIGANTI = ['lanterna', 'piovra', 'drago'];
+const RAGGI = [24, 36, 50, 66, 84];
+const QUANTI = [10, 9, 8, 7, 6];
+const VALORE_PESCIOLINO = [1, 1, 2, 6, 25, 100];
 
 function configLivello(n) {
-  const d = Math.min(n - 1, 10);
+  const d = Math.min(n - 1, 12), K = n === 1 ? 4 : 5, fasce = [];
+  for (let k = 0; k < K; k++) {
+    const min = 18 * Math.pow(6, k), vasca = VASCHE[k];
+    fasce.push({
+      k, min, max: Math.round(min * 2.6), r: RAGGI[k], quanti: QUANTI[k] + (d > 3 ? 1 : 0),
+      vel: 135 + k * 10 + d * 3, senso: 160 + k * 30 + d * 4,
+      specie: [vasca[(n - 1) % vasca.length], vasca[n % vasca.length]],
+    });
+  }
   return {
-    ambiente: AMBIENTI[(n - 1) % AMBIENTI.length],
-    fasce: [
-      { specie: 'ghiozzo',   min: 20,   max: 60,   quanti: 11 + Math.min(d, 4), r: 26, vel: 118 + d * 6, senso: 250 + d * 10 },
-      { specie: 'scatola',   min: 220,  max: 650,  quanti: 9 + Math.min(d, 3),  r: 42, vel: 132 + d * 6, senso: 310 + d * 10 },
-      { specie: 'barracuda', min: 2400, max: 7000, quanti: 7 + Math.min(d, 3),  r: 58, vel: 148 + d * 6, senso: 370 + d * 10 },
-    ],
-    gigante: { specie: 'gigante', potenza: 30000 + (n - 1) * 15000, r: 130, vel: 128 + d * 5, senso: 430 },
+    n, K, fasce, ambiente: AMBIENTI[(n - 1) % AMBIENTI.length],
+    gigante: { k: K, gigante: true, potenza: Math.round(18 * Math.pow(6, K) * 2.5 / 1000) * 1000, r: 150, vel: 126 + d * 4, senso: 470, specie: [GIGANTI[(n - 1) % GIGANTI.length]] },
+    meduse: n === 1 ? 0 : Math.min(1 + n, 8),
+    tempoStella: K === 4 ? 200 : 300,
   };
 }
 
-// ---------- Memoria locale (solo record) ----------
-let record = { livello: 1, potenza: 0 };
-try { const r = JSON.parse(localStorage.getItem('boccone-record')); if (r && r.livello) record = r; } catch (e) {}
-function salvaRecord() { try { localStorage.setItem('boccone-record', JSON.stringify(record)); } catch (e) {} }
+const POTENZIAMENTI = [
+  { id: 'vel',    nome: 'Pinne veloci',  desc: 'Nuoti più in fretta',                 costi: [40, 90, 160, 260, 400] },
+  { id: 'scatto', nome: 'Scatto pronto', desc: 'Lo scatto si ricarica prima',         costi: [40, 90, 160, 260, 400] },
+  { id: 'cal',    nome: 'Boccone largo', desc: 'Risucchi i pesciolini da più lontano', costi: [50, 110, 190, 300, 450] },
+  { id: 'bolle',  nome: 'Mare generoso', desc: 'Compaiono più bolle con gli aiuti',   costi: [60, 130, 220] },
+  { id: 'cuori',  nome: 'Cuore in più',  desc: 'Parti con un cuore in più',           costi: [200, 500] },
+];
+const VESTITI = [
+  { nome: 'Turchese', costo: 0,   c0: '#9ff9ea', c1: '#2fd3c0', c2: '#0e8f9c', pancia: '#fff6d6', pinna: '#ffd24a', spina: '#0c7f8c', bordo: '#0a5f6c' },
+  { nome: 'Corallo',  costo: 120, c0: '#ffd0c4', c1: '#ff7a6b', c2: '#c9403f', pancia: '#fff1e0', pinna: '#7be0d0', spina: '#b03038', bordo: '#8a2428' },
+  { nome: 'Limone',   costo: 200, c0: '#fffbd0', c1: '#ffd93b', c2: '#d99a12', pancia: '#ffffff', pinna: '#ff8f5a', spina: '#c28a10', bordo: '#8f6208' },
+  { nome: 'Fragola',  costo: 300, c0: '#ffd6ec', c1: '#ff6fb5', c2: '#c43a86', pancia: '#fff0f8', pinna: '#b6f27a', spina: '#a82f70', bordo: '#7f1f55' },
+  { nome: 'Notte',    costo: 450, c0: '#aab6ff', c1: '#5361d8', c2: '#27307e', pancia: '#dfe4ff', pinna: '#6ff0ff', spina: '#1f2668', bordo: '#141a4a' },
+];
 
-// ---------- Suoni ----------
-let audio = null, muto = false;
+// =====================================================================
+//  Suoni e musica
+// =====================================================================
+let audio = null;
 function avviaAudio() {
   if (audio) { if (audio.state === 'suspended') audio.resume().catch(() => {}); return; }
   try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
 }
-function suono(f1, f2, durata, tipo = 'sine', volume = .07) {
-  if (muto || !audio || audio.state !== 'running') return;
+function suono(f1, f2, durata, tipo = 'sine', volume = .07, ritardo = 0) {
+  if (S.muto || !audio || audio.state !== 'running') return;
   try {
-    const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime;
+    const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + ritardo;
     o.type = tipo; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f2), t + durata);
-    g.gain.setValueAtTime(volume, t); g.gain.exponentialRampToValueAtTime(.0001, t + durata);
-    o.connect(g).connect(audio.destination); o.start(t); o.stop(t + durata + .02);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(volume, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + durata);
+    o.connect(g).connect(audio.destination); o.start(t); o.stop(t + durata + .03);
   } catch (e) {}
 }
-let ultimoGnam = 0;
+let ultimoGnam = 0, notaGnam = 0;
 function gnam(grosso) {
   const ora = performance.now();
-  if (!grosso && ora - ultimoGnam < 55) return;
-  ultimoGnam = ora;
-  if (grosso) { suono(180, 520, .16, 'triangle', .12); suono(90, 60, .2, 'sine', .1); }
-  else suono(520 + caso(240), 900 + caso(300), .06, 'sine', .04);
+  if (grosso) { suono(170, 540, .17, 'triangle', .13); suono(95, 55, .22, 'sine', .11); return; }
+  if (ora - ultimoGnam < 50) return;
+  notaGnam = ora - ultimoGnam < 400 ? Math.min(notaGnam + 1, 14) : 0; ultimoGnam = ora;
+  suono(520 * Math.pow(1.06, notaGnam), 880 * Math.pow(1.06, notaGnam), .06, 'sine', .04);
+}
+const SCALA = [196, 220, 261.6, 293.7, 329.6, 392, 440, 523.3];
+const musica = { prossima: 0, passo: 0, nota: 3 };
+function suonaMusica() {
+  if (S.muto || !audio || audio.state !== 'running' || G.stato !== 'gioco') return;
+  const ora = audio.currentTime;
+  if (musica.prossima < ora) musica.prossima = ora + .05;
+  while (musica.prossima < ora + .2) {
+    const rit = musica.prossima - ora, veloce = G.frenesiaT > 0;
+    musica.nota = limita(musica.nota + intero(-2, 2), 0, SCALA.length - 1);
+    if (musica.passo % 2 === 0 || veloce) suono(SCALA[musica.nota] * 2, SCALA[musica.nota] * 2, .5, 'sine', .016, rit);
+    if (musica.passo % 8 === 0) suono(scegli([98, 110, 130.8]), 96, 1.8, 'triangle', .03, rit);
+    musica.passo++; musica.prossima += veloce ? .2 : .3;
+  }
 }
 function vibra(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 
-// ---------- Stato ----------
+// =====================================================================
+//  Stato della partita
+// =====================================================================
 const G = {
-  stato: 'menu', livello: 1, t: 0, cfg: configLivello(1),
-  hero: null, banchi: [], pesciolini: [], predatori: [], bolle: [], particelle: [], testi: [],
-  cam: { x: MONDO / 2, y: MONDO / 2, z: 1 }, scossa: 0,
-  molt: 1, moltT: 0, calamitaT: 0, scudo: false,
-  accumulo: 0, accumuloT: 0, bollaT: 0, decoro: null,
+  stato: 'menu', livello: 1, t: 0, cfg: configLivello(1), tempo: 0,
+  hero: null, banchi: [], pesciolini: [], predatori: [], meduse: [], conchiglie: [], bolle: [], particelle: [], testi: [], rinascite: [],
+  cam: { x: MONDO / 2, y: MONDO / 2, z: 1 }, scossa: 0, lampo: 0, pericolo: 0,
+  molt: 1, moltT: 0, calamitaT: 0, scudo: false, frenesia: 0, frenesiaT: 0,
+  cuori: 3, cuoriMax: 3, colpi: 0, perleLivello: 0, fasciaHero: 0,
+  scatto: { attivo: 0, ricarica: 0, durataRicarica: 3.5 },
+  accumulo: 0, accumuloT: 0, bollaT: 0, decoro: null, sfondo: null, pilota: null, suggerimento: 0,
 };
-window.boccone = G;
+window.boccone = G; G.salvataggio = S;
 
 const raggioHero = p => 18 * (1 + .7 * Math.log10(p + 1));
 
 function puntoLontano(distanza, margine = 160) {
   const h = G.hero;
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 50; i++) {
     const x = caso(margine, MONDO - margine), y = caso(margine, MONDO - margine);
     if (!h || Math.hypot(x - h.x, y - h.y) > distanza) return { x, y };
   }
   return { x: h.x < MONDO / 2 ? MONDO - margine : margine, y: h.y < MONDO / 2 ? MONDO - margine : margine };
 }
 
-function nuovoPredatore(fascia, gigante) {
-  const p = puntoLontano(gigante ? 900 : 520, fascia.r + 60);
+function nuovoPredatore(fascia, distanza) {
+  const p = puntoLontano(distanza || (fascia.gigante ? 1000 : 560), fascia.r + 60);
+  const specie = scegli(fascia.specie);
   return {
-    specie: fascia.specie, fascia, gigante: !!gigante, x: p.x, y: p.y, ang: caso(TAU), vAtt: 0,
-    p: gigante ? fascia.potenza : intero(fascia.min, fascia.max), r: fascia.r,
-    f: caso(TAU), giro: caso(-1, 1), stordito: 0, nasce: 1,
+    specie, sp: SPECIE[specie], fascia, gigante: !!fascia.gigante, x: p.x, y: p.y, ang: caso(TAU), vAtt: 0,
+    p: fascia.gigante ? fascia.potenza : intero(fascia.min, fascia.max), r: fascia.r,
+    f: caso(TAU), giro: caso(-1, 1), stordito: 0, nasce: 1, bocca: 0, mangiato: 0,
+    avviso: 0, sprint: 0, prossimaCarica: caso(3, 5), fiato: caso(3.5, 5.5), riposo: 0,
   };
 }
 
 function nuovaBolla() {
-  const p = puntoLontano(280, 140), x = Math.random();
-  const tipo = x < .35 ? 'x2' : x < .5 ? 'x5' : x < .8 ? 'calamita' : 'scudo';
+  const p = puntoLontano(300, 150), x = Math.random();
+  const tipo = x < .27 ? 'x2' : x < .39 ? 'x5' : x < .61 ? 'calamita' : x < .75 ? 'scudo' : x < .88 ? 'perla' : 'cuore';
   return { tipo, x: p.x, y: p.y, f: caso(TAU) };
 }
 
 function creaLivello() {
-  const cfg = G.cfg = configLivello(G.livello);
-  G.t = 0; G.molt = 1; G.moltT = 0; G.calamitaT = 0; G.scudo = false; G.accumulo = 0; G.scossa = 0; G.bollaT = 4;
-  G.particelle.length = 0; G.testi.length = 0;
-  G.hero = { x: MONDO / 2, y: MONDO / 2, vx: 0, vy: 0, ang: 0, p: 1, r: raggioHero(1), bocca: 0, pulsa: 0, invul: 3, vivo: true };
+  const cfg = G.cfg = configLivello(G.livello), amb = cfg.ambiente;
+  Object.assign(G, { t: 0, tempo: 0, molt: 1, moltT: 0, calamitaT: 0, scudo: false, frenesia: 0, frenesiaT: 0, accumulo: 0, scossa: 0, lampo: 0, pericolo: 0, bollaT: 3, colpi: 0, perleLivello: 0, fasciaHero: 0, suggerimento: 0 });
+  G.cuoriMax = 3 + S.pot.cuori; G.cuori = G.cuoriMax;
+  G.scatto = { attivo: 0, ricarica: 0, durataRicarica: 3.5 * (1 - .12 * S.pot.scatto) };
+  G.particelle.length = 0; G.testi.length = 0; G.rinascite.length = 0;
+  G.hero = { x: MONDO / 2, y: MONDO / 2, vx: 0, vy: 0, kx: 0, ky: 0, ang: 0, p: 1, r: raggioHero(1), bocca: 0, attesa: 0, pulsa: 0, invul: 3, vivo: true };
 
   G.banchi = []; G.pesciolini = [];
-  for (let b = 0; b < 14; b++) {
-    const banco = { x: caso(250, MONDO - 250), y: caso(250, MONDO - 250), ang: caso(TAU), vel: caso(22, 42), raggio: caso(120, 190) };
-    if (b === 0) { banco.x = MONDO / 2 + 150; banco.y = MONDO / 2 - 60; }
+  for (let b = 0; b < 16; b++) {
+    const banco = { x: caso(260, MONDO - 260), y: caso(260, MONDO - 260), ang: caso(TAU), vel: caso(22, 42), raggio: caso(120, 200) };
+    if (b === 0) { banco.x = MONDO / 2 + 170; banco.y = MONDO / 2 - 60; }
+    if (b === 1) { banco.x = MONDO / 2 - 260; banco.y = MONDO / 2 + 220; }
     G.banchi.push(banco);
-    for (let i = 0; i < 60; i++) {
+    const colore = intero(0, 3);
+    for (let i = 0; i < 70; i++) {
       const a = caso(TAU), d = Math.sqrt(Math.random()) * banco.raggio;
-      G.pesciolini.push({
-        b: banco, a, d, w: caso(.15, .5) * (Math.random() < .5 ? -1 : 1),
-        x: banco.x + Math.cos(a) * d, y: banco.y + Math.sin(a) * d, vx: 0, vy: 0,
-        c: intero(0, 2), f: caso(TAU), morto: 0,
-      });
+      G.pesciolini.push({ b: banco, a, d, w: caso(.15, .5) * (Math.random() < .5 ? -1 : 1), x: banco.x + Math.cos(a) * d, y: banco.y + Math.sin(a) * d, vx: 0, vy: 0, ang: caso(TAU), c: Math.random() < .8 ? colore : intero(0, 3), f: Math.random() < .5 ? 1 : 0, morto: 0 });
     }
   }
 
   G.predatori = [];
-  for (const fascia of cfg.fasce) for (let i = 0; i < fascia.quanti; i++) G.predatori.push(nuovoPredatore(fascia));
-  G.predatori.push(nuovoPredatore(cfg.gigante, true));
+  for (const fascia of cfg.fasce) for (let i = 0; i < fascia.quanti; i++) G.predatori.push(nuovoPredatore(fascia, 430 + fascia.k * 210));
+  G.predatori.push(nuovoPredatore(cfg.gigante));
 
+  G.meduse = [];
+  for (let i = 0; i < cfg.meduse; i++) { const p = puntoLontano(500); G.meduse.push({ x: p.x, y: p.y, f: caso(TAU), dx: caso(-12, 12), r: 24, stordito: 0, colore: scegli(['#ff9ecb', '#9be7ff', '#d0a8ff']) }); }
+  G.conchiglie = [];
+  for (let i = 0; i < 9; i++) G.conchiglie.push({ x: 150 + i * (MONDO - 300) / 8 + caso(-60, 60), attesa: 0, apre: 0 });
   G.bolle = [];
   for (let i = 0; i < 5; i++) G.bolle.push(nuovaBolla());
 
-  // Decorazioni fisse del fondale
-  const dec = { alghe: [], rocce: [], ombre: [] };
-  for (let i = 0; i < 46; i++) dec.alghe.push({ x: caso(0, MONDO), h: caso(70, 190), f: caso(TAU), l: caso(8, 16) });
-  for (let i = 0; i < 16; i++) dec.rocce.push({ x: caso(0, MONDO), w: caso(70, 190), h: caso(40, 110) });
-  for (let i = 0; i < 14; i++) dec.ombre.push({ x: caso(-200, MONDO + 200), y: caso(200, MONDO), w: caso(160, 420), h: caso(90, 240) });
+  // Fondale e scogli (solo decorazione)
+  const dec = { alghe: [], rocce: [], coralli: [], stelle: [], scogli: [] };
+  for (let i = 0; i < 60; i++) dec.alghe.push({ x: caso(0, MONDO), h: caso(70, 220), f: caso(TAU), l: caso(7, 15) });
+  for (let i = 0; i < 18; i++) dec.rocce.push({ x: caso(0, MONDO), w: caso(70, 200), h: caso(40, 120) });
+  for (let i = 0; i < 26; i++) dec.coralli.push({ x: caso(0, MONDO), h: caso(50, 120), c: scegli(amb.corallo), rami: intero(3, 5), f: caso(TAU) });
+  for (let i = 0; i < 12; i++) dec.stelle.push({ x: caso(0, MONDO), y: MONDO + caso(14, 40), r: caso(9, 15), a: caso(TAU), c: scegli(amb.corallo) });
+  for (let i = 0; i < 11; i++) {
+    const s = { x: caso(150, MONDO - 150), y: caso(350, MONDO - 350), w: caso(90, 190), h: caso(50, 100), ciuffi: [] };
+    for (let j = 0; j < intero(3, 6); j++) s.ciuffi.push({ dx: caso(-.7, .7), h: caso(30, 80), f: caso(TAU), c: Math.random() < .5 ? amb.alga : scegli(amb.corallo) });
+    dec.scogli.push(s);
+  }
   G.decoro = dec;
-
+  G.sfondo = creaSfondo(amb);
   G.cam.x = G.hero.x; G.cam.y = G.hero.y;
 }
 
-// ---------- Comandi ----------
+// =====================================================================
+//  Comandi
+// =====================================================================
 const leva = { attiva: false, id: null, x0: 0, y0: 0, x: 0, y: 0 };
 const tasti = new Set();
 cv.addEventListener('pointerdown', e => {
-  if (G.stato !== 'gioco') return;
+  if (G.stato !== 'gioco' || leva.attiva) return;
   leva.attiva = true; leva.id = e.pointerId; leva.x0 = leva.x = e.clientX; leva.y0 = leva.y = e.clientY;
   try { cv.setPointerCapture(e.pointerId); } catch (err) {}
 });
 cv.addEventListener('pointermove', e => {
   if (!leva.attiva || e.pointerId !== leva.id) return;
   leva.x = e.clientX; leva.y = e.clientY;
-  // La base della leva segue il dito se si allontana troppo
   const dx = leva.x - leva.x0, dy = leva.y - leva.y0, d = Math.hypot(dx, dy);
   if (d > 70) { leva.x0 += dx / d * (d - 70); leva.y0 += dy / d * (d - 70); }
 });
@@ -294,17 +476,18 @@ const rilascia = e => { if (e.pointerId === leva.id) leva.attiva = false; };
 cv.addEventListener('pointerup', rilascia);
 cv.addEventListener('pointercancel', rilascia);
 window.addEventListener('keydown', e => {
-  tasti.add(e.key.toLowerCase());
-  if (e.key === 'Escape' || e.key.toLowerCase() === 'p') { if (G.stato === 'gioco') pausa(); else if (G.stato === 'pausa') riprendi(); }
+  const k = e.key.toLowerCase(); tasti.add(k);
+  if (k === ' ') { e.preventDefault(); scatta(); }
+  if (k === 'escape' || k === 'p') { if (G.stato === 'gioco') pausa(); else if (G.stato === 'pausa') riprendi(); }
 });
 window.addEventListener('keyup', e => tasti.delete(e.key.toLowerCase()));
 document.addEventListener('contextmenu', e => e.preventDefault());
 
 function direzione() {
+  if (G.pilota) return G.pilota(G);
   let x = 0, y = 0;
-  if (leva.attiva) {
-    x = (leva.x - leva.x0) / 55; y = (leva.y - leva.y0) / 55;
-  } else {
+  if (leva.attiva) { x = (leva.x - leva.x0) / 50; y = (leva.y - leva.y0) / 50; }
+  else {
     if (tasti.has('arrowleft') || tasti.has('a')) x -= 1;
     if (tasti.has('arrowright') || tasti.has('d')) x += 1;
     if (tasti.has('arrowup') || tasti.has('w')) y -= 1;
@@ -314,103 +497,167 @@ function direzione() {
   if (m > 1) { x /= m; y /= m; }
   return { x, y };
 }
+function scatta() {
+  if (G.stato !== 'gioco' || G.scatto.ricarica > 0) return;
+  G.scatto.attivo = .55; G.scatto.ricarica = G.scatto.durataRicarica;
+  suono(300, 900, .2, 'sawtooth', .04); vibra(15);
+}
 
-// ---------- Effetti ----------
-function scoppio(x, y, colore, quanti, forza) {
-  for (let i = 0; i < quanti && G.particelle.length < 220; i++) {
+// =====================================================================
+//  Effetti e regole
+// =====================================================================
+function scoppio(x, y, colore, quanti, forza, grandezza = 1) {
+  for (let i = 0; i < quanti && G.particelle.length < 260; i++) {
     const a = caso(TAU), v = caso(.3, 1) * forza;
-    G.particelle.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vita: caso(.35, .8), eta: 0, r: caso(2, 6), c: colore });
+    G.particelle.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vita: caso(.35, .85), eta: 0, r: caso(2, 6) * grandezza, c: colore });
   }
 }
-function testo(x, y, scritta, colore, grande) {
-  if (G.testi.length > 40) G.testi.shift();
-  G.testi.push({ x, y, s: scritta, c: colore, eta: 0, grande: !!grande });
+function testo(x, y, scritta, colore, grande, perla) {
+  if (G.testi.length > 44) G.testi.shift();
+  G.testi.push({ x, y, s: scritta, c: colore, eta: 0, grande: !!grande, perla: !!perla });
+}
+function annuncia(titolo, sotto, durata = 2.4) {
+  const a = $('annuncio');
+  $('annTitolo').textContent = titolo; $('annSotto').textContent = sotto || ''; $('annSotto').style.display = sotto ? '' : 'none';
+  a.style.setProperty('--durata', durata + 's'); a.classList.remove('vai'); void a.offsetWidth; a.classList.add('vai');
+}
+function prendiPerle(n, x, y) {
+  G.perleLivello += n; S.perle += n;
+  if (x !== undefined) testo(x, y, '+' + n, '#ffd9f0', false, true);
 }
 
 function guadagna(base, x, y, grosso) {
-  const h = G.hero, g = Math.max(1, Math.round(base * G.molt));
+  const h = G.hero, mm = Math.max(G.molt, G.frenesiaT > 0 ? 2 : 1), m = grosso ? Math.sqrt(mm) : mm, g = Math.max(1, Math.round(base * m));
   h.p += g; h.r = raggioHero(h.p); h.bocca = 1; h.pulsa = grosso ? 1 : Math.max(h.pulsa, .35);
   if (grosso) { testo(x, y, '+' + numero(g), '#ffe066', true); G.scossa = Math.max(G.scossa, 6); vibra(25); }
-  else { G.accumulo += g; }
+  else G.accumulo += g;
   gnam(grosso);
+  if (G.frenesiaT <= 0) {
+    G.frenesia += grosso ? .1 : .008;
+    if (G.frenesia >= 1) { G.frenesia = 0; G.frenesiaT = 7; annuncia('Frenesia!', 'Per 7 secondi tutto vale doppio', 1.8); suono(440, 1760, .4, 'triangle', .1); vibra(60); }
+  }
+  // Salto di taglia: avvisa quando una nuova specie diventa mangiabile
+  let fascia = 0;
+  for (const f of G.cfg.fasce) if (h.p > f.min) fascia = f.k + 1;
+  if (fascia > G.fasciaHero) {
+    G.fasciaHero = fascia;
+    const f = G.cfg.fasce[fascia - 1], nomi = [...new Set(f.specie.map(s => SPECIE[s].nome))].join(' e ');
+    annuncia('Sei cresciuto!', 'Ora puoi mangiare: ' + nomi);
+    suono(523, 1046, .25, 'triangle', .09); scoppio(h.x, h.y, '#ffe066', 24, 300);
+  }
+  if (h.p > G.cfg.gigante.potenza && !G.avvisatoGigante) {
+    G.avvisatoGigante = true; annuncia('Sei il più grosso!', 'Segui la freccia verde e mangia il gigante', 3);
+  }
 }
 
 function colpito(nemico) {
   const h = G.hero;
-  if (h.invul > 0) return;
+  if (h.invul > 0 || !h.vivo) return;
+  const a = Math.atan2(h.y - nemico.y, h.x - nemico.x);
+  nemico.stordito = 1.3; nemico.sprint = 0; nemico.avviso = 0;
+  for (const e of G.predatori) if (Math.hypot(e.x - h.x, e.y - h.y) < 450 + e.r) e.riposo = Math.max(e.riposo, caso(2.5, 4));
   if (G.scudo) {
-    G.scudo = false; h.invul = 1.6; nemico.stordito = 1.4;
-    const a = Math.atan2(nemico.y - h.y, nemico.x - h.x);
-    nemico.x += Math.cos(a) * 90; nemico.y += Math.sin(a) * 90; nemico.ang = a;
+    G.scudo = false; h.invul = 1.6;
     scoppio(h.x, h.y, '#9be7ff', 26, 320); testo(h.x, h.y - h.r, 'Scudo!', '#9be7ff', true);
     suono(700, 200, .25, 'square', .06); G.scossa = 10; vibra(60);
+    h.kx = Math.cos(a) * 420; h.ky = Math.sin(a) * 420;
+    return;
+  }
+  G.cuori--; G.colpi++; G.lampo = 1; G.scossa = 16;
+  suono(320, 60, .4, 'sawtooth', .09); vibra(140);
+  if (G.cuori > 0) {
+    h.invul = 2.6; h.kx = Math.cos(a) * 620; h.ky = Math.sin(a) * 620;
+    scoppio(h.x, h.y, '#ff5c7a', 18, 300); testo(h.x, h.y - h.r, '−1 cuore', '#ff8fa3', true);
     return;
   }
   h.vivo = false; G.stato = 'perso'; leva.attiva = false;
-  scoppio(h.x, h.y, '#35e0c8', 40, 380); scoppio(h.x, h.y, '#ffffff', 20, 260);
-  suono(320, 50, .5, 'sawtooth', .09); G.scossa = 16; vibra(180);
-  if (h.p > record.potenza) record.potenza = h.p;
-  salvaRecord();
+  scoppio(h.x, h.y, VESTITI[S.vestito].c1, 40, 380); scoppio(h.x, h.y, '#ffffff', 20, 260);
+  if (h.p > S.record) S.record = h.p;
+  salva();
   setTimeout(() => {
     if (G.stato !== 'perso') return;
-    $('numPerso').textContent = numero(h.p);
-    $('recordPerso').textContent = 'Il tuo massimo: ' + numero(record.potenza) + ' · livello ' + record.livello;
+    $('numPerso').textContent = numero(h.p); $('perlePerso').textContent = '+' + G.perleLivello;
     mostra('veloPerso');
-  }, 850);
+  }, 900);
 }
 
 function vittoria() {
-  const h = G.hero;
+  const h = G.hero, cfg = G.cfg;
   G.stato = 'vinto'; leva.attiva = false;
-  for (let i = 0; i < 6; i++) scoppio(h.x + caso(-120, 120), h.y + caso(-120, 120), ['#ffe066', '#ff9ecb', '#35e0c8', '#ffffff'][i % 4], 30, 420);
-  suono(392, 784, .18, 'triangle', .1); setTimeout(() => suono(523, 1046, .22, 'triangle', .1), 160); setTimeout(() => suono(659, 1318, .35, 'triangle', .1), 340);
+  for (let i = 0; i < 7; i++) scoppio(h.x + caso(-140, 140), h.y + caso(-140, 140), ['#ffe066', '#ff9ecb', '#35e0c8', '#ffffff'][i % 4], 30, 440, 1.4);
+  suono(392, 784, .18, 'triangle', .1); suono(523, 1046, .22, 'triangle', .1, .16); suono(659, 1318, .4, 'triangle', .1, .34);
   vibra(120);
-  if (h.p > record.potenza) record.potenza = h.p;
-  if (G.livello + 1 > record.livello) record.livello = G.livello + 1;
-  salvaRecord();
+  const senzaColpi = G.colpi === 0, inTempo = G.tempo <= cfg.tempoStella, stelle = 1 + (senzaColpi ? 1 : 0) + (inTempo ? 1 : 0);
+  prendiPerle(15 + stelle * 5);
+  if (h.p > S.record) S.record = h.p;
+  S.stelle[G.livello] = Math.max(S.stelle[G.livello] || 0, stelle);
+  if (G.livello + 1 > S.livelloMax) S.livelloMax = G.livello + 1;
+  salva();
   setTimeout(() => {
     if (G.stato !== 'vinto') return;
-    $('testoVinto').textContent = 'Livello ' + G.livello + ' superato. Sei arrivato a';
-    $('numVinto').textContent = numero(h.p);
+    $('stelleVinto').innerHTML = '★'.repeat(stelle) + '<i>' + '★'.repeat(3 - stelle) + '</i>';
+    const riga = (ok, t) => '<li class="' + (ok ? 'fatto' : '') + '"><b>' + (ok ? '✓' : '·') + '</b><span>' + t + '</span></li>';
+    const min = Math.floor(cfg.tempoStella / 60), sec = cfg.tempoStella % 60;
+    $('traguardi').innerHTML = riga(true, 'Livello ' + G.livello + ' superato') + riga(senzaColpi, 'Senza perdere cuori') + riga(inTempo, 'In meno di ' + min + ' min' + (sec ? ' e ' + sec + ' s' : ''));
+    $('perleVinto').textContent = '+' + G.perleLivello;
     mostra('veloVinto');
-  }, 1300);
+  }, 1500);
 }
 
-// ---------- Aggiornamento ----------
+// =====================================================================
+//  Aggiornamento
+// =====================================================================
 function aggiorna(dt) {
   G.t += dt;
-  const h = G.hero, inGioco = G.stato === 'gioco';
+  const h = G.hero, inGioco = G.stato === 'gioco', cfg = G.cfg;
 
-  // Protagonista
+  // ----- Protagonista -----
   if (inGioco) {
-    const d = direzione(), vel = 250 + (h.r - 22) * 1.3;
+    G.tempo += dt;
+    const d = direzione();
+    let vel = 250 * (1 + .06 * S.pot.vel) + (h.r - 22) * 1.4;
+    if (G.frenesiaT > 0) vel *= 1.2;
+    if (G.scatto.attivo > 0) {
+      vel *= 2.3; G.scatto.attivo -= dt;
+      if (G.particelle.length < 200) G.particelle.push({ x: h.x - Math.cos(h.ang) * h.r, y: h.y - Math.sin(h.ang) * h.r + caso(-h.r, h.r) * .5, vx: 0, vy: 0, vita: .4, eta: 0, r: caso(3, 7), c: 'rgba(255,255,255,.7)' });
+      if (Math.hypot(d.x, d.y) < .2) { d.x = Math.cos(h.ang); d.y = Math.sin(h.ang); }
+    }
+    G.scatto.ricarica = Math.max(0, G.scatto.ricarica - dt);
     const k = Math.min(1, dt * 8);
     h.vx += (d.x * vel - h.vx) * k; h.vy += (d.y * vel - h.vy) * k;
-    h.x = limita(h.x + h.vx * dt, h.r, MONDO - h.r); h.y = limita(h.y + h.vy * dt, h.r, MONDO - h.r);
+    h.kx *= Math.max(0, 1 - 5 * dt); h.ky *= Math.max(0, 1 - 5 * dt);
+    h.x = limita(h.x + (h.vx + h.kx) * dt, h.r, MONDO - h.r); h.y = limita(h.y + (h.vy + h.ky) * dt, h.r, MONDO - h.r);
     if (Math.hypot(h.vx, h.vy) > 12) h.ang = Math.atan2(h.vy, h.vx);
     h.invul = Math.max(0, h.invul - dt);
     if (G.moltT > 0) { G.moltT -= dt; if (G.moltT <= 0) G.molt = 1; }
     if (G.calamitaT > 0) G.calamitaT -= dt;
+    if (G.frenesiaT > 0) G.frenesiaT -= dt; else G.frenesia = Math.max(0, G.frenesia - dt * .045);
+    // Primi consigli, solo la prima volta
+    if (!S.visto) {
+      if (G.suggerimento === 0 && G.tempo > .6) { G.suggerimento = 1; annuncia('Trascina il dito', 'per nuotare verso i pesciolini', 3); }
+      if (G.suggerimento === 1 && G.tempo > 7) { G.suggerimento = 2; annuncia('Occhio ai numeri', 'Verde: mangialo. Rosso: scappa!', 3.2); }
+      if (G.suggerimento === 2 && G.tempo > 16) { G.suggerimento = 3; S.visto = true; salva(); annuncia('Tasto Scatto', 'per uno sprint quando serve', 2.8); }
+    }
   } else if (G.stato === 'menu') {
-    // Nel menu il mare vive e la visuale passeggia
-    h.x = MONDO / 2 + Math.cos(G.t * .12) * 500; h.y = MONDO / 2 + Math.sin(G.t * .17) * 500;
+    h.x = MONDO / 2 + Math.cos(G.t * .12) * 520; h.y = MONDO / 2 + Math.sin(G.t * .17) * 520;
   }
   h.bocca = Math.max(0, h.bocca - dt * 5); h.pulsa = Math.max(0, h.pulsa - dt * 4);
 
-  // Banchi di pesciolini
+  // ----- Banchi di pesciolini -----
   for (const b of G.banchi) {
     b.ang += caso(-1, 1) * dt * .8;
     b.x += Math.cos(b.ang) * b.vel * dt; b.y += Math.sin(b.ang) * b.vel * dt;
     const m = b.raggio + 60;
     if (b.x < m || b.x > MONDO - m || b.y < m || b.y > MONDO - m) b.ang = Math.atan2(MONDO / 2 - b.y, MONDO / 2 - b.x);
   }
-  const calamita = inGioco && G.calamitaT > 0, fuga = h.r + 85, presa = h.r * .9 + 5, risucchio = h.r + 30;
-  const smorza = Math.max(0, 1 - 3 * dt);
+  const calamita = inGioco && G.calamitaT > 0, frenetico = inGioco && G.frenesiaT > 0;
+  const fuga = h.r + 85, presa = h.r * .9 + 5, risucchio = h.r + 30 * (1 + .3 * S.pot.cal) + (frenetico ? 40 : 0), raggioCal = 420 * (1 + .1 * S.pot.cal);
+  const smorza = Math.max(0, 1 - 3 * dt), valore = VALORE_PESCIOLINO[G.fasciaHero];
   for (const f of G.pesciolini) {
     if (f.morto > 0) {
       f.morto -= dt;
       if (f.morto <= 0) {
-        if (Math.hypot(f.b.x - h.x, f.b.y - h.y) > 620) { f.x = f.b.x + Math.cos(f.a) * f.d; f.y = f.b.y + Math.sin(f.a) * f.d; f.vx = f.vy = 0; f.morto = 0; }
+        if (Math.hypot(f.b.x - h.x, f.b.y - h.y) > 640) { f.x = f.b.x + Math.cos(f.a) * f.d; f.y = f.b.y + Math.sin(f.a) * f.d; f.vx = f.vy = 0; f.morto = 0; }
         else f.morto = 1.5;
       }
       continue;
@@ -421,78 +668,111 @@ function aggiorna(dt) {
     if (inGioco) {
       const dx = f.x - h.x, dy = f.y - h.y, d = Math.hypot(dx, dy) || 1;
       if (d < presa) {
-        f.morto = caso(5, 11); guadagna(1, f.x, f.y, false);
+        f.morto = caso(8, 16); guadagna(valore, f.x, f.y, false);
         if (G.particelle.length < 120) scoppio(f.x, f.y, '#ffffff', 2, 90);
         continue;
       }
-      if (calamita && d < 420) { const s = 1500 * dt / d; f.vx -= dx * s; f.vy -= dy * s; }
+      if (calamita && d < raggioCal) { const s = 1500 * dt / d; f.vx -= dx * s; f.vy -= dy * s; }
       else if (d < risucchio) { const s = 900 * dt / d; f.vx -= dx * s; f.vy -= dy * s; }
       else if (d < fuga) { const s = 520 * dt / d * (1 - d / fuga); f.vx += dx * s; f.vy += dy * s; }
     }
     f.vx *= smorza; f.vy *= smorza;
-    const v = Math.hypot(f.vx, f.vy), vmax = calamita ? 420 : 140;
+    const v = Math.hypot(f.vx, f.vy), vmax = calamita ? 440 : 140;
     if (v > vmax) { f.vx *= vmax / v; f.vy *= vmax / v; }
     f.x += f.vx * dt; f.y += f.vy * dt;
+    if (v > 6) { const diff = ((Math.atan2(f.vy, f.vx) - f.ang + Math.PI * 3) % TAU) - Math.PI; f.ang += diff * Math.min(1, dt * 8); }
   }
 
-  // Pesci grossi
+  // ----- Pesci grossi -----
+  let pericolo = 0, preda = 0;
   for (let i = G.predatori.length - 1; i >= 0; i--) {
-    const e = G.predatori[i];
-    e.f += dt * 7; e.nasce = Math.max(0, e.nasce - dt * 1.5);
-    let vel = e.fascia.vel * .38, verso = null;
+    const e = G.predatori[i], sp = e.sp;
+    if (e.mangiato > 0) {   // risucchiato nella bocca
+      e.mangiato -= dt;
+      const bx = h.x + Math.cos(h.ang) * h.r * .7, by = h.y + Math.sin(h.ang) * h.r * .7, k = Math.min(1, dt * 14);
+      e.x += (bx - e.x) * k; e.y += (by - e.y) * k;
+      if (e.mangiato <= 0) G.predatori.splice(i, 1);
+      continue;
+    }
+    e.nasce = Math.max(0, e.nasce - dt * 1.5);
+    const velBase = e.fascia.vel * (sp.vel || 1), senso = e.fascia.senso * (sp.senso || 1);
+    let vel = velBase * .38, verso = null, insegue = false, gira = 3.2;
+    const dx = h.x - e.x, dy = h.y - e.y, d = Math.hypot(dx, dy);
+    e.riposo = Math.max(0, e.riposo - dt);
     if (e.stordito > 0) { e.stordito -= dt; vel = 0; }
     else if (inGioco) {
-      const dx = h.x - e.x, dy = h.y - e.y, d = Math.hypot(dx, dy);
-      if (d < e.fascia.senso + h.r + e.r) {
-        if (e.p >= h.p) { verso = Math.atan2(dy, dx); vel = e.fascia.vel; }
-        else { verso = Math.atan2(-dy, -dx); vel = e.fascia.vel * (e.gigante ? .6 : .85); }
+      const forte = e.p >= h.p;
+      if (e.sprint > 0) { e.sprint -= dt; vel = velBase * 2.7; gira = .5; verso = e.ang; insegue = true; }
+      else if (e.avviso > 0) { e.avviso -= dt; vel = 0; verso = Math.atan2(dy, dx); gira = 6; insegue = true; if (e.avviso <= 0) { e.sprint = .85; suono(140, 60, .5, 'sawtooth', .07); } }
+      else if (d < senso + h.r + e.r) {
+        if (forte && (sp.timido || e.riposo > 0 || e.p > h.p * (e.gigante ? 40 : 6) + 20)) { /* non gli interessi: continua a girare */ }
+        else if (forte) {
+          verso = Math.atan2(dy, dx); vel = velBase; insegue = true;
+          if (!e.gigante) { e.fiato -= dt; if (e.fiato <= 0) { e.fiato = caso(3.5, 5.5); e.riposo = caso(2.5, 4); } }
+          if (e.gigante) { e.prossimaCarica -= dt; if (e.prossimaCarica <= 0 && d < 520) { e.prossimaCarica = caso(4.5, 6.5); e.avviso = .75; suono(90, 180, .6, 'square', .05); } }
+        } else { verso = Math.atan2(-dy, -dx); vel = velBase * (e.gigante ? .6 : forte ? .7 : .85); }
       }
+      if (forte && insegue && d < 420 + e.r) pericolo = Math.max(pericolo, 1 - (d - e.r - h.r) / 420);
+      if (!forte && d < h.r * 2.6 + e.r) preda = 1;
     }
     const m = e.r + 40;
-    if (e.x < m || e.x > MONDO - m || e.y < m || e.y > MONDO - m) {
-      const centro = Math.atan2(MONDO / 2 - e.y, MONDO / 2 - e.x);
-      if (verso === null || e.p < h.p) verso = centro;
-    }
-    if (verso === null) {
-      if (Math.random() < dt * .6) e.giro = caso(-1, 1);
-      e.ang += e.giro * dt * .7;
-    } else {
-      let diff = ((verso - e.ang + Math.PI * 3) % TAU) - Math.PI;
-      e.ang += limita(diff, -3.2 * dt, 3.2 * dt);
-    }
-    e.vAtt += (vel - e.vAtt) * Math.min(1, dt * 3);
+    if (e.x < m || e.x > MONDO - m || e.y < m || e.y > MONDO - m) { if (verso === null || !insegue) verso = Math.atan2(MONDO / 2 - e.y, MONDO / 2 - e.x); }
+    if (verso === null) { if (Math.random() < dt * .6) e.giro = caso(-1, 1); e.ang += e.giro * dt * .7; }
+    else { const diff = ((verso - e.ang + Math.PI * 3) % TAU) - Math.PI; e.ang += limita(diff, -gira * dt, gira * dt); }
+    e.vAtt += (vel - e.vAtt) * Math.min(1, dt * (e.sprint > 0 ? 9 : 3));
+    e.f += dt * (5 + e.vAtt * .04);
+    e.bocca += ((insegue ? .55 + .4 * Math.sin(G.t * 9 + e.f) : 0) - e.bocca) * Math.min(1, dt * 8);
     e.x = limita(e.x + Math.cos(e.ang) * e.vAtt * dt, e.r, MONDO - e.r);
     e.y = limita(e.y + Math.sin(e.ang) * e.vAtt * dt, e.r, MONDO - e.r);
 
-    // Non si accavallano tra loro
-    for (let j = i - 1; j >= 0; j--) {
-      const o = G.predatori[j], dx = o.x - e.x, dy = o.y - e.y, min = (e.r + o.r) * .9, d2 = dx * dx + dy * dy;
+    for (let j = i - 1; j >= 0; j--) {   // non si accavallano
+      const o = G.predatori[j]; if (o.mangiato > 0) continue;
+      const ox = o.x - e.x, oy = o.y - e.y, min = (e.r + o.r) * .9, d2 = ox * ox + oy * oy;
       if (d2 < min * min && d2 > .01) {
-        const d = Math.sqrt(d2), s = (min - d) / d * .5 * Math.min(1, dt * 6);
-        const pe = o.r / (e.r + o.r), po = 1 - pe;
-        e.x -= dx * s * pe * 2; e.y -= dy * s * pe * 2; o.x += dx * s * po * 2; o.y += dy * s * po * 2;
+        const dd = Math.sqrt(d2), s = (min - dd) / dd * Math.min(1, dt * 6), pe = o.r / (e.r + o.r);
+        e.x -= ox * s * pe; e.y -= oy * s * pe; o.x += ox * s * (1 - pe); o.y += oy * s * (1 - pe);
       }
     }
 
-    if (inGioco && e.nasce <= 0) {
-      const d = Math.hypot(h.x - e.x, h.y - e.y);
-      if (d < (h.r + e.r) * .72) {
-        if (h.p > e.p) {
-          scoppio(e.x, e.y, SPECIE[e.specie].c1, e.gigante ? 60 : 18, e.gigante ? 520 : 260);
-          guadagna(e.p * .5, e.x, e.y - e.r, true);
-          G.predatori.splice(i, 1);
-          if (e.gigante) { vittoria(); return; }
-          const fascia = e.fascia;
-          setTimeout(() => { if (G.cfg.fasce.includes(fascia) && G.stato !== 'menu') G.predatori.push(nuovoPredatore(fascia)); }, 2500);
-        } else colpito(e);
-      }
+    if (inGioco && e.nasce <= 0 && d < (h.r + e.r) * .72) {
+      if (h.p > e.p) {
+        scoppio(e.x, e.y, sp.c1, e.gigante ? 70 : 18, e.gigante ? 560 : 260, e.gigante ? 1.8 : 1);
+        guadagna(e.p * .3, e.x, e.y - e.r, true);
+        if (e.gigante) prendiPerle(15, e.x, e.y); else if (Math.random() < .35) prendiPerle(e.fascia.k >= 2 ? 2 : 1, e.x, e.y);
+        e.mangiato = .18;
+        if (e.gigante) { vittoria(); return; }
+        G.rinascite.push({ fascia: e.fascia, t: 2.5 });
+      } else colpito(e);
     }
   }
+  G.pericolo += (pericolo - G.pericolo) * Math.min(1, dt * 5);
+  h.attesa += (preda - h.attesa) * Math.min(1, dt * 10);
+  for (let i = G.rinascite.length - 1; i >= 0; i--) {
+    const r = G.rinascite[i]; r.t -= dt;
+    if (r.t <= 0) { G.rinascite.splice(i, 1); if (G.stato === 'gioco') G.predatori.push(nuovoPredatore(r.fascia)); }
+  }
 
-  // Bolle con gli aiuti
+  // ----- Meduse -----
+  for (const m of G.meduse) {
+    m.f += dt * 2.2; m.stordito = Math.max(0, m.stordito - dt);
+    const spinta = Math.max(0, Math.sin(m.f));
+    m.y += (22 - spinta * 62) * dt; m.x += m.dx * dt;
+    if (m.y < 120) m.y = MONDO - 220; if (m.x < 80 || m.x > MONDO - 80) m.dx *= -1;
+    if (inGioco && m.stordito <= 0 && Math.hypot(m.x - h.x, m.y - h.y) < h.r * .8 + 18) colpito(m);
+  }
+
   if (inGioco) {
+    // ----- Conchiglie sul fondo -----
+    for (const c of G.conchiglie) {
+      c.attesa = Math.max(0, c.attesa - dt); c.apre = Math.max(0, c.apre - dt);
+      if (c.attesa <= 0 && Math.hypot(c.x - h.x, MONDO - 22 - h.y) < h.r + 46) {
+        c.attesa = 45; c.apre = 1.2; prendiPerle(6, c.x, MONDO - 60);
+        scoppio(c.x, MONDO - 30, '#ffd9f0', 12, 200); suono(880, 1760, .25, 'sine', .07);
+      }
+    }
+    // ----- Bolle con gli aiuti -----
     G.bollaT -= dt;
-    if (G.bollaT <= 0) { G.bollaT = 4.5; if (G.bolle.length < 6) G.bolle.push(nuovaBolla()); }
+    if (G.bollaT <= 0) { G.bollaT = 4.5 * (1 - .17 * S.pot.bolle); if (G.bolle.length < 7 + S.pot.bolle) G.bolle.push(nuovaBolla()); }
     for (let i = G.bolle.length - 1; i >= 0; i--) {
       const b = G.bolle[i];
       if (Math.hypot(b.x - h.x, b.y - h.y) < h.r + 30) {
@@ -503,10 +783,13 @@ function aggiorna(dt) {
           G.molt = Math.max(G.moltT > 0 ? G.molt : 1, m); G.moltT = 8;
           testo(b.x, b.y, 'Tutto ×' + m + '!', '#ffe066', true);
         } else if (b.tipo === 'calamita') { G.calamitaT = 9; testo(b.x, b.y, 'Calamita!', '#ff9ecb', true); }
-        else { G.scudo = true; testo(b.x, b.y, 'Scudo!', '#9be7ff', true); }
+        else if (b.tipo === 'scudo') { G.scudo = true; testo(b.x, b.y, 'Scudo!', '#9be7ff', true); }
+        else if (b.tipo === 'perla') prendiPerle(5, b.x, b.y);
+        else if (G.cuori < G.cuoriMax) { G.cuori++; testo(b.x, b.y, '+1 cuore', '#ff8fa3', true); }
+        else prendiPerle(8, b.x, b.y);
       }
     }
-    // I "+1" dei pesciolini escono a gruppi, per non riempire lo schermo
+    // I guadagni dei pesciolini escono a gruppi, per non riempire lo schermo
     G.accumuloT -= dt;
     if (G.accumulo > 0 && G.accumuloT <= 0) {
       testo(h.x + caso(-h.r, h.r), h.y - h.r - 6, '+' + numero(G.accumulo), '#b9ffd0', false);
@@ -514,7 +797,7 @@ function aggiorna(dt) {
     }
   }
 
-  // Particelle e scritte
+  // ----- Particelle e scritte -----
   for (let i = G.particelle.length - 1; i >= 0; i--) {
     const p = G.particelle[i];
     p.eta += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 1 - 2.5 * dt; p.vy *= 1 - 2.5 * dt;
@@ -525,211 +808,373 @@ function aggiorna(dt) {
     if (s.eta > 1) G.testi.splice(i, 1);
   }
 
-  // Visuale: segue il protagonista e si allarga quando cresce
+  // ----- Visuale: segue il protagonista e si allarga quando cresce -----
   const base = Math.min(vw, vh) / 400;
-  const zBersaglio = G.stato === 'menu' ? base * .8 : base * Math.pow(22 / h.r, .55);
+  const zBersaglio = G.stato === 'menu' ? base * .8 : base * Math.pow(22 / h.r, .55) * (G.scatto.attivo > 0 ? .94 : 1);
   G.cam.z += (zBersaglio - G.cam.z) * Math.min(1, dt * 2.5);
-  const kc = Math.min(1, dt * 6);
-  G.cam.x += (h.x - G.cam.x) * kc; G.cam.y += (h.y - G.cam.y) * kc;
-  G.scossa = Math.max(0, G.scossa - dt * 30);
+  const kc = Math.min(1, dt * 6), avanti = inGioco ? .22 : 0;
+  G.cam.x += (h.x + h.vx * avanti - G.cam.x) * kc; G.cam.y += (h.y + h.vy * avanti - G.cam.y) * kc;
+  G.scossa = Math.max(0, G.scossa - dt * 30); G.lampo = Math.max(0, G.lampo - dt * 2.5);
 }
 
-// ---------- Disegno delle creature ----------
-function disegnaProtagonista(r, t, bocca, scudo, lampeggia) {
-  // Pallino: un pesce palla turchese. Disegnato in unità dove il corpo ha raggio 1.
-  ctx.save(); ctx.scale(r, r);
-  if (lampeggia) ctx.globalAlpha = .55;
-  const coda = Math.sin(t * 11) * .35;
-  ctx.fillStyle = '#ffd24a';
-  ctx.save(); ctx.translate(-.9, 0); ctx.rotate(coda);
-  ctx.beginPath(); ctx.moveTo(.1, 0); ctx.quadraticCurveTo(-.5, -.75, -.85, -.55); ctx.quadraticCurveTo(-.55, 0, -.85, .55); ctx.quadraticCurveTo(-.5, .75, .1, 0); ctx.fill();
-  ctx.restore();
-  // Spine sul dorso
-  ctx.fillStyle = '#0c8f9c';
-  for (let i = 0; i < 7; i++) {
-    const a = -Math.PI * .95 + i * .33;
-    ctx.beginPath(); ctx.moveTo(Math.cos(a - .09) * .96, Math.sin(a - .09) * .96); ctx.lineTo(Math.cos(a) * 1.22, Math.sin(a) * 1.22); ctx.lineTo(Math.cos(a + .09) * .96, Math.sin(a + .09) * .96); ctx.fill();
-  }
-  // Corpo
-  const g = ctx.createRadialGradient(.25, -.35, .1, 0, 0, 1.1);
-  g.addColorStop(0, '#7ff5e2'); g.addColorStop(.6, '#2fd3c0'); g.addColorStop(1, '#0e9aa7');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 1, 0, TAU); ctx.fill();
-  // Pancia chiara
-  ctx.save(); ctx.beginPath(); ctx.arc(0, 0, 1, 0, TAU); ctx.clip();
-  ctx.fillStyle = '#fff6d6'; ctx.beginPath(); ctx.ellipse(.1, .95, 1.05, .62, 0, 0, TAU); ctx.fill();
-  ctx.restore();
-  // Pinna laterale
-  ctx.fillStyle = '#ffd24a';
-  ctx.save(); ctx.translate(-.15, .3); ctx.rotate(.5 + Math.sin(t * 9) * .3);
-  ctx.beginPath(); ctx.ellipse(-.22, 0, .3, .15, 0, 0, TAU); ctx.fill(); ctx.restore();
-  // Guancia
-  ctx.fillStyle = 'rgba(255,120,150,.55)'; ctx.beginPath(); ctx.arc(.38, .2, .16, 0, TAU); ctx.fill();
-  // Occhio
-  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(.42, -.3, .3, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#18233f'; ctx.beginPath(); ctx.arc(.5, -.28, .16, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(.55, -.35, .06, 0, TAU); ctx.fill();
-  // Bocca
-  ctx.fillStyle = '#6a1238'; ctx.beginPath(); ctx.ellipse(.8, .22, .1 + .2 * bocca, .07 + .3 * bocca, 0, 0, TAU); ctx.fill();
-  if (scudo) {
-    ctx.strokeStyle = 'rgba(155,231,255,.9)'; ctx.lineWidth = .08; ctx.beginPath(); ctx.arc(0, 0, 1.4 + Math.sin(t * 5) * .04, 0, TAU); ctx.stroke();
-    ctx.fillStyle = 'rgba(155,231,255,.14)'; ctx.fill();
-  }
-  ctx.restore();
-}
-
-function disegnaPredatore(e, t, minaccioso) {
-  const s = SPECIE[e.specie], lx = s.lx, ly = s.ly;
-  ctx.save(); ctx.scale(e.r, e.r);
-  const coda = Math.sin(e.f) * .3;
+// =====================================================================
+//  Disegno delle creature (c è la tela su cui disegnare)
+// =====================================================================
+function disegnaProtagonista(c, r, t, bocca, o = {}) {
+  const v = o.vestito || VESTITI[0];
+  c.save(); c.scale(r, r); c.lineJoin = 'round';
+  if (o.lampeggia) c.globalAlpha = .5;
+  if (o.frenesia) { c.fillStyle = 'rgba(255,170,60,' + (.25 + .1 * Math.sin(t * 12)) + ')'; c.beginPath(); c.arc(0, 0, 1.45, 0, TAU); c.fill(); }
   // Coda
-  ctx.fillStyle = s.pinna;
-  ctx.save(); ctx.translate(-lx * .9, 0); ctx.rotate(coda);
-  ctx.beginPath(); ctx.moveTo(.15, 0); ctx.lineTo(-.7, -ly * .95); ctx.quadraticCurveTo(-.4, 0, -.7, ly * .95); ctx.closePath(); ctx.fill();
-  ctx.restore();
-  // Pinna sul dorso
-  ctx.beginPath(); ctx.moveTo(-lx * .45, -ly * .8); ctx.quadraticCurveTo(-lx * .2, -ly * 1.75, lx * .25, -ly * .85); ctx.closePath(); ctx.fill();
-  if (s.spine) {
-    for (let i = 0; i < 9; i++) {
-      const a = Math.PI * .15 + i * .34 + Math.PI;
-      ctx.beginPath(); ctx.moveTo(Math.cos(a - .1) * lx * .95, Math.sin(a - .1) * ly * .95); ctx.lineTo(Math.cos(a) * lx * 1.25, Math.sin(a) * ly * 1.25); ctx.lineTo(Math.cos(a + .1) * lx * .95, Math.sin(a + .1) * ly * .95); ctx.fill();
-    }
+  c.save(); c.translate(-.88, 0); c.rotate(Math.sin(t * 11) * .35);
+  c.beginPath(); c.moveTo(.12, 0); c.quadraticCurveTo(-.5, -.8, -.9, -.6); c.quadraticCurveTo(-.58, 0, -.9, .6); c.quadraticCurveTo(-.5, .8, .12, 0);
+  c.fillStyle = v.pinna; c.fill(); c.strokeStyle = v.bordo; c.lineWidth = .06; c.stroke();
+  c.restore();
+  // Spine tutto attorno
+  c.fillStyle = v.spina;
+  for (let i = 0; i < 12; i++) {
+    const a = Math.PI * .28 + i * (Math.PI * 1.5 / 11);
+    c.beginPath(); c.moveTo(Math.cos(a - .1) * .95, Math.sin(a - .1) * .95); c.lineTo(Math.cos(a) * 1.2, Math.sin(a) * 1.2); c.lineTo(Math.cos(a + .1) * .95, Math.sin(a + .1) * .95); c.fill();
   }
   // Corpo
-  const g = ctx.createLinearGradient(0, -ly, 0, ly);
-  g.addColorStop(0, s.c1); g.addColorStop(.55, s.c1); g.addColorStop(1, s.c2);
-  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, lx, ly, 0, 0, TAU); ctx.fill();
-  if (s.righe) {
-    ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, lx, ly, 0, 0, TAU); ctx.clip();
-    ctx.fillStyle = 'rgba(40,20,120,.28)';
-    for (let i = -3; i < 3; i++) ctx.fillRect(i * .45 - .1, -ly, .16, ly * 1.2);
-    ctx.restore();
-  }
+  const g = c.createRadialGradient(.25, -.4, .08, 0, 0, 1.08);
+  g.addColorStop(0, v.c0); g.addColorStop(.55, v.c1); g.addColorStop(1, v.c2);
+  c.beginPath(); c.arc(0, 0, 1, 0, TAU); c.fillStyle = g; c.fill();
+  c.save(); c.clip();
+  c.fillStyle = v.pancia; c.beginPath(); c.ellipse(.1, .98, 1.05, .62, 0, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.28)'; c.beginPath(); c.ellipse(-.1, -.62, .6, .2, -.25, 0, TAU); c.fill();
+  c.fillStyle = v.c2; c.globalAlpha *= .35;
+  for (const [x, y] of [[-.55, -.3], [-.3, -.55], [-.62, .05], [-.25, -.2]]) { c.beginPath(); c.arc(x, y, .07, 0, TAU); c.fill(); }
+  c.restore();
+  c.beginPath(); c.arc(0, 0, 1, 0, TAU); c.strokeStyle = v.bordo; c.lineWidth = .06; c.stroke();
   // Pinna laterale
-  ctx.fillStyle = s.pinna;
-  ctx.save(); ctx.translate(-lx * .1, ly * .35); ctx.rotate(.5 + Math.sin(e.f * .8) * .25);
-  ctx.beginPath(); ctx.ellipse(-.2, 0, .28, .13, 0, 0, TAU); ctx.fill(); ctx.restore();
-  // Bocca con i denti
-  const mx = lx * .52, my = ly * .28, ml = lx * .44;
-  ctx.fillStyle = '#3b0d1e';
-  ctx.beginPath(); ctx.moveTo(mx, my - .02); ctx.quadraticCurveTo(mx + ml * .6, my + ly * .1, mx + ml, my - ly * .12); ctx.quadraticCurveTo(mx + ml * .55, my + ly * .5, mx, my + ly * .22); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#fff';
-  const denti = e.gigante ? 6 : 4;
-  for (let i = 0; i < denti; i++) {
-    const u = (i + .5) / denti, x = mx + ml * u, y = my + ly * (.06 - .15 * u * u);
-    ctx.beginPath(); ctx.moveTo(x - ml * .09, y - .02); ctx.lineTo(x + ml * .09, y - .02); ctx.lineTo(x, y + ly * .2); ctx.fill();
+  c.save(); c.translate(-.12, .32); c.rotate(.5 + Math.sin(t * 9) * .3);
+  c.beginPath(); c.ellipse(-.24, 0, .32, .16, 0, 0, TAU); c.fillStyle = v.pinna; c.fill(); c.strokeStyle = v.bordo; c.lineWidth = .05; c.stroke(); c.restore();
+  // Guancia, occhio, bocca
+  c.fillStyle = 'rgba(255,110,150,.5)'; c.beginPath(); c.arc(.36, .22, .16, 0, TAU); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(.42, -.3, .31, 0, TAU); c.fill(); c.strokeStyle = v.bordo; c.lineWidth = .04; c.stroke();
+  c.fillStyle = '#18233f'; c.beginPath(); c.arc(.51, -.28, .17, 0, TAU); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(.57, -.35, .065, 0, TAU); c.fill();
+  c.fillStyle = '#6a1238'; c.beginPath(); c.ellipse(.8, .22, .1 + .22 * bocca, .07 + .33 * bocca, 0, 0, TAU); c.fill();
+  if (bocca > .25) { c.fillStyle = '#ff8fa3'; c.beginPath(); c.ellipse(.78, .22 + .16 * bocca, .12 * bocca, .1 * bocca, 0, 0, TAU); c.fill(); }
+  if (o.scudo) {
+    c.beginPath(); c.arc(0, 0, 1.42 + Math.sin(t * 5) * .04, 0, TAU);
+    c.fillStyle = 'rgba(155,231,255,.14)'; c.fill(); c.strokeStyle = 'rgba(155,231,255,.9)'; c.lineWidth = .07; c.stroke();
   }
-  // Occhio
-  const ox = lx * .55, oy = -ly * .28, or = Math.min(.26, ly * .3);
-  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ox, oy, or, 0, TAU); ctx.fill();
-  ctx.fillStyle = minaccioso ? '#c81e3a' : '#18233f'; ctx.beginPath(); ctx.arc(ox + or * .25, oy, or * .5, 0, TAU); ctx.fill();
-  if (minaccioso) {
-    ctx.strokeStyle = s.pinna; ctx.lineWidth = or * .45; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(ox - or * 1.1, oy - or * 1.25); ctx.lineTo(ox + or * 1.1, oy - or * .55); ctx.stroke();
-  }
-  if (s.lanterna) {
-    const lx2 = lx * 1.25, ly2 = -ly * 1.25 + Math.sin(t * 2.2) * .06;
-    ctx.strokeStyle = s.pinna; ctx.lineWidth = .06; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(lx * .3, -ly * .9); ctx.quadraticCurveTo(lx * .7, -ly * 1.9, lx2, ly2); ctx.stroke();
-    const gl = ctx.createRadialGradient(lx2, ly2, 0, lx2, ly2, .55);
-    gl.addColorStop(0, 'rgba(255,240,150,.95)'); gl.addColorStop(.3, 'rgba(255,220,90,.5)'); gl.addColorStop(1, 'rgba(255,220,90,0)');
-    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(lx2, ly2, .55, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#fff7c2'; ctx.beginPath(); ctx.arc(lx2, ly2, .11, 0, TAU); ctx.fill();
-  }
-  ctx.restore();
+  c.restore();
 }
 
-// Pesciolini: disegnati una volta sola su piccole immagini, poi copiati
-const COLORI_PESCIOLINI = ['#ffd1e8', '#ffe9a8', '#c9f0ff'];
+const MACCHIE = [[-.55, -.32, .1], [-.2, -.5, .08], [.12, -.3, .07], [-.68, .02, .08], [-.32, -.1, .11], [.3, -.52, .06], [-.05, .12, .07], [-.8, -.2, .06]];
+function tracciaCorpo(c, lx, ly) {
+  c.beginPath(); c.moveTo(lx, .04 * ly);
+  c.bezierCurveTo(lx * .8, -ly * 1.02, -lx * .3, -ly * 1.14, -lx * .98, -ly * .2);
+  c.lineTo(-lx * .98, ly * .2);
+  c.bezierCurveTo(-lx * .3, ly * 1.14, lx * .8, ly * 1.02, lx, .04 * ly);
+  c.closePath();
+}
+
+function disegnaPesce(c, sp, o) {
+  // o: { r, f (fase della coda), t, minaccia, bocca }
+  if (sp.piovra) return disegnaPiovra(c, sp, o);
+  const lx = sp.lx, ly = sp.ly, extra = sp.extra || [], th = Math.max(ly, .7);
+  c.save(); c.scale(o.r, o.r); c.lineJoin = 'round'; c.lineCap = 'round';
+  const bordo = () => { c.strokeStyle = sp.cs; c.lineWidth = .055; c.stroke(); };
+  // Coda
+  c.save(); c.translate(-lx * .93, 0); c.rotate(Math.sin(o.f) * .32); c.beginPath();
+  if (sp.coda === 'forca') { c.moveTo(.14, 0); c.lineTo(-.78, -th); c.quadraticCurveTo(-.42, 0, -.78, th); c.closePath(); }
+  else if (sp.coda === 'luna') { c.moveTo(.12, 0); c.quadraticCurveTo(-.3, -th * .9, -.95, -th * 1.3); c.quadraticCurveTo(-.5, 0, -.95, th * 1.3); c.quadraticCurveTo(-.3, th * .9, .12, 0); }
+  else { c.moveTo(.14, -.1); c.quadraticCurveTo(-.95, -th * .95, -.8, 0); c.quadraticCurveTo(-.95, th * .95, .14, .1); c.closePath(); }
+  c.fillStyle = sp.cp; c.fill(); bordo(); c.restore();
+  // Pinne sopra e sotto
+  c.fillStyle = sp.cp;
+  if (sp.dorso === 'vela') { c.beginPath(); c.moveTo(-lx * .55, -ly * .6); c.quadraticCurveTo(-lx * .3, -ly * 2.0, lx * .32, -ly * .7); c.closePath(); c.fill(); bordo(); }
+  else if (sp.dorso === 'bassa') { c.beginPath(); c.moveTo(-lx * .55, -ly * .58); c.quadraticCurveTo(-lx * .1, -ly * 1.45, lx * .35, -ly * .68); c.closePath(); c.fill(); bordo(); }
+  else if (sp.dorso === 'spine') {
+    for (let i = 0; i < 6; i++) { const x = -lx * .6 + i * lx * .19, hh = ly * (.5 + .25 * Math.sin(i * 1.3 + 1)); c.beginPath(); c.moveTo(x - lx * .1, -ly * .6); c.lineTo(x - lx * .04, -ly * .7 - hh); c.lineTo(x + lx * .1, -ly * .62); c.closePath(); c.fill(); bordo(); }
+  }
+  c.beginPath(); c.moveTo(-lx * .55, ly * .58); c.quadraticCurveTo(-lx * .5, ly * 1.35, -lx * .05, ly * .72); c.closePath(); c.fill(); bordo();
+  if (extra.includes('spine')) {
+    for (let i = 0; i < 12; i++) { const a = i / 12 * TAU + .3; if (Math.cos(a) > .75) continue; c.beginPath(); c.moveTo(Math.cos(a - .12) * lx * .9, Math.sin(a - .12) * ly * .82); c.lineTo(Math.cos(a) * lx * 1.2, Math.sin(a) * ly * 1.12); c.lineTo(Math.cos(a + .12) * lx * .9, Math.sin(a + .12) * ly * .82); c.closePath(); c.fill(); }
+  }
+  if (extra.includes('spada')) { c.beginPath(); c.moveTo(lx * .9, -ly * .12); c.lineTo(lx * 2.05, -ly * .02); c.lineTo(lx * .9, ly * .14); c.closePath(); c.fillStyle = sp.cs; c.fill(); }
+  // Corpo
+  const g = c.createLinearGradient(0, -ly, 0, ly);
+  g.addColorStop(0, sp.c1); g.addColorStop(.5, sp.c1); g.addColorStop(.95, sp.c2);
+  tracciaCorpo(c, lx, ly); c.fillStyle = g; c.fill();
+  c.save(); c.clip();
+  if (sp.motivo === 'righe') { c.fillStyle = sp.cm; for (let i = -3; i <= 2; i++) { c.beginPath(); c.moveTo(i * lx * .27, -ly); c.lineTo(i * lx * .27 + lx * .1, -ly); c.lineTo(i * lx * .27 - lx * .02, ly * .25); c.lineTo(i * lx * .27 - lx * .12, ly * .25); c.fill(); } }
+  else if (sp.motivo === 'macchie') { c.fillStyle = sp.cm; for (const [x, y, rr] of MACCHIE) { c.beginPath(); c.ellipse(x * lx, y * ly, rr * 1.3, rr, 0, 0, TAU); c.fill(); } }
+  else if (sp.motivo === 'fascia') { c.fillStyle = sp.cm; c.fillRect(-lx, -ly * .1, lx * 1.5, ly * .2); }
+  else if (sp.motivo === 'bande') { c.fillStyle = sp.cm; c.fillRect(lx * .47, -ly, lx * .2, ly * 2); c.fillRect(-lx * .3, -ly, lx * .2, ly * 2); c.fillStyle = sp.cp; c.fillRect(-lx, -ly, lx * .3, ly * 2); }
+  else if (sp.motivo === 'squame') { c.strokeStyle = sp.cm; c.lineWidth = .035; for (let i = 0; i < 5; i++) for (let j = 0; j < 4; j++) { c.beginPath(); c.arc(-lx * .75 + i * lx * .28 + (j % 2) * lx * .14, -ly * .5 + j * ly * .3, lx * .13, -.6, 1.4); c.stroke(); } }
+  c.fillStyle = 'rgba(255,255,255,.25)'; c.beginPath(); c.ellipse(lx * .05, -ly * .5, lx * .6, ly * .14, -.05, 0, TAU); c.fill();
+  c.restore();
+  tracciaCorpo(c, lx, ly); bordo();
+  // Branchia e pinna laterale
+  c.strokeStyle = sp.cs; c.globalAlpha *= .4; c.lineWidth = .045; c.beginPath(); c.arc(lx * .05, 0, ly * .52, -.75, .75); c.stroke(); c.globalAlpha /= .4;
+  c.save(); c.translate(-lx * .08, ly * .3); c.rotate(.5 + Math.sin(o.f * .8) * .28);
+  c.beginPath(); c.ellipse(-.22, 0, .3, .13, 0, 0, TAU); c.fillStyle = sp.cp; c.fill(); bordo(); c.restore();
+  // Bocca
+  const b = o.bocca || 0, kx = lx * .46, ky = ly * .16, ux = lx * .985, uy = ly * .05, wx = lx * (.93 - .12 * b), wy = ly * (.14 + .3 * b);
+  if (o.minaccia || b > .05) {
+    c.beginPath(); c.moveTo(kx, ky); c.quadraticCurveTo(lx * .75, ly * .0, ux, uy); c.lineTo(wx, wy); c.quadraticCurveTo(lx * .7, ly * (.2 + .22 * b), kx, ky); c.closePath();
+    c.fillStyle = '#4a0f24'; c.fill();
+    const n = sp.denti || 4; c.fillStyle = '#fff';
+    for (let i = 0; i < n; i++) {
+      const u = .2 + .75 * (i + .5) / n, x = kx + (ux - kx) * u, y = ky + (uy - ky) * u - ly * .05 * Math.sin(u * 3), dl = lx * .34 / n;
+      c.beginPath(); c.moveTo(x - dl, y); c.lineTo(x + dl, y); c.lineTo(x, y + ly * (.1 + .12 * b)); c.fill();
+      if (b > .3 && i % 2 === 0) { const x2 = kx + (wx - kx) * u, y2 = ky + (wy - ky) * u + ly * .04; c.beginPath(); c.moveTo(x2 - dl, y2); c.lineTo(x2 + dl, y2); c.lineTo(x2, y2 - ly * .14 * b); c.fill(); }
+    }
+  } else {
+    c.strokeStyle = sp.cs; c.lineWidth = .05; c.beginPath(); c.moveTo(lx * .62, ly * .2); c.quadraticCurveTo(lx * .82, ly * .22, lx * .97, ly * .08); c.stroke();
+  }
+  if (extra.includes('baffi')) { c.strokeStyle = sp.cs; c.lineWidth = .05; for (const s of [0, 1]) { c.beginPath(); c.moveTo(lx * (.8 - s * .12), ly * .35); c.quadraticCurveTo(lx * (.85 - s * .1), ly * .9, lx * (.6 - s * .15) + Math.sin(o.f * .6 + s) * .08, ly * 1.15); c.stroke(); } }
+  // Occhio
+  const ox = lx * .6, oy = -ly * .24, or = limita(ly * .27, .15, .27);
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(ox, oy, or, 0, TAU); c.fill(); c.strokeStyle = sp.cs; c.lineWidth = .035; c.stroke();
+  c.fillStyle = o.minaccia ? '#c81e3a' : '#18233f'; c.beginPath(); c.arc(ox + or * .28, oy + or * .05, or * .52, 0, TAU); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(ox + or * .45, oy - or * .2, or * .18, 0, TAU); c.fill();
+  if (o.minaccia) { c.strokeStyle = sp.cs; c.lineWidth = or * .5; c.beginPath(); c.moveTo(ox - or * 1.15, oy - or * 1.3); c.lineTo(ox + or * 1.2, oy - or * .5); c.stroke(); }
+  if (extra.includes('lanterna')) {
+    const ax = lx * 1.28, ay = -ly * 1.2 + Math.sin(o.t * 2.2) * .06;
+    c.strokeStyle = sp.cs; c.lineWidth = .06; c.beginPath(); c.moveTo(lx * .3, -ly * .85); c.quadraticCurveTo(lx * .7, -ly * 1.95, ax, ay); c.stroke();
+    const gl = c.createRadialGradient(ax, ay, 0, ax, ay, .6);
+    gl.addColorStop(0, 'rgba(255,240,150,.95)'); gl.addColorStop(.3, 'rgba(255,220,90,.5)'); gl.addColorStop(1, 'rgba(255,220,90,0)');
+    c.fillStyle = gl; c.beginPath(); c.arc(ax, ay, .6, 0, TAU); c.fill();
+    c.fillStyle = '#fff7c2'; c.beginPath(); c.arc(ax, ay, .11, 0, TAU); c.fill();
+  }
+  if (extra.includes('corona')) disegnaCorona(c, lx * .12, -ly * .86, .34);
+  c.restore();
+}
+
+function disegnaCorona(c, x, y, s) {
+  c.save(); c.translate(x, y); c.rotate(-.12); c.scale(s, s);
+  c.beginPath(); c.moveTo(-1, 0); c.lineTo(-1.15, -1.2); c.lineTo(-.5, -.55); c.lineTo(0, -1.45); c.lineTo(.5, -.55); c.lineTo(1.15, -1.2); c.lineTo(1, 0); c.closePath();
+  c.fillStyle = '#ffd24a'; c.fill(); c.strokeStyle = '#a66a00'; c.lineWidth = .14; c.stroke();
+  c.fillStyle = '#ff5c7a'; c.beginPath(); c.arc(0, -.42, .2, 0, TAU); c.fill();
+  c.restore();
+}
+
+function disegnaPiovra(c, sp, o) {
+  c.save(); c.scale(o.r, o.r); c.lineCap = 'round'; c.lineJoin = 'round';
+  // Tentacoli che seguono dietro
+  for (let i = 0; i < 7; i++) {
+    const y0 = (i - 3) / 3 * .62;
+    c.beginPath(); c.moveTo(-.15, y0);
+    for (let s = 1; s <= 7; s++) c.lineTo(-.15 - s * .3, y0 * (1 + s * .16) + Math.sin(o.f * .55 + s * .85 + i * 1.7) * .05 * s);
+    c.strokeStyle = sp.cs; c.lineWidth = .3; c.stroke();
+    c.strokeStyle = i % 2 ? sp.c1 : sp.cp; c.lineWidth = .21; c.stroke();
+  }
+  // Testa
+  const g = c.createRadialGradient(.55, -.3, .1, .35, 0, 1.2);
+  g.addColorStop(0, sp.c2); g.addColorStop(.5, sp.c1); g.addColorStop(1, sp.cp);
+  c.beginPath(); c.ellipse(.35, 0, 1.05, .88, 0, 0, TAU); c.fillStyle = g; c.fill(); c.strokeStyle = sp.cs; c.lineWidth = .06; c.stroke();
+  c.fillStyle = 'rgba(255,255,255,.22)'; c.beginPath(); c.ellipse(.75, -.45, .4, .16, .5, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(120,20,60,.3)'; for (const [x, y] of [[.9, .2], [1.1, -.1], [.75, .5], [1.0, -.45]]) { c.beginPath(); c.arc(x, y, .07, 0, TAU); c.fill(); }
+  for (const s of [-1, 1]) {
+    c.fillStyle = '#fff'; c.beginPath(); c.ellipse(.12, s * .42, .24, .2, 0, 0, TAU); c.fill(); c.strokeStyle = sp.cs; c.lineWidth = .04; c.stroke();
+    c.fillStyle = o.minaccia ? '#c81e3a' : '#18233f'; c.beginPath(); c.arc(.2, s * .42, .11, 0, TAU); c.fill();
+    if (o.minaccia) { c.strokeStyle = sp.cs; c.lineWidth = .1; c.beginPath(); c.moveTo(-.1, s * .2); c.lineTo(.42, s * .34); c.stroke(); }
+  }
+  disegnaCorona(c, .6, -.84, .34);
+  c.restore();
+}
+
+function disegnaMedusa(c, m, t) {
+  const s = Math.max(0, Math.sin(m.f)), larg = 1 + s * .14, alt = 1 - s * .12;
+  c.save(); c.translate(m.x, m.y); c.lineCap = 'round';
+  const al = c.createRadialGradient(0, 0, 4, 0, 0, 60); al.addColorStop(0, 'rgba(255,255,255,.22)'); al.addColorStop(1, 'rgba(255,255,255,0)');
+  c.fillStyle = al; c.beginPath(); c.arc(0, 0, 60, 0, TAU); c.fill();
+  c.strokeStyle = m.colore; c.globalAlpha = .75; c.lineWidth = 3;
+  for (let i = 0; i < 5; i++) {
+    const x0 = (i - 2) * 9 * larg; c.beginPath(); c.moveTo(x0, 4);
+    for (let k = 1; k <= 5; k++) c.lineTo(x0 + Math.sin(t * 3 + k * 1.1 + i) * 5, 4 + k * 11 * (1.1 - s * .25));
+    c.stroke();
+  }
+  c.globalAlpha = .85; c.fillStyle = m.colore;
+  c.beginPath(); c.moveTo(-26 * larg, 6); c.bezierCurveTo(-28 * larg, -34 * alt, 28 * larg, -34 * alt, 26 * larg, 6); c.quadraticCurveTo(13 * larg, 0, 0, 6); c.quadraticCurveTo(-13 * larg, 0, -26 * larg, 6); c.fill();
+  c.globalAlpha = .5; c.fillStyle = '#fff'; c.beginPath(); c.ellipse(-8 * larg, -14 * alt, 9, 5, -.5, 0, TAU); c.fill();
+  c.globalAlpha = 1; c.fillStyle = '#18233f'; c.beginPath(); c.arc(-8, -4, 2.6, 0, TAU); c.arc(8, -4, 2.6, 0, TAU); c.fill();
+  c.restore();
+}
+
+// Pesciolini: disegnati una volta sola, in 16 direzioni, poi copiati
+const COLORI_PESCIOLINI = [['#ffd1e8', '#ff8fc0'], ['#fff0a8', '#ffb23b'], ['#c9f0ff', '#5cb8f0'], ['#d9ffd0', '#5fd08a']];
 const figurine = [];
 (function preparaFigurine() {
-  for (let c = 0; c < 3; c++) for (let fr = 0; fr < 2; fr++) for (let dir = 0; dir < 2; dir++) {
-    const im = document.createElement('canvas'); im.width = 54; im.height = 36;
-    const x = im.getContext('2d');
-    x.translate(27, 18); if (dir) x.scale(-1, 1); x.scale(3, 3);
-    x.fillStyle = COLORI_PESCIOLINI[c];
-    x.beginPath(); x.moveTo(-3.5, 0); x.lineTo(-8, fr ? -3.6 : -2.4); x.lineTo(-8, fr ? 2.4 : 3.6); x.closePath(); x.fill();
-    x.beginPath(); x.ellipse(0, 0, 5.2, 3.3, 0, 0, TAU); x.fill();
-    x.fillStyle = 'rgba(255,255,255,.75)'; x.beginPath(); x.ellipse(.5, 1.2, 3.6, 1.5, 0, 0, TAU); x.fill();
-    x.fillStyle = '#18233f'; x.beginPath(); x.arc(2.6, -.7, 1, 0, TAU); x.fill();
+  for (let col = 0; col < 4; col++) for (let fr = 0; fr < 2; fr++) for (let ai = 0; ai < 16; ai++) {
+    const im = tela(48, 48), x = im.getContext('2d'), ang = ai / 16 * TAU;
+    x.translate(24, 24); x.rotate(ang); if (Math.cos(ang) < -.01) x.scale(1, -1); x.scale(2.2, 2.2);
+    const [chiaro, scuro] = COLORI_PESCIOLINI[col];
+    x.fillStyle = scuro; x.beginPath(); x.moveTo(-3.5, 0); x.lineTo(-8.5, fr ? -4 : -2.6); x.lineTo(-7, 0); x.lineTo(-8.5, fr ? 2.6 : 4); x.closePath(); x.fill();
+    x.beginPath(); x.moveTo(-1.5, -3); x.lineTo(1.5, -4.6); x.lineTo(2.5, -2.8); x.fill();
+    x.fillStyle = chiaro; x.beginPath(); x.ellipse(0, 0, 5.4, 3.4, 0, 0, TAU); x.fill();
+    x.fillStyle = 'rgba(255,255,255,.8)'; x.beginPath(); x.ellipse(.6, 1.3, 3.6, 1.4, 0, 0, TAU); x.fill();
+    x.fillStyle = scuro; x.globalAlpha = .5; x.fillRect(-2.5, -.6, 4, 1); x.globalAlpha = 1;
+    x.fillStyle = '#18233f'; x.beginPath(); x.arc(2.8, -.7, 1.05, 0, TAU); x.fill();
     figurine.push(im);
   }
 })();
 
-function disegnaIconaBolla(tipo) {
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+function disegnaIconaBolla(c, tipo) {
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
   if (tipo === 'x2' || tipo === 'x5') {
-    ctx.font = '900 26px ui-rounded, system-ui, sans-serif';
-    ctx.lineWidth = 5; ctx.strokeStyle = '#8a4b00'; ctx.lineJoin = 'round';
     const s = tipo === 'x2' ? '×2' : '×5';
-    ctx.strokeText(s, 0, 1); ctx.fillStyle = '#ffe066'; ctx.fillText(s, 0, 1);
+    c.font = '900 26px ' + CARATTERE; c.lineWidth = 5; c.strokeStyle = '#8a4b00';
+    c.strokeText(s, 0, 1); c.fillStyle = '#ffe066'; c.fillText(s, 0, 1);
   } else if (tipo === 'calamita') {
-    ctx.lineCap = 'butt'; ctx.lineWidth = 9; ctx.strokeStyle = '#ff5c9a';
-    ctx.beginPath(); ctx.arc(0, 2, 11, 0, Math.PI); ctx.moveTo(-11, 2); ctx.lineTo(-11, -9); ctx.moveTo(11, 2); ctx.lineTo(11, -9); ctx.stroke();
-    ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-11, -9); ctx.lineTo(-11, -15); ctx.moveTo(11, -9); ctx.lineTo(11, -15); ctx.stroke();
+    c.lineCap = 'butt'; c.lineWidth = 9; c.strokeStyle = '#ff5c9a';
+    c.beginPath(); c.arc(0, 2, 11, 0, Math.PI); c.moveTo(-11, 2); c.lineTo(-11, -9); c.moveTo(11, 2); c.lineTo(11, -9); c.stroke();
+    c.strokeStyle = '#fff'; c.beginPath(); c.moveTo(-11, -9); c.lineTo(-11, -15); c.moveTo(11, -9); c.lineTo(11, -15); c.stroke();
+  } else if (tipo === 'scudo') {
+    c.fillStyle = '#9be7ff'; c.strokeStyle = '#fff'; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(0, -15); c.lineTo(13, -9); c.quadraticCurveTo(13, 9, 0, 16); c.quadraticCurveTo(-13, 9, -13, -9); c.closePath(); c.fill(); c.stroke();
+  } else if (tipo === 'perla') {
+    const g = c.createRadialGradient(-4, -5, 1, 0, 0, 13); g.addColorStop(0, '#fff'); g.addColorStop(.5, '#ffd9f0'); g.addColorStop(1, '#d58fc0');
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, 13, 0, TAU); c.fill();
   } else {
-    ctx.fillStyle = '#9be7ff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(13, -9); ctx.quadraticCurveTo(13, 9, 0, 16); ctx.quadraticCurveTo(-13, 9, -13, -9); ctx.closePath(); ctx.fill(); ctx.stroke();
+    c.fillStyle = '#ff5c7a'; c.strokeStyle = '#fff'; c.lineWidth = 2.5;
+    c.beginPath(); c.moveTo(0, 14); c.bezierCurveTo(-22, -2, -12, -18, 0, -7); c.bezierCurveTo(12, -18, 22, -2, 0, 14); c.closePath(); c.fill(); c.stroke();
   }
 }
 
-// ---------- Disegno della scena ----------
-const bollicine = Array.from({ length: 34 }, () => ({ x: Math.random(), y: Math.random(), r: caso(1.5, 5), v: caso(.02, .07), f: caso(TAU) }));
+// =====================================================================
+//  Sfondo: trame preparate una volta per livello
+// =====================================================================
+function trama(lato, disegnaUno, quanti) {
+  const im = tela(lato, lato), x = im.getContext('2d');
+  for (let i = 0; i < quanti; i++) {
+    const forma = disegnaUno(i);
+    for (const ox of [-lato, 0, lato]) for (const oy of [-lato, 0, lato]) { x.save(); x.translate(ox, oy); forma(x); x.restore(); }
+  }
+  return im;
+}
+const caustiche = trama(256, () => {
+  const cx = caso(256), cy = caso(256), r = caso(22, 50), k = intero(4, 7), ph = caso(TAU);
+  return x => {
+    x.strokeStyle = '#fff'; x.lineWidth = 2.5; x.shadowColor = '#fff'; x.shadowBlur = 7; x.beginPath();
+    for (let a = 0; a <= 48; a++) { const an = a / 48 * TAU, rr = r * (1 + .3 * Math.sin(an * k + ph) + .14 * Math.sin(an * 2 + ph * 2)); const px = cx + Math.cos(an) * rr, py = cy + Math.sin(an) * rr; a ? x.lineTo(px, py) : x.moveTo(px, py); }
+    x.closePath(); x.stroke();
+  };
+}, 11);
+function creaSfondo(amb) {
+  const lontano = trama(512, () => {
+    const cx = caso(512), cy = caso(512), w = caso(50, 130), h = caso(30, 80), rot = caso(-.4, .4);
+    return x => { x.fillStyle = amb.roccia; x.beginPath(); x.ellipse(cx, cy, w, h, rot, 0, TAU); x.fill(); };
+  }, 8);
+  const vicino = trama(512, () => {
+    const cx = caso(512), cy = caso(512), h = caso(60, 150), l = caso(5, 10), pie = caso(-30, 30);
+    return x => { x.strokeStyle = amb.roccia; x.lineWidth = l; x.lineCap = 'round'; x.beginPath(); x.moveTo(cx, cy); x.quadraticCurveTo(cx + pie, cy - h * .5, cx - pie * .6, cy - h); x.stroke(); };
+  }, 12);
+  return { lontano: ctx.createPattern(lontano, 'repeat'), vicino: ctx.createPattern(vicino, 'repeat'), luce: ctx.createPattern(caustiche, 'repeat') };
+}
+function stendi(trama, scala, ox, oy, alfa, fusione) {
+  ctx.save(); ctx.globalAlpha = alfa; if (fusione) ctx.globalCompositeOperation = fusione;
+  ctx.scale(scala, scala); ctx.translate(-ox, -oy); ctx.fillStyle = trama; ctx.fillRect(ox, oy, vw / scala + 1, vh / scala + 1);
+  ctx.restore();
+}
+
+const bollicine = Array.from({ length: 40 }, () => ({ x: Math.random(), y: Math.random(), r: caso(1.2, 4.5), v: caso(.02, .07), f: caso(TAU) }));
 
 function etichetta(x, y, scritta, sfondo, px) {
-  ctx.font = '900 ' + px + 'px ui-rounded, system-ui, sans-serif';
+  ctx.font = '900 ' + px + 'px ' + CARATTERE;
   const w = ctx.measureText(scritta).width + px * .9, hh = px * 1.45;
-  ctx.fillStyle = sfondo;
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(x - w / 2, y - hh / 2, w, hh, hh / 2); else ctx.rect(x - w / 2, y - hh / 2, w, hh);
-  ctx.fill();
+  ctx.fillStyle = sfondo; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = Math.max(1.5, px * .1); ctx.stroke();
   ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(scritta, x, y + px * .04);
 }
 
+// =====================================================================
+//  Disegno della scena
+// =====================================================================
 function disegna() {
-  const { cam, hero: h, cfg } = G, amb = cfg.ambiente, t = G.t, z = cam.z;
+  const { cam, hero: h, cfg, decoro: dec } = G, amb = cfg.ambiente, t = G.t, z = cam.z;
   const sx = G.scossa > 0 ? caso(-1, 1) * G.scossa : 0, sy = G.scossa > 0 ? caso(-1, 1) * G.scossa : 0;
   const aSchermoX = x => (x - cam.x) * z + vw / 2 + sx, aSchermoY = y => (y - cam.y) * z + vh / 2 + sy;
 
-  // Acqua
+  // ----- Acqua -----
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const prof = limita(cam.y / MONDO, 0, 1);
-  const sf = ctx.createLinearGradient(0, -vh * prof, 0, vh * (2 - prof));
+  const sf = ctx.createLinearGradient(0, -vh * prof * 1.2, 0, vh * (2.2 - prof * 1.2));
   sf.addColorStop(0, amb.alto); sf.addColorStop(1, amb.basso);
   ctx.fillStyle = sf; ctx.fillRect(0, 0, vw, vh);
-  // Raggi di luce
-  ctx.fillStyle = 'rgba(255,255,255,.045)';
-  for (let i = 0; i < 5; i++) {
-    const bx = ((i * .27 + .1) * vw - cam.x * .12 + Math.sin(t * .3 + i) * 30) % (vw * 1.3);
-    const x0 = (bx + vw * 1.3) % (vw * 1.3) - vw * .15, l = 40 + i * 14;
-    ctx.beginPath(); ctx.moveTo(x0, 0); ctx.lineTo(x0 + l, 0); ctx.lineTo(x0 + l * 2.4 - 120, vh); ctx.lineTo(x0 - 160, vh); ctx.fill();
+  stendi(G.sfondo.lontano, 2.4 * z, cam.x * .22 / 2.4, cam.y * .22 / 2.4, .32);
+  stendi(G.sfondo.vicino, 1.6 * z, cam.x * .45 / 1.6, cam.y * .45 / 1.6, .3);
+  // Raggi e riflessi di luce
+  ctx.fillStyle = 'rgba(255,255,255,' + (.06 * (1.2 - prof)).toFixed(3) + ')';
+  for (let i = 0; i < 6; i++) {
+    const largo = vw * 1.4, bx = (((i * .23 + .05) * largo - cam.x * .15 + Math.sin(t * .3 + i) * 30) % largo + largo) % largo - vw * .2, l = 34 + i * 13;
+    ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx + l, 0); ctx.lineTo(bx + l * 2.6 - 150, vh); ctx.lineTo(bx - 190, vh); ctx.fill();
   }
+  const luce = .06 * (1.15 - prof * .7);
+  stendi(G.sfondo.luce, 1.7, cam.x * z * .6 / 1.7 + t * 9, cam.y * z * .6 / 1.7 + t * 4, luce, 'lighter');
+  stendi(G.sfondo.luce, 2.3, cam.x * z * .6 / 2.3 - t * 6 + 90, cam.y * z * .6 / 2.3 + t * 7 + 40, luce * .8, 'lighter');
 
-  // Mondo
+  // ----- Mondo -----
   ctx.setTransform(z * dpr, 0, 0, z * dpr, (vw / 2 - cam.x * z + sx) * dpr, (vh / 2 - cam.y * z + sy) * dpr);
   const mw = vw / 2 / z, mh = vh / 2 / z;
   const visibile = (x, y, m) => x > cam.x - mw - m && x < cam.x + mw + m && y > cam.y - mh - m && y < cam.y + mh + m;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-  // Ombre lontane
-  ctx.fillStyle = 'rgba(0,10,30,.16)';
-  for (const o of G.decoro.ombre) {
-    const x = o.x + (cam.x - MONDO / 2) * .45, y = o.y + (cam.y - MONDO / 2) * .45;
-    if (visibile(x, y, o.w)) { ctx.beginPath(); ctx.ellipse(x, y, o.w, o.h, 0, 0, TAU); ctx.fill(); }
+  // Scogli sospesi
+  for (const s of dec.scogli) {
+    if (!visibile(s.x, s.y, s.w + 90)) continue;
+    for (const ci of s.ciuffi) {
+      const x0 = s.x + ci.dx * s.w, o = Math.sin(t * 1.4 + ci.f) * 10;
+      ctx.strokeStyle = ci.c; ctx.globalAlpha = .55; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(x0, s.y - s.h * .5); ctx.quadraticCurveTo(x0 - o, s.y - s.h * .5 - ci.h * .5, x0 + o, s.y - s.h * .5 - ci.h); ctx.stroke();
+    }
+    ctx.globalAlpha = .6; ctx.fillStyle = amb.roccia; ctx.beginPath(); ctx.ellipse(s.x, s.y, s.w, s.h, 0, 0, TAU); ctx.fill();
+    ctx.globalAlpha = .12; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(s.x - s.w * .15, s.y - s.h * .45, s.w * .6, s.h * .28, 0, 0, TAU); ctx.fill();
+    ctx.globalAlpha = 1;
   }
-  // Confini: roccia ai lati, superficie in alto, sabbia in basso
+
+  // Confini: roccia ai lati, superficie in alto, fondale in basso
   ctx.fillStyle = amb.roccia;
   ctx.fillRect(-2000, -2000, 2000, MONDO + 4000); ctx.fillRect(MONDO, -2000, 2000, MONDO + 4000);
-  ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(-2000, -2000, MONDO + 4000, 2000);
-  if (cam.y + mh > MONDO - 260) {
-    for (const r of G.decoro.rocce) if (visibile(r.x, MONDO, r.w)) {
+  if (cam.y - mh < 40) {
+    ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(-2000, -2000, MONDO + 4000, 2000);
+    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 5; ctx.beginPath();
+    for (let x = cam.x - mw - 40; x < cam.x + mw + 40; x += 30) ctx.lineTo(x, Math.sin(x * .02 + t * 2) * 6);
+    ctx.stroke();
+  }
+  if (cam.y + mh > MONDO - 300) {
+    for (const r of dec.rocce) if (visibile(r.x, MONDO, r.w)) {
       ctx.fillStyle = amb.roccia; ctx.beginPath(); ctx.ellipse(r.x, MONDO + 6, r.w, r.h, 0, Math.PI, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.beginPath(); ctx.ellipse(r.x - r.w * .2, MONDO - r.h * .55, r.w * .5, r.h * .25, 0, 0, TAU); ctx.fill();
     }
-    ctx.strokeStyle = amb.alga; ctx.lineCap = 'round';
-    for (const a of G.decoro.alghe) if (visibile(a.x, MONDO, 60)) {
-      const o = Math.sin(t * 1.3 + a.f) * 22;
-      ctx.lineWidth = a.l; ctx.beginPath(); ctx.moveTo(a.x, MONDO + 4); ctx.quadraticCurveTo(a.x - o, MONDO - a.h * .5, a.x + o, MONDO - a.h); ctx.stroke();
+    for (const a of dec.alghe) if (visibile(a.x, MONDO, 60)) {
+      const o = Math.sin(t * 1.3 + a.f) * 24;
+      ctx.strokeStyle = amb.alga; ctx.lineWidth = a.l; ctx.beginPath(); ctx.moveTo(a.x, MONDO + 4); ctx.bezierCurveTo(a.x - o, MONDO - a.h * .35, a.x + o * 1.3, MONDO - a.h * .65, a.x + o * .4, MONDO - a.h); ctx.stroke();
+    }
+    for (const co of dec.coralli) if (visibile(co.x, MONDO, 90)) {
+      ctx.strokeStyle = co.c; ctx.lineWidth = 11;
+      for (let i = 0; i < co.rami; i++) {
+        const u = (i / (co.rami - 1) - .5) * 1.5, hx = co.x + u * co.h * .6, hy = MONDO - co.h * (1 - Math.abs(u) * .35);
+        ctx.beginPath(); ctx.moveTo(co.x + u * 10, MONDO + 4); ctx.quadraticCurveTo(co.x + u * co.h * .15, MONDO - co.h * .5, hx, hy); ctx.stroke();
+        ctx.fillStyle = co.c; ctx.beginPath(); ctx.arc(hx, hy, 9, 0, TAU); ctx.fill();
+      }
     }
     ctx.fillStyle = amb.sabbia; ctx.fillRect(-2000, MONDO, MONDO + 4000, 2000);
+    ctx.fillStyle = 'rgba(0,0,0,.08)'; ctx.fillRect(-2000, MONDO + 60, MONDO + 4000, 2000);
+    for (const s of dec.stelle) if (visibile(s.x, s.y, 20)) {
+      ctx.fillStyle = s.c; ctx.beginPath();
+      for (let i = 0; i < 10; i++) { const rr = i % 2 ? s.r * .45 : s.r, a = s.a + i * Math.PI / 5; ctx.lineTo(s.x + Math.cos(a) * rr, s.y + Math.sin(a) * rr); }
+      ctx.fill();
+    }
+    for (const c of G.conchiglie) if (visibile(c.x, MONDO, 60)) {
+      const ap = c.apre > 0 ? Math.min(1, c.apre * 3) * .9 : c.attesa > 0 ? 0 : .18 + .08 * Math.sin(t * 3 + c.x);
+      ctx.save(); ctx.translate(c.x, MONDO - 2);
+      ctx.fillStyle = '#e9d8ff'; ctx.strokeStyle = '#8a6fc0'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(0, -8, 30, 13, 0, 0, Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+      if (c.attesa <= 0) { const g = ctx.createRadialGradient(-2, -14, 1, 0, -12, 9); g.addColorStop(0, '#fff'); g.addColorStop(1, '#f0a8d8'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -12, 8, 0, TAU); ctx.fill(); }
+      ctx.rotate(-ap); ctx.fillStyle = c.attesa > 0 && c.apre <= 0 ? '#b9a8d8' : '#f6ecff';
+      ctx.beginPath(); ctx.moveTo(-30, -8); ctx.bezierCurveTo(-30, -40, 30, -40, 30, -8); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); for (const u of [-.5, 0, .5]) { ctx.moveTo(u * 18, -9); ctx.lineTo(u * 34, -29 + Math.abs(u) * 10); } ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // Bolle con gli aiuti
@@ -738,45 +1183,51 @@ function disegna() {
     const by = b.y + Math.sin(t * 2 + b.f) * 6;
     ctx.save(); ctx.translate(b.x, by);
     const gb = ctx.createRadialGradient(-8, -10, 2, 0, 0, 30);
-    gb.addColorStop(0, 'rgba(255,255,255,.75)'); gb.addColorStop(.5, 'rgba(160,230,255,.28)'); gb.addColorStop(1, 'rgba(120,210,255,.5)');
+    gb.addColorStop(0, 'rgba(255,255,255,.8)'); gb.addColorStop(.5, 'rgba(160,230,255,.28)'); gb.addColorStop(1, 'rgba(120,210,255,.55)');
     ctx.fillStyle = gb; ctx.beginPath(); ctx.arc(0, 0, 30, 0, TAU); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2; ctx.stroke();
-    disegnaIconaBolla(b.tipo);
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2; ctx.stroke();
+    disegnaIconaBolla(ctx, b.tipo);
     ctx.restore();
   }
 
   // Pesciolini
-  const quadro = Math.floor(t * 8);
+  const quadro = Math.floor(t * 8), lato = 21 * (1 + .2 * G.fasciaHero);
   for (const f of G.pesciolini) {
-    if (f.morto > 0 || !visibile(f.x, f.y, 12)) continue;
-    const dir = f.vx < -2 ? 1 : 0, fr = (quadro + (f.f > Math.PI ? 1 : 0)) & 1;
-    ctx.drawImage(figurine[f.c * 4 + fr * 2 + dir], f.x - 11, f.y - 7.5, 22, 15);
+    if (f.morto > 0 || !visibile(f.x, f.y, 14)) continue;
+    const ai = Math.round(f.ang / TAU * 16) & 15, fr = (quadro + f.f) & 1;
+    ctx.drawImage(figurine[(f.c * 2 + fr) * 16 + ai], f.x - lato / 2, f.y - lato / 2, lato, lato);
   }
+
+  for (const m of G.meduse) if (visibile(m.x, m.y, 70)) disegnaMedusa(ctx, m, t);
 
   // Pesci grossi
   for (const e of G.predatori) {
-    if (!visibile(e.x, e.y, e.r * 2.2)) continue;
-    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.ang);
+    if (!visibile(e.x, e.y, e.r * 2.6)) continue;
+    ctx.save(); ctx.translate(e.x, e.y);
+    if (e.avviso > 0) ctx.translate(caso(-3, 3), caso(-3, 3));
+    ctx.rotate(e.ang);
     if (Math.cos(e.ang) < 0) ctx.scale(1, -1);
     if (e.nasce > 0) ctx.globalAlpha = 1 - e.nasce;
-    disegnaPredatore(e, t, e.p >= h.p);
+    const sc = e.mangiato > 0 ? Math.max(.05, e.mangiato / .18) : 1;
+    disegnaPesce(ctx, e.sp, { r: e.r * sc, f: e.f, t, minaccia: e.p >= h.p && !e.sp.timido, bocca: e.bocca });
     ctx.restore();
   }
 
   // Protagonista
   if (h.vivo && G.stato !== 'menu') {
+    if (G.calamitaT > 0) {
+      ctx.strokeStyle = 'rgba(255,158,203,' + (.25 + .15 * Math.sin(t * 8)) + ')'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(h.x, h.y, h.r + 20 + ((t * 120) % 120), 0, TAU); ctx.stroke();
+    }
     ctx.save(); ctx.translate(h.x, h.y);
     const versoSinistra = Math.cos(h.ang) < 0;
     ctx.rotate(versoSinistra ? h.ang - Math.PI : h.ang);
     if (versoSinistra) ctx.scale(-1, 1);
-    const lampeggia = h.invul > 0 && Math.floor(t * 10) % 2 === 0;
-    disegnaProtagonista(h.r * (1 + h.pulsa * .12), t, h.bocca, G.scudo, lampeggia);
+    if (G.scatto.attivo > 0) ctx.scale(1.12, .9);
+    disegnaProtagonista(ctx, h.r * (1 + h.pulsa * .12), t, Math.max(h.bocca, h.attesa * .65), {
+      vestito: VESTITI[S.vestito], scudo: G.scudo, frenesia: G.frenesiaT > 0, lampeggia: h.invul > 0 && Math.floor(t * 10) % 2 === 0,
+    });
     ctx.restore();
-    if (G.calamitaT > 0) {
-      ctx.strokeStyle = 'rgba(255,158,203,' + (.25 + .15 * Math.sin(t * 8)) + ')'; ctx.lineWidth = 3;
-      const rr = h.r + 20 + ((t * 120) % 120);
-      ctx.beginPath(); ctx.arc(h.x, h.y, rr, 0, TAU); ctx.stroke();
-    }
   }
 
   // Particelle
@@ -786,32 +1237,42 @@ function disegna() {
   }
   ctx.globalAlpha = 1;
 
-  // --- Sopra tutto, in misure di schermo ---
+  // ----- Sopra tutto, in misure di schermo -----
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  // Bollicine
-  ctx.fillStyle = 'rgba(255,255,255,.22)';
+  ctx.fillStyle = 'rgba(255,255,255,.2)';
   for (const b of bollicine) {
     b.y -= b.v * .016; if (b.y < -.05) { b.y = 1.05; b.x = Math.random(); }
     const x = ((b.x * vw - cam.x * z * .3) % vw + vw) % vw + Math.sin(t * 2 + b.f) * 4;
     ctx.beginPath(); ctx.arc(x, b.y * vh, b.r, 0, TAU); ctx.fill();
   }
+  // Bordi scuri, e rossi quando qualcuno ti insegue o ti colpisce
+  const vg = ctx.createRadialGradient(vw / 2, vh / 2, Math.min(vw, vh) * .45, vw / 2, vh / 2, Math.max(vw, vh) * .78);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,8,30,.5)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, vw, vh);
+  const rosso = Math.max(G.lampo, G.pericolo * (.3 + .12 * Math.sin(t * 9)));
+  if (rosso > .02 && G.stato === 'gioco') {
+    const rg = ctx.createRadialGradient(vw / 2, vh / 2, Math.min(vw, vh) * .3, vw / 2, vh / 2, Math.max(vw, vh) * .7);
+    rg.addColorStop(0, 'rgba(255,40,70,0)'); rg.addColorStop(1, 'rgba(255,40,70,' + (rosso * .75).toFixed(3) + ')');
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, vw, vh);
+  }
 
   if (G.stato !== 'menu') {
-    // Numeri sui pesci grossi
     for (const e of G.predatori) {
-      if (!visibile(e.x, e.y, e.r * 2) || e.nasce > .5) continue;
+      if (!visibile(e.x, e.y, e.r * 2) || e.nasce > .5 || e.mangiato > 0) continue;
       const px = limita(e.r * z * .42, 12, 30), pericolo = e.p >= h.p;
-      etichetta(aSchermoX(e.x), aSchermoY(e.y - e.r * SPECIE[e.specie].ly) - px * 1.5, numero(e.p), pericolo ? 'rgba(214,40,70,.92)' : 'rgba(26,160,90,.92)', px);
+      const ex = aSchermoX(e.x), ey = aSchermoY(e.y - e.r * e.sp.ly * (e.gigante ? 1.25 : 1)) - px * 1.5;
+      etichetta(ex, ey, numero(e.p), pericolo ? 'rgba(214,40,70,.94)' : 'rgba(26,160,90,.94)', px);
+      if (e.avviso > 0) etichetta(ex, ey - px * 2, '!', 'rgba(255,170,30,.95)', px * 1.3);
     }
-    // Numero del protagonista
-    if (h.vivo) etichetta(aSchermoX(h.x), aSchermoY(h.y - h.r) - 18, numero(h.p), 'rgba(12,40,90,.88)', 15 + h.pulsa * 4);
-    // Freccia verso il gigante quando è fuori schermo e sei pronto
+    if (h.vivo) etichetta(aSchermoX(h.x), aSchermoY(h.y - h.r) - 20, numero(h.p), 'rgba(12,40,90,.92)', 16 + h.pulsa * 4);
+    // Freccia verso il gigante quando è fuori schermo
     const gig = G.predatori.find(e => e.gigante);
     if (gig && G.stato === 'gioco' && !visibile(gig.x, gig.y, 0)) {
-      const a = Math.atan2(gig.y - h.y, gig.x - h.x), rr = Math.min(vw, vh) * .4;
-      ctx.save(); ctx.translate(vw / 2 + Math.cos(a) * rr, vh / 2 + Math.sin(a) * rr); ctx.rotate(a);
-      ctx.fillStyle = h.p > gig.p ? 'rgba(124,242,154,.9)' : 'rgba(255,123,123,.75)';
-      ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -10); ctx.lineTo(-3, 0); ctx.lineTo(-8, 10); ctx.closePath(); ctx.fill();
+      const a = Math.atan2(gig.y - h.y, gig.x - h.x), rr = Math.min(vw, vh) * .4, pronto = h.p > gig.p, batte = pronto ? 1 + .15 * Math.sin(t * 8) : 1;
+      ctx.save(); ctx.translate(vw / 2 + Math.cos(a) * rr, vh / 2 + Math.sin(a) * rr); ctx.rotate(a); ctx.scale(batte, batte);
+      ctx.fillStyle = pronto ? 'rgba(124,242,154,.95)' : 'rgba(255,123,123,.8)'; ctx.strokeStyle = 'rgba(8,20,48,.6)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-9, -12); ctx.lineTo(-3, 0); ctx.lineTo(-9, 12); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.rotate(-a); disegnaCorona(ctx, -Math.cos(a) * 22, -Math.sin(a) * 22 + 6, 7);
       ctx.restore();
     }
   }
@@ -820,10 +1281,11 @@ function disegna() {
   for (const s of G.testi) {
     const px = s.grande ? 24 : 16;
     ctx.globalAlpha = s.eta < .7 ? 1 : 1 - (s.eta - .7) / .3;
-    ctx.font = '900 ' + px + 'px ui-rounded, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(8,20,48,.8)';
+    ctx.font = '900 ' + px + 'px ' + CARATTERE; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(8,20,48,.85)';
     const x = aSchermoX(s.x), y = aSchermoY(s.y);
     ctx.strokeText(s.s, x, y); ctx.fillStyle = s.c; ctx.fillText(s.s, x, y);
+    if (s.perla) { const w = ctx.measureText(s.s).width / 2 + 10; const g = ctx.createRadialGradient(x + w - 2, y - 2, 1, x + w, y, 7); g.addColorStop(0, '#fff'); g.addColorStop(1, '#e09ccc'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x + w, y, 7, 0, TAU); ctx.fill(); }
   }
   ctx.globalAlpha = 1;
 
@@ -837,51 +1299,127 @@ function disegna() {
   }
 }
 
-// ---------- Cruscotto ----------
+// =====================================================================
+//  Cruscotto
+// =====================================================================
 const cache = {};
 function scrivi(id, proprieta, valore) {
   const k = id + proprieta;
-  if (cache[k] !== valore) { cache[k] = valore; if (proprieta === 'width') $(id).style.width = valore; else $(id)[proprieta] = valore; }
+  if (cache[k] === valore) return;
+  cache[k] = valore;
+  if (proprieta === 'width') $(id).style.width = valore; else $(id)[proprieta] = valore;
 }
 function aggiornaCruscotto() {
   const h = G.hero, gig = G.cfg.gigante.potenza;
   scrivi('etLivello', 'textContent', 'Livello ' + G.livello + ' · ' + G.cfg.ambiente.nome);
-  scrivi('etGigante', 'textContent', 'Gigante ' + numero(gig));
+  scrivi('etGigante', 'textContent', '♛ ' + numero(gig));
   scrivi('barraPiena', 'width', Math.min(100, Math.log(h.p + 1) / Math.log(gig + 2) * 100).toFixed(1) + '%');
+  scrivi('frenesiaPiena', 'width', (G.frenesiaT > 0 ? G.frenesiaT / 7 * 100 : G.frenesia * 100).toFixed(0) + '%');
+  scrivi('numPerle', 'textContent', String(S.perle));
+  scrivi('cuori', 'innerHTML', '<span class="pieno">' + '♥'.repeat(Math.max(0, G.cuori)) + '</span><span class="vuoto">' + '♥'.repeat(Math.max(0, G.cuoriMax - G.cuori)) + '</span>');
   let s = '';
-  if (G.moltT > 0) s += '<span class="gettone molt">×' + G.molt + ' · ' + Math.ceil(G.moltT) + ' s</span>';
-  if (G.calamitaT > 0) s += '<span class="gettone cal">Calamita · ' + Math.ceil(G.calamitaT) + ' s</span>';
-  if (G.scudo) s += '<span class="gettone scu">Scudo</span>';
+  if (G.frenesiaT > 0) s += '<span class="gettone vetro fre">Frenesia ×2 · ' + Math.ceil(G.frenesiaT) + ' s</span>';
+  if (G.moltT > 0) s += '<span class="gettone vetro molt">×' + G.molt + ' · ' + Math.ceil(G.moltT) + ' s</span>';
+  if (G.calamitaT > 0) s += '<span class="gettone vetro cal">Calamita · ' + Math.ceil(G.calamitaT) + ' s</span>';
+  if (G.scudo) s += '<span class="gettone vetro scu">Scudo</span>';
   scrivi('effetti', 'innerHTML', s);
+  const car = Math.round((1 - G.scatto.ricarica / G.scatto.durataRicarica) * 50) * 2;
+  if (cache.car !== car) { cache.car = car; $('btnScatto').style.setProperty('--car', car + '%'); $('btnScatto').classList.toggle('pronto', car >= 100); }
 }
 
-// ---------- Schermate ----------
-const VELI = ['veloMenu', 'veloPausa', 'veloPerso', 'veloVinto'];
-function mostra(id) { for (const v of VELI) $(v).classList.toggle('visibile', v === id); }
-function gioca() { avviaAudio(); creaLivello(); G.stato = 'gioco'; mostra(null); $('hud').classList.add('visibile'); }
+// =====================================================================
+//  Schermate e negozio
+// =====================================================================
+const VELI = ['veloMenu', 'veloAiuto', 'veloNegozio', 'veloPausa', 'veloPerso', 'veloVinto'];
+let tornaA = 'veloMenu', livelloScelto = S.livelloMax;
+function mostra(id) { for (const v of VELI) $(v).classList.toggle('visibile', v === id); if (id === 'veloMenu') aggiornaMenu(); }
+function stelline(n) { return '★'.repeat(n) + '<i>' + '★'.repeat(3 - n) + '</i>'; }
+function aggiornaMenu() {
+  livelloScelto = limita(livelloScelto, 1, S.livelloMax);
+  $('livNome').textContent = 'Livello ' + livelloScelto;
+  $('livAmbiente').textContent = AMBIENTI[(livelloScelto - 1) % AMBIENTI.length].nome;
+  $('livStelle').innerHTML = stelline(S.stelle[livelloScelto] || 0);
+  $('btnLivMeno').disabled = livelloScelto <= 1; $('btnLivPiu').disabled = livelloScelto >= S.livelloMax;
+  $('perleMenu').textContent = S.perle;
+  const tot = Object.values(S.stelle).reduce((a, b) => a + b, 0);
+  $('recordMenu').textContent = S.record > 0 ? 'Il tuo massimo: ' + numero(S.record) + ' · ' + tot + ' stelle' : '';
+  if (G.stato === 'menu' && G.livello !== livelloScelto) { G.livello = livelloScelto; creaLivello(); }
+}
+function gioca(livello) {
+  avviaAudio();
+  if (livello) G.livello = livello;
+  G.avvisatoGigante = false;
+  creaLivello(); G.stato = 'gioco'; mostra(null); $('hud').classList.add('visibile');
+  annuncia('Livello ' + G.livello, G.cfg.ambiente.nome + ' · mangia ' + SPECIE[G.cfg.gigante.specie[0]].nome, 2.6);
+}
 function pausa() { if (G.stato !== 'gioco') return; G.stato = 'pausa'; leva.attiva = false; mostra('veloPausa'); }
 function riprendi() { if (G.stato !== 'pausa') return; avviaAudio(); G.stato = 'gioco'; mostra(null); }
+function alMenu() { G.stato = 'menu'; $('hud').classList.remove('visibile'); livelloScelto = Math.min(G.livello, S.livelloMax); creaLivello(); mostra('veloMenu'); }
+function scriviSuono() { $('btnSuono').textContent = 'Suoni: ' + (S.muto ? 'spenti' : 'accesi'); }
 
-$('btnGioca').addEventListener('click', gioca);
-$('btnRiprova').addEventListener('click', gioca);
-$('btnRicomincia').addEventListener('click', gioca);
-$('btnProssimo').addEventListener('click', () => { G.livello++; gioca(); });
+function apriNegozio(da) { tornaA = da; disegnaNegozio(); mostra('veloNegozio'); }
+function disegnaNegozio() {
+  $('perleNegozio').textContent = S.perle;
+  $('potenziamenti').innerHTML = POTENZIAMENTI.map(p => {
+    const liv = S.pot[p.id] || 0, pieno = liv >= p.costi.length, costo = p.costi[liv];
+    const tacche = p.costi.map((_, i) => '<i class="' + (i < liv ? 'on' : '') + '"></i>').join('');
+    const tasto = pieno ? '<button class="compra fatto" disabled>Al massimo</button>'
+      : '<button class="compra" data-pot="' + p.id + '"' + (S.perle < costo ? ' disabled' : '') + '><i class="perla"></i>' + costo + '</button>';
+    return '<div class="voce"><div><strong>' + p.nome + '</strong><small>' + p.desc + '</small><div class="tacche">' + tacche + '</div></div>' + tasto + '</div>';
+  }).join('');
+  $('vestiti').innerHTML = VESTITI.map((v, i) => '<button data-vestito="' + i + '" class="' + (S.vestito === i ? 'scelto' : '') + '"><canvas width="104" height="104"></canvas>' +
+    (S.vestiti[i] ? v.nome : '<span class="prezzo"><i class="perla"></i>' + v.costo + '</span>') + '</button>').join('');
+  $('vestiti').querySelectorAll('canvas').forEach((tl, i) => {
+    const x = tl.getContext('2d'); x.translate(56, 54); if (!S.vestiti[i]) x.globalAlpha = .55;
+    disegnaProtagonista(x, 30, 1.2, 0, { vestito: VESTITI[i] });
+  });
+}
+$('potenziamenti').addEventListener('click', e => {
+  const b = e.target.closest('[data-pot]'); if (!b) return;
+  const p = POTENZIAMENTI.find(x => x.id === b.dataset.pot), liv = S.pot[p.id] || 0, costo = p.costi[liv];
+  if (liv >= p.costi.length || S.perle < costo) return;
+  avviaAudio(); S.perle -= costo; S.pot[p.id] = liv + 1; salva(); suono(660, 1320, .2, 'triangle', .09); disegnaNegozio();
+});
+$('vestiti').addEventListener('click', e => {
+  const b = e.target.closest('[data-vestito]'); if (!b) return;
+  const i = +b.dataset.vestito; avviaAudio();
+  if (!S.vestiti[i]) { if (S.perle < VESTITI[i].costo) { suono(200, 150, .15, 'square', .04); return; } S.perle -= VESTITI[i].costo; S.vestiti[i] = true; suono(660, 1320, .2, 'triangle', .09); }
+  S.vestito = i; salva(); disegnaNegozio();
+});
+
+$('btnGioca').addEventListener('click', () => gioca(livelloScelto));
+$('btnLivMeno').addEventListener('click', () => { livelloScelto--; aggiornaMenu(); });
+$('btnLivPiu').addEventListener('click', () => { livelloScelto++; aggiornaMenu(); });
+$('btnComeSiGioca').addEventListener('click', () => mostra('veloAiuto'));
+$('btnAiutoChiudi').addEventListener('click', () => mostra('veloMenu'));
+$('btnNegozio').addEventListener('click', () => apriNegozio('veloMenu'));
+$('btnNegozioPerso').addEventListener('click', () => apriNegozio('veloPerso'));
+$('btnNegozioVinto').addEventListener('click', () => apriNegozio('veloVinto'));
+$('btnNegozioChiudi').addEventListener('click', () => mostra(tornaA));
+$('btnRiprova').addEventListener('click', () => gioca());
+$('btnRicomincia').addEventListener('click', () => gioca());
+$('btnProssimo').addEventListener('click', () => gioca(G.livello + 1));
+$('btnMenuPerso').addEventListener('click', alMenu);
+$('btnMenuVinto').addEventListener('click', alMenu);
+$('btnEsci').addEventListener('click', alMenu);
 $('btnPausa').addEventListener('click', pausa);
 $('btnRiprendi').addEventListener('click', riprendi);
-$('btnSuono').addEventListener('click', () => { muto = !muto; $('btnSuono').style.opacity = muto ? .45 : 1; if (!muto) avviaAudio(); });
+$('btnSuono').addEventListener('click', () => { S.muto = !S.muto; salva(); scriviSuono(); if (!S.muto) avviaAudio(); });
+$('btnScatto').addEventListener('pointerdown', e => { e.preventDefault(); scatta(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pausa(); });
 
-if (record.potenza > 0) $('recordMenu').textContent = 'Il tuo massimo: ' + numero(record.potenza) + ' · livello ' + record.livello;
-if (record.livello > 1) G.livello = record.livello;
-
-// ---------- Ciclo ----------
-creaLivello();
+// =====================================================================
+//  Ciclo
+// =====================================================================
+G.passo = aggiorna; G.livello = livelloScelto;
+creaLivello(); scriviSuono(); aggiornaMenu();
 let prima = performance.now();
 function ciclo(ora) {
   const dt = Math.min(.034, (ora - prima) / 1000); prima = ora;
   if (G.stato !== 'pausa') aggiorna(dt);
   disegna();
   if (G.stato !== 'menu') aggiornaCruscotto();
+  suonaMusica();
   requestAnimationFrame(ciclo);
 }
 requestAnimationFrame(ciclo);
