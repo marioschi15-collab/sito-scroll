@@ -38,7 +38,9 @@ const DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
 const cast = B.cast || {};
 const AMBIENTI = (cast.ambienti || []).slice().sort((a, b) => (a.ordine || 99) - (b.ordine || 99));
 const EROI = cast.eroi || [];
-const TOTALE_LIVELLI = Math.max(1, AMBIENTI.length * (cast.livelliPerAmbiente || 5));
+/* I livelli dell'avventura sono quelli degli ambienti giocabili (B.cast.aperti); se l'elenco manca, di tutti. */
+const APERTI = Array.isArray(cast.aperti) && cast.aperti.length ? cast.aperti.filter(id => AMBIENTI.some(a => a.id === id)) : AMBIENTI.map(a => a.id);
+const TOTALE_LIVELLI = Math.max(1, APERTI.length * (cast.livelliPerAmbiente || 5));
 const EROE_BASE = (EROI.find(e => e.id === 'pallino') || EROI.find(e => !(e.costo > 0)) || { id: 'pallino' }).id;
 
 // ---------------------------------------------------------------- piccoli attrezzi
@@ -49,6 +51,8 @@ const conta = (v, massimo = Number.MAX_SAFE_INTEGER) => typeof v === 'number' &&
 /* Misura non negativa, anche con la virgola (tempi, potenze). */
 const misura = v => typeof v === 'number' && v > 0 && v < Infinity ? v : 0;
 const pulito = x => Math.round(x * 10000) / 10000;
+/* Somma che non esce mai dai numeri interi sicuri: così ciò che si salva si rilegge sempre uguale. */
+const somma = (a, b) => Math.min(Number.MAX_SAFE_INTEGER, a + b);
 
 function dataValida(s) {
   const m = typeof s === 'string' ? DATA.exec(s) : null;
@@ -221,9 +225,10 @@ function daScrivere(subito) {
   sporco = true;
   if (subito) { scrivi(); return; }
   const attesa = PAUSA_SCRITTURA - (P._adesso() - ultimaScrittura);
-  if (!(attesa > 0)) { scrivi(); return; }
+  /* attesa più lunga della pausa vuol dire che l'orologio è tornato indietro: si scrive, e si riparte da adesso. */
+  if (!(attesa > 0) || attesa > PAUSA_SCRITTURA) { scrivi(); return; }
   if (sveglia === null && typeof setTimeout === 'function') {
-    try { sveglia = setTimeout(() => { sveglia = null; scriviSeServe(); }, Math.min(attesa, PAUSA_SCRITTURA)); } catch (e) { sveglia = null; }
+    try { sveglia = setTimeout(() => { sveglia = null; scriviSeServe(); }, attesa); } catch (e) { sveglia = null; }
   }
 }
 
@@ -285,7 +290,9 @@ const aiutiPresi = () => { const a = stat().aiuti; let n = a.altro || 0; for (co
 const aiutiProvati = () => { const a = stat().aiuti; let n = 0; for (const k of TIPI_AIUTO) if (a[k] > 0) n++; return n; };
 const livelliComprati = () => { let n = 0; for (const p of POTENZIAMENTI) n += S.potenziamenti[p.id]; return n; };
 const alMassimo = () => { let n = 0; for (const p of POTENZIAMENTI) if (S.potenziamenti[p.id] >= p.costi.length) n++; return n; };
-const eroiPosseduti = () => { let n = 0; for (const e of EROI) if (possiede(S, e.id)) n++; return n; };
+/* Gli eroi da sbloccare sono quelli che costano: quello di partenza non conta (così da zero i traguardi segnano 0). */
+const EROI_DA_SBLOCCARE = EROI.filter(e => e.id !== EROE_BASE && e.costo > 0);
+const eroiSbloccati = () => { let n = 0; for (const e of EROI_DA_SBLOCCARE) if (possiede(S, e.id)) n++; return n; };
 const fino = n => Math.min(n, TOTALE_LIVELLI), finoStelle = n => Math.min(n, TOTALE_LIVELLI * 3);
 
 (() => {
@@ -353,8 +360,8 @@ const fino = n => Math.min(n, TOTALE_LIVELLI), finoStelle = n => Math.min(n, TOT
   T(g, 'ben_attrezzato', 'Ben attrezzato', 'Compra 10 livelli di potenziamenti.', 10, 60, livelliComprati);
   T(g, 'tirato_a_lucido', 'Tirato a lucido', 'Porta un potenziamento al massimo.', 1, 50, alMassimo);
   T(g, 'non_ti_manca_niente', 'Non ti manca niente', 'Porta tutti i potenziamenti al massimo.', POTENZIAMENTI.length, 300, alMassimo);
-  T(g, 'un_nuovo_amico', 'Un nuovo amico', 'Sblocca un altro eroe.', 1, 30, () => eroiPosseduti() - 1);
-  T(g, 'tutta_la_banda', 'Tutta la banda', 'Sblocca tutti gli eroi.', Math.max(1, EROI.length), 250, eroiPosseduti);
+  T(g, 'un_nuovo_amico', 'Un nuovo amico', 'Sblocca un altro eroe.', 1, 30, eroiSbloccati);
+  T(g, 'tutta_la_banda', 'Tutta la banda', 'Sblocca tutti gli eroi.', Math.max(1, EROI_DA_SBLOCCARE.length), 250, eroiSbloccati);
 
   g = 'Acquario';
   T(g, 'curiosone', 'Curiosone', 'Scopri 10 specie.', 10, 20, () => derivati().scoperte);
@@ -445,7 +452,7 @@ function scoperta(id) {
 }
 function segnaVisto(id) {
   const v = voceAcquario(id); if (!v) return false;
-  v.visti++;
+  v.visti = somma(v.visti, 1);
   if (v.visti === 1 && v.mangiati === 0) scoperta(id);
   return true;
 }
@@ -453,7 +460,7 @@ function segnaMangiato(id, quanti) {
   const v = voceAcquario(id); if (!v || !(quanti > 0)) return false;
   const nuova = v.visti === 0 && v.mangiati === 0;
   if (v.mangiati === 0) der = null;
-  v.mangiati += quanti;
+  v.mangiati = somma(v.mangiati, quanti);
   if (v.visti === 0) v.visti = 1;
   if (nuova) scoperta(id);
   return true;
@@ -515,7 +522,7 @@ ascolta('pesciolini', d => {
   const dorati = conta(d.dorati), quanti = Math.max(conta(d.quanti), dorati);
   if (!quanti) return;
   const st = stat();
-  st.pesciolini += quanti; st.dorati += dorati;
+  st.pesciolini = somma(st.pesciolini, quanti); st.dorati = somma(st.dorati, dorati);
   if (dorati) segnaMangiato('dorato', dorati);
   if (quanti > dorati && d.id !== 'dorato') segnaMangiato(d.id, quanti - dorati);
   modificato('statistiche');

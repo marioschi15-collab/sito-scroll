@@ -82,7 +82,7 @@ const riapri = (m, opzioni = {}) => mondo(Object.assign({ archivio: m.archivio, 
 
 /* Una partita intera, dall'inizio alla fine. */
 function gioca(m, livello, { esito = 'vinto', stelle = 3, colpi = 0, tempo = 120, potenza = 400000, modalita = 'avventura', dentro = null } = {}) {
-  const ambiente = modalita === 'avventura' ? (m.B.cast.ambienti[Math.ceil(livello / m.B.cast.livelliPerAmbiente) - 1] || {}).id : 'laguna';
+  const ambiente = modalita === 'avventura' ? m.B.cast.aperti[Math.ceil(livello / m.B.cast.livelliPerAmbiente) - 1] : 'laguna';
   m.emetti('partita:inizio', { livello, modalita, ambiente, eroe: m.P.eroeScelto() });
   if (dentro) dentro(ambiente);
   m.emetti('partita:fine', { esito, livello, modalita, ambiente, tempo, potenza, colpi, perle: 0, stelle: esito === 'vinto' ? stelle : 0, mangiati: {} });
@@ -118,7 +118,7 @@ prova('valori predefiniti: partenza da zero', () => {
   vero(P.eroePosseduto('pallino'), 'pallino è posseduto dall\'inizio');
   for (const e of cast.eroi) if (e.id !== 'pallino') vero(!P.eroePosseduto(e.id), e.id + ' non è posseduto');
   for (const p of P.POTENZIAMENTI) uguale(P.livelloPotenziamento(p.id), 0, 'livello di ' + p.id);
-  uguale(P.totaleLivelli, cast.ambienti.length * cast.livelliPerAmbiente, 'livelli in tutto');
+  uguale(P.totaleLivelli, cast.aperti.length * cast.livelliPerAmbiente, 'livelli in tutto (gli ambienti aperti × 5)');
   uguale(P.totaleLivelli, 40, 'livelli in tutto (8 ambienti × 5)');
   uguale(P.livelloMax(), 1, 'livello massimo');
   vero(P.livelloSbloccato(1), 'il livello 1 è aperto');
@@ -187,7 +187,7 @@ prova('traguardi: almeno 30, ben fatti, con premi da 10 a 400', () => {
   uguale(P.TRAGUARDI.find(t => t.id === 'firmamento').obiettivo, 120, 'tutte le stelle');
   uguale(P.TRAGUARDI.find(t => t.id === 'il_piu_grosso').obiettivo, 8, 'tutti i giganti');
   uguale(P.TRAGUARDI.find(t => t.id === 'enciclopedia_del_mare').obiettivo, 70, 'tutte le specie');
-  uguale(P.TRAGUARDI.find(t => t.id === 'tutta_la_banda').obiettivo, 6, 'tutti gli eroi');
+  uguale(P.TRAGUARDI.find(t => t.id === 'tutta_la_banda').obiettivo, 5, 'tutti gli eroi da sbloccare (quello di partenza c\'è già: da zero il traguardo segna 0)');
   uguale(P.TRAGUARDI.find(t => t.id === 'abitanti_laguna').obiettivo, 11, 'abitanti della laguna (10 pesci e il gigante)');
   for (const a of m.B.cast.ambienti) vero(T.some(t => t.id === 'abitanti_' + a.id), 'un traguardo per ' + a.id);
 });
@@ -368,7 +368,8 @@ prova('effetti(): potenziamenti ed eroe scelto', () => {
   vero(P.scegliEroe('pallino'), 'torno a Pallino');
   circa(P.effetti().velocita, 1.18, 'Pallino: solo i potenziamenti');
   uguale(Object.keys(P.effetti()).sort(), Object.keys(neutro).sort(), 'tutti i campi previsti');
-  uguale(P.traguardo('non_ti_manca_niente').valore, 5, 'potenziamenti al massimo: 5 su 9');
+  // al massimo: scatto, generoso, cuori, calamita, frenesia, fiuto, scudo (pinne è a 3 su 5, boccone a 2 su 5)
+  uguale(P.traguardo('non_ti_manca_niente').valore, 7, 'potenziamenti al massimo: 7 su 9');
 });
 
 prova('eventi → statistiche', () => {
@@ -448,6 +449,7 @@ prova('eventi → acquario e specie scoperte', () => {
   uguale(Object.keys(P.stato.acquario).length, prima, 'nessuna voce per gli id non validi');
   uguale(({}).visti, undefined, 'nessun danno agli oggetti');
 
+  m.suona();   // in partita le modifiche aspettano la sveglia (o la chiusura della pagina): qui passa il tempo
   const m2 = riapri(m);
   uguale([m2.P.acquario('ghiozzo'), m2.P.acquario('murena'), m2.P.scoperte()], [{ visti: 2, mangiati: 3 }, { visti: 1, mangiati: 1 }, 2], 'acquario ritrovato alla riapertura');
 });
@@ -602,7 +604,8 @@ prova('traguardi dell\'acquario: per ambiente, e con una parte sola dei contenut
   m.emetti('visto', { id: laguna[10] });
   uguale(P.traguardo('abitanti_laguna').fatto, true, 'tutti gli abitanti della laguna');
   uguale(m.visti('traguardo').map(d => d.id), ['curiosone', 'abitanti_laguna'], 'annunciati');
-  uguale(P.traguardo('abitanti_rovine').valore, 3, 'le specie che vivono in più ambienti contano in ognuno');
+  // ghiozzo, pesce chirurgo, pesce balestra e murena vivono anche tra le rovine
+  uguale(P.traguardo('abitanti_rovine').valore, 4, 'le specie che vivono in più ambienti contano in ognuno');
   uguale([P.traguardo('buongustaio').valore, P.traguardo('enciclopedia_del_mare').valore], [0, 11], 'visti non vuol dire assaggiati');
 
   // con pochi modelli registrati i traguardi "tutte le specie" si misurano su quelli
@@ -960,7 +963,7 @@ prova('una carriera intera: tutti i traguardi si possono raggiungere', () => {
   // l'avventura: 40 livelli, 90 perle l'uno
   for (let n = 1; n <= P.totaleLivelli; n++) {
     vero(P.livelloSbloccato(n), 'livello ' + n + ' aperto');
-    const ambiente = cast.ambienti[Math.ceil(n / cast.livelliPerAmbiente) - 1], ultimo = n % cast.livelliPerAmbiente === 0;
+    const ambiente = cast.ambienti.find(a => a.id === cast.aperti[Math.ceil(n / cast.livelliPerAmbiente) - 1]), ultimo = n % cast.livelliPerAmbiente === 0;
     gioca(m, n, { stelle: 3, colpi: n % 4 === 0 ? 1 : 0, tempo: 240, potenza: 400000 + n * 20000, dentro: () => {
       for (const id of perAmbiente(ambiente.id)) { m.emetti('visto', { id }); for (let i = 0; i < 6; i++) m.emetti('mangiato', { id, tipo: 'pesce' }); }
       for (const id of ambiente.banchi) m.emetti('visto', { id });

@@ -25,20 +25,30 @@ const CALAMITA_DURATA = 9, MOLT_DURATA = 8;
 const INVUL_INIZIO = 3, INVUL_COLPO = 2.6, INVUL_SCUDO = 1.6;
 const PARTE_GUADAGNATA = 0.3;                     // mangiando un pesce si guadagna il 30% della sua potenza
 const PARTE_MORSO_GIGANTE = 0.1;                  // un morso al gigante (non l'ultimo) rende meno
-const NON_TI_DEGNA = 6, GIGANTE_NON_TI_DEGNA = 40;   // chi è più forte di tua × 6 + 20 non ti insegue (gigante: × 40)
+const NON_TI_DEGNA = 6;                           // chi è più forte di tua × 6 + 20 non ti insegue (capobranco e gigante: × 40, vedi cfg.obiettivo.degna)
 const CONTATTO = 0.72;                            // ci si tocca a questa parte della somma dei raggi
-const PERLA_DAL_PESCE = 0.35;                     // probabilità di una perla mangiando un pesce grosso
-const PERLE_CONCHIGLIA = 6, PERLE_BOLLA = 5, PERLE_CUORE_PIENO = 8, PERLE_OBIETTIVO = 15, PERLE_LIVELLO = 15, PERLE_STELLA = 5;
-const CONCHIGLIA_ATTESA = 45;
+const PERLA_DAL_PESCE = 0.14;                     // probabilità di una perla mangiando un pesce (due se è delle taglie più grosse)
+const PERLE_PESCI_META = 25;                      // dopo tante perle prese dai pesci la probabilità è dimezzata (e così via)
+const PERLE_CONCHIGLIA = 4, PERLE_BOLLA = 5, PERLE_CUORE_PIENO = 8, PERLE_OBIETTIVO = 15, PERLE_LIVELLO = 15, PERLE_STELLA = 5;
+const CONCHIGLIA_ATTESA = 60;
 const BOLLA_OGNI = 4.5, BOLLE_ALL_INIZIO = 5, BOLLE_MAX = 7;
 const RINASCITA = 2.5;
 const DORATO_PESCI = 28, DORATO_VALE = 8, DORATO_DURATA = 24, DORATI_PER_PERLA = 4;
-const TETTO = { particelle: 260, testi: 44, nuvole: 8, rinascite: 40, riserva: 300 };
+const TETTO = { particelle: 260, testi: 44, nuvole: 12, onde: 6, proiettili: 20, rinascite: 40, riserva: 300, evocati: 6, predatori: 110 };
+const AGGUATO_TIRO = 125, AGGUATO_PIU = 6;        // l'agguato scatta quando gli passi a meno di così (da bordo a bordo); nei livelli difficili (oltre 4) un po' di più
+const RIPOSO_DOPO_COLPO = 4.5;                    // chi ha appena colpito l'eroe lo lascia stare almeno per questi secondi
+const MINA_INNESCO = 130, MINA_MICCIA = 1.5, MINA_SCOPPIO = 150;      // distanza che la arma, secondi di miccia, raggio dello scoppio
+const ERUZIONE_AVVISO = 1.2, ERUZIONE_DURATA = 1.8;
+const CADUTA_TREMA = 0.9, CADUTA_VEL = 560, CADUTA_CORSA = 1100, CADUTA_VISTA = 700;
+const SCOSSA_STORDISCE = 0.75, SCOSSA_TREGUA = 2.5, SCOSSA_DURATA = 0.7;
+const SPINTA_ONDA = 620;
+const BUIO_ATTACCO = 0.88;                        // quanto si fa buio quando un gigante spegne la luce
 const MAI = 1e9;                                  // "morto" di un pesciolino che non torna (banco dorato a riposo)
 
 const COLORI = {
   spruzzo: '#ffffff', oro: '#ffe066', perla: '#ffd9f0', scudo: '#9be7ff', cuore: '#ff5c7a', cuoreScritta: '#ff8fa3',
   boccone: '#b9ffd0', scia: 'rgba(255,255,255,.7)', calamita: '#ff9ecb', duro: '#d7e3f4', veleno: '#c9a8ff',
+  fuoco: '#ffb24a', ghiaccio: '#cfefff', scossa: '#fff27a', rovente: '#ffd9a0',
   festa: ['#ffe066', '#ff9ecb', '#35e0c8', '#ffffff'],
 };
 
@@ -54,8 +64,8 @@ let E = Object.assign({}, NEUTRI);   // effetti di potenziamenti ed eroe, letti 
 const dir = { x: 0, y: 0 };
 const punto = { x: 0, y: 0 };
 const S = { inGioco: false, dx: 0, dy: 0, d: 0, forte: false, vicino: false, ignora: false };   // sensi di un pesce
-const mossa = { vel: 0, verso: NaN, gira: 0, accel: 0, insegue: false, fugge: false };          // ciò che decide di fare
-const riserva = { particelle: [], testi: [], nuvole: [] };
+const mossa = { vel: 0, verso: NaN, gira: 0, accel: 0, insegue: false, fugge: false, bocca: -1 };   // ciò che decide di fare
+const riserva = { particelle: [], testi: [], nuvole: [], onde: [], proiettili: [] };
 const scenaInCassa = { id: '', seme: -1, scena: null };
 
 const dati = {
@@ -100,13 +110,35 @@ function testo(x, y, scritta, colore, grande, perla) {
   s.x = x; s.y = y; s.s = scritta; s.c = colore; s.eta = 0; s.grande = !!grande; s.perla = !!perla;
   M.testi.push(s);
 }
-/* Una nuvola (di inchiostro) che copre la vista: la disegna la vista, sopra le creature. */
-function nuvola(x, y, r, vita) {
+/* Una nuvola che copre la vista: la disegna la vista, sopra le creature. tipo: 'inchiostro' oppure 'scia'. */
+function nuvola(x, y, r, vita, tipo) {
   if (M.nuvole.length >= TETTO.nuvole) riserva.nuvole.push(M.nuvole.shift());
   const n = riserva.nuvole.pop() || {};
-  n.x = x; n.y = y; n.r = r; n.eta = 0; n.vita = vita;
+  n.x = x; n.y = y; n.r = r; n.eta = 0; n.vita = vita; n.tipo = tipo || 'inchiostro';
   M.nuvole.push(n);
 }
+/* Un'onda d'urto: un anello che si allarga da r0 a rMax. Quando raggiunge l'eroe lo respinge e, se in quel momento è
+   a meno di rMale dal centro, gli fa male. chi = chi l'ha fatta (gigante o pericolo): serve x, y e def. */
+function onda(x, y, r0, rMax, vel, rMale, chi, tipo) {
+  if (M.onde.length >= TETTO.onde) riserva.onde.push(M.onde.shift());
+  const o = riserva.onde.pop() || {};
+  o.x = x; o.y = y; o.r = r0; o.r0 = r0; o.rMax = rMax; o.vel = vel; o.rMale = rMale; o.def = chi.def; o.tipo = tipo || 'onda';
+  o.eta = 0; o.vita = (rMax - r0) / vel; o.fatto = false; o.stordito = 0;
+  M.onde.push(o);
+}
+/* Un proiettile lento, da schivare: va dritto e sparisce dopo "vita" secondi. */
+function proiettile(x, y, ang, vel, r, vita, chi, tipo) {
+  if (M.proiettili.length >= TETTO.proiettili) return;
+  const q = riserva.proiettili.pop() || {};
+  q.x = x; q.y = y; q.ang = ang; q.vx = Math.cos(ang) * vel; q.vy = Math.sin(ang) * vel; q.r = r; q.eta = 0; q.vita = vita;
+  q.def = chi.def; q.tipo = tipo || 'sparo'; q.stordito = 0;
+  M.proiettili.push(q);
+}
+/* Il risucchio di un gigante: finché viene chiamato (a ogni fotogramma) tira l'eroe e i pesciolini verso il punto
+   x, y (la bocca). forza è una parte della velocità dell'eroe: sotto 1 si riesce sempre a scappare nuotando via. */
+function tira(x, y, raggio, forza) { const t = M.tiro; t.x = x; t.y = y; t.raggio = raggio; t.forza = forza; }
+/* Fa buio per qualche secondo (M.buio sale e poi torna com'era). */
+function oscura(secondi) { M.buioT = Math.max(M.buioT, secondi); }
 function togliVeloce(lista, i, cassetto) {
   const v = lista[i], ultimo = lista.pop();
   if (i < lista.length) lista[i] = ultimo;
@@ -142,6 +174,8 @@ function puntoLontano(distanza, margine = 160) {
 function preparaCarica(e, avviso, scatto, molt) {
   e.avviso = avviso; e.avvisoDurata = avviso; e.carica = 0; e.sprintDurata = scatto; e.sprintMolt = molt;
 }
+/* Solo l'avviso (fermo, prende la mira, e.carica sale): alla fine il gigante fa il suo colpo (vedi 52-giganti.js). */
+function preparaAvviso(e, avviso) { e.avviso = avviso; e.avvisoDurata = avviso; e.carica = 0; }
 
 // =====================================================================
 //  3. Indoli e capacità speciali
@@ -192,30 +226,32 @@ const INDOLI = {
     pensa(e, s, m, dt) { daCacciatore(e, s, m, dt, 0.8); } },
 
   /* Insegue (e scappa) a strappi: accelera forte per circa un secondo, poi rallenta e riprende fiato. */
-  scattante: { vel: 1, senso: 1.1, crociera: 0.4,
+  scattante: { vel: 1, senso: 1, crociera: 0.4,
     pensa(e, s, m, dt) {
       if (!s.vicino || (s.forte && s.ignora)) { e.inStrappo = false; e.strappo = 0; return; }
       e.strappo -= dt;
       if (e.strappo <= 0) { e.inStrappo = !e.inStrappo; e.strappo = e.inStrappo ? caso(0.9, 1.2) : caso(1.1, 1.6); }
-      if (s.forte) insegui(e, s, m, dt, e.inStrappo ? 1.6 : 0.5); else fuggi(e, s, m, e.inStrappo ? 1.3 : 0.55);
+      if (s.forte) insegui(e, s, m, dt, e.inStrappo ? 1.45 : 0.5); else fuggi(e, s, m, e.inStrappo ? 1.3 : 0.55);
       m.accel = e.inStrappo ? 7 : 3;
     } },
 
-  /* Quasi fermo; quando gli passi a tiro si avvicina piano e poi scatta. (Prima versione: da rifinire.) */
-  agguato: { vel: 1, senso: 1.1, crociera: 0.15,
-    pensa(e, s, m, dt) {
+  /* Sta fermo (o quasi) e ti segue con lo sguardo; quando gli passi a tiro prende la mira un attimo e scatta come
+     un fulmine. Dopo lo scatto riprende fiato per qualche secondo. */
+  agguato: { vel: 1, senso: 1.1, crociera: 0.12,
+    pensa(e, s, m) {
       if (!s.vicino) return;
       if (!s.forte) { fuggi(e, s, m, 0.9); return; }
       if (s.ignora) return;
-      if (s.d < e.senso * 0.7 + M.eroe.r + e.r) preparaCarica(e, 0.45, 0.6, 2.5);
-      else { m.verso = Math.atan2(s.dy, s.dx); m.vel = e.vel * 0.3; m.insegue = true; }
+      m.verso = Math.atan2(s.dy, s.dx); m.vel = 0; m.gira = 2.4; m.insegue = true;
+      if (s.d < AGGUATO_TIRO + AGGUATO_PIU * Math.max(0, M.cfg.difficolta - 4) + M.eroe.r + e.r) preparaCarica(e, 0.5, 0.55, 2.7);
     } },
 
-  /* Fa la ronda su un grande giro attorno al punto in cui è nato e vede lontano. (Prima versione: da rifinire.) */
-  pattuglia: { vel: 0.95, senso: 1.5, crociera: 0.55,
+  /* Fa la ronda su un grande giro attorno al punto in cui è nato e vede lontano; in compenso si stanca prima di chi
+     insegue per mestiere, e torna al suo giro. */
+  pattuglia: { vel: 0.95, senso: 1.4, crociera: 0.55,
     nasce(e) { e.cx = e.x; e.cy = e.y; e.rondaRaggio = caso(380, 560); e.rondaAng = caso(TAU); e.rondaVerso = Math.random() < 0.5 ? -1 : 1; },
     pensa(e, s, m, dt) {
-      if (daCacciatore(e, s, m, dt, 0.85)) return;
+      if (daCacciatore(e, s, m, dt, 0.85)) { if (m.insegue) e.fiato -= dt * 0.6; return; }
       e.rondaAng += e.rondaVerso * dt * e.vel * e.crociera / e.rondaRaggio;
       const bordo = e.r + 80;
       const tx = limita(e.cx + Math.cos(e.rondaAng) * e.rondaRaggio, bordo, M.largo - bordo);
@@ -223,7 +259,7 @@ const INDOLI = {
       m.verso = Math.atan2(ty - e.y, tx - e.x); m.gira = 1.6;
     } },
 
-  /* Gira in gruppo: segue un compagno della stessa specie (la guida). (Prima versione: da rifinire.) */
+  /* Gira in gruppo (da 3 a 5): segue un compagno della stessa specie, la guida, e nuota come lei. */
   branco: { vel: 1, senso: 1, crociera: 0.42,
     nasce(e, iniziale) {
       cercaGuida(e);
@@ -245,16 +281,17 @@ const INDOLI = {
     } },
 };
 
-/* Una capacità speciale è { soglia, punge, aggiorna?(e, s, m, dt) }.
+/* Una capacità speciale è { soglia, punge, vel?, aggiorna?(e, s, m, dt) }.
      soglia   per mangiarlo l'eroe deve essere più forte di potenza × soglia
      punge    se l'eroe lo tocca senza poterlo mangiare perde un cuore (anche se è più forte di lui)
+     vel      facoltativa: moltiplica la velocità (chi porta la corazza è un po' più lento)
      aggiorna facoltativa, a ogni fotogramma dopo l'indole
    Chi ha la corazza e non si può ancora mangiare non fa male: ci si rimbalza contro. */
 const SPECIALI = {
   veleno: { soglia: 2, punge: true },
-  corazza: { soglia: 1.5, punge: false },
+  corazza: { soglia: 1.5, punge: false, vel: 0.88 },
   luce: { soglia: 1, punge: false },               // solo aspetto: ci pensa la vista
-  /* Se è inseguito lascia una nuvola che copre la vista e scappa via più svelto. (Prima versione.) */
+  /* Se è inseguito lascia una nuvola che copre la vista e scappa via più svelto. */
   inchiostro: { soglia: 1, punge: false,
     aggiorna(e, s, m, dt) {
       e.specialeT -= dt;
@@ -263,15 +300,37 @@ const SPECIALI = {
       nuvola(e.x, e.y, e.r * 2.6 + 40, 4.5); suono('inchiostro');
       e.vAtt = e.vel * 1.8;                        // schizza via
     } },
-  // 'scossa' (alone elettrico che stordisce) non è ancora scritta: vedi ARCHITETTURA §8 "che cosa resta da fare".
+  /* Ogni pochi secondi l'alone elettrico si accende (e.alone sale piano, poi scatta a 1): chi è dentro resta
+     stordito per un attimo, senza perdere cuori. e.aloneR è il raggio dell'alone. */
+  scossa: { soglia: 1, punge: false, alone: 78,
+    aggiorna(e, s, m, dt) {
+      e.specialeT -= dt;
+      if (e.scarica > 0) {
+        e.scarica -= dt; e.alone = Math.max(0, e.scarica / SCOSSA_DURATA);
+        const h = M.eroe;
+        if (e.scarica > SCOSSA_DURATA * 0.4 && h.scossaT <= 0 && h.invul <= 0 && s.d < e.aloneR + h.r * 0.5) scossa();
+      } else if (e.specialeT <= 0) {
+        e.scarica = SCOSSA_DURATA; e.specialeT = caso(3.4, 4.8);
+        if (s.d < 700) suono('scossa');
+      } else e.alone = e.specialeT < 0.8 ? 0.45 * (1 - e.specialeT / 0.8) : 0;
+    } },
 };
+
+function scossa() {
+  const h = M.eroe;
+  h.stordito = SCOSSA_STORDISCE; h.scossaT = SCOSSA_TREGUA; h.colpitoT = Math.max(h.colpitoT, 0.5);
+  scoppio(h.x, h.y, COLORI.scossa, 12, 240); testo(h.x, h.y - h.r, 'Scossa!', COLORI.scossa, true);
+  M.scossa = Math.max(M.scossa, 8); vibra(50);
+}
 
 // =====================================================================
 //  4. Comportamenti dei pericoli
 // =====================================================================
-/* Un comportamento è { posa(p), aggiorna(p, dt, inGioco) }: posa sceglie dove nasce il pericolo, aggiorna lo fa
-   vivere (posizione, p.fase 0..1, p.attivo 0..1). Il contatto con l'eroe lo controlla il mondo: fa sempre male.
-   Per ora sono scritti 'deriva' e 'fermo'; mina, pendolo, eruzione e caduta stanno fermi in un punto sensato. */
+/* Un comportamento è { posa(p), aggiorna(p, dt, inGioco), toccato?(p) }: posa sceglie dove nasce il pericolo,
+   aggiorna lo fa vivere (posizione, p.fase 0..1, p.attivo 0..1, p.alfa 0..1 = quanto si vede), toccato dice che cosa
+   succede quando l'eroe ci sbatte contro. Il contatto con il cerchio p.r lo controlla il mondo e fa sempre male;
+   le zone in più (scoppio della mina, colonna dello sfiatatoio) le controlla il comportamento.
+   Per aggiungerne uno: una voce qui (o in B.partita.comportamenti) e il nome nel campo "comportamento" del cast. */
 function postoFermo(p, yMin, yMax) {
   const h = M.eroe, bordo = p.r + 110;
   for (let i = 0; i < 30; i++) {
@@ -311,12 +370,121 @@ const COMPORTAMENTI = {
   },
   /* Il riccio: fermo sul fondale (o su uno scoglio); rizza gli aculei quando ti avvicini. */
   fermo: { posa: sulFondo, aggiorna: vivoFermo },
-  // Da scrivere (per ora fermi dove starebbero): vedi ARCHITETTURA §8.
-  mina:     { posa(p) { postoFermo(p, M.alto * 0.35, M.alto * 0.82); }, aggiorna: vivoFermo },   // a mezz'acqua, come ancorata
-  pendolo:  { posa(p) { postoFermo(p, M.alto * 0.12, M.alto * 0.45); }, aggiorna: vivoFermo },   // appeso dalla superficie
-  eruzione: { posa: sulFondo, aggiorna: vivoFermo },                                             // sul fondale
-  caduta:   { posa(p) { postoFermo(p, p.r * 0.9, p.r * 0.9); }, aggiorna: vivoFermo },           // attaccato al soffitto
+
+  /* La mina: a mezz'acqua, dondola appena. Se l'eroe le resta vicino si arma (p.attivo sale, lampeggia) e scoppia:
+     fa male all'eroe e stordisce i pesci nei paraggi. Poi ricompare altrove. */
+  mina: {
+    posa(p) { postoFermo(p, M.alto * 0.3, M.alto * 0.8); p.y0 = p.y; p.t = 0; p.attivo = 0; p.zona = p.r + MINA_SCOPPIO; },
+    aggiorna(p, dt, inGioco) {
+      p.fase = (p.fase + dt * 0.12) % 1;
+      if (p.t > 0) {                               // scoppiata: aspetta, poi torna da un'altra parte
+        p.t -= dt;
+        if (p.t <= 0) { p.t = 0; COMPORTAMENTI.mina.posa(p); }
+        return;
+      }
+      p.alfa = Math.min(1, p.alfa + dt * 1.5);
+      p.y = p.y0 + Math.sin(p.fase * TAU) * 10;
+      let vicino = false;
+      if (inGioco && p.alfa >= 1) { const h = M.eroe; vicino = Math.hypot(p.x - h.x, p.y - h.y) < p.r + h.r + MINA_INNESCO; }
+      if (vicino && p.attivo === 0) suono('avviso');
+      p.attivo = limita(p.attivo + (vicino ? dt / MINA_MICCIA : -dt * 0.5), 0, 1);
+      if (p.attivo >= 1) scoppiaMina(p);
+    },
+    toccato(p) { p.attivo = 1; },
+  },
+
+  /* L'amo: appeso alla superficie (la lenza parte da p.x0, 0), sale e scende. p.attivo: 0 in alto, 1 in basso. */
+  pendolo: {
+    posa(p) {
+      postoFermo(p, M.alto * 0.3, M.alto * 0.3);
+      p.x0 = p.x; p.y0 = caso(0.24, 0.4) * M.alto; p.corsa = caso(0.12, 0.2) * M.alto; p.periodo = caso(7, 10);
+    },
+    aggiorna(p, dt) {
+      p.fase = (p.fase + dt / p.periodo) % 1;
+      const s = Math.sin(p.fase * TAU), dondola = Math.sin(p.fase * TAU * 2 + 1);
+      p.y = Math.max(p.r + 40, p.y0 + s * p.corsa); p.x = p.x0 + dondola * 14; p.ang = dondola * 0.12;
+      p.attivo = 0.5 + 0.5 * s;
+    },
+  },
+
+  /* Lo sfiatatoio: sul fondale. A intervalli borbotta (p.attivo sale fino a 0,5), poi erutta (p.attivo 1): la colonna
+     sopra di lui, alta p.colonna e larga quanto lui, fa male. */
+  eruzione: {
+    posa(p) { sulFondo(p); p.t = caso(1, 5); p.stato = 0; p.colonna = 0; p.attivo = 0; p.altezza = caso(300, 440); },
+    aggiorna(p, dt, inGioco) {
+      p.fase = (p.fase + dt * 0.5) % 1;
+      p.t -= dt;
+      if (p.stato === 0) {                         // riposa
+        p.attivo = Math.max(0, p.attivo - dt * 2); p.colonna = Math.max(0, p.colonna - dt * 1200);
+        if (p.t > 0) return;
+        p.stato = 1; p.t = ERUZIONE_AVVISO;
+        if (inGioco && Math.hypot(p.x - M.eroe.x, p.y - M.eroe.y) < 520) suono('avviso');
+      } else if (p.stato === 1) {                  // borbotta: sta per eruttare
+        p.attivo = Math.min(0.5, p.attivo + dt * 0.5 / ERUZIONE_AVVISO);
+        if (p.t <= 0) { p.stato = 2; p.t = ERUZIONE_DURATA; }
+      } else {                                     // erutta
+        p.attivo = Math.min(1, p.attivo + dt * 4); p.colonna = Math.min(p.altezza, p.colonna + dt * 1400);
+        if (M.particelle.length < 200 && Math.random() < dt * 24) bollaRovente(p);
+        if (inGioco) {
+          const h = M.eroe;
+          if (Math.abs(h.x - p.x) < p.r * 0.7 + h.r * 0.6 && h.y < p.y && h.y > p.y - p.colonna - h.r * 0.5) colpito(p);
+        }
+        if (p.t <= 0) { p.stato = 0; p.t = caso(4.5, 7.5); }
+      }
+    },
+  },
+
+  /* La stalattite: attaccata al soffitto. Trema quando le passi sotto (p.attivo sale), poi si stacca e cade; in fondo
+     alla corsa va in frantumi e dopo un po' ricresce da un'altra parte. */
+  caduta: {
+    posa(p) { postoFermo(p, p.r * 0.9, p.r * 0.9); p.y0 = p.y; p.stato = 0; p.vy = 0; p.attivo = 0; p.t = 0; },
+    aggiorna(p, dt, inGioco) {
+      p.fase = (p.fase + dt * 0.3) % 1;
+      if (p.stato === 2) {                         // in frantumi
+        p.t -= dt;
+        if (p.t <= 0) COMPORTAMENTI.caduta.posa(p);
+        return;
+      }
+      p.alfa = Math.min(1, p.alfa + dt * 1.2);
+      if (p.stato === 0) {                         // appesa
+        let sotto = false;
+        if (inGioco && p.alfa >= 1) { const h = M.eroe; sotto = Math.abs(h.x - p.x) < p.r + h.r + 25 && h.y - p.y < CADUTA_VISTA; }
+        p.attivo = limita(p.attivo + (sotto || p.attivo > 0.5 ? dt / CADUTA_TREMA : -dt), 0, 1);
+        if (p.attivo >= 1) { p.stato = 1; p.vy = 60; }
+      } else {                                     // cade
+        p.vy = Math.min(CADUTA_VEL, p.vy + 900 * dt); p.y += p.vy * dt;
+        if (p.y >= M.alto - p.r * 0.6 || p.y - p.y0 > CADUTA_CORSA) frantuma(p);
+      }
+    },
+    toccato(p) { if (p.stato === 1) frantuma(p); },
+  },
 };
+
+function scoppiaMina(p) {
+  const raggio = p.zona;
+  scoppio(p.x, p.y, COLORI.fuoco, 46, 520, 1.6); scoppio(p.x, p.y, COLORI.spruzzo, 20, 300);
+  suono('scoppio'); M.scossa = Math.max(M.scossa, 12); vibra(90);
+  onda(p.x, p.y, p.r, raggio, 900, raggio, p, 'scoppio');
+  for (const e of M.predatori) {                   // i pesci nei paraggi restano storditi e volano via
+    if (e.gigante || e.via) continue;
+    const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1;
+    if (d > raggio + e.r) continue;
+    e.stordito = Math.max(e.stordito, 3); e.kx = dx / d * 380; e.ky = dy / d * 380; e.avviso = 0; e.sprint = 0; e.carica = 0;
+  }
+  p.attivo = 0; p.alfa = 0; p.t = caso(10, 16); p.y = limita(p.y, p.r, M.alto - p.r);
+}
+function frantuma(p) {
+  p.y = Math.min(p.y, M.alto - p.r);
+  scoppio(p.x, p.y, COLORI.ghiaccio, 22, 320, 1.2);
+  if (inPartita() && Math.hypot(p.x - M.eroe.x, p.y - M.eroe.y) < 700) suono('scoppio');
+  p.stato = 2; p.alfa = 0; p.attivo = 0; p.vy = 0; p.t = caso(5, 9);
+}
+function bollaRovente(p) {
+  const q = riserva.particelle.pop() || {};
+  q.x = p.x + caso(-p.r, p.r) * 0.6; q.y = p.y - caso(0, p.colonna); q.vx = caso(-30, 30); q.vy = -caso(260, 520);
+  q.vita = caso(0.4, 0.8); q.eta = 0; q.r = caso(4, 10); q.c = COLORI.rovente;
+  M.particelle.push(q);
+}
 
 // =====================================================================
 //  5. Nascite
@@ -334,7 +502,7 @@ function nuovoEroe() {
   return {
     def, x: M.largo / 2, y: M.alto / 2, vx: 0, vy: 0, kx: 0, ky: 0, ang: 0, p: 1, r: raggioEroe(1),
     bocca: 0, attesa: 0, pulsa: 0, invul: INVUL_INIZIO, vivo: true, stadio: 0, espressione: 'normale',
-    felice: 0, colpitoT: 0,
+    felice: 0, colpitoT: 0, stordito: 0, scossaT: 0,
   };
 }
 
@@ -351,22 +519,46 @@ function nuovoAbitante(def, fascia, p, r) {
     // campi delle indoli e delle capacità speciali
     strappo: 0, inStrappo: false, guida: null, seguaci: 0, cercaT: caso(0, 2),
     cx: 0, cy: 0, rondaRaggio: 0, rondaAng: 0, rondaVerso: 1, specialeT: caso(1, 4),
+    alone: 0, aloneR: 0, scarica: 0, evocato: false,
     // campi di gigante e capobranco (li riempie B.giganti.prepara)
     morsi: 1, morsiTotali: 1, vita: 1, furia: 0, attacchi: null, indiceAttacco: 0, attacco: null, prossimoAttacco: 0,
-    velCalmo: 0, intoccabile: 0, sconfitto: 0,
+    inAttacco: null, attaccoNome: '', attT: 0, attN: 0, attDurata: 0, scia: false, sciaT: 0,
+    velCalmo: 0, intoccabile: 0, sconfitto: 0, degna: 40, pausa: null,
   };
 }
 
-function nuovoPesce(fascia, distanza, iniziale) {
-  const def = scegli(fascia.specie), indole = INDOLI[def.indole] || INDOLI.cacciatore;
+function nuovoPesce(fascia, distanza, iniziale, specie) {
+  const def = specie || scegli(fascia.specie), indole = INDOLI[def.indole] || INDOLI.cacciatore;
   const e = nuovoAbitante(def, fascia, intero(fascia.min, fascia.max), fascia.r * caso(0.92, 1.08));
   puntoLontano(distanza || 560, e.r + 60);
   e.x = punto.x; e.y = punto.y;
   e.indole = indole; e.neutro = def.indole === 'timido'; e.speciale = SPECIALI[def.speciale] || null;
   e.soglia = e.p * (e.speciale ? e.speciale.soglia : 1);
-  e.vel = fascia.vel * indole.vel; e.senso = fascia.senso * indole.senso; e.crociera = indole.crociera;
+  e.aloneR = e.speciale && e.speciale.alone ? e.r + e.speciale.alone : 0;
+  e.vel = fascia.vel * indole.vel * (e.speciale && e.speciale.vel || 1); e.senso = fascia.senso * indole.senso; e.crociera = indole.crociera;
   if (indole.nasce) indole.nasce(e, iniziale);
   return e;
+}
+
+/* Il branco chiamato da un gigante ('evoca'): pesci della fascia appena sopra l'eroe, che nascono attorno a lui e
+   girano insieme. Non rinascono quando vengono mangiati. Risponde quanti ne sono arrivati. */
+function evoca(e, quanti) {
+  const fasce = M.cfg.fasce;
+  if (!fasce.length) return 0;
+  const f = fasce[Math.min(fasce.length - 1, M.fascia)];
+  const def = f.specie.find(s => s.indole !== 'timido') || f.specie[0];
+  if (!def) return 0;
+  let vivi = 0, guida = null, fatti = 0;
+  for (const o of M.predatori) if (o.evocato && !o.via) vivi++;
+  for (; fatti < quanti && vivi + fatti < TETTO.evocati && M.predatori.length < TETTO.predatori; fatti++) {
+    const o = nuovoPesce(f, 0, false, def), a = e.ang + Math.PI + caso(-1.3, 1.3), d = e.r + o.r + caso(20, 120);
+    if (o.guida) { o.guida.seguaci--; o.guida = null; }
+    o.indole = INDOLI.branco; o.neutro = false; o.crociera = INDOLI.branco.crociera; o.evocato = true;
+    o.x = limita(e.x + Math.cos(a) * d, o.r, M.largo - o.r); o.y = limita(e.y + Math.sin(a) * d, o.r, M.alto - o.r);
+    if (guida) { o.guida = guida; guida.seguaci++; } else guida = o;
+    M.predatori.push(o);
+  }
+  return fatti;
 }
 
 /* Il capobranco o il gigante del livello. */
@@ -383,11 +575,12 @@ function nuovoObiettivo(ob) {
 function rinnova(e) {
   const f = e.fascia;
   e.p = intero(f.min, f.max); e.soglia = e.p * (e.speciale ? e.speciale.soglia : 1);
-  e.r = f.r * caso(0.92, 1.08); e.vel = f.vel * e.indole.vel; e.senso = f.senso * e.indole.senso;
+  e.r = f.r * caso(0.92, 1.08); e.vel = f.vel * e.indole.vel * (e.speciale && e.speciale.vel || 1); e.senso = f.senso * e.indole.senso;
+  if (e.aloneR) e.aloneR = e.r + e.speciale.alone;
 }
 
 function nuovoBanco(def, dorato) {
-  return { def, dorato, attivo: !dorato, x: caso(260, M.largo - 260), y: caso(260, M.alto - 260), ang: caso(TAU),
+  return { def, dorato, attivo: !dorato, vicino: true, x: caso(260, M.largo - 260), y: caso(260, M.alto - 260), ang: caso(TAU),
     vel: dorato ? caso(55, 70) : caso(22, 42), raggio: dorato ? caso(80, 110) : caso(120, 200) };
 }
 function popola(banco, quanti) {
@@ -424,7 +617,9 @@ function creaPredatori() {
 
 function nuovoPericolo(gruppo) {
   const p = { def: gruppo.def, comportamento: COMPORTAMENTI[gruppo.comportamento] || COMPORTAMENTI.fermo,
-    x: 0, y: 0, r: gruppo.r * caso(0.92, 1.08), ang: 0, fase: Math.random(), attivo: 0, stordito: 0, dx: 0, dy: 0 };
+    x: 0, y: 0, r: gruppo.r * caso(0.92, 1.08), ang: 0, fase: Math.random(), attivo: 0, alfa: 1, stordito: 0, dx: 0, dy: 0,
+    // campi dei comportamenti (mina, amo, sfiatatoio, stalattite)
+    x0: 0, y0: 0, t: 0, stato: 0, vy: 0, zona: 0, colonna: 0, altezza: 0, corsa: 0, periodo: 1 };
   p.comportamento.posa(p);
   return p;
 }
@@ -456,23 +651,25 @@ function creaScena(amb, seme) {
 function creaMondo(cfg, conEroe) {
   const amb = cfg.ambiente, largo = amb.mondo.w, alto = amb.mondo.h, part = cfg.particolarita ? cfg.particolarita.tipo : '';
   E = conEroe ? leggiEffetti() : Object.assign({}, NEUTRI);
-  for (const nome of ['particelle', 'testi', 'nuvole']) if (M) while (M[nome].length && riserva[nome].length < TETTO.riserva) riserva[nome].push(M[nome].pop());
+  for (const nome of Object.keys(riserva)) if (M) while (M[nome].length && riserva[nome].length < TETTO.riserva) riserva[nome].push(M[nome].pop());
   const cuori = 3 + Math.max(0, Math.round(E.cuori));
   M = {
     livello: cfg.n, modalita: cfg.modalita, cfg, ambiente: amb, scena: null, largo, alto,
     t: 0, tempo: 0, eroe: null, obiettivo: null, inseguitore: null,
     banchi: [], pesciolini: [], predatori: [], pericoli: [], bolle: [], conchiglie: [], particelle: [], testi: [], nuvole: [],
-    rinascite: [], dorato: null,
+    onde: [], proiettili: [], rinascite: [], dorato: null,
     aiuti: { molt: 1, moltT: 0, calamitaT: 0, scudo: !!E.scudoIniziale, frenesia: 0, frenesiaT: 0, frenesiaDurata: FRENESIA_DURATA + E.durataFrenesia },
     scatto: { attivo: 0, ricarica: 0, durataRicarica: SCATTO_RICARICA * E.ricaricaScatto, durata: SCATTO_DURATA * E.durataScatto },
-    cuori, cuoriMax: cuori, perle: 0, colpi: 0, fascia: 0, ottava: 0,
+    cuori, cuoriMax: cuori, perle: 0, perlePesci: 0, colpi: 0, fascia: 0, ottava: 0,
     cam: { x: largo / 2, y: alto / 2, z: 1 }, scossa: 0, lampo: 0, pericolo: 0,
     corrente: { x: 0, y: 0, forza: part === 'corrente' ? 70 : 0, fase: caso(TAU) },
-    buio: part === 'buio' ? 0.55 : 0,
+    buio: part === 'buio' ? 0.55 : 0, buioBase: part === 'buio' ? 0.55 : 0, buioT: 0,
+    tiro: { x: 0, y: 0, raggio: 0, forza: 0 },
     mangiati: {}, visti: {}, effetti: E,
     // contatori interni
     guida: { x: largo / 2, y: alto / 2 }, vistaPesci: part === 'buio' ? 0.85 : 1, valore: 1,
-    accumulo: 0, accumuloT: 0, bollaT: 3, gruppoQuanti: 0, gruppoDorati: 0, gruppoT: 0.5, vistoT: 0, gnamT: 0, duroT: 0,
+    accumulo: 0, accumuloT: 0, bollaT: 3, gruppoQuanti: 0, gruppoDorati: 0, gruppoId: '', gruppoT: 0.5, vistoT: 0, gnamT: 0, duroT: 0,
+    giro: 0,
     pericoloT: cfg.pericoloOgni || 0, appoggiUsati: 0, avvisatoObiettivo: false,
   };
   M.scena = creaScena(amb, cfg.seme);
@@ -504,7 +701,7 @@ function nomiDi(fascia) {
 function guadagna(base, x, y, grosso) {
   const h = M.eroe, a = M.aiuti;
   const mm = Math.max(a.molt, a.frenesiaT > 0 ? 2 : 1), m = grosso ? Math.sqrt(mm) : mm, g = Math.max(1, Math.round(base * m));
-  h.p += g; h.r = raggioEroe(h.p); h.bocca = 1; h.pulsa = grosso ? 1 : Math.max(h.pulsa, 0.35);
+  h.p += g; h.r = raggioEroe(h.p / M.valore); h.bocca = 1; h.pulsa = grosso ? 1 : Math.max(h.pulsa, 0.35);
   if (grosso) {
     testo(x, y, '+' + numero(g), COLORI.oro, true);
     M.scossa = Math.max(M.scossa, 6); h.felice = 0.8; vibra(25); suono('gnamGrosso');
@@ -542,11 +739,13 @@ function controllaCrescita() {
   }
 }
 
-/* Sopravvivenza: quando l'eroe supera l'ultima fascia, tutte le fasce salgono di un gradino. I pesci lontani
-   crescono subito, quelli vicini restano come sono finché non vengono mangiati (rinascono più forti). */
+/* Sopravvivenza: quando l'eroe supera l'ultima fascia, tutte le fasce salgono di un gradino ("ottava"): le potenze
+   si moltiplicano, i pesci si fanno più svelti e ci vedono più lontano. Le grandezze invece restano quelle: è l'eroe
+   che si misura sul mare cresciuto (il raggio si calcola su potenza / M.valore), così la visuale non si allarga
+   all'infinito. I pesci lontani crescono subito, quelli vicini restano come sono finché non vengono mangiati. */
 function saleOttava() {
   const o = M.cfg.ottava, h = M.eroe;
-  M.ottava++; M.valore *= o.potenza;
+  M.ottava++; M.valore *= o.potenza; h.r = raggioEroe(h.p / M.valore);
   for (const f of M.cfg.fasce) { f.min *= o.potenza; f.max *= o.potenza; f.r += o.raggio; f.vel += o.vel; f.senso += o.senso; }
   const lontano = 520 / M.cam.z;
   for (const e of M.predatori) if (!e.via && e.indole && Math.hypot(e.x - h.x, e.y - h.y) > lontano + e.r) rinnova(e);
@@ -559,7 +758,10 @@ function colpito(nemico) {
   if (h.invul > 0 || !h.vivo) return;
   const ang = Math.atan2(h.y - nemico.y, h.x - nemico.x);
   nemico.stordito = 1.3;
-  if (nemico.sprint !== undefined) { nemico.sprint = 0; nemico.avviso = 0; nemico.carica = 0; }
+  if (nemico.sprint !== undefined) {               // un pesce (o il gigante): smette ciò che stava facendo e lo lascia stare per un po'
+    nemico.sprint = 0; nemico.avviso = 0; nemico.carica = 0; nemico.riposo = Math.max(nemico.riposo, RIPOSO_DOPO_COLPO);
+    nemico.attacco = null; nemico.inAttacco = null; nemico.attaccoNome = ''; nemico.scia = false;
+  }
   // chi è nei paraggi molla la presa per qualche secondo
   for (const e of M.predatori) if (Math.hypot(e.x - h.x, e.y - h.y) < 450 + e.r) e.riposo = Math.max(e.riposo, caso(2.5, 4));
   h.colpitoT = 0.9;
@@ -602,12 +804,12 @@ function mangia(e) {
   scoppio(e.x, e.y, COLORI.spruzzo, e.capo ? 70 : 18, e.capo ? 560 : 260, e.capo ? 1.8 : 1);
   const g = guadagna(e.p * PARTE_GUADAGNATA, e.x, e.y - e.r, true);
   if (e.capo) prendiPerle(PERLE_OBIETTIVO, e.x, e.y, 'capobranco');
-  else if (Math.random() < PERLA_DAL_PESCE) prendiPerle(e.fascia.k >= 2 ? 2 : 1, e.x, e.y, 'pesce');
+  else if (Math.random() < PERLA_DAL_PESCE / (1 + M.perlePesci / PERLE_PESCI_META)) M.perlePesci += prendiPerle(e.fascia.k >= 3 ? 2 : 1, e.x, e.y, 'pesce');
   e.mangiato = 0.18; e.via = true;
   if (e.guida && !e.guida.via) e.guida.seguaci--;
   segnaMangiato(e, g);
   if (e.capo) { vittoria(); return; }
-  if (M.rinascite.length < TETTO.rinascite) M.rinascite.push({ fascia: e.fascia, t: RINASCITA });
+  if (!e.evocato && M.rinascite.length < TETTO.rinascite) M.rinascite.push({ fascia: e.fascia, t: RINASCITA });
 }
 
 /* Un morso al gigante: ne servono tre, e a ogni morso si infuria (vedi 52-giganti.js). */
@@ -671,10 +873,11 @@ function leggiDirezione() {
 }
 
 function aggiornaEroe(dt) {
-  const h = M.eroe, a = M.aiuti, sc = M.scatto, co = M.corrente;
+  const h = M.eroe, a = M.aiuti, sc = M.scatto, co = M.corrente, ti = M.tiro;
   M.tempo += dt;
   leggiDirezione();
-  let vel = VEL_EROE * E.velocita + (h.r - 22) * VEL_PER_RAGGIO;
+  const base = VEL_EROE * E.velocita + (h.r - 22) * VEL_PER_RAGGIO;
+  let vel = base;
   if (a.frenesiaT > 0) vel *= FRENESIA_VEL;
   if (sc.attivo > 0) {
     vel *= SCATTO_MOLT; sc.attivo -= dt;
@@ -682,11 +885,18 @@ function aggiornaEroe(dt) {
     if (Math.hypot(dir.x, dir.y) < 0.2) { dir.x = Math.cos(h.ang); dir.y = Math.sin(h.ang); }
   }
   sc.ricarica = Math.max(0, sc.ricarica - dt);
+  h.scossaT = Math.max(0, h.scossaT - dt);
+  if (h.stordito > 0) { h.stordito -= dt; dir.x = 0; dir.y = 0; }      // scossa: per un attimo non risponde ai comandi
   const k = Math.min(1, dt * 8), frena = Math.max(0, 1 - 5 * dt);
   h.vx += (dir.x * vel - h.vx) * k; h.vy += (dir.y * vel - h.vy) * k;
   h.kx *= frena; h.ky *= frena;
-  h.x = limita(h.x + (h.vx + h.kx + co.x) * dt, h.r, M.largo - h.r);
-  h.y = limita(h.y + (h.vy + h.ky + co.y) * dt, h.r, M.alto - h.r);
+  let tx = 0, ty = 0;
+  if (ti.forza > 0) {                              // il risucchio di un gigante lo tira verso la bocca
+    const dx = ti.x - h.x, dy = ti.y - h.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+    if (d < ti.raggio) { const q = base * ti.forza * (1 - 0.45 * d / ti.raggio) / d; tx = dx * q; ty = dy * q; }
+  }
+  h.x = limita(h.x + (h.vx + h.kx + co.x + tx) * dt, h.r, M.largo - h.r);
+  h.y = limita(h.y + (h.vy + h.ky + co.y + ty) * dt, h.r, M.alto - h.r);
   if (Math.hypot(h.vx, h.vy) > 12) h.ang = Math.atan2(h.vy, h.vx);
   h.invul = Math.max(0, h.invul - dt);
   if (a.moltT > 0) { a.moltT -= dt; if (a.moltT <= 0) { a.moltT = 0; a.molt = 1; } }
@@ -738,16 +948,25 @@ function mangiaPesciolino(f, valore) {
     if (D.presi % DORATI_PER_PERLA === 0) prendiPerle(1, f.x, f.y, 'dorato');
     if (M.particelle.length < 160) scoppio(f.x, f.y, COLORI.oro, 3, 120);
   } else {
-    f.morto = caso(8, 16);
+    f.morto = caso(8, 16); M.gruppoId = f.def.id;
     guadagna(valore, f.x, f.y, false);
     if (M.particelle.length < 120) scoppio(f.x, f.y, COLORI.spruzzo, 2, 90);
   }
   M.gruppoQuanti++;
 }
 
+/* Segna i banchi a portata della visuale (o della calamita): solo i loro pesciolini si muovono per davvero. Gli altri
+   seguono il banco a scatti, un fotogramma su quattro: nessuno li vede, e il gioco resta leggero. */
+function segnaBanchiVicini(raggioCalamita) {
+  const v = B.vista, cam = M.cam, vw = (v && v.vw) || 390, vh = (v && v.vh) || 844;
+  const cal = raggioCalamita + 220, lx = Math.max(vw / 2 / cam.z + 240, cal), ly = Math.max(vh / 2 / cam.z + 240, cal);
+  for (const b of M.banchi) b.vicino = Math.abs(b.x - cam.x) < lx + b.raggio && Math.abs(b.y - cam.y) < ly + b.raggio;
+  if (M.dorato) { const b = M.dorato.banco; b.vicino = Math.abs(b.x - cam.x) < lx + b.raggio && Math.abs(b.y - cam.y) < ly + b.raggio; }
+}
+
 function aggiornaPesciolini(dt, inGioco) {
-  const h = M.eroe, a = M.aiuti, lista = M.pesciolini;
-  const calamita = inGioco && a.calamitaT > 0;
+  const h = M.eroe, a = M.aiuti, lista = M.pesciolini, ti = M.tiro;
+  const calamita = inGioco && a.calamitaT > 0, tirati = ti.forza > 0;
   let fuga = 0, presa = 0, risucchio = 0, raggioCal = 0, valore = 0, hx = 0, hy = 0;
   if (inGioco) {
     hx = h.x; hy = h.y; fuga = h.r + 85; presa = h.r * 0.9 + 5;
@@ -755,28 +974,46 @@ function aggiornaPesciolini(dt, inGioco) {
     raggioCal = 420 * (1 + (E.risucchio - 1) / 3);
     valore = valorePesciolino();
   }
+  segnaBanchiVicini(calamita ? raggioCal : 0);
   const smorza = Math.max(0, 1 - 3 * dt), vmax = calamita ? 440 : 140, kGira = Math.min(1, dt * 8), kFase = dt * 2.4;
+  const giro = M.giro = (M.giro + 1) & 3, dt4 = dt * 4, PI = Math.PI;
   for (let i = 0; i < lista.length; i++) {
     const f = lista[i];
     if (f.morto > 0) {
       if (f.morto < MAI) { f.morto -= dt; if (f.morto <= 0) rinasce(f); }
       continue;
     }
+    const b = f.b;
+    if (!b.vicino) {                                // lontano dagli occhi: segue il banco, a scatti
+      if ((i & 3) !== giro) continue;
+      f.a += f.w * dt4; f.x = b.x + Math.cos(f.a) * f.d; f.y = b.y + Math.sin(f.a) * f.d; f.vx = 0; f.vy = 0;
+      continue;
+    }
     f.a += f.w * dt;
-    const tx = f.b.x + Math.cos(f.a) * f.d, ty = f.b.y + Math.sin(f.a) * f.d;
+    const tx = b.x + Math.cos(f.a) * f.d, ty = b.y + Math.sin(f.a) * f.d;
     f.vx += (tx - f.x) * 4 * dt; f.vy += (ty - f.y) * 4 * dt;
     if (inGioco) {
-      const dx = f.x - hx, dy = f.y - hy, d = Math.hypot(dx, dy) || 1;
+      const dx = f.x - hx, dy = f.y - hy, d = Math.sqrt(dx * dx + dy * dy) || 1;
       if (d < presa) { mangiaPesciolino(f, valore); continue; }
-      if (calamita && d < raggioCal) { const s = 1500 * dt / d; f.vx -= dx * s; f.vy -= dy * s; }
-      else if (d < risucchio) { const s = 900 * dt / d; f.vx -= dx * s; f.vy -= dy * s; }
-      else if (d < fuga) { const s = 520 * dt / d * (1 - d / fuga); f.vx += dx * s; f.vy += dy * s; }
+      if (calamita && d < raggioCal) { const q = 1500 * dt / d; f.vx -= dx * q; f.vy -= dy * q; }
+      else if (d < risucchio) { const q = 900 * dt / d; f.vx -= dx * q; f.vy -= dy * q; }
+      else if (d < fuga) { const q = 520 * dt / d * (1 - d / fuga); f.vx += dx * q; f.vy += dy * q; }
+    }
+    if (tirati) {                                   // il risucchio di un gigante se li porta via
+      const dx = ti.x - f.x, dy = ti.y - f.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (d < 70) { f.morto = caso(8, 16); continue; }
+      if (d < ti.raggio) { const q = 1300 * dt / d; f.vx += dx * q; f.vy += dy * q; }
     }
     f.vx *= smorza; f.vy *= smorza;
-    const v = Math.hypot(f.vx, f.vy);
-    if (v > vmax) { f.vx *= vmax / v; f.vy *= vmax / v; }
+    let v = Math.sqrt(f.vx * f.vx + f.vy * f.vy);
+    if (v > vmax) { f.vx *= vmax / v; f.vy *= vmax / v; v = vmax; }
     f.x += f.vx * dt; f.y += f.vy * dt;
-    if (v > 6) f.ang += differenzaAngolo(f.ang, Math.atan2(f.vy, f.vx)) * kGira;
+    if (v > 6) {
+      let da = Math.atan2(f.vy, f.vx) - f.ang;
+      if (da > PI) da -= TAU; else if (da < -PI) da += TAU;
+      f.ang += da * kGira;
+      if (f.ang > PI) f.ang -= TAU; else if (f.ang < -PI) f.ang += TAU;
+    }
     f.fase += kFase * (1 + v * 0.01); if (f.fase >= 1) f.fase -= Math.floor(f.fase);
   }
 }
@@ -809,36 +1046,45 @@ function senti(e, inGioco) {
   S.inGioco = inGioco;
   if (!inGioco) {
     S.dx = 0; S.dy = 0; S.d = MAI; S.forte = false; S.vicino = false; S.ignora = true;
-    e.minaccia = false; e.mangiabile = false; e.avviso = 0; e.sprint = 0; e.carica = 0;
+    e.minaccia = false; e.mangiabile = false; e.avviso = 0; e.sprint = 0; e.carica = 0; e.alone = 0; e.scarica = 0;
+    e.attacco = null; e.inAttacco = null; e.attaccoNome = '';
     return;
   }
   const h = M.eroe, hp = h.p * E.morso;
   S.dx = h.x - e.x; S.dy = h.y - e.y; S.d = Math.hypot(S.dx, S.dy);
   S.forte = e.p >= hp;
   S.vicino = S.d < e.senso * M.vistaPesci + h.r + e.r;
-  S.ignora = e.riposo > 0 || e.p > hp * (e.indole ? NON_TI_DEGNA : GIGANTE_NON_TI_DEGNA) + 20;
+  S.ignora = e.riposo > 0 || e.p > hp * (e.indole ? NON_TI_DEGNA : e.degna) + 20;
   e.mangiabile = hp > e.soglia;
   e.minaccia = !e.neutro && (S.forte || (!e.mangiabile && e.speciale !== null && e.speciale.punge));
 }
 
 function decidi(e, dt) {
   const m = mossa;
-  m.vel = e.vel * e.crociera; m.verso = NaN; m.gira = 3.2; m.accel = 3; m.insegue = false; m.fugge = false;
+  m.vel = e.vel * e.crociera; m.verso = NaN; m.gira = 3.2; m.accel = 3; m.insegue = false; m.fugge = false; m.bocca = -1;
   if (e.intoccabile > 0) e.intoccabile -= dt;
   if (e.sconfitto > 0) { m.vel = 0; e.stato = 'sconfitto'; return; }
   if (e.stordito > 0) { e.stordito -= dt; m.vel = 0; e.stato = 'stordito'; return; }
   if (e.sprint > 0) {                              // la carica: dritto come una freccia
     e.sprint -= dt; m.vel = e.vel * e.sprintMolt; m.gira = 0.5; m.accel = 9; m.verso = e.ang; m.insegue = true;
-    if (e.sprint <= 0) { e.sprint = 0; e.carica = 0; if (e.indole) e.riposo = Math.max(e.riposo, caso(2.5, 4)); }
+    if (e.scia) {                                  // la carica con la scia (un attacco dei giganti)
+      e.sciaT -= dt;
+      if (e.sciaT <= 0) { e.sciaT = 0.13; nuvola(e.x - Math.cos(e.ang) * e.r, e.y - Math.sin(e.ang) * e.r, e.r * 0.85, 2.6, 'scia'); }
+    }
+    if (e.sprint <= 0) { e.sprint = 0; e.carica = 0; e.scia = false; if (e.indole) e.riposo = Math.max(e.riposo, caso(2.5, 4)); else e.attaccoNome = ''; }
   } else if (e.avviso > 0) {                       // l'avviso: fermo, prende la mira
     e.avviso -= dt; e.carica = 1 - Math.max(0, e.avviso) / e.avvisoDurata;
     m.vel = 0; m.gira = 6; m.verso = Math.atan2(S.dy, S.dx); m.insegue = true;
-    if (e.avviso <= 0) { e.avviso = 0; e.carica = 1; e.sprint = e.sprintDurata; if (!e.indole) suono('carica'); }
+    if (e.avviso <= 0) {
+      e.avviso = 0; e.carica = 1;
+      if (!e.indole && B.giganti.colpisce(e, M)) e.carica = 0;       // un attacco che non è una carica
+      else { e.sprint = e.sprintDurata; if (!e.indole) suono('carica'); }
+    }
   } else if (e.indole) {
     e.indole.pensa(e, S, m, dt);
     if (S.inGioco && e.speciale && e.speciale.aggiorna) e.speciale.aggiorna(e, S, m, dt);
   } else B.giganti.pensa(e, S, m, dt, M);
-  e.stato = e.sprint > 0 ? 'carica' : e.avviso > 0 ? 'avviso' : m.insegue ? 'caccia' : m.fugge ? 'fuga' : 'calmo';
+  e.stato = e.sprint > 0 ? 'carica' : e.avviso > 0 ? 'avviso' : m.insegue ? 'caccia' : m.fugge && e.indole ? 'fuga' : 'calmo';
 }
 
 function muovi(e, dt) {
@@ -852,9 +1098,9 @@ function muovi(e, dt) {
   if (e.ang > Math.PI) e.ang -= TAU; else if (e.ang < -Math.PI) e.ang += TAU;
   e.vAtt += (m.vel - e.vAtt) * Math.min(1, dt * m.accel);
   e.fase = (e.fase + dt * (5 + e.vAtt * 0.04) / TAU) % 1;
-  const bocca = m.insegue ? 0.55 + 0.4 * Math.sin(M.t * 9 + e.fase * TAU) : 0;
+  const bocca = m.bocca >= 0 ? m.bocca : m.insegue ? 0.55 + 0.4 * Math.sin(M.t * 9 + e.fase * TAU) : 0;
   e.bocca += (bocca - e.bocca) * Math.min(1, dt * 8);
-  if (e.kx !== 0 || e.ky !== 0) {                  // spinta ricevuta (morso al gigante)
+  if (e.kx !== 0 || e.ky !== 0) {                  // spinta ricevuta (morso al gigante, scoppio di una mina)
     const frena = Math.max(0, 1 - 4 * dt);
     e.kx *= frena; e.ky *= frena;
     if (Math.abs(e.kx) + Math.abs(e.ky) < 2) { e.kx = 0; e.ky = 0; }
@@ -899,6 +1145,7 @@ function inghiotti(e, dt) {
 function aggiornaPredatori(dt) {
   const lista = M.predatori, h = M.eroe;
   let inGioco = inPartita(), pericolo = 0, preda = 0, inseguitore = null;
+  M.tiro.forza = 0;                                // il risucchio vale solo finché un gigante lo rinnova
   for (let i = lista.length - 1; i >= 0; i--) {
     const e = lista[i];
     if (e.mangiato > 0) { if (inghiotti(e, dt)) lista.splice(i, 1); continue; }
@@ -942,7 +1189,43 @@ function aggiornaPericoli(dt) {
   for (const p of M.pericoli) {
     p.stordito = Math.max(0, p.stordito - dt);
     p.comportamento.aggiorna(p, dt, inGioco);
-    if (inGioco && p.stordito <= 0 && Math.hypot(p.x - h.x, p.y - h.y) < h.r * 0.8 + p.r * 0.75) { colpito(p); if (!inPartita()) return; }
+    if (!inGioco || p.stordito > 0 || p.alfa < 1) continue;
+    const dx = p.x - h.x, dy = p.y - h.y, tocco = h.r * 0.8 + p.r * 0.75;
+    if (dx * dx + dy * dy >= tocco * tocco) continue;
+    colpito(p);
+    if (p.comportamento.toccato) p.comportamento.toccato(p);
+    if (!inPartita()) return;
+  }
+}
+
+function aggiornaOnde(dt) {
+  const lista = M.onde, h = M.eroe;
+  for (let i = lista.length - 1; i >= 0; i--) {
+    const o = lista[i];
+    o.eta += dt; o.r = Math.min(o.rMax, o.r + o.vel * dt);
+    if (!o.fatto && inPartita()) {
+      const dx = h.x - o.x, dy = h.y - o.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (d - h.r <= o.r) {                        // l'anello ha raggiunto l'eroe
+        o.fatto = true;
+        if (d - h.r < o.rMale) colpito(o);         // da vicino fa male…
+        if (inPartita()) { const q = SPINTA_ONDA * (1 - 0.5 * Math.min(1, d / o.rMax)) / d; h.kx = dx * q; h.ky = dy * q; }   // …e comunque respinge
+      }
+    }
+    if (o.r >= o.rMax) { lista.splice(i, 1); riserva.onde.push(o); }
+  }
+}
+
+function aggiornaProiettili(dt) {
+  const lista = M.proiettili, h = M.eroe, L = M.largo, A = M.alto;
+  for (let i = lista.length - 1; i >= 0; i--) {
+    const q = lista[i];
+    q.eta += dt; q.x += q.vx * dt; q.y += q.vy * dt;
+    let via = q.eta >= q.vita || q.x < -q.r || q.x > L + q.r || q.y < -q.r || q.y > A + q.r;
+    if (!via && inPartita()) {
+      const dx = q.x - h.x, dy = q.y - h.y, tocco = h.r * 0.8 + q.r * 0.8;
+      if (dx * dx + dy * dy < tocco * tocco) { colpito(q); scoppio(q.x, q.y, COLORI.fuoco, 10, 220); via = true; }
+    }
+    if (via) togliVeloce(lista, i, riserva.proiettili);
   }
 }
 
@@ -1008,22 +1291,28 @@ function aggiornaGruppi(dt) {
   M.gruppoT -= dt;
   if (M.gruppoT > 0) return;
   M.gruppoT = 0.5;
-  if (M.gruppoQuanti > 0) { emetti('pesciolini', { quanti: M.gruppoQuanti, dorati: M.gruppoDorati }); M.gruppoQuanti = 0; M.gruppoDorati = 0; }
+  if (M.gruppoQuanti > 0) {
+    emetti('pesciolini', { quanti: M.gruppoQuanti, dorati: M.gruppoDorati, id: M.gruppoId });
+    M.gruppoQuanti = 0; M.gruppoDorati = 0; M.gruppoId = '';
+  }
 }
 
-/* 'visto': la prima volta nella partita che un esemplare di una specie arriva a tiro d'occhio (circa 400 unità, di più
-   quando l'eroe è grosso e la visuale è larga). */
+/* 'visto': la prima volta nella partita che un esemplare di una specie (o un banco, o un pericolo) arriva a tiro
+   d'occhio (circa 400 unità, di più quando l'eroe è grosso e la visuale è larga). */
+function visto(def, d, raggio) {
+  if (M.visti[def.id] || d > raggio) return;
+  M.visti[def.id] = true;
+  emetti('visto', { id: def.id });
+}
 function controllaVisti(dt) {
   M.vistoT -= dt;
   if (M.vistoT > 0) return;
   M.vistoT = 0.3;
   const h = M.eroe, raggio = 400 * Math.pow(Math.max(1, h.r / 22), 0.55);
-  for (const e of M.predatori) {
-    const id = e.def.id;
-    if (M.visti[id] || e.nasce > 0.5 || Math.hypot(e.x - h.x, e.y - h.y) - e.r > raggio) continue;
-    M.visti[id] = true;
-    emetti('visto', { id });
-  }
+  for (const e of M.predatori) if (e.nasce <= 0.5) visto(e.def, Math.hypot(e.x - h.x, e.y - h.y) - e.r, raggio);
+  for (const b of M.banchi) visto(b.def, Math.hypot(b.x - h.x, b.y - h.y) - b.raggio * 0.5, raggio);
+  for (const p of M.pericoli) if (p.alfa >= 1) visto(p.def, Math.hypot(p.x - h.x, p.y - h.y) - p.r, raggio);
+  if (M.dorato && M.dorato.attivo) visto(M.dorato.banco.def, Math.hypot(M.dorato.banco.x - h.x, M.dorato.banco.y - h.y), raggio);
 }
 
 function aggiornaEffetti(dt) {
@@ -1037,8 +1326,13 @@ function aggiornaEffetti(dt) {
   for (let i = 0; i < tt.length; i++) { tt[i].eta += dt; tt[i].y -= 46 * dt; }
   while (tt.length && tt[0].eta > 1) riserva.testi.push(tt.shift());
   const nn = M.nuvole;
-  for (let i = 0; i < nn.length; i++) nn[i].eta += dt;
-  while (nn.length && nn[0].eta >= nn[0].vita) riserva.nuvole.push(nn.shift());
+  for (let i = nn.length - 1; i >= 0; i--) {
+    nn[i].eta += dt;
+    if (nn[i].eta >= nn[i].vita) riserva.nuvole.push(nn.splice(i, 1)[0]);
+  }
+  if (M.buioT > 0) M.buioT -= dt;
+  M.buio += ((M.buioT > 0 ? Math.max(M.buioBase, BUIO_ATTACCO) : M.buioBase) - M.buio) * Math.min(1, dt * 2.5);
+  if (M.buio < 0.002) M.buio = 0;
 }
 
 /* La visuale segue l'eroe (guardando un po' avanti) e si allarga quando cresce. */
@@ -1086,6 +1380,8 @@ function passo(dt) {
   aggiornaPredatori(dt);
   aggiornaRinascite(dt);
   aggiornaPericoli(dt);
+  aggiornaOnde(dt);
+  aggiornaProiettili(dt);
   if (inPartita()) {
     aggiornaConchiglie(dt);
     aggiornaBolle(dt);
@@ -1132,14 +1428,14 @@ function scatta() {
   if (sc.ricarica > 0) return false;
   sc.attivo = sc.durata; sc.ricarica = sc.durataRicarica;
   suono('scatto'); vibra(15); emetti('scatto', {});
+  aggiornaDati();                                  // il cruscotto vede subito la ricarica che riparte
   return true;
 }
 
 /* Un mondo senza eroe per fare da sfondo vivo al menu. */
 function sfondoMenu(idAmbiente) {
   if (stato === 'gioco' || stato === 'pausa') abbandona();
-  const scheda = B.cast.ambienti.find(a => a.id === idAmbiente) || B.cast.ambienti[0];
-  creaMondo(B.livelli.config((scheda.ordine - 1) * B.livelli.perAmbiente + 2), false);
+  creaMondo(B.livelli.config((B.livelli.primoLivelloDi(idAmbiente) || 1) + 1), false);
   stato = 'ferma';
   return M;
 }
@@ -1157,6 +1453,7 @@ B.partita = {
   raggioEroe,
   // tabelle da estendere (vedi ARCHITETTURA §8) e attrezzi per chi scrive attacchi e comportamenti
   indoli: INDOLI, speciali: SPECIALI, comportamenti: COMPORTAMENTI,
-  attrezzi: { suono, vibra, annuncia, scoppio, testo, nuvola, prendiPerle, puntoLontano, preparaCarica, colpito, insegui, fuggi },
+  attrezzi: { suono, vibra, annuncia, scoppio, testo, nuvola, onda, proiettile, tira, oscura, evoca, prendiPerle, puntoLontano,
+    preparaCarica, preparaAvviso, colpito, insegui, fuggi },
 };
 })();

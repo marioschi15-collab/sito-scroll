@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a1f44">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Boccone — mangia, cresci, sopravvivi</title>
+<!-- STILI -->
+</head>
+<body>
+<canvas id="tela"></canvas>
+
+<!-- Il cruscotto: ciò che si vede durante la partita (lo riempie 70-interfaccia.js) -->
+<div id="cruscotto">
+  <div id="cr-alto">
+    <div class="riga">
+      <button class="tondo vetro" id="cr-pausa" aria-label="Pausa"><i class="segno-pausa"></i></button>
+      <div id="cr-avanzamento">
+        <div id="cr-etichette"><span id="cr-livello"></span><span id="cr-obiettivo"></span></div>
+        <div id="cr-barra" class="vetro"><i id="cr-barra-piena"></i></div>
+        <div id="cr-frenesia"><i id="cr-frenesia-piena"></i></div>
+      </div>
+      <div id="cr-perle" class="vetro"><i class="perla"></i><span id="cr-perle-num">0</span></div>
+    </div>
+    <div id="cr-sotto"><span id="cr-cuori"></span><span id="cr-aiuti"></span></div>
+  </div>
+  <div id="cr-annuncio"><b id="cr-annuncio-titolo"></b><span id="cr-annuncio-sotto"></span></div>
+  <div id="cr-consiglio"></div>
+  <button id="cr-scatto" class="pronto" aria-label="Scatto"><span>SCATTO</span></button>
+</div>
+
+<!-- Le schermate (casa, mappa, negozio…): le crea 71-schermate.js -->
+<div id="schermate"></div>
+<!-- Gli avvisi a comparsa (traguardi, scoperte, regali) -->
+<div id="avvisi" aria-live="polite"></div>
+<div id="attesa">Si parte…</div>
+
+<!-- SCRIPT -->
+</body>
+</html>
