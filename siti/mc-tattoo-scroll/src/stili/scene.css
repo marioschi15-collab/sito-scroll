@@ -948,7 +948,7 @@
   position: relative;
   height: 1px;
   /* a destra resta libero il posto del pulsante "Prenota" */
-  margin: 2.5rem min(27rem, 32vw) 0 0.5rem;
+  margin: 2.5rem min(33rem, 38vw) 0 0.5rem;
   background: color-mix(in srgb, var(--testo) 18%, transparent);
 }
 .rito__riempi {
