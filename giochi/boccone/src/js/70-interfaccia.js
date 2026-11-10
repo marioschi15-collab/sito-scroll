@@ -59,9 +59,10 @@ function avviso(testo, opzioni) {
   const o = opzioni || {};
   const casa = $('avvisi');
   if (!casa) return;
-  /* In partita uno alla volta e più svelti, per non coprire gli annunci; nei menu due. */
+  /* Uno alla volta (in partita più svelti), per non coprire annunci e schermate; in coda al massimo tre: gli altri
+     non si perdono, i traguardi restano segnati nella loro schermata. */
   const inPartita = casa.classList.contains('in-partita');
-  if (avvisiVivi >= (inPartita ? 1 : 2)) { if (codaAvvisi.length < 6 && !o.leggero) codaAvvisi.push([testo, o]); return; }
+  if (avvisiVivi >= 1) { if (codaAvvisi.length < 3 && !o.leggero) codaAvvisi.push([testo, o]); return; }
   const a = el('div', 'avviso' + (o.classe ? ' ' + o.classe : '')), corpo = el('div', '', testo), durata = o.durata || (inPartita ? 2.2 : 3);
   if (o.segno) a.append(el('span', 'segno', o.segno));
   if (o.sotto) corpo.append(el('small', '', o.sotto));
