@@ -19,6 +19,8 @@ const PASSO_TAGLIA = 6;           // ogni taglia è 6 volte più forte della pre
 const LARGHEZZA_FASCIA = 2.6;     // dal più debole al più forte della stessa taglia
 const QUANTI = [10, 9, 8, 7, 6];  // esemplari per taglia in un mondo di 2600 × 2600
 const GENTILE = 0.85;             // al primo livello i pesci sono un po' meno
+/* Nei cinque livelli del primo ambiente i pesci grossi aumentano piano (poi vale AFFOLLAMENTO dell'ambiente). */
+const FOLLA_PRIMI = [GENTILE, 1.0, 1.05, 1.1, 1.0];
 /* Quanti pesci in più o in meno per ambiente (1 = come da QUANTI). Gli ambienti con le specie più tranquille (timide,
    pigre, da agguato) ne hanno di più, quelli pieni di inseguitori di meno: così la difficoltà cresce con i livelli e
    non a salti secondo chi ci abita. Numeri trovati con prova-mondo.mjs: da rivedere se cambia il cast. */
@@ -36,7 +38,9 @@ const SCIAME = 1.5, PERICOLI_MAX = 14;   // particolarità "sciame": meduse × 1
    secondo, sale in fretta fino al decimo (9,6) e poi piano fino a 12,6 all'ultimo. Nella versione precedente saliva
    di uno a livello fino a 12; qui i livelli sono quaranta e gli ambienti più avanti hanno già abitanti e pericoli più
    insidiosi: i livelli alti si affrontano con i potenziamenti del negozio. */
-function difficolta(n) { return n <= 1 ? 0 : n <= 10 ? 4 + (n - 2) * 0.7 : 9.6 + (n - 10) * 0.1; }
+/* Il primo ambiente è la scuola del gioco e sale più dolce: 0, 2,5, 3,5, 4,3, 5,2. */
+const PRIMI_LIVELLI = [0, 2.5, 3.5, 4.3, 5.2];
+function difficolta(n) { return n <= PRIMI_LIVELLI.length ? PRIMI_LIVELLI[Math.max(1, n) - 1] : n <= 10 ? 4 + (n - 2) * 0.7 : 9.6 + (n - 10) * 0.1; }
 
 // ---------------------------------------------------------------- particolarità dei livelli
 const PARTICOLARITA = {
@@ -192,7 +196,7 @@ function config(n) {
   const quantiPericoli = n === 1 ? 0 : Math.round((Math.min(3 + n, 7) + Math.min(3, Math.floor((n - 1) / 12))) * densita);
   return {
     n, modalita: 'avventura', ordine, posto, ambiente: amb, K, difficolta: d, seme: n,
-    fasce: creaFasce(amb, K, d, densita, giro, n === 1 ? GENTILE : AFFOLLAMENTO[amb.id] || 1),
+    fasce: creaFasce(amb, K, d, densita, giro, n <= FOLLA_PRIMI.length ? FOLLA_PRIMI[Math.max(1, n) - 1] : AFFOLLAMENTO[amb.id] || 1),
     obiettivo,
     banchi: creaBanchi(amb, densita, tipo === 'branchi'),
     pericoli: creaPericoli(amb, quantiPericoli, tipo === 'sciame'),

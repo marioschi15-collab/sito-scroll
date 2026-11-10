@@ -2325,6 +2325,168 @@ B.specie.registra({
 //# sourceURL=boccone/js/20-specie/barracuda.js
 </script>
 <script>
+/* Boccone — specie: CASTAGNOLA (taglia 1, branco). Pesciolino ovale blu notte: squame orlate d'azzurro elettrico, un filo
+   di luce lungo il dorso, occhione dorato e la coda a forbice dai bordi scuri, che si apre e si chiude mentre nuota.
+   Il tratto esagerato sono l'occhio e la forbice della coda. */
+(() => {
+'use strict';
+const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
+const { sin, max } = Math;
+
+// ---- tinte (una volta sola) e sagoma: ovale e un po' alto, testa grossa
+const T = { corpo: P.tinta('#3848dc'), ventre: P.tinta('#8f9cff', '#5b4bd6'), pinna: P.tinta('#3d7bff'), pett: P.tinta('#63b0ff'), labbra: P.tinta('#ff6f8f') };
+const NEON = '#4fe0ff', GHIACCIO = '#b4f2ff', SQUAMA = { luce: NEON, scura: T.corpo.bordo };
+const SU = P.sagoma([[0, .1], [.12, .22], [.3, .48], [.5, .62], [.7, .63], [.88, .52], [1, .32]]);
+const GIU = P.sagoma([[0, .1], [.12, .2], [.3, .43], [.5, .55], [.7, .55], [.88, .43], [1, .25]]);
+const ONDA = { amp: .12, onde: .55, testa: .13 };
+
+B.specie.registra({
+  id: 'castagnola',
+  descrizione: 'Da piccola è di un blu elettrico che sembra accesa; crescendo diventa scura come una castagna, e da lì il nome. Vive in nuvole di centinaia di compagne sospese sopra gli scogli.',
+  forma: { lx: .95, ly: .6 },
+  ingombro: { x0: -1.86, y0: -1.11, x1: 1.13, y1: 1.11 },
+  disegna(c, o) {
+    const fase = o.fase || 0, F = fase * TAU, m = !!o.minaccia, b = o.bocca || 0, q = {};
+    c.save();
+    const s = P.spinaPesce(14, -.86, .7, fase, ONDA, SU, GIU, { testa: .28 }), luce = [.3, -.5, 1.7], alza = m ? .25 : 0;
+
+    // ---- 1. dietro al corpo: la coda a forbice (si apre e si chiude) con i bordi scuri, dorsale, anale, ventrale
+    P.suSpina(s, 0, 0, q);
+    const g = P.coda(c, { x: q.x + .05, y: q.y, ang: q.ang + PI + sin(F - 1.1) * .34, tipo: 'luna', lung: .68, alt: .5 + sin(F * 2 + .6) * .07 + (m ? .07 : 0), radice: .13,
+      fase: F - 1.9, onda: .12, tinta: T.pinna, punta: GHIACCIO });
+    for (const i of [0, g.n]) P.filo(c, [g.bx[i], g.by[i], g.mx[i], g.my[i], g.ex[i], g.ey[i]], .11, .02, T.corpo, .03);
+    const a = P.suSpina(s, .74, -.92), z = P.suSpina(s, .16, -.8), an0 = P.suSpina(s, .44, .88), an1 = P.suSpina(s, .15, .8);
+    P.pinna(c, { x0: a.x, y0: a.y, x1: z.x, y1: z.y, a0: -(PI / 2 + .35 - alza), a1: -(PI - .45 - alza * .4), lung: m ? .52 : .45, profilo: [.7, .9, .82, .8, 1.05, .95, .6], n: 9, smerlo: m ? .7 : .35,
+      onda: .07, fase: F * 2, passo: .6, tinta: T.pinna, orlo: NEON });
+    P.pinna(c, { x0: an0.x, y0: an0.y, x1: an1.x, y1: an1.y, a0: PI / 2 + .45, a1: PI - .4, lung: .36, profilo: [.7, 1, .9, .6], n: 6, smerlo: .35, onda: .07, fase: F * 2 - 1.5, tinta: T.pinna, orlo: NEON });
+    const pv = P.suSpina(s, .62, .95);
+    P.pinna(c, { x0: pv.x + .06, y0: pv.y - .05, x1: pv.x - .08, y1: pv.y - .05, a0: PI * .6 + sin(F - .5) * .1, a1: PI * .8 + sin(F - .5) * .1, lung: .42, profilo: [1, .5], n: 3, piega: .1, tinta: T.pinna, orlo: NEON, righe: false });
+
+    // ---- 2. il corpo: ventre lilla, filo elettrico lungo il dorso, squame orlate d'azzurro
+    P.volume(c, s, T.corpo, { luce, ombra: .09, dentro(cc) {
+      P.fianco(cc, s, u => .5 - .18 * sin(u * PI), 1.4, T.ventre.base);
+      P.fianco(cc, s, -.93, -.78, NEON, .2, .97);
+      if (P.fine(o)) P.squame(cc, s, { u0: .14, u1: .7, v0: -.68, v1: .4, righe: 4, tinta: SQUAMA, forza: .95 });
+    } });
+    const g1 = P.suSpina(s, .74, -.5), g2 = P.suSpina(s, .69, 0), g3 = P.suSpina(s, .74, .55);
+    P.solco(c, [g1.x, g1.y, g2.x, g2.y, g3.x, g3.y], T.corpo, .04);                                // opercolo
+    P.suSpina(s, .56, -.62, q); P.riflesso(c, q.x, q.y, .36, q.ang - .12, .13);
+
+    // ---- 3. sul fianco: la pettorale che rema, con la sua ombra
+    const pp = P.suSpina(s, .64, .22), rema = sin(F * 2 + .4), ap = PI * .9 + rema * .35;
+    P.ombra(c, pp.x - .18, pp.y + .06, .32, .2, -.3, .28);
+    P.pinna(c, { x0: pp.x + .03, y0: pp.y - .1, x1: pp.x - .02, y1: pp.y + .1, a0: ap - .42 - rema * .1, a1: ap + .5 + rema * .1, lung: .5, profilo: [.7, 1, 1, .8, .55], n: 5, onda: .1, fase: F * 2, passo: .7,
+      tinta: T.pett, orlo: GHIACCIO, primo: true });
+
+    // ---- 4. la faccia. Calmo: occhione dorato, boccuccia chiusa. A caccia: occhio rosso tagliato, sopracciglio, denti
+    const e = P.suSpina(s, .86, -.26);
+    P.occhio(c, e.x, e.y, .27, Object.assign({ iride: m ? '#ff3a1e' : '#ffc21a', pelle: T.corpo, guarda: { x: .5, y: .1 } }, m ? P.SGUARDI.cattivo : P.SGUARDI.normale));
+    if (m) P.sopracciglio(c, e.x + .06, e.y - .25, .54, .5, T.corpo.bordo, .13);
+    const l = P.suSpina(s, 1, .35);
+    P.labbra(c, l.x + .23, l.y + .02, l.ang + .08, m ? .15 : .13, m ? max(b, .45) : b * .5, T.labbra, { denti: m ? 3 : 0 });
+    c.restore();
+  },
+});
+})();
+
+//# sourceURL=boccone/js/20-specie/castagnola.js
+</script>
+<script>
+/* Boccone — specie: CAVALLUCCIO MARINO (taglia 1, timido, assetto 'dritto': il motore non lo ruota, lo specchia soltanto).
+   Sta in piedi col muso a tubo verso +x: testa da cavallino con la coroncina, collo arcuato, pancia tonda, coda a ricciolo.
+   Il corpo è UNA spina costruita per angoli dalla nuca alla punta della coda (così la testa resta ferma e la coda dondola);
+   la testa è un pezzo a parte, appoggiato sul collo. Il tratto esagerato sono il muso a trombetta e l'occhione. */
+(() => {
+'use strict';
+const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
+const { sin, cos, max, min, round } = Math;
+
+// ---- tinte (una volta sola)
+const T = { corpo: P.tinta('#ffc21a', '#f0541e'), ventre: P.tinta('#fff1c4', '#f0a05a'), pinna: P.tinta('#27c9c0'), corona: P.tinta('#ff7a2e', '#d02a3a'), labbra: P.tinta('#ff6f8f') };
+const ORLO = '#c9fff6', PUNTINI = P.alfa('#fff6d0', .85), FASCIA = P.alfa('#e2401e', .8);
+// ---- il corpo: 30 tratti lunghi in tutto 2.7, dalla punta della coda (u = 0) alla nuca (u = 1). SU è la schiena (-x), GIU la pancia (+x)
+const NT = 30, LUNG = 2.7, K0 = .44;
+const SU = P.sagoma([[0, .028], [.15, .045], [.3, .065], [.44, .1], [.54, .17], [.66, .24], [.8, .26], [.92, .21], [1, .16]]);
+const GIU = P.sagoma([[0, .028], [.15, .045], [.3, .065], [.44, .1], [.54, .18], [.64, .36], [.75, .47], [.86, .38], [.94, .24], [1, .17]]);
+/* Di quanto la linea di mezzo devia dalla verticale scendendo dalla nuca (k = 0): collo all'indietro, pancia in avanti,
+   coda di nuovo indietro; da k = K0 in poi si arrotola in avanti, sempre più stretta (un giro abbondante: di più le spire si
+   toccherebbero e il ricciolo diventerebbe una ciambella). */
+const PIEGA = [[0, .5], [.08, .28], [.19, -.3], [.28, -.1], [.37, .3], [.44, .1]];
+const tab = (l, k) => { let i = 0; while (i < l.length - 2 && k > l[i + 1][0]) i++; const a = l[i], b = l[i + 1], q = max(0, min(1, (k - a[0]) / (b[0] - a[0]))); return a[1] + (b[1] - a[1]) * q * q * (3 - 2 * q); };
+const posa = F => {
+  const px = [-.05], py = [-.52 + .03 * sin(F)], passo = LUNG / NT, ricciolo = 6.6 * (1 + .03 * sin(F - 1));
+  for (let i = 1; i <= NT; i++) {
+    const k = (i - .5) / NT, x = (k - K0) / (1 - K0), a = PI / 2 + (k < K0 ? tab(PIEGA, k) : .1 - ricciolo * x * (.1 + .9 * x)) + .06 * k * sin(F - k * 2.5);
+    px[i] = px[i - 1] + cos(a) * passo; py[i] = py[i - 1] + sin(a) * passo;
+  }
+  return P.spina(NT, (u, p) => { const i = round((1 - u) * NT); p.x = px[i]; p.y = py[i]; }, SU, GIU, { coda: .03 });
+};
+// ---- la testa, nelle sue coordinate (origine al centro del cranio, +x lungo il muso): sagoma, coroncina [x, y, angolo, lunghezza]
+const TESTA = [-.34, -.02, -.16, -.33, .13, -.28, .33, -.11, .6, -.09, .8, -.11, .88, 0, .8, .11, .6, .085, .33, .12, .1, .3, -.18, .28];
+const CORONA = [[-.28, -.14, -PI / 2 - .95, .19], [-.19, -.25, -PI / 2 - .45, .27], [-.07, -.28, -PI / 2 - .02, .28], [.05, -.25, -PI / 2 + .42, .19]];
+const OPERCOLO = [-.14, -.16, -.22, .04, -.13, .2], FASCE = [.46, .63];
+/* I nodi ossei che sporgono dalla schiena: tondini della tinta del corpo, tutti in un tracciato. Si disegnano PRIMA del corpo. */
+const nodi = (c, p, r, t) => {
+  c.beginPath(); for (let i = 0; i < p.length; i += 2) { const rr = r(i / 2); c.moveTo(p[i] + rr, p[i + 1]); c.arc(p[i], p[i + 1], rr, 0, TAU); }
+  c.strokeStyle = t.bordo; c.lineWidth = P.BORDO * 1.6; c.stroke(); c.fillStyle = t.chiara; c.fill();
+};
+const raggioNodo = i => .045 + .005 * i;
+
+B.specie.registra({
+  id: 'cavalluccio',
+  descrizione: 'Nuota in piedi, piano piano, facendo vibrare la pinna che ha sulla schiena. Con la coda si aggrappa alle alghe per non farsi portare via, e i piccoli li porta nel marsupio il papà.',
+  forma: { lx: .55, ly: 1.2 },
+  ingombro: { x0: -.94, y0: -1.44, x1: 1.05, y1: 1.38 },
+  disegna(c, o) {
+    const F = (o.fase || 0) * TAU, m = !!o.minaccia, b = o.bocca || 0, q = {};
+    c.save();
+    const s = posa(F), luce = [.25, -.3, 2.4];
+
+    // ---- 1. dietro al corpo: la pinna della schiena che vibra, i nodi ossei lungo la schiena
+    const d0 = P.suSpina(s, .85, -.85), d1 = P.suSpina(s, .67, -.85);
+    P.pinna(c, { x0: d0.x, y0: d0.y, x1: d1.x, y1: d1.y, a0: PI + .75 + (m ? .25 : 0), a1: PI - .55 - (m ? .15 : 0), lung: m ? .52 : .43, profilo: [.75, 1, 1, .8], n: 8, smerlo: .35,
+      onda: .16, fase: F * 4, passo: 1.1, tinta: T.pinna, orlo: ORLO });
+    nodi(c, P.puntiSuSpina(s, 8, .535, .96, -1.06), raggioNodo, T.corpo);
+
+    // ---- 2. il corpo: pancia chiara, puntini, anelli incisi dalla coda al collo
+    P.volume(c, s, T.corpo, { luce, ombra: .08, dentro(cc) {
+      P.fianco(cc, s, u => .3 + max(0, .66 - u) * 7, 1.4, T.ventre.base, .52, .97);
+      P.anelli(cc, s, .05, .96, 16, T.corpo, { spess: .04 });
+      if (P.fine(o)) P.macchie(cc, s, { n: 9, seme: 4, u0: .56, u1: .95, v0: -.75, v1: .15, r0: .018, r1: .03, colore: PUNTINI, lungo: 1 });
+    } });
+    P.suSpina(s, .86, -.1, q); P.riflesso(c, q.x, q.y, .3, q.ang + PI, .12);
+
+    // ---- 3. sul collo: la pinnetta dietro la guancia, che frulla
+    const pe = P.suSpina(s, .93, -.3), fr = sin(F * 3) * .18;
+    P.pinna(c, { x0: pe.x + .03, y0: pe.y - .08, x1: pe.x - .02, y1: pe.y + .08, a0: PI + .75 + fr, a1: PI - .45 + fr, lung: .25, profilo: [.7, 1, 1, .75], n: 5, smerlo: .3, onda: .12, fase: F * 3,
+      tinta: T.pinna, orlo: ORLO, primo: true });
+
+    // ---- 4. la testa appoggiata sul collo: coroncina (a caccia si drizza), cranio e muso a tubo
+    const n0 = P.suSpina(s, 1, 0), ha = .4 + .05 * sin(F + 1) + (m ? .1 : 0), hx = n0.x + .06, hy = n0.y - .12, ca = cos(ha), sa = sin(ha);
+    P.ombra(c, n0.x + .07, n0.y + .14, .32, .15, .4, .3);
+    c.save(); c.translate(hx, hy); c.rotate(ha);
+    for (const k of CORONA) P.corno(c, k[0], k[1], k[2] + (m ? .12 : 0), k[3] * (m ? 1.3 : 1), .12, T.corona, { punta: m ? '#ffe14a' : T.corona.luce });
+    P.volume(c, cc => P.profilo(cc, TESTA), T.corpo, { luce: [.1, -.3, 1], ombra: .06, dentro(cc) {
+      cc.beginPath(); for (const x of FASCE) cc.rect(x, -.2, .05, .4); cc.fillStyle = FASCIA; cc.fill();   // fascette sul tubo
+    } });
+    P.solco(c, OPERCOLO, T.corpo, .03);
+    P.riflesso(c, .56, -.045, .2, 0, .04);
+    c.restore();
+
+    // ---- 5. la faccia. Calmo: occhione verde acqua, gota rosa, trombetta chiusa. A caccia: occhio rosso tagliato, sopracciglio, dentini
+    const ex = hx + ca * .02 + sa * .05, ey = hy + sa * .02 - ca * .05;
+    if (!m) P.guancia(c, hx + ca * .2 - sa * .2, hy + sa * .2 + ca * .2, .12);
+    P.occhio(c, ex, ey, .21, Object.assign({ iride: m ? '#ff3a1e' : '#19b89c', pelle: T.corpo, guarda: { x: .5, y: .15 } }, m ? P.SGUARDI.cattivo : P.SGUARDI.normale));
+    if (m) P.sopracciglio(c, ex + .05, ey - .21, .48, .55, T.corpo.bordo, .12);
+    P.labbra(c, hx + ca * .9, hy + sa * .9, ha, m ? .13 : .115, m ? max(b, .45) : b * .5, T.labbra, { denti: m ? 2 : 0 });
+    c.restore();
+  },
+});
+})();
+
+//# sourceURL=boccone/js/20-specie/cavalluccio.js
+</script>
+<script>
 /* Boccone — gigante: DON CERNIA, il padrone della laguna. Una cernia colossale bruno-oliva marmorizzata: labbroni carnosi,
    mento sporgente, guancia cadente, sopracciglia folte, coroncina e un dente d'oro.
    Tutti gli stati letti con P.statoGigante. Il segnale da ricordare: labbra rosa = tranquillo; labbra che LAMPEGGIANO ROSSE
@@ -3429,6 +3591,229 @@ B.specie.registra({
 })();
 
 //# sourceURL=boccone/js/20-specie/pesce_pappagallo.js
+</script>
+<script>
+/* Boccone — specie: PESCE SCATOLA (taglia 2, pigro, corazza). Un cubetto giallo a pois blu notte: la corazza è rigida, quindi
+   il corpo non ondeggia ma dondola tutto intero, e a spingerlo sono le pinnette minuscole che frullano e la codina su un
+   gambo. Faccia in discesa, boccuccia a bacio in basso, due cornetti sopra gli occhi. Il tratto esagerato è la forma a dado. */
+(() => {
+'use strict';
+const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
+const { sin, max } = Math;
+
+// ---- tinte (una volta sola) e sagoma: una scatola dagli spigoli tondi, col muso in discesa e la bocca in basso
+const T = { corpo: P.tinta('#ffd21f', '#ff7a14'), pinna: P.tinta('#ff8f1f', '#e0341e'), labbra: P.tinta('#ff6f8f') };
+const POIS = '#2e2a86', SOPRA = P.alfa('#fff6a8', .55), SOTTO = P.alfa('#ff8a1e', .5), ORLO = '#ffe98a';
+const SU = P.sagoma([[0, .42], [.07, .62], [.2, .7], [.6, .72], [.78, .64], [.9, .34], [1, .03]]);
+const GIU = P.sagoma([[0, .4], [.07, .6], [.2, .68], [.65, .68], [.84, .66], [.94, .56], [1, .4]]);
+/* I dentini in vista fra le labbra aperte (P.labbra li lascia dietro le labbra): stessi x, y, ang, r, apri delle labbra. */
+const dentini = (c, x, y, ang, r, apri) => {
+  c.save(); c.translate(x, y); c.rotate(ang - apri * .5);
+  P.denti(c, -.12 * r, .03 * r, .52 * r, -.1 * r, 3, r * (.12 + .22 * apri), -1, { tipo: 'piatto', spess: .012 });
+  c.rotate(apri * 1.35);
+  P.denti(c, -.12 * r, -.03 * r, .48 * r, .09 * r, 3, r * (.08 + .18 * apri), 1, { tipo: 'piatto', spess: .012 });
+  c.restore();
+};
+
+B.specie.registra({
+  id: 'pesce_scatola',
+  descrizione: 'Sotto la pelle ha una vera scatola d\'osso, fatta di piastrine a sei lati saldate fra loro: non può piegarsi, e nuota remando con le pinnette come un piccolo elicottero.',
+  forma: { lx: .9, ly: .72 },
+  ingombro: { x0: -1.5, y0: -1.2, x1: 1.2, y1: 1.1 },
+  disegna(c, o) {
+    const F = (o.fase || 0) * TAU, m = !!o.minaccia, b = o.bocca || 0, q = {};
+    c.save();
+    c.translate(0, sin(F) * .03); c.rotate(sin(F - .8) * .055);                                    // la scatola dondola tutta intera
+    const s = P.spinaPesce(12, -.8, .8, 0, null, SU, GIU, { testa: .14, coda: .1 }), luce = [.3, -.5, 2], apre = m ? 1.25 : 1;
+
+    // ---- 1. dietro al corpo: codina a ventaglio sul suo gambo, dorsale e anale minuscole che frullano, i due cornetti
+    const scod = sin(F - 1.1) * .45, gx = -.72, gy = .06;
+    P.coda(c, { x: gx - .26, y: gy + sin(scod * .5) * .26, ang: PI + scod, tipo: 'ventaglio', lung: .5 * apre, alt: .42 * apre, radice: .09, fase: F - 1.9, onda: .2, smerlo: .4, tinta: T.pinna, orlo: ORLO });
+    P.corno(c, gx, gy, PI + scod * .5, .42, .34, T.corpo, { punta: T.corpo.base, gonfio: 1 });     // il gambo della coda
+    P.pinna(c, { x0: -.3, y0: -.64, x1: -.56, y1: -.6, a0: -PI / 2 - .25, a1: -PI + .45, lung: .3 * apre, profilo: [.8, 1, .95, .7], n: 5, smerlo: .4, onda: .22, fase: F * 3, passo: .9, tinta: T.pinna, orlo: ORLO });
+    P.pinna(c, { x0: -.3, y0: .6, x1: -.56, y1: .56, a0: PI / 2 + .25, a1: PI - .45, lung: .28 * apre, profilo: [.8, 1, .95, .7], n: 5, smerlo: .4, onda: .22, fase: F * 3 + 1.6, passo: .9, tinta: T.pinna, orlo: ORLO });
+    const e = P.suSpina(s, .76, -.36), punta = m ? '#fff2a0' : T.pinna.luce;
+    P.corno(c, e.x + .2, e.y - .2, -PI / 2 + (m ? .95 : .8), m ? .46 : .36, .2, T.pinna, { curva: -.25, punta });   // cornetto lontano
+    P.corno(c, e.x + .06, e.y - .22, -PI / 2 + (m ? .6 : .42), m ? .56 : .44, .23, T.pinna, { curva: -.25, punta });
+
+    // ---- 2. la scatola: faccia di sopra chiara, faccia di sotto calda, pois blu notte, spigoli incisi
+    P.volume(c, s, T.corpo, { luce, ombra: .1, dentro(cc) {
+      P.fianco(cc, s, -1.4, -.64, SOPRA);
+      P.fianco(cc, s, .66, 1.4, SOTTO);
+      P.macchie(cc, s, { n: 15, seme: 3, u0: .05, u1: .7, v0: -.9, v1: .9, r0: .055, r1: .085, colore: POIS, lungo: 1 });
+    } });
+    P.solco(c, P.puntiSuSpina(s, 5, .07, .74, -.64), T.corpo, .035);
+    P.solco(c, P.puntiSuSpina(s, 5, .07, .86, .66), T.corpo, .035);
+    P.riflesso(c, .0, -.5, .42, -.05, .08);
+
+    // ---- 3. sul fianco: la pettorale piccola che frulla, con la sua ombra
+    const rema = sin(F * 3 + .4), ap = PI * .95 + rema * .3;
+    P.ombra(c, .02, .2, .26, .17, -.3, .25);
+    P.pinna(c, { x0: .2, y0: .05, x1: .16, y1: .25, a0: ap - .5 - rema * .1, a1: ap + .55 + rema * .1, lung: .34 * apre, profilo: [.7, 1, 1, .8], n: 5, smerlo: .35, onda: .14, fase: F * 3, passo: .8, tinta: T.pinna, orlo: ORLO, primo: true });
+
+    // ---- 4. la faccia. Calmo: occhione azzurro, gota rosa, bacio chiuso. A caccia: occhio rosso tagliato, sopracciglio, dentoni
+    if (!m) P.guancia(c, e.x + .12, e.y + .36, .15);
+    P.occhio(c, e.x, e.y, .27, Object.assign({ iride: m ? '#ff3a1e' : '#2a8cff', pelle: T.corpo, guarda: { x: .5, y: .15 } }, m ? P.SGUARDI.cattivo : P.SGUARDI.normale));
+    if (m) P.sopracciglio(c, e.x + .06, e.y - .25, .56, .5, T.corpo.bordo, .13);
+    const lx = .97, ly = .2, lr = m ? .2 : .18, apri = m ? max(b, .45) : b * .5;
+    P.labbra(c, lx, ly, .1, lr, apri, T.labbra);
+    if (m) dentini(c, lx, ly, .1, lr, apri);
+    c.restore();
+  },
+});
+})();
+
+//# sourceURL=boccone/js/20-specie/pesce_scatola.js
+</script>
+<script>
+/* Boccone — gigante: LA PIOVRA, la regina della foresta di alghe. Un polpo colossale rosso corallo: testa a sacco che
+   respira, occhione dorato con la pupilla a sbarra sopra il suo bozzo, cornetti di pelle al posto delle sopracciglia, becco
+   in mezzo alle braccia, corona. Le otto braccia sono vive e girano a girandola: quattro lontane (scure) e quattro vicine
+   con la pancia chiara e la fila di ventose a perline; ognuna si arriccia per conto suo.
+   Tutti gli stati letti con P.statoGigante. Il segnale da ricordare: macchie ad anello spente = tranquilla; macchie e
+   ventose che si ACCENDONO DI GIALLO (con il sacco che si gonfia e le braccia che si avvolgono come molle) = sta per colpire.
+   Quando parte spalanca le braccia a tenaglia e apre il becco. */
+(() => {
+'use strict';
+const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
+const { sin, cos, round } = Math;
+const lerp = (a, b, k) => a + (b - a) * k;
+
+// ---- tinte (una volta sola). La pelle ha sette gradini, dal corallo al rosso rovente: i polpi cambiano colore davvero.
+function tavolozza(base, ombra, livello, spenta) {
+  const pelle = P.tinta(base, ombra), fondo = P.mescola(base, '#5a1466', .46), acceso = livello > 1, k = acceso ? (livello - 2) / 4 : 0;
+  return {
+    pelle, lontano: P.tinta(fondo), sotto: P.mescola(base, '#fff0dc', .64), velo: P.alfa(P.mescola(base, '#fff0dc', .7), .72), nei: P.alfa(pelle.bordo, .38),
+    ventosa: spenta ? '#ebe2ee' : acceso ? P.mescola('#ffe14a', '#fffbd0', k) : '#fff0e2',
+    ventosaLontana: P.mescola(spenta ? '#ebe2ee' : acceso ? '#ffd23c' : '#fff0e2', fondo, acceso ? .25 : .42),
+    cuoreVentosa: spenta ? '#b9a3c4' : acceso ? '#ff8a1e' : '#f58a8e',
+    anello: spenta ? P.alfa('#7d6a9c', .45) : acceso ? P.mescola('#ffb21e', '#ffee3c', k) : livello ? '#c42a52' : P.alfa('#a8204e', .5),
+    cuore: spenta ? '#d9cfe0' : acceso ? P.mescola('#ffe9a0', '#ffffff', k) : livello ? '#ffc0a0' : '#ffb59c',
+  };
+}
+const VIVE = [];
+for (let i = 0; i <= 6; i++) VIVE.push(tavolozza(P.mescola('#ff6b4a', '#ff2444', i / 6), P.mescola('#9a1a5e', '#6e0a52', i / 6), i, false));
+const STORDITA = tavolozza('#f58a78', '#8a3a80', 0, false), SPENTA = tavolozza('#c9aabb', '#6f5f92', 0, true);
+const BECCO = P.tinta('#ffc21f', '#f0641e'), LABBRO = P.tinta('#ffb7a8', '#d8486a'), SIFONE = P.tinta('#ffc9b4', '#d8486a');
+const ROSSO = '#ff3348', GIALLO = '#ffd21e';
+const CALMO = { palpebra: .3, sotto: .1 };                             // l'occhio socchiuso della regina che non ha fretta
+
+/* Il sacco: un pallone inclinato all'indietro, più stretto al collo dove sparisce sotto la testa. Va dalla punta (in alto
+   a sinistra) al collo. */
+const SU = P.sagoma([[0, .34], [.2, .6], [.45, .7], [.7, .62], [.88, .48], [1, .38]]);
+const GIU = P.sagoma([[0, .32], [.2, .52], [.45, .58], [.7, .52], [.88, .43], [1, .36]]);
+const NS = 12, X0 = -1.12, Y0 = -1.0, X1 = .06, Y1 = -.1;                // tratti del sacco, punta e collo
+const HX = .17, HY = -.03, CX = .35, CY = .2;                           // centro della testa, centro della corona di braccia
+const ASSE = .3, MX = CX + cos(ASSE) * .44, MY = CY + sin(ASSE) * .44;  // direzione e posto del becco (attorno a x = .8)
+/* Le braccia: [angolo da calma, angolo a tenaglia aperta, ricciolo da calma, ricciolo aperto, lunghezza, lato delle ventose].
+   Si alternano una lontana e una vicina, dall'alto in avanti fino a dietro sotto il sacco. Da calma girano tutte dalla
+   stessa parte, a girandola, così non si incrociano; aperte, le tre di sopra si alzano e piegano la punta in giù come
+   artigli, le cinque di sotto si distendono: in mezzo resta il becco. */
+const LONTANE = [[-.6, -1.2, -1.7, .9, 1.1, 1], [.3, -.42, -1.5, .7, 1.5, 1], [1.2, 1.3, -1.6, -1, 1.4, -1], [2.1, 2.15, -1.7, -1.3, 1.3, -1]];
+const VICINE = [[-.15, -.8, -2.3, 1.1, 1.35, 1], [.75, .88, -1.9, -.9, 1.55, -1], [1.65, 1.72, -2.2, -1.2, 1.5, -1], [2.55, 2.58, -2.4, -1.5, 1.45, -1]];
+
+/* Un braccio: nastro lucido che si assottiglia e si arriccia; le vicine hanno la pancia chiara dal lato delle ventose e
+   qualche neo sul dorso. Le ventose sono perline lungo l'orlo (metà dentro e metà fuori), col loro cuore rosa: tutte
+   tinte piatte, in tre passate. st = lo stato già calcolato. */
+function braccio(c, a, i, K, st, vicino, q) {
+  let ang, curva, lung = a[4];
+  if (st.giu) { ang = lerp(a[0], 1.2 + (a[0] - .9) * .3, .65) + sin(st.t * 1.1 + i) * .05; curva = a[2] * (st.sconfitto ? 1.25 : .45); lung *= .9; }
+  else {
+    ang = lerp(a[0], a[1], st.ap) + sin(st.t * .8 + i * 1.3) * .05;
+    curva = lerp(a[2], a[3], st.ap) * (1 + st.stringe * .7) + sin(st.t * .6 + i * 2.1) * .2;
+    lung *= 1 - st.stringe * .16 + st.scatto * .08;
+  }
+  const tinta = vicino ? K.pelle : K.lontano, la = a[5], nv = vicino ? 9 : 6;
+  const s = P.tentacolo(c, { x: CX - (vicino ? 0 : .05), y: CY - (vicino ? 0 : .04), ang, lung, spess: vicino ? .44 : .38, punta: .06, curva, onda: st.giu ? .1 : .18,
+    fase: st.F + i * 1.9, tinta, ombra: vicino ? .05 : 0, lume: vicino ? .05 : 0, n: 12 });
+  if (vicino) {
+    P.fianco(c, s, la * .26, la * .96, K.sotto, .02, .95, 10);
+    if (st.fine) P.macchie(c, s, { n: 5, seme: i + 2, u0: .1, u1: .72, v0: -la * .62, v1: -la * .12, r0: .016, r1: .03, colore: K.nei, lungo: 1.3 });
+  }
+  for (let passata = 0; passata < (vicino ? 3 : 2); passata++) {
+    const piu = passata ? 0 : .034, k = passata === 2 ? .42 : 1;
+    c.beginPath();
+    for (let j = 0; j < nv; j++) {
+      const u = .1 + .8 * j / (nv - 1), r = (.078 - .046 * u) * k + piu;
+      P.suSpina(s, u, la * .97, q); c.moveTo(q.x + r, q.y); c.arc(q.x, q.y, r, 0, TAU);
+    }
+    c.fillStyle = passata === 2 ? K.cuoreVentosa : passata ? (vicino ? K.ventosa : K.ventosaLontana) : tinta.bordo; c.fill();
+  }
+}
+
+B.specie.registra({
+  id: 'piovra',
+  descrizione: 'Il polpo ha tre cuori, il sangue blu e nove cervelli: uno nella testa e uno per ogni braccio. La Piovra cambia colore quando si arrabbia: se le macchie le si accendono di giallo, nuota via!',
+  forma: { lx: 1.25, ly: 1.0 },
+  ingombro: { x0: -1.8, y0: -1.75, x1: 2.2, y1: 1.9 },
+  disegna(c, o) {
+    const G = P.statoGigante(o), t = o.t || 0, F = (o.fase || 0) * TAU, q = {};
+    const viva = !G.giu, rosso = G.carica ? 6 : G.avviso ? 2 + round(G.lampo * 4) : G.caccia ? 1 : 0;   // quanto è accesa (0..6): nell'avviso parte già da 2
+    const K = G.sconfitto ? SPENTA : G.stordito ? STORDITA : VIVE[rosso];
+    const st = { t, F, fine: P.fine(o), giu: G.giu, sconfitto: G.sconfitto, stringe: G.avviso ? G.k : 0, scatto: G.carica ? 1 : 0,
+      ap: G.carica ? 1 : G.avviso ? .3 - .14 * G.k : G.apri };                                          // quanto si apre la tenaglia delle braccia
+    const becco = G.giu ? .12 : G.apri;
+    c.save();
+    c.translate(G.rincula + G.trema, sin(t * 1.3) * .025 + (G.sconfitto ? .14 : 0));
+    c.rotate(G.sconfitto ? .3 : G.stordito ? sin(t * 2.2) * .07 : -st.ap * .05);
+    if (rosso > 1) P.bagliore(c, -.2, -.3, 1.7, G.carica ? ROSSO : GIALLO, G.carica ? .3 : .16 + G.lampo * .34);        // l'alone dell'avviso
+
+    // ---- 1. le quattro braccia lontane, scure, dietro a tutto
+    for (let i = 0; i < 4; i++) braccio(c, LONTANE[i], i * 2, K, st, false, q);
+
+    // ---- 2. il sacco: respira, si gonfia prima di colpire, si allunga nello scatto, si affloscia quando è giù
+    const cade = G.sconfitto ? .7 : G.stordito ? .3 + sin(t * 2.2) * .04 : G.carica ? .3 : 0, lungo = G.carica ? 1.12 : G.sconfitto ? .94 : 1;
+    const dondola = viva ? sin(F - 1) * .05 + sin(t * .9) * .03 : 0;
+    const gonfia = G.sconfitto ? -.22 : G.carica ? -.12 : G.avviso ? .05 + G.k * .12 + G.lampo * .03 : (viva ? .035 : .015) * sin(t * 1.7);
+    const s = P.spina(NS, (u, p) => { const d = 1 - u; p.x = X1 + (X0 - X1) * d * lungo - cade * d * d * .5; p.y = Y1 + (Y0 - Y1) * d + (cade + dondola) * d * d; }, SU, GIU, { coda: .3, testa: .1 });
+    for (let i = 0; i <= NS; i++) { const g = 1 + gonfia * sin(PI * i / NS); s.su[i] *= g; s.giu[i] *= g; }
+    P.volume(c, s, K.pelle, { luce: [-.1, -1.2, 2], ombra: .13, dentro(cc) {
+      P.fianco(cc, s, u => .46 + .08 * sin(u * 11), 1.4, K.velo);
+      P.macchie(cc, s, { n: 9, seme: 3, u0: .08, u1: .8, v0: -.84, v1: .3, r0: .06, r1: .105, colore: K.anello, cuore: K.cuore, lungo: 1.1 });
+      P.macchie(cc, s, { n: 12, seme: 8, u0: .05, u1: .9, v0: -.9, v1: .42, r0: .014, r1: .028, colore: K.nei, lungo: 1 });
+    } });
+    if (st.fine) P.bozzi(c, P.puntiSuSpina(s, 5, .14, .56, u => -.76 - .1 * sin(u * 29)), i => .03 + (i % 3) * .012, K.pelle);
+    P.suSpina(s, .56, -.62, q); P.riflesso(c, q.x, q.y, .44, q.ang - .1, .13);
+
+    // ---- 3. sotto la testa: l'ombra del collo, il sifone, la membrana fra le braccia, la bocca col becco
+    P.ombra(c, HX - .3, HY - .12, .36, .5, .5, .34);
+    c.beginPath(); c.ellipse(HX - .36, HY + .34, .16, .095, .75, 0, TAU); c.strokeStyle = SIFONE.bordo; c.lineWidth = .09; c.stroke(); c.fillStyle = viva ? SIFONE.base : K.sotto; c.fill();
+    c.beginPath(); c.ellipse(HX - .44, HY + .41, .05, .07, .75, 0, TAU); c.fillStyle = SIFONE.bordo; c.fill();
+    c.beginPath(); c.ellipse(CX + .1, CY + .1, .42, .38, .4, 0, TAU); c.strokeStyle = K.lontano.bordo; c.lineWidth = .1; c.stroke(); c.fillStyle = K.lontano.ombra; c.fill();
+    c.beginPath(); c.ellipse(MX, MY, .2 + becco * .04, .23 + becco * .05, ASSE, 0, TAU); c.strokeStyle = LABBRO.bordo; c.lineWidth = .08; c.stroke(); c.fillStyle = viva ? LABBRO.base : K.sotto; c.fill();
+    c.beginPath(); c.ellipse(MX + .02, MY + .01, .11 + becco * .06, .13 + becco * .09, ASSE, 0, TAU); c.fillStyle = '#5a0c34'; c.fill();
+    P.corno(c, MX - .06, MY + .06, ASSE + .28 + becco * .55, .22, .18, BECCO, { curva: -.7 });
+    P.corno(c, MX - .07, MY - .06, ASSE - .1 - becco * .4, .33, .23, BECCO, { curva: .75 });
+
+    // ---- 4. le quattro braccia vicine
+    for (let i = 0; i < 4; i++) braccio(c, VICINE[i], i * 2 + 1, K, st, true, q);
+
+    // ---- 5. la testa: cornetti di pelle e bozzo dell'occhio (dietro), poi la palla della testa
+    const ex = HX + .09, ey = HY - .17, irto = viva ? G.ira : -.5;
+    P.corno(c, ex - .2, ey - .24, -PI / 2 - .55 + irto * .2, .17 + irto * .13, .14, K.pelle, { curva: -.3 });
+    P.corno(c, ex + .01, ey - .3, -PI / 2 - .12 + irto * .32, .19 + irto * .16, .15, K.pelle, { curva: -.25 });
+    P.palla(c, ex - .04, ey - .08, .31, .29, 0, K.pelle, { ombra: 0, luce: [ex + .05, ey - .28, .75] });
+    P.palla(c, HX, HY, .48, .44, -.15, K.pelle, { luce: [HX + .12, HY - .3, 1], ombra: .09 });
+    if (viva) P.guancia(c, HX + .22, HY + .22, .2, '#ff4f8a', .3 + rosso * .05);
+    if (st.fine) {
+      P.solco(c, [HX - .3, HY - .14, HX - .37, HY + .05, HX - .32, HY + .25], K.pelle, .035);                           // la piega del collo
+      P.bozzi(c, [HX - .17, HY + .22, HX - .05, HY + .32, HX + .33, HY + .04], .026, K.pelle);
+    }
+
+    // ---- 6. la faccia: occhione (dorato e socchiuso, oppure rosso e tagliato), sopracciglio, corona, stelline
+    if (G.ira > .6) P.bagliore(c, ex, ey, .38, ROSSO, G.ira * .4);
+    P.occhio(c, ex, ey, .24, Object.assign({ iride: G.ira ? '#ff3a1e' : '#ffd23c', pelle: K.pelle, tipo: 'barra', guarda: P.sguardo(o.sguardo, ex, ey) }, G.calmo ? CALMO : G.occhi));
+    if (G.ira) P.sopracciglio(c, ex + .04, ey - .22, .54, .4 + G.ira * .2, K.pelle.bordo, .13);
+    else if (G.giu) P.sopracciglio(c, ex, ey - .3, .42, -.35, K.pelle.bordo, .07);
+    P.suSpina(s, .62, -1, q);
+    P.corona(c, q.x - (G.sconfitto ? .2 : 0), q.y + .05, .23, q.ang - .45 - (G.sconfitto ? .7 : G.stordito ? .4 : 0));
+    if (G.stordito) P.stelle(c, .1, -1.35, .5, t, 3, .11);
+    c.restore();
+  },
+});
+})();
+
+//# sourceURL=boccone/js/20-specie/piovra.js
 </script>
 <script>
 /* Boccone — pericolo: RICCIO DI MARE. Una palla viola-notte di aculei lunghi dalla punta chiara: una corona di aculei
@@ -7839,6 +8224,8 @@ const PASSO_TAGLIA = 6;           // ogni taglia è 6 volte più forte della pre
 const LARGHEZZA_FASCIA = 2.6;     // dal più debole al più forte della stessa taglia
 const QUANTI = [10, 9, 8, 7, 6];  // esemplari per taglia in un mondo di 2600 × 2600
 const GENTILE = 0.85;             // al primo livello i pesci sono un po' meno
+/* Nei cinque livelli del primo ambiente i pesci grossi aumentano piano (poi vale AFFOLLAMENTO dell'ambiente). */
+const FOLLA_PRIMI = [GENTILE, 1.0, 1.05, 1.1, 1.0];
 /* Quanti pesci in più o in meno per ambiente (1 = come da QUANTI). Gli ambienti con le specie più tranquille (timide,
    pigre, da agguato) ne hanno di più, quelli pieni di inseguitori di meno: così la difficoltà cresce con i livelli e
    non a salti secondo chi ci abita. Numeri trovati con prova-mondo.mjs: da rivedere se cambia il cast. */
@@ -7856,7 +8243,9 @@ const SCIAME = 1.5, PERICOLI_MAX = 14;   // particolarità "sciame": meduse × 1
    secondo, sale in fretta fino al decimo (9,6) e poi piano fino a 12,6 all'ultimo. Nella versione precedente saliva
    di uno a livello fino a 12; qui i livelli sono quaranta e gli ambienti più avanti hanno già abitanti e pericoli più
    insidiosi: i livelli alti si affrontano con i potenziamenti del negozio. */
-function difficolta(n) { return n <= 1 ? 0 : n <= 10 ? 4 + (n - 2) * 0.7 : 9.6 + (n - 10) * 0.1; }
+/* Il primo ambiente è la scuola del gioco e sale più dolce: 0, 2,5, 3,5, 4,3, 5,2. */
+const PRIMI_LIVELLI = [0, 2.5, 3.5, 4.3, 5.2];
+function difficolta(n) { return n <= PRIMI_LIVELLI.length ? PRIMI_LIVELLI[Math.max(1, n) - 1] : n <= 10 ? 4 + (n - 2) * 0.7 : 9.6 + (n - 10) * 0.1; }
 
 // ---------------------------------------------------------------- particolarità dei livelli
 const PARTICOLARITA = {
@@ -8012,7 +8401,7 @@ function config(n) {
   const quantiPericoli = n === 1 ? 0 : Math.round((Math.min(3 + n, 7) + Math.min(3, Math.floor((n - 1) / 12))) * densita);
   return {
     n, modalita: 'avventura', ordine, posto, ambiente: amb, K, difficolta: d, seme: n,
-    fasce: creaFasce(amb, K, d, densita, giro, n === 1 ? GENTILE : AFFOLLAMENTO[amb.id] || 1),
+    fasce: creaFasce(amb, K, d, densita, giro, n <= FOLLA_PRIMI.length ? FOLLA_PRIMI[Math.max(1, n) - 1] : AFFOLLAMENTO[amb.id] || 1),
     obiettivo,
     banchi: creaBanchi(amb, densita, tipo === 'branchi'),
     pericoli: creaPericoli(amb, quantiPericoli, tipo === 'sciame'),
