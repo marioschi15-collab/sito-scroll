@@ -106,9 +106,13 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 #schermate { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
 .schermata {
   position: absolute; inset: 0; display: none; flex-direction: column; pointer-events: auto;
-  background: radial-gradient(ellipse at center, rgba(6, 16, 40, .55), rgba(6, 16, 40, .9));
+  background: radial-gradient(ellipse at center, rgba(6, 16, 40, .8), rgba(6, 16, 40, .93));
 }
 .schermata.visibile { display: flex; }
+/* Pausa e risultato lasciano intravedere la partita; la casa lascia vedere di più l'acquario che nuota dietro. */
+#s-pausa, #s-risultato { background: radial-gradient(ellipse at center, rgba(6, 16, 40, .62), rgba(6, 16, 40, .9)); }
+#s-casa { background: linear-gradient(180deg, rgba(6, 16, 40, .34), rgba(6, 16, 40, .5) 38%, rgba(6, 16, 40, .78)); }
+#s-casa .sottotitolo { text-shadow: 0 2px 0 rgba(0, 0, 0, .3), 0 3px 14px rgba(4, 12, 34, .8); }
 .testata { flex: none; display: flex; align-items: center; gap: 10px; padding: calc(var(--sopra) + 10px) calc(var(--dx) + 12px) 8px calc(var(--sx) + 12px); }
 .testata h2 { flex: 1; min-width: 0; margin: 0; font-size: 24px; line-height: 1.1; font-weight: 900; text-shadow: 0 3px 0 rgba(0, 0, 0, .35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .testata .tondo { background: rgba(255, 255, 255, .12); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .25); font-size: 24px; line-height: 1; padding-bottom: 3px; }
@@ -8504,9 +8508,10 @@ function avviso(testo, opzioni) {
   const o = opzioni || {};
   const casa = $('avvisi');
   if (!casa) return;
-  /* In partita uno alla volta e più svelti, per non coprire gli annunci; nei menu due. */
+  /* Uno alla volta (in partita più svelti), per non coprire annunci e schermate; in coda al massimo tre: gli altri
+     non si perdono, i traguardi restano segnati nella loro schermata. */
   const inPartita = casa.classList.contains('in-partita');
-  if (avvisiVivi >= (inPartita ? 1 : 2)) { if (codaAvvisi.length < 6 && !o.leggero) codaAvvisi.push([testo, o]); return; }
+  if (avvisiVivi >= 1) { if (codaAvvisi.length < 3 && !o.leggero) codaAvvisi.push([testo, o]); return; }
   const a = el('div', 'avviso' + (o.classe ? ' ' + o.classe : '')), corpo = el('div', '', testo), durata = o.durata || (inPartita ? 2.2 : 3);
   if (o.segno) a.append(el('span', 'segno', o.segno));
   if (o.sotto) corpo.append(el('small', '', o.sotto));
@@ -8614,14 +8619,24 @@ function metti(id, proprieta, valore) {
 }
 function aggiornaCruscotto() {
   const d = B.partita.dati, ob = d.obiettivo;
-  /* Il nome dell'ambiente si scrive solo se c'è posto: con il gigante (potenza e morsi) su schermi stretti non ci sta. */
-  const corto = d.modalita === 'sopravvivenza' ? 'Sopravvivenza' : 'Livello ' + d.livello;
-  metti('cr-livello', 'textContent', corto + (ob && ob.morsiTotali > 1 ? '' : ' · ' + d.nomeAmbiente));
+  let largoObiettivo = '';
   if (ob) {
     let s = '♛ ' + numero(ob.potenza);
     if (ob.morsiTotali > 1) for (let i = 0; i < ob.morsiTotali; i++) s += '<i class="morso' + (i < ob.morsi ? '' : ' dato') + '"></i>';
     metti('cr-obiettivo', 'innerHTML', s);
+    largoObiettivo = numero(ob.potenza).length + ':' + ob.morsiTotali;
   } else metti('cr-obiettivo', 'textContent', minuti(d.tempo));
+  /* Il nome dell'ambiente si scrive solo se c'è posto accanto all'obiettivo: se non ci sta resta "Livello 3". Si
+     ricontrolla solo quando cambia il testo, la larghezza dell'obiettivo o quella dello schermo. */
+  const corto = d.modalita === 'sopravvivenza' ? 'Sopravvivenza' : 'Livello ' + d.livello, lungo = corto + ' · ' + d.nomeAmbiente;
+  const chiave = lungo + '|' + largoObiettivo + '|' + window.innerWidth;
+  if (cache.livelloChiave !== chiave) {
+    const e = $('cr-livello');
+    if (e) {
+      e.textContent = lungo;
+      if (e.clientWidth > 0) { cache.livelloChiave = chiave; if (e.scrollWidth > e.clientWidth + 1) e.textContent = corto; }   // se il cruscotto non si vede ancora, si riprova
+    }
+  }
   metti('cr-barra-piena', 'width', (d.avanzamento * 100).toFixed(1) + '%');
   metti('cr-frenesia-piena', 'width', (d.frenesia * 100).toFixed(0) + '%');
   metti('cr-perle-num', 'textContent', numero(B.progressi.perle()));

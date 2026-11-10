@@ -170,14 +170,24 @@ function metti(id, proprieta, valore) {
 }
 function aggiornaCruscotto() {
   const d = B.partita.dati, ob = d.obiettivo;
-  /* Il nome dell'ambiente si scrive solo se c'è posto: con il gigante (potenza e morsi) su schermi stretti non ci sta. */
-  const corto = d.modalita === 'sopravvivenza' ? 'Sopravvivenza' : 'Livello ' + d.livello;
-  metti('cr-livello', 'textContent', corto + (ob && ob.morsiTotali > 1 ? '' : ' · ' + d.nomeAmbiente));
+  let largoObiettivo = '';
   if (ob) {
     let s = '♛ ' + numero(ob.potenza);
     if (ob.morsiTotali > 1) for (let i = 0; i < ob.morsiTotali; i++) s += '<i class="morso' + (i < ob.morsi ? '' : ' dato') + '"></i>';
     metti('cr-obiettivo', 'innerHTML', s);
+    largoObiettivo = numero(ob.potenza).length + ':' + ob.morsiTotali;
   } else metti('cr-obiettivo', 'textContent', minuti(d.tempo));
+  /* Il nome dell'ambiente si scrive solo se c'è posto accanto all'obiettivo: se non ci sta resta "Livello 3". Si
+     ricontrolla solo quando cambia il testo, la larghezza dell'obiettivo o quella dello schermo. */
+  const corto = d.modalita === 'sopravvivenza' ? 'Sopravvivenza' : 'Livello ' + d.livello, lungo = corto + ' · ' + d.nomeAmbiente;
+  const chiave = lungo + '|' + largoObiettivo + '|' + window.innerWidth;
+  if (cache.livelloChiave !== chiave) {
+    const e = $('cr-livello');
+    if (e) {
+      e.textContent = lungo;
+      if (e.clientWidth > 0) { cache.livelloChiave = chiave; if (e.scrollWidth > e.clientWidth + 1) e.textContent = corto; }   // se il cruscotto non si vede ancora, si riprova
+    }
+  }
   metti('cr-barra-piena', 'width', (d.avanzamento * 100).toFixed(1) + '%');
   metti('cr-frenesia-piena', 'width', (d.frenesia * 100).toFixed(0) + '%');
   metti('cr-perle-num', 'textContent', numero(B.progressi.perle()));

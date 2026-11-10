@@ -293,11 +293,13 @@ if (!veloce) {
     await avvia(page, { livello: 3, modalita: 'avventura' });
     await installaPilota(page, false);
     await page.evaluate(() => { B.prova.effetti = { cuori: 4 }; });
-    s = await corri(page, 200, 900);
+    s = await corri(page, 90, 900);
     await page.evaluate(() => { const a = B.partita.mondo.aiuti; a.molt = 5; a.moltT = 8; a.calamitaT = 9; a.scudo = true; a.frenesiaT = 6; });
     await page.waitForTimeout(800);
     await fotoControllata(page, pref + 'partita');
-    await page.locator('#cr-pausa').click(); await page.waitForTimeout(300); await fotoControllata(page, pref + 'pausa'); await tocca(page, 'Riprendi');
+    /* Se il pilota ha già perso o vinto il cruscotto non c'è più: la pausa si prova solo a partita in corso. */
+    if (await page.locator('#cr-pausa').isVisible()) { await page.locator('#cr-pausa').click(); await page.waitForTimeout(300); await fotoControllata(page, pref + 'pausa'); await tocca(page, 'Riprendi'); }
+    else nota(pref + 'partita finita prima della prova della pausa');
     s = await corri(page, 900);
     await page.waitForTimeout(2600);
     await fotoControllata(page, pref + 'risultato');
