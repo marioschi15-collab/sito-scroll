@@ -26,7 +26,7 @@ B.specie.registra({
   forma: { lx: .9, ly: .72 },
   ingombro: { x0: -1.69, y0: -1.13, x1: 1.22, y1: 1.02 },
   disegna(c, o) {
-    const F = (o.fase || 0) * TAU, m = !!o.minaccia, b = o.bocca || 0, q = {};
+    const F = (o.fase || 0) * TAU, m = !!o.minaccia, b = o.bocca || 0;
     c.save();
     c.translate(0, sin(F) * .03); c.rotate(sin(F - .8) * .055);                                    // la scatola dondola tutta intera
     const s = P.spinaPesce(12, -.8, .8, 0, null, SU, GIU, { testa: .14, coda: .1 }), luce = [.3, -.5, 2], apre = m ? 1.25 : 1;

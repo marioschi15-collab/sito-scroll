@@ -44,6 +44,17 @@ const ASSE = .1, MX = CX + cos(ASSE) * .47, MY = CY + sin(ASSE) * .47;  // direz
 const LONTANE = [[-.6, -1.25, -2.3, 1, 1.2, 1], [.3, -.7, -2, .8, 1.6, 1], [1.2, 1.45, -2.3, -1.1, 1.5, -1], [2.1, 2.2, -2.2, -1.4, 1.4, -1]];
 const VICINE = [[-.15, -1, -3.5, 1.3, 1.5, 1], [.75, 1.1, -2.6, -1, 1.65, -1], [1.65, 1.8, -3.3, -1.3, 1.6, -1], [2.55, 2.6, -3, -1.6, 1.55, -1]];
 
+/* Gli occhielli del sacco: anelli col cuore chiaro, in posti scelti a mano [u, v, raggio, di quanto oltre la punta, nella
+   calotta]. Due passate di tinta piatta. */
+const OCCHIELLI = [[0, -.5, .1, .2], [0, .08, .085, .27], [0, -.05, .06, .02], [.16, -.66, .075, 0], [.2, .2, .08, 0], [.3, -.3, .12, 0], [.47, .26, .075, 0], [.5, -.68, .1, 0], [.62, -.26, .095, 0],
+  [.76, -.66, .075, 0], [.8, -.02, .07, 0]];
+function occhielli(cc, s, K, q) {
+  for (let giro = 0; giro < 2; giro++) {
+    cc.beginPath();
+    for (const m of OCCHIELLI) { const r = m[2] * (giro ? .5 : 1); P.suSpina(s, m[0], m[1], q); const x = q.x - cos(q.ang) * m[3], y = q.y - sin(q.ang) * m[3]; cc.moveTo(x + r, y); cc.arc(x, y, r, 0, TAU); }
+    cc.fillStyle = giro ? K.cuore : K.anello; cc.fill();
+  }
+}
 /* Un braccio: nastro lucido che si assottiglia e si arriccia; le vicine hanno la pancia chiara dal lato delle ventose e
    qualche neo sul dorso. Le ventose delle vicine sono perline lungo l'orlo (metà dentro e metà fuori), col loro cuore
    rosa: tutte tinte piatte, in tre passate. st = lo stato già calcolato. */
@@ -57,7 +68,7 @@ function braccio(c, a, i, K, st, vicino, q) {
   }
   const tinta = vicino ? K.pelle : K.lontano, la = a[5], nv = vicino ? 9 : 6;
   const s = P.tentacolo(c, { x: CX - (vicino ? 0 : .05), y: CY - (vicino ? 0 : .04), ang, lung, spess: vicino ? .46 : .4, punta: .06, curva, onda: st.giu ? .1 : .18,
-    fase: st.F + i * 1.9, tinta, ombra: vicino ? .05 : 0, lume: vicino ? .05 : 0, n: vicino ? 12 : 10 });
+    fase: st.F + i * 1.9, tinta, ombra: 0, lume: vicino ? .055 : 0, n: vicino ? 12 : 10 });
   if (vicino) {
     P.fianco(c, s, la * .26, la * .96, K.sotto, .02, .95, 10);
     if (st.fine) P.macchie(c, s, { n: 5, seme: i + 2, u0: .1, u1: .72, v0: -la * .62, v1: -la * .12, r0: .016, r1: .03, colore: K.nei, lungo: 1.3 });
@@ -101,7 +112,7 @@ B.specie.registra({
     for (let i = 0; i <= NS; i++) { const g = 1 + gonfia * sin(PI * i / NS); s.su[i] *= g; s.giu[i] *= g; }
     P.volume(c, s, K.pelle, { luce: [-.1, -1.2, 2], ombra: .13, dentro(cc) {
       P.fianco(cc, s, u => .46 + .08 * sin(u * 11), 1.4, K.velo);
-      P.macchie(cc, s, { n: 8, seme: 3, u0: .04, u1: .8, v0: -.84, v1: .3, r0: .075, r1: .125, colore: K.anello, cuore: K.cuore, lungo: 1.1 });
+      occhielli(cc, s, K, q);
       P.macchie(cc, s, { n: 12, seme: 8, u0: .05, u1: .9, v0: -.9, v1: .42, r0: .014, r1: .028, colore: K.nei, lungo: 1 });
     } });
     if (st.fine) P.bozzi(c, P.puntiSuSpina(s, 5, .14, .56, u => -.76 - .1 * sin(u * 29)), i => .03 + (i % 3) * .012, K.pelle);

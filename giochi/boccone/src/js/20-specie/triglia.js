@@ -14,9 +14,10 @@ const GIALLO = '#ffd21f', GIALLINO = P.alfa('#ffd21f', .7), CREMISI = P.alfa('#c
 const SU = P.sagoma([[0, .1], [.15, .2], [.4, .4], [.65, .52], [.82, .57], [.93, .53], [1, .42]]);
 const GIU = P.sagoma([[0, .1], [.15, .18], [.4, .33], [.65, .41], [.85, .4], [1, .33]]);
 const ONDA = { amp: .12, onde: .6, testa: .12 };
-/* Un barbiglio dal mento (x, y): da calmo pende e la punta ondeggia all'indietro (w), a caccia si tende in avanti a frugare. */
-const barbiglio = (c, x, y, w, m, t) => P.filo(c, m ? [x, y, x + .2, y + .16, x + .42, y + .2 + w * .08, x + .6, y + .1 + w * .16]
-  : [x, y, x + .1, y + .2, x + .09 + w * .06, y + .43, x - .05 + w * .15, y + .62], .1, .035, t, .035);
+/* Un barbiglio dal mento (x, y): da calmo pende e la punta ondeggia all'indietro (w), a caccia si tende in avanti a frugare.
+   k sposta in avanti quello lontano, così i due non si coprono. */
+const barbiglio = (c, x, y, w, k, m, t) => P.filo(c, m ? [x, y, x + .2, y + .16 - k, x + .42, y + .2 - k * 2 + w * .08, x + .6, y + .1 - k * 3 + w * .16]
+  : [x, y, x + .1 + k, y + .2, x + .09 + k * 2 + w * .06, y + .42 - k * .4, x - .05 + k * 3 + w * .15, y + .62 - k * 1.2], .09, .032, t, .035);
 
 /* I dentini in vista fra le labbra aperte (P.labbra li lascia dietro le labbra): stessi x, y, ang, r, apri delle labbra. */
 const dentini = (c, x, y, ang, r, apri) => {
@@ -31,7 +32,7 @@ B.specie.registra({
   id: 'triglia',
   descrizione: 'Con i due baffi sotto il mento fruga nella sabbia e sente il sapore di quello che tocca, come se avesse la lingua sulle dita. Cambia colore con l\'umore: di notte, quando dorme, diventa a chiazze.',
   forma: { lx: 1.05, ly: .5 },
-  ingombro: { x0: -1.8, y0: -1.2, x1: 1.5, y1: 1.1 },
+  ingombro: { x0: -1.72, y0: -1.22, x1: 1.55, y1: .99 },
   disegna(c, o) {
     const fase = o.fase || 0, F = fase * TAU, m = !!o.minaccia, b = o.bocca || 0, q = {};
     c.save();
@@ -48,8 +49,8 @@ B.specie.registra({
     const pv = P.suSpina(s, .62, .95);
     P.pinna(c, { x0: pv.x + .06, y0: pv.y - .05, x1: pv.x - .08, y1: pv.y - .05, a0: PI * .6 + sin(F - .5) * .1, a1: PI * .82 + sin(F - .5) * .1, lung: .38, profilo: [1, .55], n: 3, piega: .1, tinta: T.pinna, orlo: ORLO, righe: false });
     const me = P.suSpina(s, .97, .8);
-    barbiglio(c, me.x + .07, me.y - .04, sin(F * 2 + 1.6), m, T.barbaLontana);
-    barbiglio(c, me.x - .02, me.y - .02, sin(F * 2), m, T.barba);
+    barbiglio(c, me.x + .09, me.y - .04, sin(F * 2 + 1.6), .07, m, T.barbaLontana);
+    barbiglio(c, me.x - .03, me.y - .02, sin(F * 2), 0, m, T.barba);
 
     // ---- 2. il corpo: ventre rosa chiaro, striscia gialla sul fianco e un filo giallo più sotto, squame sul dorso
     P.volume(c, s, T.corpo, { luce, ombra: .09, dentro(cc) {
