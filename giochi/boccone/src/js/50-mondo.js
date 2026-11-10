@@ -1345,6 +1345,11 @@ function aggiornaVisuale(dt, inGioco) {
     x = h.x + h.vx * avanti; y = h.y + h.vy * avanti; k = Math.min(1, dt * 6);
   }
   cam.z += (z - cam.z) * Math.min(1, dt * 2.5);
+  /* La visuale non esce dal mondo per più di un pezzetto di schermo (un ottavo ai lati, un sesto sopra e sotto):
+     vicino ai bordi l'eroe si sposta dal centro, invece di lasciare mezzo schermo di sabbia o di cielo. */
+  const mezzoW = vw / 2 / cam.z, mezzoH = vh / 2 / cam.z, fuoriX = mezzoW * 0.25, fuoriY = mezzoH * 0.32;
+  x = limita(x, Math.min(mezzoW - fuoriX, M.largo / 2), Math.max(M.largo - mezzoW + fuoriX, M.largo / 2));
+  y = limita(y, Math.min(mezzoH - fuoriY, M.alto / 2), Math.max(M.alto - mezzoH + fuoriY, M.alto / 2));
   cam.x += (x - cam.x) * k; cam.y += (y - cam.y) * k;
   M.scossa = Math.max(0, M.scossa - dt * 30); M.lampo = Math.max(0, M.lampo - dt * 2.5);
 }

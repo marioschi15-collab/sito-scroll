@@ -247,8 +247,11 @@ function catalogo() {
     if (!s || typeof s.id !== 'string' || c.schede[s.id]) continue;
     const tipo = TIPI_SPECIE.includes(s.tipo) ? s.tipo : 'pesce';
     c.schede[s.id] = { id: s.id, nome: s.nome || s.id, tipo };
+    const abitante = tipo === 'pesce' || tipo === 'gigante';
+    /* Pesci e giganti che vivono solo in ambienti ancora "in arrivo" non si contano: non si possono incontrare. */
+    if (abitante && Array.isArray(s.ambienti) && s.ambienti.length && !s.ambienti.some(a => APERTI.includes(a))) continue;
     c[tipo].push(s.id);
-    if (tipo !== 'pesce' && tipo !== 'gigante') continue;
+    if (!abitante) continue;
     c.acquario.push(s.id);
     for (const a of s.ambienti || []) if (c.perAmbiente[a]) c.perAmbiente[a].push(s.id);
   }
@@ -372,8 +375,8 @@ const fino = n => Math.min(n, TOTALE_LIVELLI), finoStelle = n => Math.min(n, TOT
   const nomi = { laguna: 'Di casa in laguna', alghe: 'Pollice verde', relitto: 'Cacciatore di relitti', mare_aperto: 'Al largo',
     ghiacci: 'Sangue freddo', rovine: 'Archeologo subacqueo', vulcano: 'Testa calda', abisso: 'Occhi nel buio' };
   const premi = [30, 30, 40, 40, 40, 50, 50, 60];
-  AMBIENTI.forEach((a, i) => T(g, 'abitanti_' + a.id, nomi[a.id] || 'Di casa: ' + a.nome, a.nome + ': scopri tutte le specie che ci vivono.',
-    () => catalogo().perAmbiente[a.id].length, premi[i] || 50, () => derivati().ambienti[a.id] || 0));
+  AMBIENTI.forEach((a, i) => { if (APERTI.includes(a.id)) T(g, 'abitanti_' + a.id, nomi[a.id] || 'Di casa: ' + a.nome, a.nome + ': scopri tutte le specie che ci vivono.',
+    () => catalogo().perAmbiente[a.id].length, premi[i] || 50, () => derivati().ambienti[a.id] || 0); });
 
   g = 'Costanza';
   T(g, 'ci_ho_preso_gusto', 'Ci ho preso gusto', 'Gioca 10 partite.', 10, 15, () => stat().partite);

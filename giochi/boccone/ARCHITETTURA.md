@@ -153,8 +153,10 @@ B.ambienti.registra({
 `qualita` è 0 bassa, 1 media, 2 alta).
 
 - Il mondo è il rettangolo `0..w × 0..h`: `y = 0` è la superficie (o il soffitto), `y = h` il fondale. L'eroe non esce
-  mai, ma la visuale mostra fino a mezzo schermo oltre i bordi: l'ambiente deve dipingere anche lì (sabbia sotto,
-  cielo o ghiaccio o roccia sopra, pareti ai lati) per almeno 1500 unità.
+  mai. La visuale si ferma poco oltre i bordi (mostra fuori dal mondo al massimo un sesto dello schermo sopra e sotto e
+  un ottavo ai lati: vicino ai bordi l'eroe si sposta dal centro), ma con la visuale larga quel pezzetto vale molte
+  unità: l'ambiente deve dipingere anche lì (sabbia sotto, cielo o ghiaccio o roccia sopra, pareti ai lati) per almeno
+  1500 unità.
 - Il motore imposta la trasformazione prima di ogni passata (schermo: 1 unità = 1 px CSS; mondo: coordinate di mondo).
   Dentro le passate usa solo `save/translate/scale/rotate/restore`, mai `setTransform`. Lascia la tela pulita.
 - Per la parallasse in `sfondo` usa `v.cam` (es. spostamento = `-v.cam.x * v.cam.z * 0.2`).
@@ -422,6 +424,9 @@ due piloti automatici: "attento" e "distratto". Opzioni principali: `--livelli 1
 `--fumo` fa girare tutti i livelli per 30 secondi, i menu, la sopravvivenza e le prove mirate di ogni regola (anche con
 `--sottoinsieme`: una parte sola dei contenuti): **deve dire "Nessun problema."** dopo ogni modifica al motore.
 `node giochi/boccone/strumenti/prova-progressi.mjs` prova `B.progressi`.
+Le due prove valgono per il gioco intero: aprono da sole tutti gli ambienti, anche quelli che `B.cast.aperti` tiene
+ancora "in arrivo". Con `--pubblicato` usano l'elenco così com'è (e allora le attese sui totali — 40 livelli, 70
+specie — non tornano: serve solo a controllare che il gioco pubblicato non dia errori).
 
 Il pilota è poco furbo (non usa lo scatto, non cerca bolle né conchiglie, non segue la freccia): una persona gioca
 meglio. Serve a confrontare i livelli fra loro. Dove si tara: `difficolta(n)`, `AFFOLLAMENTO`, `GENTILE`, `CALENDARIO` e

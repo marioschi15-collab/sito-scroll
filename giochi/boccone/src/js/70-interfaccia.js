@@ -57,10 +57,12 @@ const codaAvvisi = [];
 let avvisiVivi = 0;
 function avviso(testo, opzioni) {
   const o = opzioni || {};
-  if (avvisiVivi >= 2) { if (codaAvvisi.length < 6 && !o.leggero) codaAvvisi.push([testo, o]); return; }
   const casa = $('avvisi');
   if (!casa) return;
-  const a = el('div', 'avviso' + (o.classe ? ' ' + o.classe : '')), corpo = el('div', '', testo), durata = o.durata || 3;
+  /* In partita uno alla volta e più svelti, per non coprire gli annunci; nei menu due. */
+  const inPartita = casa.classList.contains('in-partita');
+  if (avvisiVivi >= (inPartita ? 1 : 2)) { if (codaAvvisi.length < 6 && !o.leggero) codaAvvisi.push([testo, o]); return; }
+  const a = el('div', 'avviso' + (o.classe ? ' ' + o.classe : '')), corpo = el('div', '', testo), durata = o.durata || (inPartita ? 2.2 : 3);
   if (o.segno) a.append(el('span', 'segno', o.segno));
   if (o.sotto) corpo.append(el('small', '', o.sotto));
   a.append(corpo); a.style.setProperty('--durata', durata + 's');
@@ -167,7 +169,9 @@ function metti(id, proprieta, valore) {
 }
 function aggiornaCruscotto() {
   const d = B.partita.dati, ob = d.obiettivo;
-  metti('cr-livello', 'textContent', (d.modalita === 'sopravvivenza' ? 'Sopravvivenza' : 'Livello ' + d.livello) + ' · ' + d.nomeAmbiente);
+  /* Il nome dell'ambiente si scrive solo se c'è posto: con il gigante (potenza e morsi) su schermi stretti non ci sta. */
+  const corto = d.modalita === 'sopravvivenza' ? 'Sopravvivenza' : 'Livello ' + d.livello;
+  metti('cr-livello', 'textContent', corto + (ob && ob.morsiTotali > 1 ? '' : ' · ' + d.nomeAmbiente));
   if (ob) {
     let s = '♛ ' + numero(ob.potenza);
     if (ob.morsiTotali > 1) for (let i = 0; i < ob.morsiTotali; i++) s += '<i class="morso' + (i < ob.morsi ? '' : ' dato') + '"></i>';

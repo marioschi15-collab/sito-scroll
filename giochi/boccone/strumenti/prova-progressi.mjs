@@ -14,6 +14,9 @@ import { fileURLToPath } from 'node:url';
 const radice = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = ['00-nucleo.js', '01-cast.js', '05-progressi.js'].map(nome =>
   new vm.Script(readFileSync(join(radice, 'src', 'js', nome), 'utf8'), { filename: 'src/js/' + nome }));
+/* Le prove valgono per il gioco intero: si aprono tutti gli ambienti, anche quelli che nel gioco pubblicato sono ancora
+   "in arrivo" (B.cast.aperti). Con --pubblicato si prova l'elenco così com'è. */
+if (!process.argv.includes('--pubblicato')) SCRIPT.splice(2, 0, new vm.Script('B.cast.aperti = B.cast.ambienti.map(a => a.id);', { filename: 'tutti-aperti' }));
 const CHIAVE = 'boccone-salvataggio-3', CHIAVE_V2 = 'boccone-salvataggio';
 const EVENTI_SEGUITI = ['progressi', 'traguardo', 'perle', 'impostazioni', 'scoperta'];
 

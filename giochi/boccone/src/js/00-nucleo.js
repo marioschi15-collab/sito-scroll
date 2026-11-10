@@ -32,7 +32,14 @@ B.util = {
     h = Math.imul(h ^ (h >>> 15), 0x2C1B3C6D) >>> 0; h = Math.imul(h ^ (h >>> 12), 0x297A2D39) >>> 0;
     return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
   },
-  numero: n => n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + ' mln' : Math.round(n).toLocaleString('it-IT'),
+  /* Numeri per il giocatore: interi con i puntini fino al milione, poi abbreviati (mln, mld, bilioni… ogni nome vale
+     mille volte il precedente; oltre i triliardi, la potenza di dieci). */
+  numero: n => {
+    if (!(n >= 1e6)) return Math.round(n || 0).toLocaleString('it-IT');
+    const sigle = [[1e21, ' triliardi'], [1e18, ' trilioni'], [1e15, ' biliardi'], [1e12, ' bilioni'], [1e9, ' mld'], [1e6, ' mln']];
+    if (n >= 1e24) { const e = Math.floor(Math.log10(n)); return (n / Math.pow(10, e)).toFixed(1).replace('.', ',') + '×10^' + e; }
+    for (const [soglia, sigla] of sigle) if (n >= soglia) { const v = n / soglia; return (v >= 100 ? Math.round(v).toLocaleString('it-IT') : v.toFixed(1).replace('.', ',')) + sigla; }
+  },
   tela(w, h) { const t = document.createElement('canvas'); t.width = Math.max(1, Math.round(w)); t.height = Math.max(1, Math.round(h)); return t; },
 };
 

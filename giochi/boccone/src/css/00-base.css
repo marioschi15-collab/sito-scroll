@@ -56,7 +56,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 #cr-scatto.pronto span { background: radial-gradient(circle at 40% 30%, #2aa7a0, #0b5f6c); }
 #cr-scatto:active { transform: scale(.93); }
 
-#cr-annuncio { position: absolute; left: 0; right: 0; top: 24%; text-align: center; opacity: 0; padding: 0 18px; }
+#cr-annuncio { position: absolute; left: 0; right: 0; top: max(25%, calc(var(--sopra) + 204px)); text-align: center; opacity: 0; padding: 0 18px; }
 #cr-annuncio.vai { animation: annuncio var(--durata, 2.4s) ease-out both; }
 #cr-annuncio b { display: block; font-size: 32px; font-weight: 900; line-height: 1.08; text-shadow: 0 3px 0 rgba(0, 0, 0, .35), 0 8px 22px rgba(0, 0, 0, .5); }
 #cr-annuncio span { display: inline-block; margin-top: 8px; font-size: 15px; line-height: 1.25; font-weight: 800; padding: 6px 14px; border-radius: 16px; background: rgba(8, 20, 48, .6); max-width: 330px; }
@@ -71,8 +71,8 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 #cr-consiglio.visibile { opacity: 1; }
 
 /* ----- Avvisi a comparsa ----- */
-#avvisi { position: fixed; left: 0; right: 0; top: calc(var(--sopra) + 10px); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; z-index: 30; padding: 0 14px; }
-#avvisi.in-partita { top: calc(var(--sopra) + 104px); }
+#avvisi { position: fixed; left: 0; right: 0; top: calc(var(--sopra) + 70px); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; z-index: 30; padding: 0 14px; }
+#avvisi.in-partita { top: calc(var(--sopra) + 138px); }
 .avviso {
   max-width: 340px; display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 16px; font-size: 14px; line-height: 1.25; font-weight: 800;
   background: rgba(10, 26, 60, .92); box-shadow: inset 0 0 0 1.5px rgba(255, 224, 102, .8), 0 6px 18px rgba(0, 0, 0, .4); animation: avviso var(--durata, 3s) ease-out both;

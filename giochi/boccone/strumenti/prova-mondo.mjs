@@ -54,6 +54,7 @@ function argomenti(argv) {
     else if (v === '--colpi') a.colpi = true;
     else if (v === '--diario') a.diario = true;
     else if (v === '--freccia') a.freccia = true;
+    else if (v === '--pubblicato') a.pubblicato = true;
     else { console.error('Opzione sconosciuta: ' + v); process.exit(2); }
   }
   if (!a.piloti.length) a.piloti = Object.keys(PILOTI);
@@ -117,6 +118,9 @@ function creaScatola(opzioni = {}) {
   esegui(SEME, 'seme');
   carica('00-nucleo.js'); carica('01-cast.js');
   const B = finestra.B;
+  /* Le prove valgono per il gioco intero: si aprono tutti gli ambienti, anche quelli ancora "in arrivo" nel gioco
+     pubblicato (B.cast.aperti). Con --pubblicato si prova l'elenco così com'è. */
+  if (!process.argv.includes('--pubblicato')) B.cast.aperti = B.cast.ambienti.map(a => a.id);
   const progressiVeri = existsSync(join(src, '05-progressi.js'));
   if (progressiVeri) carica('05-progressi.js'); else esegui(PROGRESSI_FINTI, 'progressi-finti');
   if (opzioni.salta) finestra.__salta = opzioni.salta;
