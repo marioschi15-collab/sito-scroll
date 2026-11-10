@@ -8,12 +8,13 @@ import { Precarica } from './interfaccia/Precarica.js';
 import { Navigazione } from './interfaccia/Navigazione.js';
 import { Hud } from './interfaccia/Hud.js';
 import { Cursore } from './interfaccia/Cursore.js';
+import { BarraPrenota } from './interfaccia/BarraPrenota.js';
 import { Prologo } from './scene/Prologo.js';
+import { Dubbi } from './scene/Dubbi.js';
 import { Idea } from './scene/Idea.js';
 import { Stencil } from './scene/Stencil.js';
 import { Ago } from './scene/Ago.js';
 import { Rosso } from './scene/Rosso.js';
-import { Manifesto } from './scene/Manifesto.js';
 import { Stili } from './scene/Stili.js';
 import { Rito } from './scene/Rito.js';
 import { Finale } from './scene/Finale.js';
@@ -51,22 +52,23 @@ function Pagina(): ReactElement {
   return (
     <ContestoPronto.Provider value={pronto}>
       <a className="salta" href="#finale">
-        Vai ai contatti
+        Vai alla prenotazione
       </a>
       <div className="fondale" aria-hidden="true" />
       <Navigazione />
       <main>
         <Prologo />
+        <Dubbi />
         <Idea />
         <Stencil />
         <Ago />
         <Rosso />
-        <Manifesto />
         <Stili />
         <Rito />
         <Finale />
       </main>
       <Hud />
+      {pronto ? <BarraPrenota /> : null}
       <Cursore />
       {!pronto && !ridotto ? <Precarica onFine={fine} /> : null}
     </ContestoPronto.Provider>

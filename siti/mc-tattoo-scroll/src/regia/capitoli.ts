@@ -73,23 +73,61 @@ function tappeStili(): Tappa[] {
   return out;
 }
 
+// ——— I dubbi: quattro domande, ognuna con il suo tratto di scena ———
+export const DUBBI_INIZIO = 0.1;
+export const DUBBI_PASSO = 0.195;
+export const DUBBI_QUANTI = 4;
+/** Dentro ogni dubbio (da 0 a 1): quando lo schermo passa dal nero al bianco e quando torna nero. */
+export const DUBBIO_SVOLTA = [0.46, 0.58] as const;
+export const DUBBIO_RITORNO = [0.9, 1] as const;
+
+function tappeDubbi(): Tappa[] {
+  const buio = { sfondo: T.nero, testo: T.carta, accento: T.rosso };
+  const luce = { sfondo: T.carta, testo: T.inchiostro, accento: T.rosso };
+  const out: Tappa[] = [
+    // La scena nasce in dissolvenza sul rosso del gancio, poi cala il buio dei dubbi.
+    { p: 0, sfondo: T.rosso, testo: T.carta, accento: T.nero },
+    { p: 0.08, ...buio },
+  ];
+  for (let i = 0; i < DUBBI_QUANTI; i++) {
+    const da = DUBBI_INIZIO + i * DUBBI_PASSO;
+    out.push({ p: da + DUBBIO_SVOLTA[0] * DUBBI_PASSO, ...buio }, { p: da + DUBBIO_SVOLTA[1] * DUBBI_PASSO, ...luce });
+    // Dopo l'ultima risposta resta la luce: da lì comincia il disegno.
+    if (i < DUBBI_QUANTI - 1) out.push({ p: da + DUBBIO_RITORNO[0] * DUBBI_PASSO, ...luce }, { p: da + DUBBIO_RITORNO[1] * DUBBI_PASSO, ...buio });
+  }
+  return out;
+}
+
+/**
+ * La storia: «Dal pensiero alla pelle». Non racconta il tatuaggio ma chi lo vuole: il desiderio,
+ * i dubbi che lo fermano, la prova che può fidarsi, e la strada più corta per prenotare.
+ */
 export const CAPITOLI: readonly Capitolo[] = [
   {
     id: 'prologo',
     numero: '',
-    titolo: 'Il vuoto',
-    schermate: 3.2,
+    titolo: 'Ce l’hai in testa',
+    schermate: 3.4,
     tappe: [
       { p: 0, sfondo: T.nero, testo: T.carta, accento: T.rosso },
-      // Resta nero finché la carta non ha coperto tutto; poi "L'idea", in dissolvenza, porta il bianco.
-      { p: 0.74, sfondo: T.nero, testo: T.carta, accento: T.rosso },
+      { p: 0.42, sfondo: T.nero, testo: T.carta, accento: T.rosso },
+      // Il sole ha già riempito lo schermo: il fondo diventa rosso sotto di lui.
+      { p: 0.5, sfondo: T.rosso, testo: T.carta, accento: T.nero },
     ],
   },
   {
-    id: 'idea',
+    id: 'dubbi',
     numero: 'I',
-    titolo: 'L’idea',
-    schermate: 3.8,
+    titolo: 'I dubbi',
+    schermate: 6.4,
+    dissolvenza: true,
+    tappe: tappeDubbi(),
+  },
+  {
+    id: 'idea',
+    numero: 'II',
+    titolo: 'Su misura',
+    schermate: 3.6,
     dissolvenza: true,
     tappe: [
       { p: 0, sfondo: T.carta, testo: T.inchiostro, accento: T.rosso },
@@ -98,8 +136,8 @@ export const CAPITOLI: readonly Capitolo[] = [
   },
   {
     id: 'stencil',
-    numero: 'II',
-    titolo: 'Lo stencil',
+    numero: 'III',
+    titolo: 'Lo provi addosso',
     schermate: 3.6,
     tappe: [
       { p: 0, sfondo: T.piombo, testo: T.carta, accento: T.carta },
@@ -109,9 +147,9 @@ export const CAPITOLI: readonly Capitolo[] = [
   },
   {
     id: 'ago',
-    numero: 'III',
-    titolo: 'L’ago',
-    schermate: 5.2,
+    numero: 'IV',
+    titolo: 'Mano ferma',
+    schermate: 5,
     dissolvenza: true,
     tappe: [
       { p: 0, sfondo: T.nero, testo: T.carta, accento: T.rosso, bande: 0 },
@@ -123,41 +161,31 @@ export const CAPITOLI: readonly Capitolo[] = [
   },
   {
     id: 'rosso',
-    numero: 'IV',
-    titolo: 'Il rosso',
-    schermate: 4.6,
+    numero: 'V',
+    titolo: 'Fatto per durare',
+    schermate: 4.8,
     dissolvenza: true,
     tappe: [
       { p: 0, sfondo: T.nero, testo: T.carta, accento: T.rosso },
-      { p: 0.68, sfondo: T.nero, testo: T.carta, accento: T.rosso },
-      { p: 0.84, sfondo: T.rosso, testo: T.carta, accento: T.nero },
-      { p: 1, sfondo: T.rosso, testo: T.carta, accento: T.nero },
-    ],
-  },
-  {
-    id: 'manifesto',
-    numero: '',
-    titolo: 'Manifesto',
-    schermate: 2.8,
-    tappe: [
-      { p: 0, sfondo: T.rosso, testo: T.carta, accento: T.nero },
-      { p: 0.7, sfondo: T.rossoScuro, testo: T.carta, accento: T.nero },
-      // Si chiude al nero: da qui al bianco degli stili si passa solo per i grigi.
+      { p: 0.62, sfondo: T.nero, testo: T.carta, accento: T.rosso },
+      { p: 0.78, sfondo: T.rosso, testo: T.carta, accento: T.nero },
+      { p: 0.95, sfondo: T.rosso, testo: T.carta, accento: T.nero },
+      // Si chiude al nero: da qui al bianco degli stili si passa solo per i grigi, mai per il rosa.
       { p: 1, sfondo: T.nero, testo: T.carta, accento: T.rosso },
     ],
   },
   {
     id: 'stili',
-    numero: 'V',
-    titolo: 'Gli stili',
+    numero: 'VI',
+    titolo: 'Qual è il tuo?',
     schermate: 6,
     tappe: tappeStili(),
   },
   {
     id: 'rito',
-    numero: 'VI',
-    titolo: 'Il rito',
-    schermate: 4.4,
+    numero: 'VII',
+    titolo: 'Tre passi',
+    schermate: 3.8,
     tappe: [
       { p: 0, sfondo: T.carta, testo: T.inchiostro, accento: T.rosso },
       { p: 1, sfondo: T.bianco, testo: T.inchiostro, accento: T.rosso },
@@ -165,8 +193,8 @@ export const CAPITOLI: readonly Capitolo[] = [
   },
   {
     id: 'finale',
-    numero: 'VII',
-    titolo: 'Il tuo segno',
+    numero: 'VIII',
+    titolo: 'Prenota',
     schermate: null,
     tappe: [{ p: 0, sfondo: T.nero, testo: T.carta, accento: T.rosso }],
   },

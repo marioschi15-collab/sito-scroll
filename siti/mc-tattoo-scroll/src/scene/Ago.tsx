@@ -1,4 +1,4 @@
-// src/scene/Ago.tsx — Capitolo III, "L'ago": la scena nasce in dissolvenza sullo stencil appena posato,
+// src/scene/Ago.tsx — Capitolo IV, "Mano ferma": la scena nasce in dissolvenza sullo stencil appena posato,
 // poi la camera si avvicina, scendono le bande da cinema e l'inquadratura segue la punta dell'ago lungo
 // la linea che si sta tracciando. Alla fine torna a figura intera, dove comincia "Il rosso".
 import { useCallback, useRef } from 'react';
@@ -16,7 +16,7 @@ import { TAVOLOZZA } from '../regia/capitoli.js';
 import { morbido } from '../arte/geometria.js';
 
 const ZOOM = 3.6;
-// Tempi della scena (5,2 schermate). Fino a 0,12 dissolvenza in entrata; da 0,88 in uscita.
+// Tempi della scena (5 schermate). Fino a 0,125 dissolvenza in entrata; da 0,875 in uscita.
 const AVVICINA = [0.13, 0.21] as const;
 const SEGUE = [0.21, 0.74] as const;
 const ALLONTANA = [0.74, 0.86] as const;
@@ -95,16 +95,16 @@ function Contenuto({ p, ridotto }: { p: MotionValue<number>; ridotto: boolean })
       ) : null}
 
       <div className="ago__testo">
-        <TestaCapitolo numero="III" titolo="L’ago" p={p} ridotto={ridotto} entra={[0.09, 0.15]} esce={ridotto ? undefined : [0.8, 0.86]} />
+        <TestaCapitolo numero="IV" titolo="Mano ferma" p={p} ridotto={ridotto} entra={[0.09, 0.15]} esce={ridotto ? undefined : [0.8, 0.86]} />
         <div className={ridotto ? 'ago__didascalie ago__didascalie--ridotte' : 'ago__didascalie'}>
           <Finestra p={p} entra={[0.22, 0.26]} esce={[0.36, 0.39]} ridotto={ridotto} className="ago__didascalia">
-            <p>Aghi e cartucce monouso, aperti davanti a te.</p>
+            <p>Materiale monouso, aperto davanti a te. Lo vedi con i tuoi occhi.</p>
           </Finestra>
           <Finestra p={p} entra={[0.4, 0.44]} esce={[0.54, 0.57]} ridotto={ridotto} className="ago__didascalia">
-            <p>Si tende la pelle, si respira, si segue la traccia. Una linea pulita non si improvvisa.</p>
+            <p>Serve una pausa? Ci fermiamo. Il ritmo della seduta lo decidi tu.</p>
           </Finestra>
           <Finestra p={p} entra={[0.58, 0.62]} esce={ridotto ? undefined : [0.73, 0.77]} ridotto={ridotto} className="ago__didascalia">
-            <p>Migliaia di colpi al minuto. Una sola linea, quella giusta.</p>
+            <p>Linee pulite, tirate con calma. Fatte per restare belle negli anni.</p>
           </Finestra>
         </div>
       </div>

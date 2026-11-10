@@ -1,10 +1,11 @@
-// src/scene/Stili.tsx — Capitolo V, "Gli stili": una panoramica orizzontale. Ogni pannello ha il suo
+// src/scene/Stili.tsx — Capitolo VI, "Qual è il tuo?": una panoramica orizzontale. Ogni pannello ha il suo
 // colore (la regia lo fonde con il successivo) e il suo disegno che si traccia quando arriva al centro.
 import type { ComponentType, ReactElement } from 'react';
 import { motion, useTransform } from 'motion/react';
 import type { MotionValue } from 'motion/react';
 import { Scena } from '../movimento/Scena.js';
 import { STILI_FINE, STILI_INIZIO, centroStile } from '../regia/capitoli.js';
+import { studio, urlWhatsAppCon } from '../dati/studio.js';
 import { DisegnoBlackwork, DisegnoDotwork, DisegnoFineLine, DisegnoGiapponese, DisegnoLettering } from '../arte/disegniStili.js';
 
 interface Stile {
@@ -15,7 +16,7 @@ interface Stile {
 }
 
 // L'ordine segue quello dei colori in regia/capitoli.ts (COLORI_STILI).
-const STILI: readonly Stile[] = [
+export const STILI: readonly Stile[] = [
   {
     nome: 'Giapponese',
     testo: 'Onde, carpe, fiori e vento: grandi composizioni che seguono il corpo e si leggono da lontano.',
@@ -62,8 +63,8 @@ function Contenuto({ p, ridotto }: { p: MotionValue<number>; ridotto: boolean })
   return (
     <div className="stili">
       <header className="stili__testa">
-        <p className="etichetta">Capitolo V</p>
-        <h2 className="stili__titolo">Gli stili</h2>
+        <p className="etichetta">Capitolo VI</p>
+        <h2 className="stili__titolo">Qual è il tuo?</h2>
       </header>
       <motion.ol className="stili__binario" style={ridotto ? undefined : { x }}>
         {STILI.map((s, i) => (
@@ -96,6 +97,15 @@ function Pannello({ stile, i, p, ridotto }: { stile: Stile; i: number; p: Motion
         <p className="stili__ideale">
           <span className="etichetta">Ideale per</span> {stile.ideale}
         </p>
+        <a
+          className="stili__chiedi"
+          href={urlWhatsAppCon(`Ciao ${studio.nome}, vorrei un tatuaggio in stile ${stile.nome}. Posso passare per una consulenza?`)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span>Voglio questo stile</span>
+          <span className="pulsante__freccia" aria-hidden="true">→</span>
+        </a>
       </motion.div>
       <motion.div className="stili__disegno" style={ridotto ? undefined : { x: parallasse }}>
         <Disegno p={disegno} className="stili__svg" />

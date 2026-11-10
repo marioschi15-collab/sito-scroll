@@ -1,22 +1,23 @@
-# M.C. Tattoo Studio — «Storia di un segno»
+# M.C. Tattoo Studio — «Dal pensiero alla pelle»
 
-Sito a pagina singola che si racconta scorrendo: la nascita di un tatuaggio (una carpa koi che risale
-verso il sole rosso) in sette capitoli. Colori: solo nero, grigi, bianco carta e un rosso giapponese.
+Sito a pagina singola che si racconta scorrendo e ha un solo scopo: **portare chi lo guarda a prenotare
+una consulenza**. La storia non parla del tatuaggio ma di chi lo vuole: il desiderio, i dubbi che lo
+fermano, la prova che può fidarsi, e la strada più corta per scrivere allo studio.
+Colori: solo nero, grigi, bianco carta e un rosso giapponese.
 
-| Scena | Cosa succede scorrendo | Colore |
+| Scena | A cosa serve | Cosa succede scorrendo |
 | --- | --- | --- |
-| Prologo — Il vuoto | il titolo si apre, il sole rosso cresce e dal centro si allarga la carta come una macchia | nero → bianco |
-| I — L’idea | la pagina compare in dissolvenza; la carpa si disegna a pennello mentre la camera parte dall’occhio e si allontana | bianco carta |
-| II — Lo stencil | una barra di luce stampa il disegno a rovescio, poi il foglio si gira e si posa sulla pelle | grigio → quasi nero |
-| III — L’ago | stessa inquadratura, senza stacco: si accende la luce, la camera si avvicina, scendono le bande da cinema e l’inquadratura segue la punta dell’ago | nero |
-| IV — Il rosso | ancora senza stacco: sorge il sole, le chiazze si colorano, la camera si tuffa nel rosso | nero → rosso |
-| Manifesto | le parole si accendono una alla volta | rosso → nero |
-| V — Gli stili | panoramica orizzontale su cinque stili, ognuno col suo disegno e il suo colore, con stacchi netti | bianco, nero, rosso, grigi |
-| VI — Il rito | i quattro passi, con il numero che scorre come un rullino | bianco |
-| VII — Il tuo segno | invito a prenotare, contatti, orari | nero e rosso |
+| Apertura | agganciare | «Ce l’hai in testa da anni.» nel buio; il sole rosso riempie lo schermo e arriva «È ora di portarlo sulla pelle.» con il pulsante per prenotare |
+| I — I dubbi | togliere le paure | quattro domande (mi stanco? fa male? è sicuro? costa troppo?): una pennellata rossa le cancella, lo schermo passa dal nero al bianco e arriva la risposta |
+| II — Su misura | far desiderare | la carpa si disegna a pennello: «lo disegniamo solo per te» |
+| III — Lo provi addosso | rassicurare | il disegno si stampa, si gira e si posa sulla pelle: decidi tu prima di cominciare |
+| IV — Mano ferma | dare fiducia | stessa inquadratura, senza stacco: la camera segue la punta dell’ago; materiale monouso, pause quando vuoi |
+| V — Fatto per durare | chiudere il desiderio | sorge il sole, arriva il rosso, lo schermo si riempie: «E da quel giorno è tuo.» + pulsante |
+| VI — Qual è il tuo? | far scegliere | cinque stili in orizzontale, ognuno con «Voglio questo stile» che apre WhatsApp già scritto |
+| VII — Tre passi | togliere la fatica | scrivici, vieni a trovarci, il tuo giorno |
+| VIII — Prenota | far agire | modulo a tocchi (idea, stile, zona, misura, nome) che prepara il messaggio WhatsApp; promesse, contatti, orari |
 
-Stencil, ago e rosso sono un’unica ripresa: la carpa resta ferma sullo schermo mentre un capitolo sfuma nel
-successivo. Il rosso confina solo con colori scuri, così nei passaggi non compare mai il rosa.
+In più, da dopo l’apertura fino al modulo resta sempre visibile il pulsante **«Prenota la consulenza»**.
 
 ## Vederlo
 
@@ -24,11 +25,22 @@ successivo. Il rosso confina solo con colori scuri, così nei passaggi non compa
   `pnpm anteprima`. Si crea il file `dist-anteprima/index.html`: aprilo con un doppio clic.
 - **Mentre lo modifichi**: `pnpm dev` e apri l’indirizzo che compare.
 
-## Prima di pubblicarlo
+## Prima di pubblicarlo: cosa deve confermare il titolare
 
-Tutti i dati dello studio sono in **un solo file**: `src/dati/studio.ts`. Oggi sono **dati di prova**
-(indirizzo, telefono, WhatsApp, email, Instagram, orari, partita IVA). Scrivi quelli veri e cambia
-`datiDiProva: true` in `datiDiProva: false`: sparisce anche l’avviso in fondo alla pagina.
+Tutto sta in **un solo file**, `src/dati/studio.ts`:
+
+1. **Dati di contatto** (oggi di prova): indirizzo, telefono, WhatsApp, email, Instagram, orari, partita IVA.
+   Poi `datiDiProva: true` va cambiato in `datiDiProva: false`: sparisce l’avviso in fondo alla pagina.
+2. **Le promesse** (`promesse`): «Consulenza senza impegno», «Preventivo prima di iniziare», «Materiale monouso»,
+   «Solo su appuntamento». Il sito le ripete vicino ai pulsanti: devono essere vere. Le stesse promesse sono
+   anche nelle risposte ai dubbi (`src/scene/Dubbi.tsx`) e nei tre passi (`src/scene/Rito.tsx`).
+3. **Prima data libera** (`primaDataLibera`): se la scrivi (es. `'metà dicembre'`) compare nel pulsante fisso e
+   nel modulo. Va tenuta aggiornata; lasciala `null` se non vuoi mostrarla.
+4. **Recensioni vere** (`recensioni`): se ne aggiungi, compare la sezione «Chi è già passato da noi». Finché la
+   lista è vuota non si vede niente: il sito non inventa recensioni.
+
+Le cose che fanno vendere di più e che oggi mancano sono proprio queste ultime due, insieme alle **foto vere
+dei lavori**: i disegni del sito sono originali e calcolati nel codice, non sono tatuaggi fatti dallo studio.
 
 ## Pubblicarlo
 
@@ -38,5 +50,4 @@ Tutti i dati dello studio sono in **un solo file**: `src/dati/studio.ts`. Oggi s
 ## Note
 
 - Chi ha chiesto al proprio telefono o computer di ridurre le animazioni vede ogni scena già completa e ferma.
-- I disegni (carpa, onde, stili) sono originali, calcolati nel codice: non ci sono foto. Le foto vere dei
-  lavori dello studio si possono aggiungere in seguito.
+- Il modulo non spedisce niente da solo: apre WhatsApp con il messaggio pronto, e a inviarlo è la persona.

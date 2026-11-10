@@ -1,12 +1,12 @@
-// src/scene/Finale.tsx — Capitolo VII, "Il tuo segno": l'invito a prenotare, i contatti e il piè di
-// pagina con il grande marchio.
+// src/scene/Finale.tsx — Capitolo VIII, "Prenota": tutto quello che serve per fare il passo. Il modulo
+// che prepara il messaggio, le promesse dello studio, le recensioni (se ci sono), contatti e orari.
 import type { ReactElement } from 'react';
 import { motion } from 'motion/react';
 import { Scena } from '../movimento/Scena.js';
 import { Rivela } from '../movimento/Rivela.js';
-import { Magnetico } from '../interfaccia/Magnetico.js';
 import { Nastro } from '../interfaccia/Nastro.js';
-import { indirizzoCompleto, studio, urlEmail, urlMappa, urlWhatsApp } from '../dati/studio.js';
+import { Richiesta } from '../interfaccia/Richiesta.js';
+import { indirizzoCompleto, studio, urlEmail, urlMappa } from '../dati/studio.js';
 import { useRegia } from '../regia/Regia.js';
 
 export function Finale(): ReactElement {
@@ -18,27 +18,47 @@ function Contenuto(): ReactElement {
   const anno = new Date().getFullYear();
   return (
     <div className="finale">
-      <Nastro testo="Prenota la tua consulenza ● Solo su appuntamento ● Disegni su misura ● " />
+      <Nastro testo={`${studio.promesse.join(' ● ')} ● `} />
 
       <div className="finale__invito">
-        <p className="etichetta finale__capitolo">Capitolo VII — Il tuo segno</p>
-        <h2 className="finale__titolo">
-          <Rivela testo={'Il prossimo segno\nè il tuo.'} rosso={['tuo']} corsivo={['tuo']} />
-        </h2>
-        <p className="finale__sotto">
-          Raccontaci la tua idea: ti rispondiamo di persona e fissiamo insieme una consulenza, senza impegno.
-        </p>
-        <div className="finale__pulsanti">
-          <Magnetico href={urlWhatsApp} esterno className="pulsante pulsante--pieno">
-            <span>Scrivici su WhatsApp</span>
-            <span className="pulsante__freccia" aria-hidden="true">→</span>
-          </Magnetico>
-          <Magnetico href={urlEmail} className="pulsante">
-            <span>Mandaci una email</span>
-            <span className="pulsante__freccia" aria-hidden="true">→</span>
-          </Magnetico>
+        <div className="finale__parole">
+          <p className="etichetta finale__capitolo">Capitolo VIII — Prenota</p>
+          <h2 className="finale__titolo">
+            <Rivela testo={'Il prossimo segno\nè il tuo.'} rosso={['tuo']} corsivo={['tuo']} />
+          </h2>
+          <p className="finale__sotto">
+            Raccontaci la tua idea qui accanto: bastano trenta secondi. Fissiamo insieme una consulenza, senza impegno.
+          </p>
+          {studio.primaDataLibera ? (
+            <p className="finale__data">
+              <span className="finale__data-punto" aria-hidden="true" />
+              Prima data libera: <strong>{studio.primaDataLibera}</strong>
+            </p>
+          ) : null}
+          <ul className="finale__promesse">
+            {studio.promesse.map((voce) => (
+              <li key={voce}>{voce}</li>
+            ))}
+          </ul>
         </div>
+        <Richiesta />
       </div>
+
+      {studio.recensioni.length > 0 ? (
+        <section className="finale__recensioni" aria-labelledby="recensioni">
+          <h3 id="recensioni" className="etichetta">Chi è già passato da noi</h3>
+          <ul>
+            {studio.recensioni.map((r) => (
+              <li key={r.nome + r.testo}>
+                <blockquote>
+                  <p className="corsivo">«{r.testo}»</p>
+                  <footer>— {r.nome}</footer>
+                </blockquote>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="finale__info">
         <section aria-labelledby="dove">
@@ -61,29 +81,23 @@ function Contenuto(): ReactElement {
           <p className="finale__nota">Solo su appuntamento.</p>
         </section>
         <section aria-labelledby="contatti">
-          <h3 id="contatti" className="etichetta">Contatti</h3>
+          <h3 id="contatti" className="etichetta">Preferisci parlare?</h3>
           <p>
             <a href={`tel:${studio.telefono.tel}`} className="collegamento">{studio.telefono.leggibile}</a>
           </p>
           <p>
-            <a href={`mailto:${studio.email}`} className="collegamento">{studio.email}</a>
+            <a href={urlEmail} className="collegamento">{studio.email}</a>
           </p>
           <p>
             <a href={studio.instagram.url} target="_blank" rel="noopener noreferrer" className="collegamento">
-              Instagram @{studio.instagram.utente}
+              Guarda i lavori su Instagram @{studio.instagram.utente}
             </a>
           </p>
         </section>
       </div>
 
       <footer className="piede">
-        <motion.p
-          className="piede__marchio"
-          aria-label={studio.nome}
-          initial="nascosto"
-          whileInView="visibile"
-          viewport={{ once: true, amount: 0.25 }}
-        >
+        <motion.p className="piede__marchio" aria-label={studio.nome} initial="nascosto" whileInView="visibile" viewport={{ once: true, amount: 0.25 }}>
           {['M', '.', 'C', '.'].map((c, i) => (
             <span key={i} className="piede__maschera" aria-hidden="true">
               <motion.span

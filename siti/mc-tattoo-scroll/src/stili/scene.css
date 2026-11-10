@@ -119,10 +119,53 @@
   gap: 1rem;
   color: var(--nebbia);
 }
-.prologo__invito {
+.prologo__sotto {
   text-align: center;
   font-size: 0.98rem;
   color: var(--carta);
+}
+.prologo__invito {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  padding: 5rem var(--margine);
+  text-align: center;
+  color: var(--carta);
+}
+.prologo__seconda {
+  font-family: var(--f-titoli);
+  font-size: var(--fs-gigante);
+  line-height: 0.86;
+  letter-spacing: -0.025em;
+}
+.prologo__azioni {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  margin-top: clamp(1.5rem, 4vh, 3rem);
+}
+.prologo__promessa {
+  font-size: 0.92rem;
+  opacity: 0.9;
+}
+.prologo__invito--fermo {
+  position: relative;
+  inset: auto;
+  padding: 3rem var(--margine) 6rem;
+}
+.scena--prologo:not(.scena--bloccata) > .palco {
+  height: auto;
+  overflow: visible;
+}
+.scena--prologo:not(.scena--bloccata) .prologo {
+  min-height: 100svh;
+  align-content: center;
+  padding-top: 6rem;
+}
+.scena--prologo:not(.scena--bloccata) .prologo__seconda {
+  font-size: var(--fs-titolo);
 }
 .prologo__scorri {
   justify-self: end;
@@ -155,7 +198,7 @@
     text-align: left;
     bottom: calc(var(--margine) + 2.4rem);
   }
-  .prologo__invito {
+  .prologo__sotto {
     text-align: left;
   }
   .prologo__scorri {
@@ -166,6 +209,133 @@
   }
   .prologo__kanji {
     right: 0.9rem;
+  }
+}
+
+/* =========================== I · I dubbi =========================== */
+.dubbi {
+  position: relative;
+  height: 100%;
+}
+.dubbi__testa {
+  position: absolute;
+  z-index: 2;
+  left: calc(var(--margine) + 1.8rem);
+  right: calc(var(--margine) + 1.8rem);
+  top: 5.4rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.dubbi__testa .testa-capitolo__titolo {
+  font-size: 1.8rem;
+  margin-top: 0.5rem;
+}
+.dubbi__conta {
+  color: var(--accento);
+}
+.dubbi__palco {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-items: center;
+  padding: 9rem calc(var(--margine) + 3vw) 6rem;
+}
+.dubbio {
+  grid-area: 1 / 1;
+  display: grid;
+  gap: 1.1rem;
+  max-width: min(100%, 68rem);
+  will-change: transform, opacity;
+}
+.dubbio--sinistra {
+  justify-self: start;
+  justify-items: start;
+  text-align: left;
+}
+.dubbio--destra {
+  justify-self: end;
+  justify-items: end;
+  text-align: right;
+}
+.dubbio--centro {
+  justify-self: center;
+  justify-items: center;
+  text-align: center;
+}
+.dubbio__domanda {
+  position: relative;
+  font-family: var(--f-titoli);
+  font-style: italic;
+  font-size: clamp(2.7rem, 1rem + 8.4vw, 10rem);
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+  transform-origin: left bottom;
+}
+.dubbio--destra .dubbio__domanda {
+  transform-origin: right bottom;
+}
+.dubbio--centro .dubbio__domanda {
+  transform-origin: center bottom;
+}
+.dubbio__segno {
+  position: absolute;
+  left: -4%;
+  top: 44%;
+  width: 108%;
+  height: 0.34em;
+  pointer-events: none;
+}
+.dubbio__risposta {
+  font-size: clamp(2.7rem, 1rem + 8.4vw, 10rem);
+  line-height: 0.9;
+  max-width: 15ch;
+  text-wrap: balance;
+}
+.dubbio--centro .dubbio__risposta {
+  max-width: 16ch;
+}
+.dubbio__dettaglio {
+  font-size: clamp(1.05rem, 0.9rem + 0.5vw, 1.4rem);
+  max-width: 34rem;
+  margin-top: 0.6rem;
+}
+.dubbi--ridotti {
+  height: auto;
+  padding: 6rem var(--margine) 4rem;
+}
+.dubbi__elenco {
+  display: grid;
+  gap: 3rem;
+  margin-top: 3rem;
+}
+.dubbi__elenco h3 {
+  font-size: var(--fs-medio);
+  margin: 0.4rem 0 0.8rem;
+}
+.dubbi__domanda-piccola {
+  font-family: var(--f-titoli);
+  font-style: italic;
+  font-size: 1.5rem;
+  text-decoration: line-through;
+  text-decoration-color: var(--rosso);
+  opacity: 0.7;
+}
+@media (max-width: 720px) {
+  .dubbi__palco {
+    padding: 8.5rem var(--margine) 6.5rem;
+  }
+  .dubbi__testa {
+    left: var(--margine);
+    right: var(--margine);
+  }
+  .dubbio--destra {
+    justify-self: start;
+    justify-items: start;
+    text-align: left;
+  }
+  .dubbio--destra .dubbio__domanda {
+    transform-origin: left bottom;
   }
 }
 
@@ -195,7 +365,7 @@
 .idea__foglio {
   position: relative;
   justify-self: center;
-  width: min(100%, 72svh);
+  width: min(100%, 66svh);
   aspect-ratio: 1;
   background: #FBFAF7;
   box-shadow: 0 1px 0 rgb(0 0 0 / 0.05), 0 40px 80px -30px rgb(0 0 0 / 0.35), 0 12px 24px -12px rgb(0 0 0 / 0.18);
@@ -368,8 +538,13 @@
     top: 5rem;
     right: var(--margine);
   }
+  .stencil__testo {
+    /* sopra il pulsante "Prenota" che sul telefono occupa il fondo dello schermo */
+    bottom: 5.2rem;
+    right: var(--margine);
+  }
   .stencil__testo .testa-capitolo__titolo {
-    font-size: 3rem;
+    font-size: 2.6rem;
   }
   .stencil__corpo {
     font-size: 0.98rem;
@@ -477,6 +652,10 @@
   font-variant-numeric: tabular-nums;
 }
 @media (max-width: 720px) {
+  .ago__testo {
+    bottom: max(5.2rem, calc(11svh * var(--bande) + 1rem));
+    right: var(--margine);
+  }
   .ago__testo .testa-capitolo__titolo {
     font-size: 3rem;
   }
@@ -524,7 +703,7 @@
   color: var(--carta);
 }
 .rosso__grande {
-  font-size: clamp(9rem, 26vw, 22rem);
+  font-size: clamp(7rem, 20vw, 17rem);
   line-height: 1;
   color: var(--carta);
 }
@@ -533,10 +712,13 @@
   line-height: 1.05;
   max-width: 18ch;
 }
+.rosso__finale .pulsante {
+  margin-top: 0.5rem;
+}
 @media (max-width: 860px) {
   .rosso__testo {
     top: auto;
-    bottom: calc(var(--margine) + 2rem);
+    bottom: 5.2rem;
     right: var(--margine);
     translate: none;
     gap: 0.8rem;
@@ -552,45 +734,6 @@
   .rosso__testo .testa-capitolo__titolo {
     font-size: 3rem;
   }
-}
-
-/* =========================== Manifesto =========================== */
-.manifesto {
-  position: relative;
-  height: 100%;
-  display: grid;
-  align-content: center;
-  padding: 6rem var(--margine) 4rem;
-  gap: 2rem;
-}
-.manifesto__cerchio {
-  will-change: transform;
-  position: absolute;
-  right: -8vmin;
-  top: -8vmin;
-  width: 46vmin;
-  opacity: 0.6;
-}
-.manifesto__giro {
-  font-family: var(--f-testo);
-  font-size: 10.5px;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  fill: var(--carta);
-}
-.manifesto__testo {
-  font-family: var(--f-titoli);
-  font-size: clamp(2.2rem, 1rem + 4.4vw, 6.4rem);
-  line-height: 1.02;
-  letter-spacing: -0.02em;
-  max-width: 17ch;
-}
-.parola--evidenza {
-  font-style: italic;
-  color: var(--accento);
-}
-.manifesto__firma {
-  font-size: 2rem;
 }
 
 /* =========================== V · Gli stili =========================== */
@@ -657,6 +800,26 @@
 .stili__ideale .etichetta {
   font-style: normal;
   color: var(--accento);
+}
+.stili__chiedi {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.4rem;
+  padding: 0.95rem 1.4rem;
+  border-radius: 999px;
+  background: var(--testo);
+  color: var(--sfondo);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.4s var(--curva);
+}
+.stili__chiedi:hover {
+  transform: scale(1.05);
+}
+.stili__chiedi:hover .pulsante__freccia {
+  transform: translateX(4px);
 }
 .stili__disegno {
   justify-self: center;
@@ -767,8 +930,15 @@
   gap: 1.2rem;
   max-width: 30rem;
 }
+.rito__breve {
+  color: var(--rosso);
+}
+.rito__vai {
+  justify-self: start;
+  margin-top: 0.6rem;
+}
 .rito__titolo {
-  font-size: var(--fs-medio);
+  font-size: clamp(2.4rem, 1.4rem + 3.6vw, 5rem);
 }
 .rito__descrizione {
   font-size: 1.2rem;
@@ -777,7 +947,8 @@
   grid-column: 1 / -1;
   position: relative;
   height: 1px;
-  margin: 2.5rem 0.5rem 0;
+  /* a destra resta libero il posto del pulsante "Prenota" */
+  margin: 2.5rem min(27rem, 32vw) 0 0.5rem;
   background: color-mix(in srgb, var(--testo) 18%, transparent);
 }
 .rito__riempi {
@@ -835,7 +1006,10 @@
 .rito__lista {
   display: grid;
   gap: 2.5rem;
-  margin-top: 3rem;
+  margin: 3rem 0 2.5rem;
+}
+.rito--ridotto {
+  padding-bottom: 5rem;
 }
 .rito__lista h3 {
   font-size: var(--fs-medio);
@@ -876,32 +1050,197 @@
   }
 }
 
-/* =========================== VII · Il tuo segno =========================== */
+/* =========================== VIII · Prenota =========================== */
 .finale {
   padding-top: 6rem;
 }
 .finale__invito {
-  padding: clamp(4rem, 10vw, 9rem) var(--margine) clamp(3rem, 8vw, 7rem);
   display: grid;
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: clamp(2rem, 5vw, 6rem);
+  align-items: start;
+  padding: clamp(3.5rem, 8vw, 7rem) var(--margine) clamp(3rem, 7vw, 6rem);
+}
+.finale__parole {
+  display: grid;
+  gap: 1.8rem;
+  position: sticky;
+  top: 6rem;
 }
 .finale__capitolo {
   color: var(--accento);
 }
 .finale__titolo {
-  font-size: var(--fs-gigante);
+  font-size: clamp(3.4rem, 1rem + 8.6vw, 10.5rem);
   line-height: 0.86;
 }
 .finale__sotto {
-  max-width: 32rem;
+  max-width: 30rem;
   font-size: 1.15rem;
   color: var(--nebbia);
 }
-.finale__pulsanti {
+.finale__data {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 1.05rem;
+}
+.finale__data-punto,
+.barra-prenota__punto {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--rosso);
+  box-shadow: 0 0 0 0 rgb(200 16 46 / 0.6);
+  animation: battito 2s ease-out infinite;
+}
+@keyframes battito {
+  70%, 100% { box-shadow: 0 0 0 0.7rem rgb(200 16 46 / 0); }
+}
+.finale__promesse {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: 0.5rem;
+}
+.finale__promesse li {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--grafite);
+  border-radius: 999px;
+  font-size: 0.86rem;
+  color: var(--nebbia);
+}
+.finale__promesse li::before {
+  content: "✓";
+  color: var(--rosso);
+  margin-right: 0.5rem;
+}
+.finale__recensioni {
+  padding: 3rem var(--margine);
+  border-top: 1px solid var(--grafite);
+}
+.finale__recensioni h3 {
+  color: var(--piombo);
+  font-family: var(--f-testo);
+  letter-spacing: 0.18em;
+  line-height: 1.4;
+  margin-bottom: 2rem;
+}
+.finale__recensioni ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 2rem;
+}
+.finale__recensioni blockquote {
+  margin: 0;
+}
+.finale__recensioni blockquote p {
+  font-size: 1.6rem;
+  line-height: 1.15;
+}
+.finale__recensioni footer {
+  margin-top: 0.8rem;
+  color: var(--nebbia);
+}
+
+/* ---------- Il modulo della richiesta ---------- */
+.richiesta {
+  display: grid;
+  gap: 1.6rem;
+  padding: clamp(1.4rem, 2.6vw, 2.4rem);
+  background: #151515;
+  border: 1px solid var(--grafite);
+  border-radius: 1.2rem;
+}
+.richiesta__campo {
+  display: grid;
+  gap: 0.6rem;
+}
+.richiesta .etichetta,
+.richiesta legend {
+  color: var(--nebbia);
+}
+.richiesta textarea,
+.richiesta input[type="text"] {
+  width: 100%;
+  font: inherit;
+  color: var(--carta);
+  background: var(--nero);
+  border: 1px solid var(--grafite);
+  border-radius: 0.7rem;
+  padding: 0.9rem 1rem;
+  resize: vertical;
+  transition: border-color 0.3s;
+}
+.richiesta textarea::placeholder,
+.richiesta input::placeholder {
+  color: var(--piombo);
+}
+.richiesta textarea:focus,
+.richiesta input[type="text"]:focus {
+  outline: none;
+  border-color: var(--carta);
+}
+.richiesta__gruppo {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.richiesta__gruppo legend {
+  padding: 0;
+  margin-bottom: 0.6rem;
+}
+.richiesta__scelte {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.scelta {
+  position: relative;
+  cursor: pointer;
+}
+.scelta input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  cursor: pointer;
+}
+.scelta span {
+  display: block;
+  padding: 0.6rem 1.05rem;
+  border: 1px solid var(--grafite);
+  border-radius: 999px;
+  font-size: 0.95rem;
+  transition: background-color 0.25s, color 0.25s, border-color 0.25s;
+}
+.scelta:hover span {
+  border-color: var(--nebbia);
+}
+.scelta--attiva span {
+  background: var(--carta);
+  border-color: var(--carta);
+  color: var(--nero);
+}
+.scelta input:focus-visible + span {
+  outline: 2px solid var(--rosso);
+  outline-offset: 3px;
+}
+.richiesta__invio {
+  display: grid;
+  gap: 0.9rem;
+  justify-items: start;
+  padding-top: 0.4rem;
+}
+.richiesta__nota {
+  font-size: 0.88rem;
+  color: var(--piombo);
+  max-width: 28rem;
 }
 .finale__info {
   display: grid;
@@ -974,5 +1313,15 @@
 @media (max-width: 860px) {
   .finale__info {
     grid-template-columns: 1fr;
+  }
+  .finale__invito {
+    grid-template-columns: 1fr;
+  }
+  .finale__parole {
+    position: static;
+  }
+  .richiesta__invio .pulsante {
+    width: 100%;
+    justify-content: space-between;
   }
 }

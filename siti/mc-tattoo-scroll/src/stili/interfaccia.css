@@ -359,3 +359,63 @@
   white-space: pre;
   padding-right: 0.4em;
 }
+
+/* ---------- Il pulsante "Prenota" che accompagna la storia ---------- */
+.barra-prenota {
+  position: fixed;
+  z-index: 58;
+  right: calc(var(--margine) + 1.6rem);
+  bottom: calc(var(--margine) * 0.6);
+}
+.barra-prenota__pulsante {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.3rem;
+  border-radius: 999px;
+  background: var(--rosso);
+  color: var(--carta);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--testo) 45%, transparent), 0 12px 30px -10px rgb(0 0 0 / 0.5);
+  transition: transform 0.4s var(--curva);
+}
+.barra-prenota__pulsante:hover {
+  transform: scale(1.04);
+}
+.barra-prenota__pulsante:hover .pulsante__freccia {
+  transform: translateX(4px);
+}
+.barra-prenota__punto {
+  background: var(--carta);
+  box-shadow: 0 0 0 0 rgb(244 242 238 / 0.6);
+  animation-name: battito-chiaro;
+}
+@keyframes battito-chiaro {
+  70%, 100% { box-shadow: 0 0 0 0.6rem rgb(244 242 238 / 0); }
+}
+.barra-prenota__sotto {
+  font-weight: 400;
+  font-size: 0.85rem;
+  opacity: 0.85;
+  padding-left: 0.75rem;
+  border-left: 1px solid rgb(244 242 238 / 0.4);
+}
+@media (max-width: 720px) {
+  .barra-prenota {
+    left: 0.7rem;
+    right: 0.7rem;
+    bottom: 0.7rem;
+  }
+  .barra-prenota__pulsante {
+    width: 100%;
+    justify-content: center;
+    padding: 0.95rem 1rem;
+  }
+  .barra-prenota__sotto {
+    display: none;
+  }
+  /* sul telefono il posto in basso è del pulsante: il codice di tempo sale in alto */
+  .hud__tempo {
+    display: none;
+  }
+}

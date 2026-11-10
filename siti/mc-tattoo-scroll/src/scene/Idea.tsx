@@ -1,4 +1,4 @@
-// src/scene/Idea.tsx — Capitolo I, "L'idea": sulla carta bianca la carpa si disegna a pennello mentre
+// src/scene/Idea.tsx — Capitolo II, "Su misura": sulla carta bianca la carpa si disegna a pennello mentre
 // la camera parte dall'occhio e si allontana fino a mostrare il foglio intero, con il sigillo rosso.
 import type { ReactElement } from 'react';
 import { motion, useTransform } from 'motion/react';
@@ -20,9 +20,9 @@ const CAMERA: readonly Fotogramma[] = [
 ];
 
 const NOTE = [
-  { testo: 'più movimento nella coda', classe: 'idea__nota--1', da: 0.56 },
+  { testo: 'la coda? più mossa, come volevi', classe: 'idea__nota--1', da: 0.56 },
   { testo: 'il sole: rosso pieno ●', classe: 'idea__nota--2', da: 0.66 },
-  { testo: 'spalla → avambraccio', classe: 'idea__nota--3', da: 0.76 },
+  { testo: 'pronto da provare addosso →', classe: 'idea__nota--3', da: 0.76 },
 ] as const;
 
 export function Idea(): ReactElement {
@@ -38,11 +38,11 @@ function Contenuto({ p, ridotto }: { p: MotionValue<number>; ridotto: boolean })
   return (
     <div className="idea">
       <div className="idea__testo">
-        <TestaCapitolo numero="I" titolo="L’idea" p={p} ridotto={ridotto} entra={[0.02, 0.1]} />
+        <TestaCapitolo numero="II" titolo="Su misura" p={p} ridotto={ridotto} entra={[0.02, 0.1]} />
         <Finestra p={p} entra={[0.08, 0.16]} ridotto={ridotto} className="idea__corpo">
           <p>
-            Tutto comincia da una frase detta a voce bassa: un ricordo, un nome, una data. La ascoltiamo con calma, poi il
-            pennello prova a darle una forma.
+            Non scegli da un catalogo. Ci racconti cosa hai in testa (un ricordo, un nome, una data) e lo disegniamo solo
+            per te, finché non lo riconosci.
           </p>
         </Finestra>
         <Finestra p={p} entra={[0.46, 0.56]} ridotto={ridotto} className="idea__citazione">

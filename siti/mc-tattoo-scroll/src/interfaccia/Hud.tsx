@@ -28,10 +28,13 @@ export function Hud(): ReactElement {
       <span className="mirino mirino--2" />
       <span className="mirino mirino--3" />
       <span className="mirino mirino--4" />
-      <p className="hud__tempo etichetta">
-        <span className="hud__scena">Sc {scena}</span>
-        <motion.span>{tempo}</motion.span>
-      </p>
+      {/* Nell'ultima scena il fondo dello schermo è del modulo e dei contatti: niente codice di tempo. */}
+      {attivo < CAPITOLI.length - 1 ? (
+        <p className="hud__tempo etichetta">
+          <span className="hud__scena">Sc {scena}</span>
+          <motion.span>{tempo}</motion.span>
+        </p>
+      ) : null}
       <motion.p className="hud__scorri etichetta" style={{ opacity: scorriVia }}>
         Scorri ↓
       </motion.p>

@@ -115,7 +115,7 @@ export function Navigazione(): ReactElement {
                 </motion.li>
               ))}
             </ol>
-            <p className="indice__piede etichetta">Storia di un segno — M.C. Tattoo Studio</p>
+            <p className="indice__piede etichetta">Dal pensiero alla pelle — M.C. Tattoo Studio</p>
           </motion.div>
         ) : null}
       </AnimatePresence>

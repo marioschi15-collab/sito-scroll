@@ -1,4 +1,4 @@
-// src/scene/Stencil.tsx — Capitolo II, "Lo stencil": una barra di luce stampa il disegno a rovescio,
+// src/scene/Stencil.tsx — Capitolo III, "Lo provi addosso": una barra di luce stampa il disegno a rovescio,
 // poi il foglio si gira e si appoggia sulla pelle. Alla fine il disegno si ferma esattamente
 // nell'inquadratura da cui parte "L'ago": le due scene si fondono senza stacco.
 import type { CSSProperties, ReactElement } from 'react';
@@ -33,13 +33,13 @@ function Contenuto({ p, ridotto }: { p: MotionValue<number>; ridotto: boolean })
     const k = Math.min(1, Math.max(0, (v - STAMPA[0]) / (STAMPA[1] - STAMPA[0])));
     return `${String(Math.round(k * 100)).padStart(3, '0')}%`;
   });
-  const stato = useTransform(p, (v): string => (v < GIRO[0] ? 'stampa a specchio' : v < GIRO[1] ? 'trasferimento' : 'sulla pelle'));
+  const stato = useTransform(p, (v): string => (v < GIRO[0] ? 'stampa di prova' : v < GIRO[1] ? 'si appoggia' : 'sulla tua pelle'));
   const xParola = useTransform(p, [0, 1], ['8%', '-22%']);
 
   return (
     <div className="stencil">
       <motion.p className="stencil__parola" style={{ x: xParola, opacity: ridotto ? 1 : contorno }} aria-hidden="true">
-        Stencil
+        Prova
       </motion.p>
 
       <div className="stencil__palco3d">
@@ -55,17 +55,17 @@ function Contenuto({ p, ridotto }: { p: MotionValue<number>; ridotto: boolean })
       </div>
 
       <motion.div className="stencil__testo" style={ridotto ? undefined : { opacity: contorno }}>
-        <TestaCapitolo numero="II" titolo="Lo stencil" p={p} ridotto={ridotto} />
+        <TestaCapitolo numero="III" titolo="Lo provi addosso" p={p} ridotto={ridotto} />
         <Finestra p={p} entra={[0.03, 0.1]} ridotto={ridotto} className="stencil__corpo">
           <p>
-            Il disegno diventa una mappa: viene stampato a rovescio su carta da trasferimento e appoggiato sulla pelle. Prima
-            di un solo punto d’inchiostro, ti guardi allo specchio e decidi tu.
+            Prima di un solo punto d’inchiostro, il disegno si appoggia sulla tua pelle. Ti guardi allo specchio: più su,
+            più grande, più piccolo. Si sposta finché non è al posto giusto. Decidi tu.
           </p>
         </Finestra>
       </motion.div>
 
       <motion.div className="stencil__lettura" style={ridotto ? undefined : { opacity: contorno }} aria-hidden="true">
-        <p className="etichetta">Trasferimento</p>
+        <p className="etichetta">Prova sulla pelle</p>
         <motion.p className="stencil__percento">{percento}</motion.p>
         <motion.p className="etichetta stencil__stato">{stato}</motion.p>
       </motion.div>

@@ -1,27 +1,28 @@
-// src/scene/Rito.tsx — Capitolo VI, "Il rito": i quattro passi, con un grande numero che scorre
-// come un rullino e una linea d'avanzamento che si riempie.
+// src/scene/Rito.tsx — Capitolo VII, "Tre passi": quanto è facile arrivare da noi. Un grande numero
+// scorre come un rullino, il passo cambia, una linea si riempie. Alla fine, il pulsante per cominciare.
 import type { ReactElement } from 'react';
 import { motion, useTransform } from 'motion/react';
 import type { MotionValue } from 'motion/react';
 import { Scena } from '../movimento/Scena.js';
 import { Finestra } from '../movimento/Finestra.js';
 import { TestaCapitolo } from './TestaCapitolo.js';
+import { useRegia } from '../regia/Regia.js';
 
 const PASSI = [
-  { titolo: 'Consulenza', testo: 'Ci racconti l’idea, di persona o in chat. Guardiamo insieme posizione, misura e tempi. Senza impegno.' },
-  { titolo: 'Disegno su misura', testo: 'Disegniamo il pezzo solo per te e lo ritocchiamo insieme finché non è davvero tuo.' },
-  { titolo: 'Seduta', testo: 'Aghi e cartucce monouso aperti davanti a te, superfici sanificate, pause ogni volta che servono.' },
-  { titolo: 'Guarigione', testo: 'Ti spieghiamo come curarlo nei giorni dopo e restiamo a disposizione per ogni dubbio.' },
+  { titolo: 'Scrivici', breve: 'Due minuti', testo: 'Due righe su WhatsApp: cosa vorresti e dove. Ti rispondiamo di persona, non con un messaggio automatico.' },
+  { titolo: 'Vieni a trovarci', breve: 'Senza impegno', testo: 'La consulenza in studio: guardiamo insieme disegno, misura e posizione. Esci con un preventivo chiaro.' },
+  { titolo: 'Il tuo giorno', breve: 'Con calma', testo: 'La seduta, al tuo ritmo. Torni a casa con il tuo segno e con le istruzioni per curarlo.' },
 ] as const;
 
 const INIZIO = 0.1;
-const PASSO = 0.2;
+const PASSO = 0.26;
 
 export function Rito(): ReactElement {
   return <Scena id="rito">{(p, ridotto) => <Contenuto p={p} ridotto={ridotto} />}</Scena>;
 }
 
 function Contenuto({ p, ridotto }: { p: MotionValue<number>; ridotto: boolean }): ReactElement {
+  const { vai } = useRegia();
   const n = PASSI.length;
   const rullo = useTransform(p, (v) => {
     const k = Math.min(n - 1, Math.max(0, (v - INIZIO) / PASSO - 0.15));
@@ -34,10 +35,17 @@ function Contenuto({ p, ridotto }: { p: MotionValue<number>; ridotto: boolean })
   const linea = useTransform(p, [INIZIO, INIZIO + PASSO * n], [0, 1]);
   const giro = useTransform(p, [0, 1], [0, 200]);
 
+  const invito = (
+    <button type="button" className="pulsante pulsante--pieno rito__vai" onClick={() => vai('finale')}>
+      <span>Comincia dal primo passo</span>
+      <span className="pulsante__freccia" aria-hidden="true">→</span>
+    </button>
+  );
+
   if (ridotto) {
     return (
       <div className="rito rito--ridotto">
-        <TestaCapitolo numero="VI" titolo="Il rito" p={p} ridotto />
+        <TestaCapitolo numero="VII" titolo="Tre passi" p={p} ridotto />
         <ol className="rito__lista">
           {PASSI.map((s, i) => (
             <li key={s.titolo}>
@@ -47,13 +55,14 @@ function Contenuto({ p, ridotto }: { p: MotionValue<number>; ridotto: boolean })
             </li>
           ))}
         </ol>
+        {invito}
       </div>
     );
   }
 
   return (
     <div className="rito">
-      <TestaCapitolo numero="VI" titolo="Il rito" p={p} ridotto={false} className="rito__testa" />
+      <TestaCapitolo numero="VII" titolo="Tre passi e sei da noi" p={p} ridotto={false} className="rito__testa" />
       <div className="rito__numeri" aria-hidden="true">
         <motion.div className="rito__rullo" style={{ y: rullo }}>
           {PASSI.map((_, i) => (
@@ -64,10 +73,13 @@ function Contenuto({ p, ridotto }: { p: MotionValue<number>; ridotto: boolean })
       <ol className="rito__passi">
         {PASSI.map((s, i) => {
           const a = INIZIO + i * PASSO;
+          const ultimo = i === n - 1;
           return (
-            <Finestra key={s.titolo} as="li" p={p} entra={[a - 0.02, a + 0.05]} esce={i < n - 1 ? [a + PASSO - 0.05, a + PASSO - 0.01] : undefined} sfoca className="rito__passo">
+            <Finestra key={s.titolo} as="li" p={p} entra={[a - 0.02, a + 0.05]} esce={ultimo ? undefined : [a + PASSO - 0.05, a + PASSO - 0.01]} sfoca className="rito__passo">
+              <p className="rito__breve etichetta">{s.breve}</p>
               <h3 className="rito__titolo">{s.titolo}</h3>
               <p className="rito__descrizione">{s.testo}</p>
+              {ultimo ? invito : null}
             </Finestra>
           );
         })}
@@ -85,7 +97,7 @@ function Contenuto({ p, ridotto }: { p: MotionValue<number>; ridotto: boolean })
           <path id="rito-giro" d="M100 22 A78 78 0 1 1 99.9 22" />
         </defs>
         <text className="rito__giro">
-          <textPath href="#rito-giro">Igiene · Calma · Precisione · Solo su appuntamento ·</textPath>
+          <textPath href="#rito-giro">Senza impegno · Con calma · Su misura · Solo su appuntamento ·</textPath>
         </text>
         <circle cx="100" cy="100" r="14" className="rito__punto" />
       </motion.svg>
