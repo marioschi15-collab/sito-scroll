@@ -946,6 +946,9 @@ B.ambienti.registra({
   descrizione: 'Acqua bassa e piena di sole, tra coralli colorati e sabbia chiara.',
   colori: { acquaAlta: '#1b97bb', acquaBassa: '#0d5083', sabbia: '#dcc48f', roccia: '#35708c', accento: '#f07f6e' },   // l'interfaccia ci scrive sopra in bianco
 
+  /* Il gioco la chiama quando si passa a un altro ambiente: le tele si rifanno alla prossima crea(). */
+  libera() { corredo = null; },
+
   crea(mondo, caso) {
     const co = prepara(), W = mondo.w, H = mondo.h;
     const tra = (a, b) => a + caso() * (b - a), uno = l => l[Math.floor(caso() * l.length)], mezzo = n => Math.round(n * 2) / 2;

@@ -167,6 +167,9 @@ B.ambienti.registra({
 - Prestazioni: tutto ciò che è costoso si pre-disegna in `crea()` su tele fuori schermo o trame; nel fotogramma si
   copia e si salta ciò che non è visibile (`v.visibile`). Con `v.qualita === 0` si saltano gli effetti di lusso.
   Tetti misurati da `ambiente.mjs`: totale ×16, qualità bassa ×7, `crea()` sotto 1,5 s.
+- **Memoria.** Le tele fuori schermo di un ambiente possono restare in una variabile del file tra un livello e l'altro
+  (così "riprova" è immediato), ma l'ambiente deve avere `libera()`, che le butta via: il motore la chiama quando si
+  passa a un altro ambiente. In tutto un ambiente tiene al massimo 12 milioni di pixel di tele.
 - Elementi di gioco come bolle, conchiglie con le perle e pericoli li disegna il motore, non l'ambiente.
 
 ## 5. Il gioco: che cosa deve avere

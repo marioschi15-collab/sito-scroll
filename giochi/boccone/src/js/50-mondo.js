@@ -642,6 +642,13 @@ function creaScena(amb, seme) {
   if (typeof amb.crea !== 'function') return null;
   if (scenaInCassa.id === amb.id && scenaInCassa.seme === seme) return scenaInCassa.scena;
   let scena = null;
+  /* Si cambia ambiente: quello di prima butta via le sue tele (libera(), facoltativa), così la memoria non si riempie
+     con gli scenari di tutti gli ambienti visitati. */
+  if (scenaInCassa.id && scenaInCassa.id !== amb.id) {
+    const prima = B.ambienti.prendi(scenaInCassa.id);
+    scenaInCassa.scena = null;
+    try { if (prima && typeof prima.libera === 'function') prima.libera(); } catch (e) { console.error('[Boccone] lo scenario di "' + scenaInCassa.id + '" non si è liberato', e); }
+  }
   try { scena = amb.crea({ w: amb.mondo.w, h: amb.mondo.h }, B.util.semi(seme * 7919 + 17)); }
   catch (e) { console.error('[Boccone] lo scenario di "' + amb.id + '" non si è creato', e); return null; }
   scenaInCassa.id = amb.id; scenaInCassa.seme = seme; scenaInCassa.scena = scena;
