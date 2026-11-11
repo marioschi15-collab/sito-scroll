@@ -1,7 +1,10 @@
 /* Boccone — pericolo: MEDUSA. Ombrello traslucido rosa-lilla dall'orlo a festoni, con dentro il «quadrifoglio» viola; sotto,
    quattro braccia orali arricciate e otto tentacoli sottili con la perlina urticante in punta.
    Dipende solo da o.fase (i tentacoli che ondeggiano) e da o.attivo (la spinta: l'ombrello si stringe e si allunga,
-   braccia e tentacoli si distendono, e lei strizza gli occhi per lo sforzo). 1 unità = il raggio che fa male. */
+   braccia e tentacoli si distendono, e lei strizza gli occhi per lo sforzo). 1 unità = il raggio che fa male.
+   RITOCCATA PER LO STILE «FILM D'ANIMAZIONE»: i tentacoli sottili hanno la linea fine (non più il bordo scuro spesso) e un
+   filo di luce; l'ombrello è più traslucido e sotto si accende della luce che lo attraversa (il sotto non è più un ovale
+   a bordo netto ma un'ombra sfumata); gote sfumate; le perline urticanti restano accese: è da lì che punge. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -9,7 +12,8 @@ const { sin, abs, max, min } = Math;
 
 // ---- tinte: rosa con le ombre viola; braccia più cariche, tentacoli lilla
 const T = { ombrello: P.tinta('#ff8fd0', '#8a3fd0'), braccia: P.tinta('#ff6fb4', '#9a3ab8'), lontane: P.tinta('#dc62c2', '#6a2aa0'), filo: P.tinta('#dcaaff', '#6a3fd0') };
-const GONADI = P.alfa('#b84fe0', .8), CUORE = P.alfa('#ffe0f6', .6), CANALI = 'rgba(255,255,255,.34)', SOTTO = P.alfa('#8a3ad0', .32), GOTA = P.alfa('#ff3f8f', .38), PERLA = '#fff3a8', BALZA = '#ffd2ee';
+const GONADI = P.alfa('#b84fe0', .8), CUORE = P.alfa('#ffe0f6', .6), CANALI = 'rgba(255,255,255,.34)', SOTTO = '#7a34d0', LUME = '#fff0fb', GOTA = '#ff3f8f', PERLA = '#fff3a8', BALZA = '#ffd2ee';
+const FILO_LUCE = P.alfa(T.filo.luce, .7);
 const FILI = [-.92, -.66, -.4, -.14, .14, .4, .66, .92];             // da dove pendono i tentacoli (in quote della larghezza)
 const OCCHIO = { iride: '#7a3fe0', pelle: T.ombrello, guarda: { x: 0, y: .3 }, palpebra: .24 }, STRIZZATO = { pelle: T.ombrello, tipo: 'chiuso' };
 const SORRISO = { curva: .8, tinta: T.ombrello, spess: .05 }, SFORZO = { apri: .7, alt: .13, curva: .5, tinta: T.ombrello, lingua: false, spess: .05 };
@@ -37,7 +41,8 @@ B.specie.registra({
       }
       c.lineTo(px, py); PUNTE.push(px, py);
     }
-    c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = T.filo.bordo; c.lineWidth = .11; c.stroke(); c.strokeStyle = T.filo.base; c.lineWidth = .048; c.stroke();
+    c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = T.filo.linea; c.lineWidth = .092; c.stroke(); c.strokeStyle = T.filo.base; c.lineWidth = .052; c.stroke();   // linea fine, colore…
+    c.translate(-.008, -.006); c.strokeStyle = FILO_LUCE; c.lineWidth = .016; c.stroke(); c.translate(.008, .006);                                                          // …e un filo di luce
     P.lucine(c, PUNTE, .036, PERLA, .55 + .45 * at);
     for (let i = 0; i < 4; i++) {
       const lato = i % 2 ? 1 : -1, vicino = i > 1;
@@ -53,13 +58,14 @@ B.specie.registra({
       for (let i = 0; i < 6; i++) { const xa = w - i * w / 3, xb = xa - w / 3; cc.quadraticCurveTo((xa + xb) / 2, orlo + .17, xb, orlo - .04); }   // l'orlo a festoni
       cc.closePath();
     };
-    c.globalAlpha = .9;
+    c.globalAlpha = .88;
     P.volume(c, traccia, T.ombrello, { luce: [.32, top * .8, 1.75], ombra: .1, dentro(cc) {
-      cc.fillStyle = SOTTO; cc.beginPath(); cc.ellipse(0, orlo - .02, w * .88, .2, 0, 0, TAU); cc.fill();
+      P.ombra(cc, 0, orlo + .02, w * .98, .3, 0, .42, SOTTO);         // il sotto dell'ombrello in trasparenza: un'ombra viola che sfuma
+      P.guancia(cc, -.1 * w, orlo - .16, .62 * w, LUME, .34);         // e la luce che attraversa la gelatina
       cc.beginPath(); for (let i = -3; i <= 3; i++) { cc.moveTo(i * .05, top * .8); cc.quadraticCurveTo(i * w * .2, top * .3, i * w * .31, orlo + .1); }
       cc.strokeStyle = CANALI; cc.lineWidth = .026; cc.stroke();
       cc.beginPath(); for (let i = 0; i < 4; i++) { const x = (i - 1.5) * .3 * w, y = top * .6 + abs(i - 1.5) * .05; cc.moveTo(x + .13 * w, y); cc.ellipse(x, y, .13 * w, .1, 0, 0, TAU); }
-      cc.fillStyle = CUORE; cc.fill(); cc.strokeStyle = GONADI; cc.lineWidth = .055; cc.stroke();
+      cc.fillStyle = CUORE; cc.fill(); cc.strokeStyle = GONADI; cc.lineWidth = .048; cc.stroke();
     } });
     c.globalAlpha = 1;
     ORLO.length = 0; for (let i = 0; i <= 6; i++) ORLO.push(w - i * w / 3, orlo - .05);
@@ -68,7 +74,7 @@ B.specie.registra({
 
     // ---- 3. il visino: occhi sognanti (strizzati mentre spinge), gote, bocca
     const su = at > .6;
-    c.fillStyle = GOTA; c.beginPath(); c.ellipse(-.53 * w, .0, .1, .06, 0, 0, TAU); c.ellipse(.53 * w, .0, .1, .06, 0, 0, TAU); c.fill();
+    P.guancia(c, -.53 * w, .0, .12, GOTA, .5); P.guancia(c, .53 * w, .0, .12, GOTA, .5);
     P.occhio(c, -.3 * w, -.13, .16, su ? STRIZZATO : OCCHIO); P.occhio(c, .3 * w, -.13, .16, su ? STRIZZATO : OCCHIO);
     P.sorriso(c, 0, su ? .0 : .02, su ? .07 : .1, su ? SFORZO : SORRISO);
     c.restore();

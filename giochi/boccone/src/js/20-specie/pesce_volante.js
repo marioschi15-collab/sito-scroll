@@ -1,7 +1,9 @@
 /* Boccone — specie: PESCE VOLANTE (taglia 2, scattante). Un aliante: corpo lungo blu cobalto con la pancia d'argento, quattro
    «ali» color ambra, trasparenti, venate e macchiate come quelle di una farfalla (le due pettorali enormi e a punta, stese
    all'indietro come quelle di una rondine, e le due ventrali più piccole), coda col lobo di sotto lungo il doppio. Diverso dall'eroe Saetta, che è
-   paffuto, azzurro e con le ali celesti. A caccia spalanca le ali, che si orlano di rosso, e drizza la dorsale. */
+   paffuto, azzurro e con le ali celesti. A caccia spalanca le ali, che si orlano di rosso, e drizza la dorsale.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il blu cobalto aveva già l'ombra indaco dichiarata; la coda blu ora è piena
+   fino in punta (velo: 1), perché da piccola spariva sull'acqua blu, e il controluce del corpo è più largo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -40,7 +42,7 @@ B.specie.registra({
     P.suSpina(s, 0, 0, q);
     const ac = q.ang + PI + sin(F - 1.1) * .34;
     P.pinna(c, { x0: q.x + .04 + sin(ac) * .08, y0: q.y - Math.cos(ac) * .08, x1: q.x + .04 - sin(ac) * .08, y1: q.y + Math.cos(ac) * .08, a0: ac - .62, a1: ac + .7, lung: .78, profilo: PROFILO_CODA, n: 8, onda: .14, fase: F - 1.9, passo: 0,
-      tinta: T.pinna, orlo: STRISCIA, primo: true });
+      tinta: T.pinna, orlo: STRISCIA, primo: true, velo: 1 });
     const d0 = P.suSpina(s, .3, -.85), d1 = P.suSpina(s, .13, -.8), n0 = P.suSpina(s, .28, .85), n1 = P.suSpina(s, .14, .8);
     P.pinna(c, { x0: d0.x, y0: d0.y, x1: d1.x, y1: d1.y, a0: -(PI / 2 + .55 - alza), a1: -(PI - .3), lung: m ? .36 : .3, profilo: [1, .8, .55, .4], n: 4, onda: .07, fase: F * 2, tinta: T.pinna, orlo: STRISCIA });
     P.pinna(c, { x0: n0.x, y0: n0.y, x1: n1.x, y1: n1.y, a0: PI / 2 + .65, a1: PI - .3, lung: .24, profilo: [1, .75, .5], n: 4, onda: .07, fase: F * 2 - 1, tinta: T.pinna, orlo: STRISCIA });
@@ -49,7 +51,7 @@ B.specie.registra({
     macchie(c, gv, .03);
 
     // ---- 2. il corpo: pancia d'argento, striscia celeste, puntini chiari e squame sul dorso
-    P.volume(c, s, T.corpo, { luce, ombra: .08, dentro(cc) {
+    P.volume(c, s, T.corpo, { luce, ombra: .11, dentro(cc) {
       P.fianco(cc, s, u => .08 + max(0, u - .8) * 5, 1.4, T.ventre.base);
       P.fianco(cc, s, u => -.06 + max(0, u - .8) * 5, u => .08 + max(0, u - .8) * 5, STRISCIA, .03, .93);
       P.macchie(cc, s, { n: 7, seme: 4, u0: .1, u1: .7, v0: -.85, v1: -.3, r0: .022, r1: .04, colore: PUNTINI, lungo: 1 });

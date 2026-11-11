@@ -4,7 +4,9 @@
    con la pancia chiara e la fila di ventose a perline; ognuna si arriccia per conto suo.
    Tutti gli stati letti con P.statoGigante. Il segnale da ricordare: macchie ad anello spente = tranquilla; macchie e
    ventose che si ACCENDONO DI GIALLO (con il sacco che si gonfia e le braccia che si avvolgono come molle) = sta per colpire.
-   Quando parte spalanca le braccia a tenaglia e apre il becco. */
+   Quando parte spalanca le braccia a tenaglia e apre il becco.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: i pezzi disegnati a mano (sifone, membrana fra le braccia, labbro del becco,
+   bozzo dell'occhio, orlo delle ventose) usano la linea sottile della cassetta (t.linea, sotto .04) invece del contorno spesso. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -74,13 +76,13 @@ function braccio(c, a, i, K, st, vicino, q) {
     if (st.fine) P.macchie(c, s, { n: 5, seme: i + 2, u0: .1, u1: .72, v0: -la * .62, v1: -la * .12, r0: .016, r1: .03, colore: K.nei, lungo: 1.3 });
   }
   for (let passata = vicino ? 0 : 1; passata < (vicino ? 3 : 2); passata++) {       // le lontane: una passata sola, tutta dentro il braccio
-    const piu = passata ? 0 : .034, k = passata === 2 ? .42 : vicino ? 1 : .8, v = la * (vicino ? .97 : .66);
+    const piu = passata ? 0 : .026, k = passata === 2 ? .42 : vicino ? 1 : .8, v = la * (vicino ? .97 : .66);
     c.beginPath();
     for (let j = 0; j < nv; j++) {
       const u = .1 + .8 * j / (nv - 1), r = (.078 - .046 * u) * k + piu;
       P.suSpina(s, u, v, q); c.moveTo(q.x + r, q.y); c.arc(q.x, q.y, r, 0, TAU);
     }
-    c.fillStyle = passata === 2 ? K.cuoreVentosa : passata ? (vicino ? K.ventosa : K.ventosaLontana) : tinta.bordo; c.fill();
+    c.fillStyle = passata === 2 ? K.cuoreVentosa : passata ? (vicino ? K.ventosa : K.ventosaLontana) : tinta.linea; c.fill();
   }
 }
 
@@ -120,10 +122,10 @@ B.specie.registra({
 
     // ---- 3. sotto la testa: l'ombra del collo, il sifone, la membrana fra le braccia, la bocca col becco
     P.ombra(c, HX - .3, HY - .12, .36, .5, .5, .34);
-    c.beginPath(); c.ellipse(HX - .36, HY + .34, .16, .095, .75, 0, TAU); c.strokeStyle = SIFONE.bordo; c.lineWidth = .09; c.stroke(); c.fillStyle = viva ? SIFONE.base : K.sotto; c.fill();
+    c.beginPath(); c.ellipse(HX - .36, HY + .34, .16, .095, .75, 0, TAU); c.strokeStyle = SIFONE.linea; c.lineWidth = .066; c.stroke(); c.fillStyle = viva ? SIFONE.base : K.sotto; c.fill();
     c.beginPath(); c.ellipse(HX - .44, HY + .41, .05, .07, .75, 0, TAU); c.fillStyle = SIFONE.bordo; c.fill();
-    c.beginPath(); c.ellipse(CX + .1, CY + .1, .42, .38, .4, 0, TAU); c.strokeStyle = K.lontano.bordo; c.lineWidth = .1; c.stroke(); c.fillStyle = K.lontano.ombra; c.fill();
-    c.beginPath(); c.ellipse(MX, MY, .2 + becco * .04, .23 + becco * .05, ASSE, 0, TAU); c.strokeStyle = LABBRO.bordo; c.lineWidth = .08; c.stroke(); c.fillStyle = viva ? LABBRO.base : K.sotto; c.fill();
+    c.beginPath(); c.ellipse(CX + .1, CY + .1, .42, .38, .4, 0, TAU); c.strokeStyle = K.lontano.linea; c.lineWidth = .07; c.stroke(); c.fillStyle = K.lontano.ombra; c.fill();
+    c.beginPath(); c.ellipse(MX, MY, .2 + becco * .04, .23 + becco * .05, ASSE, 0, TAU); c.strokeStyle = LABBRO.linea; c.lineWidth = .066; c.stroke(); c.fillStyle = viva ? LABBRO.base : K.sotto; c.fill();
     c.beginPath(); c.ellipse(MX + .02, MY + .01, .11 + becco * .06, .13 + becco * .09, ASSE, 0, TAU); c.fillStyle = '#5a0c34'; c.fill();
     P.corno(c, MX - .06, MY + .06, ASSE + .28 + becco * .55, .22, .18, BECCO, { curva: -.7 });
     P.corno(c, MX - .07, MY - .06, ASSE - .1 - becco * .4, .33, .23, BECCO, { curva: .75 });
@@ -135,7 +137,7 @@ B.specie.registra({
     const ex = HX + .09, ey = HY - .17, irto = viva ? G.ira : -.5;
     P.corno(c, ex - .2, ey - .24, -PI / 2 - .55 + irto * .2, .17 + irto * .13, .14, K.pelle, { curva: -.3 });
     P.corno(c, ex + .01, ey - .3, -PI / 2 - .12 + irto * .32, .19 + irto * .16, .15, K.pelle, { curva: -.25 });
-    c.beginPath(); c.ellipse(ex - .04, ey - .08, .32, .3, 0, 0, TAU); c.strokeStyle = K.pelle.bordo; c.lineWidth = .1; c.stroke(); c.fillStyle = K.pelle.chiara; c.fill();   // il bozzo dell'occhio: se ne vede solo l'orlo
+    c.beginPath(); c.ellipse(ex - .04, ey - .08, .32, .3, 0, 0, TAU); c.strokeStyle = K.pelle.linea; c.lineWidth = .07; c.stroke(); c.fillStyle = K.pelle.chiara; c.fill();   // il bozzo dell'occhio: se ne vede solo l'orlo
     P.palla(c, HX, HY, .5, .46, -.15, K.pelle, { luce: [HX + .12, HY - .3, 1], ombra: .09 });
     if (viva) P.guancia(c, HX + .22, HY + .22, .2, '#ff4f8a', .3 + rosso * .05);
     if (st.fine) {

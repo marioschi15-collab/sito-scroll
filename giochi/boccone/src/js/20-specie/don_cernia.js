@@ -2,7 +2,9 @@
    mento sporgente, guancia cadente, sopracciglia folte, coroncina e un dente d'oro.
    Tutti gli stati letti con P.statoGigante. Il segnale da ricordare: labbra rosa = tranquillo; labbra che LAMPEGGIANO ROSSE
    (con un alone rosso attorno alla bocca e le spine del dorso dritte) = sta per aspirare o per caricare. Quando aspira
-   spalanca una bocca-caverna: mandibola giù, testa su, e in fondo il buio della gola. */
+   spalanca una bocca-caverna: mandibola giù, testa su, e in fondo il buio della gola.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: i tratti fatti a mano (sopracciglio folto, guancia cadente) usano la linea
+   sottile della cassetta (t.linea, sotto .04) invece del contorno spesso; labbra e solco dell'opercolo alleggeriti. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, R = B.util.rumore, TAU = Math.PI * 2, PI = Math.PI;
@@ -11,6 +13,7 @@ const { sin, cos, round, max, min } = Math;
 // ---- tinte (una volta sola): oliva caldo con le ombre color prugna, pinne ruggine orlate d'oro, labbra salmone
 const T = { corpo: P.tinta('#9c8c2e', '#4a2456'), mento: P.tinta('#b3a03c', '#5a2a52'), guancia: P.tinta('#bba640', '#5e2c56'), ventre: P.tinta('#ffe9ae', '#e08f4a'),
   pinna: P.tinta('#b8682a', '#4a1e52'), pinnaSpenta: P.tinta('#b39a94', '#6a5a80'), ciglio: P.tinta('#4d2f52'), spenta: P.tinta('#a9a6bd') };
+T.pettorale = Object.assign({}, T.pinna, { linea: P.scurisci('#b8682a', .5) });   // la pettorale sta sul ventre chiaro: linea del suo colore, non prugna scuro
 const LABBRA = [];                                                     // dal salmone al rosso acceso: sette gradini per il lampo
 for (let i = 0; i <= 6; i++) LABBRA.push(P.tinta(P.mescola('#f08a78', '#ff2a3a', i / 6), '#a8204e'));
 const LABBRA_SPENTE = P.tinta('#cbb4be', '#7a6a8a');
@@ -50,7 +53,7 @@ function ciglione(c, x, y, lung, ang, s, t) {
   c.quadraticCurveTo(h * .3, -s * 1.3, -h * .45, -s);
   c.lineTo(-h * 1.05, -s * 1.5); c.lineTo(-h * .8, -s * .55); c.lineTo(-h * 1.28, -s * .45); c.lineTo(-h * .85, s * .08); c.lineTo(-h * 1.1, s * .6); c.lineTo(-h * .5, s * .32);
   c.quadraticCurveTo(h * .2, -s * .1, h, s * .15); c.closePath();
-  c.strokeStyle = t.bordo; c.lineWidth = .05; c.stroke(); c.fillStyle = t.base; c.fill();
+  c.strokeStyle = t.linea; c.lineWidth = .036; c.stroke(); c.fillStyle = t.base; c.fill();
   c.beginPath(); c.moveTo(h * .6, -s * .3); c.quadraticCurveTo(h * .1, -s * .9, -h * .45, -s * .68);
   c.strokeStyle = P.alfa(t.luce, .6); c.lineWidth = s * .2; c.stroke();
   c.restore();
@@ -60,7 +63,7 @@ function ciglione(c, x, y, lung, ang, s, t) {
 function guanciona(c, x, y, k, t, luce, dentro) {
   const p = [x - .26, y - .08, x - .05, y - .23, x + .17, y - .17, x + .25, y + .05, x + .14, y + .27 + k, x - .09, y + .3 + k, x - .27, y + .12];
   c.save(); c.beginPath(); c.rect(x - 1, y - .02, 2, 2); c.clip();
-  P.profilo(c, p); c.lineJoin = 'round'; c.strokeStyle = t.bordo; c.lineWidth = P.BORDO * 2; c.stroke(); c.restore();
+  c.translate(.006, .016); P.profilo(c, p); c.lineJoin = 'round'; c.strokeStyle = t.linea; c.lineWidth = P.BORDO * 1.5; c.stroke(); c.restore();   // la linea sottile, scivolata dalla parte dell'ombra
   P.volume(c, cc => P.profilo(cc, p), t, { luce, bordo: 0, ombra: .09, dentro });
 }
 
@@ -118,13 +121,13 @@ B.specie.registra({
     } });
     if (P.fine(o)) P.bozzi(c, P.puntiSuSpina(s, 5, .5, .8, u => -.76 - .12 * sin(u * 31)), i => .034 + (i % 3) * .012, T.corpo);
     const b0 = P.suSpina(s, .56, -.5), b1 = P.suSpina(s, .5, -.05), b2 = P.suSpina(s, .51, .3);
-    P.solco(c, [b0.x, b0.y, b1.x, b1.y, b2.x, b2.y], T.corpo, .05);
+    P.solco(c, [b0.x, b0.y, b1.x, b1.y, b2.x, b2.y], T.corpo, .04);
     P.riflesso(c, -.2, -.66, .3, -.08, .12);
 
     // ---- 3. sul fianco: la pettorale tonda che rema
     const pp = P.suSpina(s, .42, .34), rema = sin(F * 2 + .5), dir = PI * .88 + rema * .28 - (G.carica ? .25 : 0) - (G.giu ? .5 : 0);
     P.ombra(c, pp.x - .16, pp.y + .08, .36, .24, -.3, .3);
-    P.pinna(c, { x0: pp.x + .05, y0: pp.y - .12, x1: pp.x - .03, y1: pp.y + .14, a0: dir - .65, a1: dir + .65, lung: .62, profilo: [.65, .92, 1, .92, .65], n: 6, onda: .1, fase: F * 2, passo: .7, tinta: tp, orlo, primo: true });
+    P.pinna(c, { x0: pp.x + .05, y0: pp.y - .12, x1: pp.x - .03, y1: pp.y + .14, a0: dir - .65, a1: dir + .65, lung: .62, profilo: [.65, .92, 1, .92, .65], n: 6, onda: .1, fase: F * 2, passo: .7, tinta: G.sconfitto ? tp : T.pettorale, orlo, primo: true });
 
     // ---- 4. la bocca: denti di sopra e di sotto (col dente d'oro), labbro di sopra, mandibola, labbro di sotto, guancia cadente
     const kd = min(1, .3 + ap * 1.6), l0 = P.suSpina(s, .76, 1), l1 = P.suSpina(s, 1, 1);       // a bocca chiusa i denti stanno dietro le labbra
@@ -132,11 +135,11 @@ B.specie.registra({
     P.denti(c, ce.x + ca * L * .26, ce.y + sa * L * .26, ce.x + ca * L * .98, ce.y + sa * L * .98, 8, .21 * kd, 1, { tipo: 'punta', varia: .3, seme: 5 });
     P.denti(c, ce.x + ca * L * .71, ce.y + sa * L * .71, ce.x + ca * L * .8, ce.y + sa * L * .8, 1, .22 * kd, 1, { tipo: 'punta', colore: '#ffcf3a', bordo: '#8a4a0a' });
     const la = P.suSpina(s, .72, .9);
-    P.volume(c, P.spina(8, curva(la.x, la.y, l1.x + .27, l1.y - .09, l1.x + .3, l1.y - .22), SPL, SPL, { testa: .08, coda: .03 }), labbra, { luce: [l1.x + .2, l1.y - .2, 1], bordo: .04, ombra: .04, lume: .04 });
+    P.volume(c, P.spina(8, curva(la.x, la.y, l1.x + .27, l1.y - .09, l1.x + .3, l1.y - .22), SPL, SPL, { testa: .08, coda: .03 }), labbra, { luce: [l1.x + .2, l1.y - .2, 1], ombra: .04, lume: .04 });
     P.riflesso(c, l1.x + .25, l1.y - .16, .13, 1.1, .1);
     fauci.parte = 'mandibola'; P.fauci(c, fauci);
     c.save(); c.translate(ce.x, ce.y); c.rotate(am);
-    P.volume(c, LABBRO_GIU, labbra, { luce: [L * .9, -.1, 1], bordo: .04, ombra: .04, lume: .04 });
+    P.volume(c, LABBRO_GIU, labbra, { luce: [L * .9, -.1, 1], ombra: .04, lume: .04 });
     P.riflesso(c, L * .8, -.035, .15, -.05, .1);
     c.restore();
     const gx = ce.x + .02, gy = ce.y - .13 + ap * .04;

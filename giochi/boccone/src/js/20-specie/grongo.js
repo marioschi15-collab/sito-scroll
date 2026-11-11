@@ -1,7 +1,9 @@
 /* Boccone — specie: GRONGO (taglia 4, agguato). Un nastro grosso e liscio, tutto diverso dalla murena: azzurro acciaio con
    la pancia bianca, testone tondo dagli occhi grandi, labbroni carnosi rosa, una pinnetta pettorale dietro la branchia, la
    fila di pori bianchi lungo il fianco e una pinna bassa orlata di scuro che gira attorno alla coda.
-   Calmo tiene la bocca chiusa; a caccia la spalanca sui dentini, drizza la pinna e stringe la pupilla. */
+   Calmo tiene la bocca chiusa; a caccia la spalanca sui dentini, drizza la pinna e stringe la pupilla.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il dorso è di un indaco più deciso (l'azzurro da solo si impastava con
+   l'acqua) e il controluce lungo il nastro è più largo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -10,7 +12,7 @@ const { sin, cos, pow, min } = Math;
 // ---- tinte (una volta sola)
 const T = { corpo: P.tinta('#4f8ee0', '#3a2a94'), ventre: P.tinta('#ddf2ff', '#86a6f2'), mento: P.tinta('#d4e8ff', '#6f8cf0'), cresta: P.tinta('#86d2ff', '#3550c8'),
   pinna: P.tinta('#9adcff', '#3f5fd8'), labbro: P.tinta('#ff93b8', '#c8328a') };
-const INDACO = '#2a2488', DORSO = P.alfa('#2c2f9c', .34), PORI = '#eef6ff';
+const INDACO = '#2a2488', DORSO = P.alfa('#2a2494', .52), DORSO_ALTO = P.alfa('#2a2494', .3), PORI = '#eef6ff';
 /* Il nastro: più grosso di quello della murena, con un testone tondo. Da u = .9 il ventre si ritira per la mandibola. */
 const SU = P.sagoma([[0, .03], [.08, .15], [.3, .29], [.6, .34], [.8, .41], [.9, .53], [.96, .51], [1, .38]]);
 const GIU = P.sagoma([[0, .03], [.08, .13], [.3, .26], [.6, .31], [.8, .39], [.87, .43], [.925, .22], [1, .16]]);
@@ -41,8 +43,9 @@ B.specie.registra({
 
     // ---- 2. il corpo: tinta piatta con lama di luce, dorso più scuro, pancia bianca, pori bianchi in fila lungo il fianco
     const te = P.suSpina(s, .93, -.2);
-    P.volume(c, s, T.corpo, { ombra: .075, lume: .1, dentro(cc) {
+    P.volume(c, s, T.corpo, { ombra: .1, lume: .1, dentro(cc) {
       P.fianco(cc, s, -1.4, orloDorso, DORSO, 0, .88);
+      P.fianco(cc, s, -1.4, -.8, DORSO_ALTO, 0, .9);                                  // il filo della schiena: ancora più scuro
       P.fianco(cc, s, orloVentre, 1.4, T.ventre.base);
       P.guancia(cc, te.x, te.y - .1, .55, T.corpo.luce, .65);                         // la testa prende più luce: sembra più tonda
       const pr = P.puntiSuSpina(s, 13, .08, .8, -.06);

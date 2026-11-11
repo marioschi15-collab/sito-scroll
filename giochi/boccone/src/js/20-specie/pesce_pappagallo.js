@@ -7,7 +7,7 @@ const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos, max } = Math;
 
 // ---- tinte (una volta sola) e sagoma: corpo pieno, testa grossa dalla fronte ripida
-const T = { corpo: P.tinta('#1cc4b6'), ventre: P.tinta('#c4f7d4', '#3fb8a8'), pinna: P.tinta('#ff6aa6', '#d21f7c'), pett: P.tinta('#ffd84a', '#ff7a1a'), becco: P.tinta('#fff3cf', '#e8925c') };
+const T = { corpo: P.tinta('#1cc4b6', '#2a2c8c'), ventre: P.tinta('#c4f7d4', '#3fb8a8'), pinna: P.tinta('#ff6aa6', '#d21f7c'), pett: P.tinta('#ffd84a', '#ff7a1a'), becco: P.tinta('#fff3cf', '#e8925c') };
 const ROSA = '#ff5fa2', ORLO = '#49dcff';
 const SU = P.sagoma([[0, .14], [.12, .32], [.35, .6], [.6, .72], [.8, .7], [.93, .58], [1, .42]]);
 const GIU = P.sagoma([[0, .14], [.12, .3], [.35, .54], [.6, .62], [.8, .6], [.93, .5], [1, .4]]);

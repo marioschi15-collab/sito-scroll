@@ -1,14 +1,17 @@
 /* Boccone — specie: LAMPUGA (taglia 2, cacciatore). Il pesce dalla fronte a muro: testone alto e squadrato con l'occhio in
    basso e la bocca imbronciata, corpo che si assottiglia fino a una coda a forca, e una pinna dorsale blu che parte da sopra
    l'occhio e arriva alla coda. Fianchi d'oro, dorso verde smeraldo, puntini blu. A caccia «si accende»: la cresta si alza
-   e sul fianco compaiono barre blu (lo fa davvero, quando è eccitata). */
+   e sul fianco compaiono barre blu (lo fa davvero, quando è eccitata).
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il velo d'ombra viola della cassetta imbruniva l'oro di faccia e pancia. Ora
+   il corpo ha ombra: 0 (l'oro scurisce solo verso l'arancio, con la luce più larga) e le luci del bordo sono fatte in
+   casa: filo di luce lungo il dorso, controluce color acqua lungo il ventre. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, pow, min } = Math;
 
 // ---- tinte (una volta sola) e sagoma: altissima in testa, sottile in coda; da u = .87 il ventre si ritira per la mandibola
-const T = { corpo: P.tinta('#ffd21e', '#ff6a14'), ventre: P.tinta('#fff19c', '#f0a03c'), mento: P.tinta('#ffe680', '#f07a1e'), cresta: P.tinta('#2a80f6', '#2a2ab0'),
+const T = { corpo: P.tinta('#ffd21e', '#ff7c14'), ventre: P.tinta('#fff19c', '#f0a03c'), mento: P.tinta('#ffe680', '#f07a1e'), cresta: P.tinta('#2a80f6', '#2a2ab0'),
   gialla: P.tinta('#ffc21a', '#f0541e'), pett: P.tinta('#34d2c2', '#1f52d0') };
 const VERDE = '#14bd86', LIME = P.alfa('#9fe234', .85), BLU = '#2470f0', CUORE = '#aee8ff', ORLO = '#86f2ff', ORLO_CODA = '#d4ff7a', BARRA = P.alfa('#0fae9c', .82), CIELO = '#2ab8ff';
 const SU = P.sagoma([[0, .07], [.12, .17], [.35, .36], [.6, .52], [.8, .62], [.92, .65], [1, .57]]);
@@ -27,7 +30,7 @@ B.specie.registra({
   disegna(c, o) {
     const fase = o.fase || 0, F = fase * TAU, m = !!o.minaccia, b = o.bocca || 0, q = {};
     c.save();
-    const s = P.spinaPesce(14, -1.02, .68, fase, ONDA, SU, GIU, { testa: .1 }), luce = [.3, -.5, 1.8], alza = m ? 1.3 : 1;
+    const s = P.spinaPesce(14, -1.02, .68, fase, ONDA, SU, GIU, { testa: .1 }), luce = [.42, -.5, 2.15], alza = m ? 1.3 : 1;
 
     // ---- 1. dietro al corpo: coda a forca, la lunga dorsale blu, l'anale, la ventrale, la bocca
     P.suSpina(s, 0, 0, q);
@@ -42,13 +45,15 @@ B.specie.registra({
 
     // ---- 2. il corpo d'oro: dorso verde che sfuma nel lime, pancia chiara, barre blu (solo a caccia), puntini blu
     const fr = P.suSpina(s, .95, -.7);
-    P.volume(c, s, T.corpo, { luce, ombra: .075, dentro(cc) {
+    P.volume(c, s, T.corpo, { luce, ombra: 0, dentro(cc) {
       P.fianco(cc, s, -1.4, orloLime, LIME);
       P.fianco(cc, s, -1.4, orloVerde, VERDE);
       P.fianco(cc, s, u => .74 - .16 * sin(u * PI), 1.4, P.sfumatura(cc, T.ventre, luce));
       P.guancia(cc, fr.x, fr.y, .42, CIELO, .5);                                       // la fronte vira all'azzurro
       if (m) P.bande(cc, s, BARRE, BARRA);
       P.macchie(cc, s, { n: 17, seme: 6, u0: .06, u1: .8, v0: -.75, v1: .62, r0: .026, r1: .046, colore: BLU, cuore: CUORE, lungo: 1 });
+      P.fianco(cc, s, -1.4, -.93, 'rgba(255,255,255,.28)', 0, 1, 8);                     // le luci del bordo: filo di luce sul dorso…
+      P.fianco(cc, s, .9, 1.4, 'rgba(200,243,255,.42)', 0, 1, 8);                        // …e controluce color acqua sotto la pancia
     } });
     const g1 = P.suSpina(s, .77, -.4), g2 = P.suSpina(s, .725, .1), g3 = P.suSpina(s, .78, .62);
     P.solco(c, [g1.x, g1.y, g2.x, g2.y, g3.x, g3.y], T.corpo, .04);                                // opercolo

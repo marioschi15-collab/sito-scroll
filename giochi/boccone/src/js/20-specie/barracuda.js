@@ -2,16 +2,18 @@
    oltre il muso con le zanne sempre in vista, barre scure sul dorso, due pinnette lontane fra loro, coda a forca.
    Da calmo ha lo sguardo fisso (occhio tondo spalancato, bocca appena socchiusa); a caccia le barre si scuriscono,
    le pinne si drizzano, l'occhio diventa rosso e la bocca si spalanca sulle zanne.
-   La mandibola (P.fauci) si disegna prima del corpo, che ne copre la radice: resta fuori solo la punta, più lunga del muso. */
+   La mandibola (P.fauci) si disegna prima del corpo, che ne copre la radice: resta fuori solo la punta, più lunga del muso.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: dorso e barre vanno all'indaco invece che al blu dell'acqua (senza contorno
+   scuro il siluro d'argento si impastava con lo sfondo), il controluce è più largo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos } = Math;
 
 // ---- tinte: l'argento è un azzurro chiaro con le ombre indaco (niente grigio); pinne blu-viola con le punte chiare
-const T = { corpo: P.tinta('#a4cff2', '#3b4fa8'), ventre: P.tinta('#f6fbff', '#9fbef0'), pinna: P.tinta('#5a64cc', '#221a66'), pett: P.tinta('#86a4ee', '#2f3a9a') };
+const T = { corpo: P.tinta('#a4cff2', '#3a3ab4'), ventre: P.tinta('#f6fbff', '#9fbef0'), pinna: P.tinta('#5a64cc', '#221a66'), pett: P.tinta('#86a4ee', '#2f3a9a') };
 T.mento = Object.assign({}, P.tinta('#d4eafc', '#6f8fd8'), { bordo: T.corpo.bordo });       // la mandibola ha il bordo scuro del corpo
-const DORSO = P.alfa('#3566c0', .62), LUCCICHIO = 'rgba(255,255,255,.42)', BARRA = P.alfa('#27307a', .46), BARRA_M = P.alfa('#1f2670', .82), CHIAZZA = P.alfa('#27307a', .6), PUNTA = '#e4f3ff';
+const DORSO = P.alfa('#3140b8', .72), LUCCICHIO = 'rgba(255,255,255,.5)', BARRA = P.alfa('#231f7c', .6), BARRA_M = P.alfa('#1f2670', .82), CHIAZZA = P.alfa('#27307a', .6), PUNTA = '#e4f3ff';
 const FISSO = { palpebra: 0, pupilla: .72 };                          // lo sguardo fisso: niente palpebra, pupilla piccola
 /* Lunghissimo e sottile. Il ventre si ritira da u = .84: lì sotto lavora la mandibola, più lunga del muso. */
 const SU = P.sagoma([[0, .07], [.08, .12], [.3, .24], [.55, .3], [.75, .3], [.88, .25], [.96, .17], [1, .1]]);
@@ -49,7 +51,7 @@ B.specie.registra({
     P.denti(c, ce.x + ca * L * .82, ce.y + sa * L * .82, ce.x + ca * L * .97, ce.y + sa * L * .97, 2, .18 * k, 1, { tipo: 'punta', largo: .7, piega: .2 });
 
     // ---- 2. il corpo: dorso blu, barre scure (più nere a caccia), ventre bianco, chiazze verso la coda, un filo di luccichio
-    P.volume(c, s, T.corpo, { luce, ombra: .07, dentro(cc) {
+    P.volume(c, s, T.corpo, { luce, ombra: .1, dentro(cc) {
       P.fianco(cc, s, -1.4, u => -.3 + .08 * sin(u * 30), DORSO);
       P.bande(cc, s, BARRE, m ? BARRA_M : BARRA, 3);
       P.fianco(cc, s, u => .22 + .06 * sin(u * 26), 1.4, T.ventre.base);

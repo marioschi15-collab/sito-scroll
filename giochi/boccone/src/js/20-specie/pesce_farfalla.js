@@ -1,13 +1,16 @@
 /* Boccone — specie: PESCE FARFALLA (taglia 1, timido). Disco alto e sottile, bianco davanti e giallo dietro, con la banda
    scura che nasconde l'occhio vero, il finto occhio vicino alla coda e il muso lungo a pinzetta (il tratto esagerato).
-   Il muso fa parte della spina del corpo: così la fronte incavata resta una curva sola. */
+   Il muso fa parte della spina del corpo: così la fronte incavata resta una curva sola.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il velo d'ombra viola della cassetta sporcava la maschera scura e la parte
+   bianca. Ora il corpo ha ombra: 0 e ogni zona ha la sua sfumatura (bianco con l'ombra azzurra chiara, giallo con l'ombra
+   arancio, maschera blu notte), più le luci del bordo fatte in casa (luciBordo). */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, max } = Math;
 
 // ---- tinte (una volta sola): bianco con l'ombra azzurra, giallo con l'ombra arancio, «nero» blu notte
-const T = { bianco: P.tinta('#f7f9ff', '#86a8f2'), corpo: P.tinta('#ffd21f', '#ff6a14'), notte: P.tinta('#2b2a86'), pinna: P.tinta('#ffcf24', '#ff6a14'),
+const T = { bianco: P.tinta('#fbfcff', '#a4bef8'), corpo: P.tinta('#ffd21f', '#ff6a14'), notte: P.tinta('#2b2a86'), pinna: P.tinta('#ffcf24', '#ff6a14'),
   pett: P.tinta('#ffe98a', '#ffa23c'), labbra: P.tinta('#ff6f8f') };
 const ORLO = '#fff8d6', LINEA = P.alfa('#8f8ae6', .55);
 // la spina va dalla coda (u = 0) alla punta del muso (u = 1): il disco finisce a u ≈ .76, poi c'è la pinzetta
@@ -19,6 +22,10 @@ const BANDA_OCCHIO = [v => .665 + .03 * (1 - v * v), v => .785 + .03 * (1 - v * 
    dalla banda dell'occhio in avanti il muso è tutto bianco. */
 const liscio = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
 const orloBianco = u => u < .5 ? 1.35 - 1.95 * liscio((u - .12) / .38) : u < .7 ? -.6 - (u - .5) : -.8 - (u - .7) * 7;
+/* Le luci del bordo fatte in casa (il volume del corpo ha ombra: 0, perché il velo viola della cassetta ingrigiva il giallo,
+   la crema e il bianco: qui ogni zona ha già la sua sfumatura, con l'ombra del suo colore). Un filo di luce lungo il dorso
+   e il controluce color acqua lungo il ventre. Si chiama per ultima dentro `dentro`. */
+const luciBordo = (cc, s) => { P.fianco(cc, s, -1.4, -.93, 'rgba(255,255,255,.28)', 0, 1, 8); P.fianco(cc, s, .9, 1.4, 'rgba(200,243,255,.42)', 0, 1, 8); };
 const LINEE = [.34, .42, .5, .58];                                    // le righine oblique sul bianco
 const righine = (c, s) => {
   const q = {}; c.beginPath();
@@ -61,10 +68,11 @@ B.specie.registra({
     P.pinna(c, { x0: pv.x + .06, y0: pv.y - .05, x1: pv.x - .09, y1: pv.y - .05, a0: PI * .6 + sin(F - .5) * .1, a1: PI * .8 + sin(F - .5) * .1, lung: .46, profilo: [1, .55], n: 3, piega: .12, tinta: T.pinna, righe: false });
 
     // ---- 2. il corpo: giallo, con il bianco dipinto su fianco e muso (resta gialla la schiena, la coda e la punta della pinzetta), banda scura sull'occhio
-    P.volume(c, s, T.corpo, { luce, dentro(cc) {
+    P.volume(c, s, T.corpo, { luce, ombra: 0, dentro(cc) {
       P.fianco(cc, s, orloBianco, 1.5, P.sfumatura(cc, T.bianco, luce), .1, .93, 16);
       if (P.fine(o)) righine(cc, s);
-      P.banda(cc, s, BANDA_OCCHIO[0], BANDA_OCCHIO[1], T.notte.base);
+      P.banda(cc, s, BANDA_OCCHIO[0], BANDA_OCCHIO[1], P.sfumatura(cc, T.notte, [.5, -.6, 1.9]));
+      luciBordo(cc, s);
     } });
     P.suSpina(s, .17, -.28, q); fintoOcchio(c, q.x, q.y, .12);
     const g1 = P.suSpina(s, .63, -.45), g2 = P.suSpina(s, .595, 0), g3 = P.suSpina(s, .63, .5);

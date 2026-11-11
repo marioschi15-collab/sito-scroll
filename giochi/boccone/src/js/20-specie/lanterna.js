@@ -1,7 +1,8 @@
 /* Boccone — gigante: LA GRANDE LANTERNA, signora dell'abisso. ESEMPIO DI RIFERIMENTO per i giganti (vedi GUIDA-STILE.md):
    tutti gli stati letti con P.statoGigante (calmo, caccia, avviso con o.carica, carica, stordito, sconfitto), mandibola
    sporgente (P.fauci in due parti), esca luminosa che fa da segnale di pericolo, corona.
-   Il segnale da ricordare: esca verde acqua = tranquilla, gialla = ti dà la caccia, lampeggia rossa = sta per attaccare. */
+   Il segnale da ricordare: esca verde acqua = tranquilla, gialla = ti dà la caccia, lampeggia rossa = sta per attaccare.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: solo il solco dell'opercolo, portato alla misura delle linee della cassetta. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -58,7 +59,7 @@ B.specie.registra({
     P.bozzi(c, P.puntiSuSpina(s, 6, .32, .8, u => -.6 - .2 * sin(u * 31)), i => .04 + (i % 3) * .012, T.corpo);
     P.lucine(c, P.puntiSuSpina(s, 6, .15, .52, u => .08 + .1 * sin(u * 12)), i => .03 + (i % 2) * .012, FOTOFORI, viva ? .7 + .3 * sin(t * 3) : .15);
     const b0 = P.suSpina(s, .5, -.25), b1 = P.suSpina(s, .46, .1), b2 = P.suSpina(s, .5, .4);
-    P.solco(c, [b0.x, b0.y, b1.x, b1.y, b2.x, b2.y], T.corpo, .05);
+    P.solco(c, [b0.x, b0.y, b1.x, b1.y, b2.x, b2.y], T.corpo, .04);
     P.riflesso(c, .36, -.66, .34, .55, .12);
 
     // ---- 3. sul fianco: pinna pettorale che rema

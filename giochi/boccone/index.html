@@ -2343,7 +2343,12 @@ P.fine = o => o.dettaglio === undefined || o.dettaglio >= .5;
 /* Boccone — banco: ACCIUGA. Pesciolino sottile dei banchi (1 unità = mezza lunghezza; nel gioco è lungo una ventina di pixel
    e ce ne sono a decine, quindi pochissimi tratti e nessun attrezzo pesante di B.pittura; dipende solo da o.fase).
    Si riconosce dalla sardina perché è più snella, ha il dorso verde-blu, la fascia d'argento sul fianco, la pinnetta sulla
-   schiena, il muso a punta che sporge e la bocca grande, tagliata fin dietro l'occhio. */
+   schiena, il muso a punta che sporge e la bocca grande, tagliata fin dietro l'occhio.
+   RIFATTA NELLO STILE «FILM D'ANIMAZIONE» sul modello della sardina: niente più contorno scuro spesso ma una linea sottile
+   blu scivolata verso il ventre (blu e non verde: così stacca anche dall'acqua verde), il corpo modellato dalla luce
+   (filo di luce in cima, dorso verde-blu, fianco verde acqua, ventre d'argento che in fondo prende il colore dell'acqua),
+   coda e pinnetta a membrana un po' trasparente, occhio con l'ombra della palpebra in alto e il suo riflesso.
+   Dieci tratti in tutto: il costo deve restare vicino a quello della sardina (tetto ×2,5). */
 (() => {
 'use strict';
 const B = window.B, TAU = Math.PI * 2;
@@ -2351,23 +2356,28 @@ const B = window.B, TAU = Math.PI * 2;
 B.specie.registra({
   id: 'acciuga',
   forma: { lx: 1, ly: .28 },
-  ingombro: { x0: -1.22, y0: -.61, x1: 1.16, y1: .61 },
+  ingombro: { x0: -1.19, y0: -.55, x1: 1.13, y1: .55 },
   disegna(c, o) {
     const w = Math.sin((o.fase || 0) * TAU), yc = w * .17, ym = -w * .05;       // yc: la coda sbatte; ym: il corpo si flette al contrario
     c.save(); c.lineJoin = 'round';
-    // coda a forca e pinnetta della schiena: un solo tracciato
+    // coda a forca e pinnetta della schiena: un solo tracciato, due membrane verde acqua un po' trasparenti
     c.beginPath(); c.moveTo(-.5, ym * .5 - .05); c.lineTo(-1.1, yc - .31); c.quadraticCurveTo(-.82, yc, -1.1, yc + .31); c.lineTo(-.5, ym * .5 + .05); c.closePath();
     c.moveTo(.16, ym * .3 - .2); c.quadraticCurveTo(.02, ym * .5 - .36, -.1, ym * .6 - .4); c.lineTo(-.22, ym * .7 - .2); c.closePath();
-    c.strokeStyle = '#0d3a4a'; c.lineWidth = .1; c.stroke(); c.fillStyle = '#27b39a'; c.fill();
-    // corpo snello: dorso verde-blu, ventre d'argento; il muso a punta sporge oltre il mento
-    const g = c.createLinearGradient(0, -.28, 0, .28); g.addColorStop(0, '#0e7c8e'); g.addColorStop(.36, '#2fd0a8'); g.addColorStop(.52, '#f4fffb'); g.addColorStop(1, '#bfe0ea');
-    c.beginPath(); c.moveTo(1.04, -.01); c.bezierCurveTo(.72, -.31, -.15, -.3 + ym, -.72, ym * .4 - .05); c.lineTo(-.72, ym * .4 + .06); c.bezierCurveTo(-.2, .3 + ym, .62, .33, .86, .13); c.closePath();
-    c.stroke(); c.fillStyle = g; c.fill();
-    // fascia d'argento lungo il fianco e riflesso sul dorso
-    c.fillStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.ellipse(-.12, ym * .7 + .02, .52, .055, 0, 0, TAU); c.moveTo(.38, ym * .5 - .2); c.ellipse(.1, ym * .5 - .19, .28, .035, -.04, 0, TAU); c.fill();
-    // occhio grande; pupilla e bocca (un taglio scuro fin dietro l'occhio) nello stesso colpo
-    c.fillStyle = '#fff'; c.beginPath(); c.arc(.6, -.05, .15, 0, TAU); c.fill();
-    c.fillStyle = '#2a0f3a'; c.beginPath(); c.arc(.64, -.04, .085, 0, TAU); c.moveTo(.97, .05); c.lineTo(.5, .1); c.lineTo(.84, .15); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(60,208,178,.86)'; c.fill(); c.strokeStyle = 'rgba(12,66,116,.8)'; c.lineWidth = .035; c.stroke();
+    // corpo snello: filo di luce in cima, dorso verde-blu, fianco verde acqua, ventre d'argento, e in fondo il colore dell'acqua
+    const g = c.createLinearGradient(0, -.29, 0, .31);
+    g.addColorStop(0, '#6adcd0'); g.addColorStop(.17, '#0c789c'); g.addColorStop(.4, '#2fd4a6'); g.addColorStop(.54, '#f6fffb'); g.addColorStop(.8, '#b4d0ea'); g.addColorStop(1, '#8fdcf6');
+    const corpo = () => { c.beginPath(); c.moveTo(1.04, -.01); c.bezierCurveTo(.72, -.31, -.15, -.3 + ym, -.72, ym * .4 - .05); c.lineTo(-.72, ym * .4 + .06); c.bezierCurveTo(-.2, .3 + ym, .62, .33, .86, .13); c.closePath(); };
+    c.translate(.012, .028); corpo(); c.strokeStyle = '#0b2a6e'; c.lineWidth = .06; c.stroke(); c.translate(-.012, -.028);   // la linea: sottile, più visibile dal lato in ombra
+    corpo(); c.fillStyle = g; c.fill();
+    // in un colpo solo: la fascia d'argento del fianco (il riflesso lungo della pelle umida) e il puntino netto sul dorso
+    c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.ellipse(-.12, ym * .7 + .02, .52, .05, 0, 0, TAU); c.moveTo(.11, ym * .5 - .19); c.ellipse(.02, ym * .5 - .188, .09, .03, -.04, 0, TAU); c.fill();
+    // occhio: un disco blu che fa da orbita e da ombra della palpebra (il bianco sta più in basso: in alto ne resta di più);
+    // pupilla e bocca (un taglio scuro fin dietro l'occhio) nello stesso colpo; il riflesso
+    c.fillStyle = '#2c6aa2'; c.beginPath(); c.arc(.6, -.056, .172, 0, TAU); c.fill();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(.6, -.03, .128, 0, TAU); c.fill();
+    c.fillStyle = '#17163e'; c.beginPath(); c.arc(.64, -.045, .088, 0, TAU); c.moveTo(.97, .05); c.lineTo(.5, .1); c.lineTo(.84, .15); c.closePath(); c.fill();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(.612, -.08, .033, 0, TAU); c.fill();
     c.restore();
   },
 });
@@ -2458,16 +2468,18 @@ B.specie.registra({
    oltre il muso con le zanne sempre in vista, barre scure sul dorso, due pinnette lontane fra loro, coda a forca.
    Da calmo ha lo sguardo fisso (occhio tondo spalancato, bocca appena socchiusa); a caccia le barre si scuriscono,
    le pinne si drizzano, l'occhio diventa rosso e la bocca si spalanca sulle zanne.
-   La mandibola (P.fauci) si disegna prima del corpo, che ne copre la radice: resta fuori solo la punta, più lunga del muso. */
+   La mandibola (P.fauci) si disegna prima del corpo, che ne copre la radice: resta fuori solo la punta, più lunga del muso.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: dorso e barre vanno all'indaco invece che al blu dell'acqua (senza contorno
+   scuro il siluro d'argento si impastava con lo sfondo), il controluce è più largo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos } = Math;
 
 // ---- tinte: l'argento è un azzurro chiaro con le ombre indaco (niente grigio); pinne blu-viola con le punte chiare
-const T = { corpo: P.tinta('#a4cff2', '#3b4fa8'), ventre: P.tinta('#f6fbff', '#9fbef0'), pinna: P.tinta('#5a64cc', '#221a66'), pett: P.tinta('#86a4ee', '#2f3a9a') };
+const T = { corpo: P.tinta('#a4cff2', '#3a3ab4'), ventre: P.tinta('#f6fbff', '#9fbef0'), pinna: P.tinta('#5a64cc', '#221a66'), pett: P.tinta('#86a4ee', '#2f3a9a') };
 T.mento = Object.assign({}, P.tinta('#d4eafc', '#6f8fd8'), { bordo: T.corpo.bordo });       // la mandibola ha il bordo scuro del corpo
-const DORSO = P.alfa('#3566c0', .62), LUCCICHIO = 'rgba(255,255,255,.42)', BARRA = P.alfa('#27307a', .46), BARRA_M = P.alfa('#1f2670', .82), CHIAZZA = P.alfa('#27307a', .6), PUNTA = '#e4f3ff';
+const DORSO = P.alfa('#3140b8', .72), LUCCICHIO = 'rgba(255,255,255,.5)', BARRA = P.alfa('#231f7c', .6), BARRA_M = P.alfa('#1f2670', .82), CHIAZZA = P.alfa('#27307a', .6), PUNTA = '#e4f3ff';
 const FISSO = { palpebra: 0, pupilla: .72 };                          // lo sguardo fisso: niente palpebra, pupilla piccola
 /* Lunghissimo e sottile. Il ventre si ritira da u = .84: lì sotto lavora la mandibola, più lunga del muso. */
 const SU = P.sagoma([[0, .07], [.08, .12], [.3, .24], [.55, .3], [.75, .3], [.88, .25], [.96, .17], [1, .1]]);
@@ -2505,7 +2517,7 @@ B.specie.registra({
     P.denti(c, ce.x + ca * L * .82, ce.y + sa * L * .82, ce.x + ca * L * .97, ce.y + sa * L * .97, 2, .18 * k, 1, { tipo: 'punta', largo: .7, piega: .2 });
 
     // ---- 2. il corpo: dorso blu, barre scure (più nere a caccia), ventre bianco, chiazze verso la coda, un filo di luccichio
-    P.volume(c, s, T.corpo, { luce, ombra: .07, dentro(cc) {
+    P.volume(c, s, T.corpo, { luce, ombra: .1, dentro(cc) {
       P.fianco(cc, s, -1.4, u => -.3 + .08 * sin(u * 30), DORSO);
       P.bande(cc, s, BARRE, m ? BARRA_M : BARRA, 3);
       P.fianco(cc, s, u => .22 + .06 * sin(u * 26), 1.4, T.ventre.base);
@@ -2541,15 +2553,18 @@ B.specie.registra({
 <script>
 /* Boccone — specie: CASTAGNOLA (taglia 1, branco). Pesciolino ovale blu notte: squame orlate d'azzurro elettrico, un filo
    di luce lungo il dorso, occhione dorato e la coda a forbice dai bordi scuri, che si apre e si chiude mentre nuota.
-   Il tratto esagerato sono l'occhio e la forbice della coda. */
+   Il tratto esagerato sono l'occhio e la forbice della coda.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il blu ha l'ombra indaco dichiarata nelle tinte (senza contorno scuro si
+   impastava con l'acqua), il ventre lilla è più chiaro e sfuma nel fianco, le pinne sono piene fino in punta e sotto la
+   pancia corre un filo di luce color acqua. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, max } = Math;
 
 // ---- tinte (una volta sola) e sagoma: ovale e un po' alto, testa grossa
-const T = { corpo: P.tinta('#3848dc'), ventre: P.tinta('#8f9cff', '#5b4bd6'), pinna: P.tinta('#3d7bff'), pett: P.tinta('#63b0ff'), labbra: P.tinta('#ff6f8f') };
-const NEON = '#4fe0ff', GHIACCIO = '#b4f2ff', SQUAMA = { luce: NEON, scura: T.corpo.bordo };
+const T = { corpo: P.tinta('#3848dc', '#23158c'), ventre: P.tinta('#b3bcff', '#5b4bd6'), pinna: P.tinta('#3d7bff', '#2a2fc4'), pett: P.tinta('#63b0ff', '#2b55e8'), labbra: P.tinta('#ff6f8f') };
+const NEON = '#4fe0ff', GHIACCIO = '#b4f2ff', SQUAMA = { luce: NEON, scura: T.corpo.bordo }, ACQUA = 'rgba(214,247,255,.6)';
 const SU = P.sagoma([[0, .1], [.12, .22], [.3, .48], [.5, .62], [.7, .63], [.88, .52], [1, .32]]);
 const GIU = P.sagoma([[0, .1], [.12, .2], [.3, .43], [.5, .55], [.7, .55], [.88, .43], [1, .25]]);
 const ONDA = { amp: .12, onde: .55, testa: .13 };
@@ -2577,8 +2592,10 @@ B.specie.registra({
     P.pinna(c, { x0: pv.x + .06, y0: pv.y - .05, x1: pv.x - .08, y1: pv.y - .05, a0: PI * .6 + sin(F - .5) * .1, a1: PI * .8 + sin(F - .5) * .1, lung: .42, profilo: [1, .5], n: 3, piega: .1, tinta: T.pinna, orlo: NEON, righe: false });
 
     // ---- 2. il corpo: ventre lilla, filo elettrico lungo il dorso, squame orlate d'azzurro
-    P.volume(c, s, T.corpo, { luce, ombra: .09, dentro(cc) {
-      P.fianco(cc, s, u => .5 - .18 * sin(u * PI), 1.4, T.ventre.base);
+    P.volume(c, s, T.corpo, { luce, ombra: .12, dentro(cc) {
+      P.fianco(cc, s, u => .3 - .18 * sin(u * PI), 1.4, P.alfa(T.ventre.base, .45));              // il ventre: due passate, sfuma nel fianco
+      P.fianco(cc, s, u => .52 - .18 * sin(u * PI), 1.4, T.ventre.chiara);
+      P.fianco(cc, s, .86, 1.4, ACQUA, .05, .9);                                                  // filo di luce d'acqua sotto la pancia
       P.fianco(cc, s, -.93, -.78, NEON, .2, .97);
       if (P.fine(o)) P.squame(cc, s, { u0: .14, u1: .7, v0: -.68, v1: .4, righe: 4, tinta: SQUAMA, forza: .95 });
     } });
@@ -2609,15 +2626,20 @@ B.specie.registra({
 /* Boccone — specie: CAVALLUCCIO MARINO (taglia 1, timido, assetto 'dritto': il motore non lo ruota, lo specchia soltanto).
    Sta in piedi col muso a tubo verso +x: testa da cavallino con la coroncina, collo arcuato, pancia tonda, coda a ricciolo.
    Il corpo è UNA spina costruita per angoli dalla nuca alla punta della coda (così la testa resta ferma e la coda dondola);
-   la testa è un pezzo a parte, appoggiato sul collo. Il tratto esagerato sono il muso a trombetta e l'occhione. */
+   la testa è un pezzo a parte, appoggiato sul collo. Il tratto esagerato sono il muso a trombetta e l'occhione.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: era diventato pallido e brunito. Il velo d'ombra viola della cassetta scende
+   dall'alto in basso e su un corpo in piedi sporcava pancia e coda: ora il corpo ha ombra: 0 e le luci del bordo fatte in
+   casa (filo di luce lungo la schiena, controluce color acqua lungo la pancia); tinte più sature (giallo oro con l'ombra
+   arancio, pancia crema più calda, pinne verde acqua con l'ombra blu e piene fino in punta); la testa prende più luce e le
+   fascette del tubo si disegnano dopo il volume, così il muso non scurisce. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos, max, min, round } = Math;
 
 // ---- tinte (una volta sola)
-const T = { corpo: P.tinta('#ffc21a', '#f0541e'), ventre: P.tinta('#fff1c4', '#f0a05a'), pinna: P.tinta('#27c9c0'), corona: P.tinta('#ff7a2e', '#d02a3a'), labbra: P.tinta('#ff6f8f') };
-const ORLO = '#c9fff6', PUNTINI = P.alfa('#fff6d0', .85), FASCIA = P.alfa('#e2401e', .8);
+const T = { corpo: P.tinta('#ffbe14', '#f8600e'), ventre: P.tinta('#ffeeb0', '#f89a3c'), pinna: P.tinta('#22d3c4', '#1b62c4'), corona: P.tinta('#ff7a2e', '#d02a3a'), labbra: P.tinta('#ff6f8f') };
+const ORLO = '#c9fff6', PUNTINI = P.alfa('#fff6d0', .85), FASCIA = P.alfa('#e8421a', .8);
 // ---- il corpo: 30 tratti lunghi in tutto 2.7, dalla punta della coda (u = 0) alla nuca (u = 1). SU è la schiena (-x), GIU la pancia (+x)
 const NT = 30, LUNG = 2.7, K0 = .44;
 const SU = P.sagoma([[0, .028], [.15, .045], [.3, .065], [.44, .1], [.54, .17], [.66, .24], [.8, .26], [.92, .21], [1, .16]]);
@@ -2659,14 +2681,17 @@ B.specie.registra({
     // ---- 1. dietro al corpo: la pinna della schiena che vibra, i nodi ossei lungo la schiena
     const d0 = P.suSpina(s, .85, -.85), d1 = P.suSpina(s, .67, -.85);
     P.pinna(c, { x0: d0.x, y0: d0.y, x1: d1.x, y1: d1.y, a0: PI + .75 + (m ? .25 : 0), a1: PI - .55 - (m ? .15 : 0), lung: m ? .52 : .43, profilo: [.75, 1, 1, .8], n: 8, smerlo: .35,
-      onda: .16, fase: F * 4, passo: 1.1, tinta: T.pinna, orlo: ORLO });
+      onda: .16, fase: F * 4, passo: 1.1, tinta: T.pinna, orlo: ORLO, velo: 1 });
     nodi(c, P.puntiSuSpina(s, 8, .535, .96, -1.06), raggioNodo, T.corpo);
 
     // ---- 2. il corpo: pancia chiara, puntini, anelli incisi dalla coda al collo
-    P.volume(c, s, T.corpo, { luce, ombra: .08, dentro(cc) {
-      P.fianco(cc, s, u => .3 + max(0, .66 - u) * 7, 1.4, T.ventre.base, .52, .97);
+    P.volume(c, s, T.corpo, { luce, ombra: 0, dentro(cc) {
+      P.fianco(cc, s, u => .1 + max(0, .66 - u) * 7, 1.4, P.alfa(T.ventre.base, .5), .52, .97, 7); // la pancia: due passate, sfuma nel fianco
+      P.fianco(cc, s, u => .34 + max(0, .66 - u) * 7, 1.4, T.ventre.base, .52, .97);
       P.anelli(cc, s, .05, .96, 16, T.corpo, { spess: .04 });
       if (P.fine(o)) P.macchie(cc, s, { n: 9, seme: 4, u0: .56, u1: .95, v0: -.75, v1: .15, r0: .018, r1: .03, colore: PUNTINI, lungo: 1 });
+      P.fianco(cc, s, -1.4, -.86, 'rgba(255,255,255,.3)', .3, 1, 9);                                 // filo di luce lungo la schiena (guarda la luce)
+      P.fianco(cc, s, .88, 1.4, 'rgba(200,243,255,.46)', .3, 1, 9);                                  // controluce color acqua lungo la pancia
     } });
     P.suSpina(s, .86, -.1, q); P.riflesso(c, q.x, q.y, .3, q.ang + PI, .12);
 
@@ -2680,9 +2705,10 @@ B.specie.registra({
     P.ombra(c, n0.x + .07, n0.y + .14, .32, .15, .4, .3);
     c.save(); c.translate(hx, hy); c.rotate(ha);
     for (const k of CORONA) P.corno(c, k[0], k[1], k[2] + (m ? .12 : 0), k[3] * (m ? 1.3 : 1), .12, T.corona, { punta: m ? '#ffe14a' : T.corona.luce });
-    P.volume(c, cc => P.profilo(cc, TESTA), T.corpo, { luce: [.1, -.3, 1], ombra: .06, dentro(cc) {
-      cc.beginPath(); for (const x of FASCE) cc.rect(x, -.2, .05, .4); cc.fillStyle = FASCIA; cc.fill();   // fascette sul tubo
-    } });
+    P.volume(c, cc => P.profilo(cc, TESTA), T.corpo, { luce: [.2, -.3, 1.5], ombra: .07 });
+    c.save(); P.profilo(c, TESTA); c.clip();
+    c.beginPath(); for (const x of FASCE) c.rect(x, -.2, .05, .4); c.fillStyle = FASCIA; c.fill();         // fascette sul tubo
+    c.restore();
     P.solco(c, OPERCOLO, T.corpo, .03);
     P.riflesso(c, .56, -.045, .2, 0, .04);
     c.restore();
@@ -2705,7 +2731,9 @@ B.specie.registra({
    mento sporgente, guancia cadente, sopracciglia folte, coroncina e un dente d'oro.
    Tutti gli stati letti con P.statoGigante. Il segnale da ricordare: labbra rosa = tranquillo; labbra che LAMPEGGIANO ROSSE
    (con un alone rosso attorno alla bocca e le spine del dorso dritte) = sta per aspirare o per caricare. Quando aspira
-   spalanca una bocca-caverna: mandibola giù, testa su, e in fondo il buio della gola. */
+   spalanca una bocca-caverna: mandibola giù, testa su, e in fondo il buio della gola.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: i tratti fatti a mano (sopracciglio folto, guancia cadente) usano la linea
+   sottile della cassetta (t.linea, sotto .04) invece del contorno spesso; labbra e solco dell'opercolo alleggeriti. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, R = B.util.rumore, TAU = Math.PI * 2, PI = Math.PI;
@@ -2714,6 +2742,7 @@ const { sin, cos, round, max, min } = Math;
 // ---- tinte (una volta sola): oliva caldo con le ombre color prugna, pinne ruggine orlate d'oro, labbra salmone
 const T = { corpo: P.tinta('#9c8c2e', '#4a2456'), mento: P.tinta('#b3a03c', '#5a2a52'), guancia: P.tinta('#bba640', '#5e2c56'), ventre: P.tinta('#ffe9ae', '#e08f4a'),
   pinna: P.tinta('#b8682a', '#4a1e52'), pinnaSpenta: P.tinta('#b39a94', '#6a5a80'), ciglio: P.tinta('#4d2f52'), spenta: P.tinta('#a9a6bd') };
+T.pettorale = Object.assign({}, T.pinna, { linea: P.scurisci('#b8682a', .5) });   // la pettorale sta sul ventre chiaro: linea del suo colore, non prugna scuro
 const LABBRA = [];                                                     // dal salmone al rosso acceso: sette gradini per il lampo
 for (let i = 0; i <= 6; i++) LABBRA.push(P.tinta(P.mescola('#f08a78', '#ff2a3a', i / 6), '#a8204e'));
 const LABBRA_SPENTE = P.tinta('#cbb4be', '#7a6a8a');
@@ -2753,7 +2782,7 @@ function ciglione(c, x, y, lung, ang, s, t) {
   c.quadraticCurveTo(h * .3, -s * 1.3, -h * .45, -s);
   c.lineTo(-h * 1.05, -s * 1.5); c.lineTo(-h * .8, -s * .55); c.lineTo(-h * 1.28, -s * .45); c.lineTo(-h * .85, s * .08); c.lineTo(-h * 1.1, s * .6); c.lineTo(-h * .5, s * .32);
   c.quadraticCurveTo(h * .2, -s * .1, h, s * .15); c.closePath();
-  c.strokeStyle = t.bordo; c.lineWidth = .05; c.stroke(); c.fillStyle = t.base; c.fill();
+  c.strokeStyle = t.linea; c.lineWidth = .036; c.stroke(); c.fillStyle = t.base; c.fill();
   c.beginPath(); c.moveTo(h * .6, -s * .3); c.quadraticCurveTo(h * .1, -s * .9, -h * .45, -s * .68);
   c.strokeStyle = P.alfa(t.luce, .6); c.lineWidth = s * .2; c.stroke();
   c.restore();
@@ -2763,7 +2792,7 @@ function ciglione(c, x, y, lung, ang, s, t) {
 function guanciona(c, x, y, k, t, luce, dentro) {
   const p = [x - .26, y - .08, x - .05, y - .23, x + .17, y - .17, x + .25, y + .05, x + .14, y + .27 + k, x - .09, y + .3 + k, x - .27, y + .12];
   c.save(); c.beginPath(); c.rect(x - 1, y - .02, 2, 2); c.clip();
-  P.profilo(c, p); c.lineJoin = 'round'; c.strokeStyle = t.bordo; c.lineWidth = P.BORDO * 2; c.stroke(); c.restore();
+  c.translate(.006, .016); P.profilo(c, p); c.lineJoin = 'round'; c.strokeStyle = t.linea; c.lineWidth = P.BORDO * 1.5; c.stroke(); c.restore();   // la linea sottile, scivolata dalla parte dell'ombra
   P.volume(c, cc => P.profilo(cc, p), t, { luce, bordo: 0, ombra: .09, dentro });
 }
 
@@ -2821,13 +2850,13 @@ B.specie.registra({
     } });
     if (P.fine(o)) P.bozzi(c, P.puntiSuSpina(s, 5, .5, .8, u => -.76 - .12 * sin(u * 31)), i => .034 + (i % 3) * .012, T.corpo);
     const b0 = P.suSpina(s, .56, -.5), b1 = P.suSpina(s, .5, -.05), b2 = P.suSpina(s, .51, .3);
-    P.solco(c, [b0.x, b0.y, b1.x, b1.y, b2.x, b2.y], T.corpo, .05);
+    P.solco(c, [b0.x, b0.y, b1.x, b1.y, b2.x, b2.y], T.corpo, .04);
     P.riflesso(c, -.2, -.66, .3, -.08, .12);
 
     // ---- 3. sul fianco: la pettorale tonda che rema
     const pp = P.suSpina(s, .42, .34), rema = sin(F * 2 + .5), dir = PI * .88 + rema * .28 - (G.carica ? .25 : 0) - (G.giu ? .5 : 0);
     P.ombra(c, pp.x - .16, pp.y + .08, .36, .24, -.3, .3);
-    P.pinna(c, { x0: pp.x + .05, y0: pp.y - .12, x1: pp.x - .03, y1: pp.y + .14, a0: dir - .65, a1: dir + .65, lung: .62, profilo: [.65, .92, 1, .92, .65], n: 6, onda: .1, fase: F * 2, passo: .7, tinta: tp, orlo, primo: true });
+    P.pinna(c, { x0: pp.x + .05, y0: pp.y - .12, x1: pp.x - .03, y1: pp.y + .14, a0: dir - .65, a1: dir + .65, lung: .62, profilo: [.65, .92, 1, .92, .65], n: 6, onda: .1, fase: F * 2, passo: .7, tinta: G.sconfitto ? tp : T.pettorale, orlo, primo: true });
 
     // ---- 4. la bocca: denti di sopra e di sotto (col dente d'oro), labbro di sopra, mandibola, labbro di sotto, guancia cadente
     const kd = min(1, .3 + ap * 1.6), l0 = P.suSpina(s, .76, 1), l1 = P.suSpina(s, 1, 1);       // a bocca chiusa i denti stanno dietro le labbra
@@ -2835,11 +2864,11 @@ B.specie.registra({
     P.denti(c, ce.x + ca * L * .26, ce.y + sa * L * .26, ce.x + ca * L * .98, ce.y + sa * L * .98, 8, .21 * kd, 1, { tipo: 'punta', varia: .3, seme: 5 });
     P.denti(c, ce.x + ca * L * .71, ce.y + sa * L * .71, ce.x + ca * L * .8, ce.y + sa * L * .8, 1, .22 * kd, 1, { tipo: 'punta', colore: '#ffcf3a', bordo: '#8a4a0a' });
     const la = P.suSpina(s, .72, .9);
-    P.volume(c, P.spina(8, curva(la.x, la.y, l1.x + .27, l1.y - .09, l1.x + .3, l1.y - .22), SPL, SPL, { testa: .08, coda: .03 }), labbra, { luce: [l1.x + .2, l1.y - .2, 1], bordo: .04, ombra: .04, lume: .04 });
+    P.volume(c, P.spina(8, curva(la.x, la.y, l1.x + .27, l1.y - .09, l1.x + .3, l1.y - .22), SPL, SPL, { testa: .08, coda: .03 }), labbra, { luce: [l1.x + .2, l1.y - .2, 1], ombra: .04, lume: .04 });
     P.riflesso(c, l1.x + .25, l1.y - .16, .13, 1.1, .1);
     fauci.parte = 'mandibola'; P.fauci(c, fauci);
     c.save(); c.translate(ce.x, ce.y); c.rotate(am);
-    P.volume(c, LABBRO_GIU, labbra, { luce: [L * .9, -.1, 1], bordo: .04, ombra: .04, lume: .04 });
+    P.volume(c, LABBRO_GIU, labbra, { luce: [L * .9, -.1, 1], ombra: .04, lume: .04 });
     P.riflesso(c, L * .8, -.035, .15, -.05, .1);
     c.restore();
     const gx = ce.x + .02, gy = ce.y - .13 + ap * .04;
@@ -2875,11 +2904,15 @@ B.specie.registra({
 <script>
 /* Boccone — banco: PESCIOLINO DORATO. Il banco raro che vale di più: un pesciolino paffuto tutto d'oro, con la coda a
    ventaglio arancio, due squame in rilievo e una stellina di luce che gli si accende e spegne sul dorso mentre nuota.
-   Come la sardina: pochissimi tratti (costo sotto ×2,5), niente attrezzi pesanti; dipende solo da o.fase. */
+   Come la sardina: pochissimi tratti (costo sotto ×2,5), niente attrezzi pesanti; dipende solo da o.fase.
+   RIFATTO NELLO STILE «FILM D'ANIMAZIONE» sul modello della sardina: niente più contorno scuro spesso ma una linea sottile
+   color rame scivolata verso il ventre, il corpo modellato dalla luce (filo di luce in cima, oro carico sul dorso, oro
+   chiaro sul fianco, pancia quasi bianca, e in fondo l'ambra calda del rimbalzo), la coda a membrana, le squame a filo
+   sottile, riflesso morbido più un puntino netto, occhio con l'ombra della palpebra in alto e il suo riflesso. */
 (() => {
 'use strict';
 const B = window.B, TAU = Math.PI * 2;
-const BORDO = '#8a3208', ARANCIO = '#ff9a1c', SQUAMA = 'rgba(214,98,8,.6)', PUPILLA = '#3b1030';
+const LINEA = '#9a3c0a', SQUAMA = 'rgba(206,92,8,.6)', PUPILLA = '#3b1030';
 /* Una stellina a quattro punte di raggio r, aggiunta al tracciato in corso. */
 const stellina = (c, x, y, r) => {
   c.moveTo(x, y - r); c.quadraticCurveTo(x, y, x + r, y); c.quadraticCurveTo(x, y, x, y + r); c.quadraticCurveTo(x, y, x - r, y); c.quadraticCurveTo(x, y, x, y - r);
@@ -2888,26 +2921,33 @@ const stellina = (c, x, y, r) => {
 B.specie.registra({
   id: 'dorato',
   forma: { lx: 1, ly: .44 },
-  ingombro: { x0: -1.2, y0: -.84, x1: 1.12, y1: .7 },
+  ingombro: { x0: -1.16, y0: -.83, x1: 1.11, y1: .66 },
   disegna(c, o) {
     const F = (o.fase || 0) * TAU, w = Math.sin(F), yc = w * .16, ym = -w * .05;      // yc: la coda sbatte; ym: il corpo si flette al contrario
     c.save(); c.lineJoin = 'round';
-    // coda a ventaglio
+    // coda a ventaglio: una membrana arancio un po' trasparente
     c.beginPath(); c.moveTo(-.46, ym * .5 - .07); c.quadraticCurveTo(-.84, yc - .52, -1.08, yc - .4); c.quadraticCurveTo(-.86, yc, -1.08, yc + .4); c.quadraticCurveTo(-.84, yc + .52, -.46, ym * .5 + .07); c.closePath();
-    c.strokeStyle = BORDO; c.lineWidth = .1; c.stroke(); c.fillStyle = ARANCIO; c.fill();
-    // corpo paffuto: oro carico sul dorso, oro chiaro sul fianco, pancia quasi bianca
-    const g = c.createLinearGradient(0, -.44, 0, .44); g.addColorStop(0, '#ff9f12'); g.addColorStop(.38, '#ffd426'); g.addColorStop(.62, '#fff7b8'); g.addColorStop(1, '#ffbe3a');
-    c.beginPath(); c.moveTo(1, .03); c.bezierCurveTo(.74, -.52, -.18, -.5 + ym, -.7, ym * .4 - .06); c.lineTo(-.7, ym * .4 + .08); c.bezierCurveTo(-.18, .5 + ym, .74, .48, 1, .03); c.closePath();
-    c.stroke(); c.fillStyle = g; c.fill();
-    // due squame in rilievo e la lama di luce sul dorso
+    c.fillStyle = 'rgba(255,158,34,.94)'; c.fill(); c.strokeStyle = 'rgba(170,58,10,.8)'; c.lineWidth = .035; c.stroke();
+    // corpo paffuto: filo di luce in cima, oro carico sul dorso, oro chiaro sul fianco, pancia quasi bianca, e in fondo l'ambra del rimbalzo
+    const g = c.createLinearGradient(0, -.46, 0, .48);
+    g.addColorStop(0, '#ffe07a'); g.addColorStop(.16, '#ff9a10'); g.addColorStop(.42, '#ffd426'); g.addColorStop(.62, '#fff8c0'); g.addColorStop(.84, '#ffb630'); g.addColorStop(1, '#ffe4a6');
+    const corpo = () => { c.beginPath(); c.moveTo(1, .03); c.bezierCurveTo(.74, -.52, -.18, -.5 + ym, -.7, ym * .4 - .06); c.lineTo(-.7, ym * .4 + .08); c.bezierCurveTo(-.18, .5 + ym, .74, .48, 1, .03); c.closePath(); };
+    c.translate(.012, .028); corpo(); c.strokeStyle = LINEA; c.lineWidth = .06; c.stroke(); c.translate(-.012, -.028);        // la linea: sottile, più visibile dal lato in ombra
+    corpo(); c.fillStyle = g; c.fill();
+    // due squame in rilievo, a filo sottile
     c.beginPath(); c.arc(-.02, ym * .5 + .02, .17, -1.1, 1.1); c.moveTo(-.2, ym * .7 + .18); c.arc(-.32, ym * .7 + .02, .17, -1.1, 1.1);
-    c.strokeStyle = SQUAMA; c.lineWidth = .06; c.lineCap = 'round'; c.stroke();
-    // tutto il bianco in un colpo solo: la lama di luce sul dorso, l'occhio e il luccichio (due stelline che si accendono a turno)
-    c.fillStyle = '#fff'; c.beginPath(); c.ellipse(.1, -.25 + ym * .5, .3, .05, -.05, 0, TAU);
-    c.moveTo(.76, -.06); c.arc(.6, -.06, .16, 0, TAU);
+    c.strokeStyle = SQUAMA; c.lineWidth = .038; c.lineCap = 'round'; c.stroke();
+    // l'alone morbido del riflesso sul dorso; poi l'occhio: un disco ambra che fa da orbita e da ombra della palpebra
+    // (il bianco sta più in basso: in alto ne resta di più)
+    c.fillStyle = 'rgba(255,255,255,.45)'; c.beginPath(); c.ellipse(.08, -.27 + ym * .5, .36, .07, -.05, 0, TAU); c.fill();
+    c.fillStyle = '#d07a24'; c.beginPath(); c.arc(.6, -.066, .186, 0, TAU); c.fill();
+    // tutto il bianco in un colpo solo: il puntino netto del riflesso, l'occhio e il luccichio (due stelline che si accendono a turno)
+    c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(-.06, -.285 + ym * .5, .08, .034, -.05, 0, TAU);
+    c.moveTo(.74, -.04); c.arc(.6, -.04, .14, 0, TAU);
     stellina(c, -.12, -.4 + ym, .2 + .16 * Math.sin(F + .6)); stellina(c, .42, .26, .1 + .09 * Math.sin(F + 3.4));
     c.fill();
-    c.fillStyle = PUPILLA; c.beginPath(); c.arc(.64, -.05, .09, 0, TAU); c.fill();
+    c.fillStyle = PUPILLA; c.beginPath(); c.arc(.64, -.055, .095, 0, TAU); c.fill();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(.61, -.092, .036, 0, TAU); c.fill();
     c.restore();
   },
 });
@@ -3119,15 +3159,17 @@ B.specie.registra({
    chiara con la bocca, occhi su peduncoli che spuntano sopra il guscio, chele dalla punta arancio, tre paia di zampe che
    penzolano e, dietro, le ultime due zampe a paletta che girano come remi. Calmo tiene le chele basse e sorride; a caccia
    le alza e le fa scattare (le punte diventano rosse), aggrotta gli occhi e mostra i denti. Il tratto esagerato sono le
-   chele e gli occhi a periscopio. */
+   chele e gli occhi a periscopio.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: guscio, zampe, chele e palette hanno l'ombra indaco dichiarata nelle tinte
+   (senza contorno scuro si impastavano con l'acqua); palette e antennine usano la linea sottile. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, max } = Math;
 
 // ---- tinte (una volta sola)
-const T = { guscio: P.tinta('#5b54e6'), ventre: P.tinta('#e9e0ff', '#9a86e6'), zampa: P.tinta('#4d86ee'), chela: P.tinta('#6f60f4'), pala: P.tinta('#38a4ee') };
-const MACCHIA = P.alfa('#aab8ff', .75), AVORIO = '#fff0d2', BAFFO = '#ffd9a0';
+const T = { guscio: P.tinta('#5b54e6', '#2a1890'), ventre: P.tinta('#e9e0ff', '#9a86e6'), zampa: P.tinta('#4d86ee', '#2a2fc4'), chela: P.tinta('#6f60f4', '#30209e'), pala: P.tinta('#38a4ee', '#2a3fd0') };
+const MACCHIA = P.alfa('#aab8ff', .75), AVORIO = '#fff0d2', BAFFO = '#ffd9a0', NERVO = P.alfa(T.pala.scura, .6);
 /* Il carapace è un volume su una spina orizzontale ferma (u = 0 la spina di sinistra, u = 1 quella di destra): così ombra,
    luce, macchie e orlo seguono la sua curva. SU è il guscio visto da sopra, GIU la faccia. */
 const SU = P.sagoma([[0, .03], [.08, .2], [.25, .4], [.5, .47], [.75, .4], [.92, .2], [1, .03]]);
@@ -3146,10 +3188,10 @@ const gira = (a, sg) => sg > 0 ? a : PI - a;                                   /
 const ovale = (c, L, h, e) => { c.beginPath(); c.moveTo(-e, 0); c.bezierCurveTo(L * .2, -h * 1.5 - e, L * .85, -h * 1.45 - e, L + e, 0); c.bezierCurveTo(L * .85, h * 1.45 + e, L * .2, h * 1.5 + e, -e, 0); c.closePath(); };
 const pala = (c, x, y, ang, sg, L, h, t) => {
   c.save(); c.translate(x, y); c.rotate(ang); c.scale(1, sg);
-  ovale(c, L, h, .045); c.fillStyle = t.bordo; c.fill();
+  ovale(c, L, h, .03); c.fillStyle = t.linea; c.fill();
   ovale(c, L, h, 0); c.fillStyle = t.base; c.fill();
   c.beginPath(); c.ellipse(L * .58, -h * .38, L * .3, h * .36, 0, 0, TAU); c.fillStyle = t.luce; c.fill();
-  c.beginPath(); c.moveTo(L * .12, h * .1); c.lineTo(L * .8, h * .1); c.strokeStyle = t.scura; c.lineWidth = .03; c.stroke();
+  c.beginPath(); c.moveTo(L * .12, h * .1); c.lineTo(L * .8, h * .1); c.strokeStyle = NERVO; c.lineWidth = .028; c.stroke();
   c.restore();
 };
 
@@ -3157,7 +3199,7 @@ B.specie.registra({
   id: 'granchio_nuotatore',
   descrizione: 'Le sue ultime zampe sono fatte a paletta: le fa girare come due remi e nuota di lato, svelto come un pesce. Se qualcuno lo disturba non scappa: alza le chele e gli va incontro.',
   forma: { lx: .95, ly: .55 },
-  ingombro: { x0: -1.44, y0: -1.19, x1: 1.47, y1: .91 },
+  ingombro: { x0: -1.44, y0: -1.19, x1: 1.44, y1: .91 },
   disegna(c, o) {
     const F = (o.fase || 0) * TAU, m = !!o.minaccia, b = o.bocca || 0, polsi = [];
     c.save();
@@ -3181,7 +3223,7 @@ B.specie.registra({
     }
 
     // ---- 2. il carapace: guscio blu-viola a macchie chiare, sotto la faccia chiara
-    P.volume(c, S, T.guscio, { luce: [.3, -.5, 1.5], ombra: .08, dentro(cc) {
+    P.volume(c, S, T.guscio, { luce: [.3, -.5, 1.5], ombra: .11, dentro(cc) {
       P.fianco(cc, S, orlo, 1.4, P.sfumatura(cc, T.ventre, [.2, -.1, 1.1]));
       if (P.fine(o)) P.macchie(cc, S, { n: 10, seme: 5, u0: .08, u1: .92, v0: -.85, v1: -.2, r0: .025, r1: .055, colore: MACCHIA, lungo: 1.3 });
     } });
@@ -3200,7 +3242,7 @@ B.specie.registra({
     c.lineCap = 'round';
     for (let passata = 0; passata < 2; passata++) {                                               // le due antennine, in due passate
       c.beginPath(); c.moveTo(.06, -.1); c.quadraticCurveTo(.02, -.3, -.06 + sin(F * 2) * .03, -.42); c.moveTo(.2, -.1); c.quadraticCurveTo(.25, -.3, .33 + sin(F * 2 + 1) * .03, -.42);
-      c.strokeStyle = passata ? BAFFO : T.guscio.bordo; c.lineWidth = passata ? .028 : .07; c.stroke();
+      c.strokeStyle = passata ? BAFFO : T.guscio.linea; c.lineWidth = passata ? .028 : .06; c.stroke();
     }
     for (let i = 0; i < 2; i++) {
       const x = OCCHI[i][0], la = OCCHI[i][1], ex = x + la * .05 + sin(F + i * 2) * .025, ey = -.72 + sin(F * 2 + i) * .02 - (m ? .03 : 0);
@@ -3223,7 +3265,9 @@ B.specie.registra({
 /* Boccone — specie: GRONGO (taglia 4, agguato). Un nastro grosso e liscio, tutto diverso dalla murena: azzurro acciaio con
    la pancia bianca, testone tondo dagli occhi grandi, labbroni carnosi rosa, una pinnetta pettorale dietro la branchia, la
    fila di pori bianchi lungo il fianco e una pinna bassa orlata di scuro che gira attorno alla coda.
-   Calmo tiene la bocca chiusa; a caccia la spalanca sui dentini, drizza la pinna e stringe la pupilla. */
+   Calmo tiene la bocca chiusa; a caccia la spalanca sui dentini, drizza la pinna e stringe la pupilla.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il dorso è di un indaco più deciso (l'azzurro da solo si impastava con
+   l'acqua) e il controluce lungo il nastro è più largo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -3232,7 +3276,7 @@ const { sin, cos, pow, min } = Math;
 // ---- tinte (una volta sola)
 const T = { corpo: P.tinta('#4f8ee0', '#3a2a94'), ventre: P.tinta('#ddf2ff', '#86a6f2'), mento: P.tinta('#d4e8ff', '#6f8cf0'), cresta: P.tinta('#86d2ff', '#3550c8'),
   pinna: P.tinta('#9adcff', '#3f5fd8'), labbro: P.tinta('#ff93b8', '#c8328a') };
-const INDACO = '#2a2488', DORSO = P.alfa('#2c2f9c', .34), PORI = '#eef6ff';
+const INDACO = '#2a2488', DORSO = P.alfa('#2a2494', .52), DORSO_ALTO = P.alfa('#2a2494', .3), PORI = '#eef6ff';
 /* Il nastro: più grosso di quello della murena, con un testone tondo. Da u = .9 il ventre si ritira per la mandibola. */
 const SU = P.sagoma([[0, .03], [.08, .15], [.3, .29], [.6, .34], [.8, .41], [.9, .53], [.96, .51], [1, .38]]);
 const GIU = P.sagoma([[0, .03], [.08, .13], [.3, .26], [.6, .31], [.8, .39], [.87, .43], [.925, .22], [1, .16]]);
@@ -3263,8 +3307,9 @@ B.specie.registra({
 
     // ---- 2. il corpo: tinta piatta con lama di luce, dorso più scuro, pancia bianca, pori bianchi in fila lungo il fianco
     const te = P.suSpina(s, .93, -.2);
-    P.volume(c, s, T.corpo, { ombra: .075, lume: .1, dentro(cc) {
+    P.volume(c, s, T.corpo, { ombra: .1, lume: .1, dentro(cc) {
       P.fianco(cc, s, -1.4, orloDorso, DORSO, 0, .88);
+      P.fianco(cc, s, -1.4, -.8, DORSO_ALTO, 0, .9);                                  // il filo della schiena: ancora più scuro
       P.fianco(cc, s, orloVentre, 1.4, T.ventre.base);
       P.guancia(cc, te.x, te.y - .1, .55, T.corpo.luce, .65);                         // la testa prende più luce: sembra più tonda
       const pr = P.puntiSuSpina(s, 13, .08, .8, -.06);
@@ -3308,7 +3353,9 @@ B.specie.registra({
    Tutti gli stati letti con P.statoGigante. Da calmo tiene le braccia chiuse a punta, come un tulipano; a caccia le apre a
    fiore, mostra il becco e allunga i tentacoli a tenaglia. Il segnale da ricordare: LE LUCINE AZZURRE che si accendono in
    fila sul fianco e sulle clave, mentre i due tentacoli si avvolgono a molla sopra e sotto la testa = sta per colpire.
-   Quando parte li scaglia dritti in avanti, col mantello stirato e le pinne piegate all'indietro. */
+   Quando parte li scaglia dritti in avanti, col mantello stirato e le pinne piegate all'indietro.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: i pezzi disegnati a mano (membrana fra le braccia, labbro del becco, sifone,
+   orlo delle ventose) usano la linea sottile della cassetta (t.linea, sotto .04) invece del contorno spesso. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -3360,13 +3407,13 @@ function braccio(c, a, i, K, st, vicino, q) {
     fase: st.F + i * 1.9, tinta, ombra: 0, lume: vicino ? .04 : 0, n: vicino ? 11 : 8 });
   if (vicino) P.fianco(c, s, la * .2, la * .96, K.sotto, .03, .96, 9);
   for (let passata = vicino ? 0 : 1; passata < (vicino ? 3 : 2); passata++) {       // le lontane: una passata sola, tutta dentro il braccio
-    const piu = passata ? 0 : .03, k = passata === 2 ? .42 : vicino ? 1 : .8, v = la * (vicino ? .97 : .62);
+    const piu = passata ? 0 : .024, k = passata === 2 ? .42 : vicino ? 1 : .8, v = la * (vicino ? .97 : .62);
     c.beginPath();
     for (let j = 0; j < nv; j++) {
       const u = .12 + .78 * j / (nv - 1), r = (.058 - .036 * u) * k + piu;
       P.suSpina(s, u, v, q); c.moveTo(q.x + r, q.y); c.arc(q.x, q.y, r, 0, TAU);
     }
-    c.fillStyle = passata === 2 ? K.cuoreVentosa : passata ? (vicino ? K.ventosa : K.ventosaLontana) : tinta.bordo; c.fill();
+    c.fillStyle = passata === 2 ? K.cuoreVentosa : passata ? (vicino ? K.ventosa : K.ventosaLontana) : tinta.linea; c.fill();
   }
 }
 /* Un tentacolo da preda: stelo sottile e clava in fondo. Quello lontano sta di sopra, quello vicino di sotto. Da calmi
@@ -3418,8 +3465,8 @@ B.specie.registra({
     for (let i = 0; i < 4; i++) braccio(c, LONTANE[i], i * 2, K, st, false, q);
 
     // ---- 2. in mezzo alle braccia: la membrana scura, la bocca col becco
-    c.beginPath(); c.ellipse(CX + .14, CY, .3, .3, 0, 0, TAU); c.strokeStyle = K.lontano.bordo; c.lineWidth = .1; c.stroke(); c.fillStyle = K.lontano.ombra; c.fill();
-    c.beginPath(); c.ellipse(MX, MY, .2 + becco * .03, .22 + becco * .05, ASSE, 0, TAU); c.strokeStyle = LABBRO.bordo; c.lineWidth = .07; c.stroke(); c.fillStyle = viva ? LABBRO.base : K.sotto; c.fill();
+    c.beginPath(); c.ellipse(CX + .14, CY, .3, .3, 0, 0, TAU); c.strokeStyle = K.lontano.linea; c.lineWidth = .07; c.stroke(); c.fillStyle = K.lontano.ombra; c.fill();
+    c.beginPath(); c.ellipse(MX, MY, .2 + becco * .03, .22 + becco * .05, ASSE, 0, TAU); c.strokeStyle = LABBRO.linea; c.lineWidth = .062; c.stroke(); c.fillStyle = viva ? LABBRO.base : K.sotto; c.fill();
     c.beginPath(); c.ellipse(MX + .02, MY + .01, .11 + becco * .05, .12 + becco * .09, ASSE, 0, TAU); c.fillStyle = '#5a0c34'; c.fill();
     P.corno(c, MX - .06, MY + .07, ASSE + .3 + becco * .55, .25, .19, BECCO, { curva: -.7 });
     P.corno(c, MX - .07, MY - .07, ASSE - .1 - becco * .4, .37, .25, BECCO, { curva: .75 });
@@ -3431,7 +3478,7 @@ B.specie.registra({
     // ---- 4. la testa (copre le radici delle braccia) e il sifone, che spunta da sotto il colletto
     P.palla(c, HX, HY, .43, .34, -.06, K.pelle, { luce: [HX + .14, HY - .3, 1], ombra: .08 });
     if (viva) P.guancia(c, HX + .27, HY + .2, .17, '#ff4f8a', .34);
-    c.beginPath(); c.ellipse(0, HY + .31, .2, .085, .2, 0, TAU); c.strokeStyle = SIFONE.bordo; c.lineWidth = .08; c.stroke(); c.fillStyle = viva ? SIFONE.base : K.sotto; c.fill();
+    c.beginPath(); c.ellipse(0, HY + .31, .2, .085, .2, 0, TAU); c.strokeStyle = SIFONE.linea; c.lineWidth = .066; c.stroke(); c.fillStyle = viva ? SIFONE.base : K.sotto; c.fill();
     c.beginPath(); c.ellipse(.15, HY + .345, .042, .062, .2, 0, TAU); c.fillStyle = SIFONE.bordo; c.fill();
 
     P.ombra(c, X1 + .12, HY, .2, .38, 0, .4);                                         // l'ombra del colletto sulla testa
@@ -3487,14 +3534,17 @@ B.specie.registra({
 /* Boccone — specie: LAMPUGA (taglia 2, cacciatore). Il pesce dalla fronte a muro: testone alto e squadrato con l'occhio in
    basso e la bocca imbronciata, corpo che si assottiglia fino a una coda a forca, e una pinna dorsale blu che parte da sopra
    l'occhio e arriva alla coda. Fianchi d'oro, dorso verde smeraldo, puntini blu. A caccia «si accende»: la cresta si alza
-   e sul fianco compaiono barre blu (lo fa davvero, quando è eccitata). */
+   e sul fianco compaiono barre blu (lo fa davvero, quando è eccitata).
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il velo d'ombra viola della cassetta imbruniva l'oro di faccia e pancia. Ora
+   il corpo ha ombra: 0 (l'oro scurisce solo verso l'arancio, con la luce più larga) e le luci del bordo sono fatte in
+   casa: filo di luce lungo il dorso, controluce color acqua lungo il ventre. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, pow, min } = Math;
 
 // ---- tinte (una volta sola) e sagoma: altissima in testa, sottile in coda; da u = .87 il ventre si ritira per la mandibola
-const T = { corpo: P.tinta('#ffd21e', '#ff6a14'), ventre: P.tinta('#fff19c', '#f0a03c'), mento: P.tinta('#ffe680', '#f07a1e'), cresta: P.tinta('#2a80f6', '#2a2ab0'),
+const T = { corpo: P.tinta('#ffd21e', '#ff7c14'), ventre: P.tinta('#fff19c', '#f0a03c'), mento: P.tinta('#ffe680', '#f07a1e'), cresta: P.tinta('#2a80f6', '#2a2ab0'),
   gialla: P.tinta('#ffc21a', '#f0541e'), pett: P.tinta('#34d2c2', '#1f52d0') };
 const VERDE = '#14bd86', LIME = P.alfa('#9fe234', .85), BLU = '#2470f0', CUORE = '#aee8ff', ORLO = '#86f2ff', ORLO_CODA = '#d4ff7a', BARRA = P.alfa('#0fae9c', .82), CIELO = '#2ab8ff';
 const SU = P.sagoma([[0, .07], [.12, .17], [.35, .36], [.6, .52], [.8, .62], [.92, .65], [1, .57]]);
@@ -3513,7 +3563,7 @@ B.specie.registra({
   disegna(c, o) {
     const fase = o.fase || 0, F = fase * TAU, m = !!o.minaccia, b = o.bocca || 0, q = {};
     c.save();
-    const s = P.spinaPesce(14, -1.02, .68, fase, ONDA, SU, GIU, { testa: .1 }), luce = [.3, -.5, 1.8], alza = m ? 1.3 : 1;
+    const s = P.spinaPesce(14, -1.02, .68, fase, ONDA, SU, GIU, { testa: .1 }), luce = [.42, -.5, 2.15], alza = m ? 1.3 : 1;
 
     // ---- 1. dietro al corpo: coda a forca, la lunga dorsale blu, l'anale, la ventrale, la bocca
     P.suSpina(s, 0, 0, q);
@@ -3528,13 +3578,15 @@ B.specie.registra({
 
     // ---- 2. il corpo d'oro: dorso verde che sfuma nel lime, pancia chiara, barre blu (solo a caccia), puntini blu
     const fr = P.suSpina(s, .95, -.7);
-    P.volume(c, s, T.corpo, { luce, ombra: .075, dentro(cc) {
+    P.volume(c, s, T.corpo, { luce, ombra: 0, dentro(cc) {
       P.fianco(cc, s, -1.4, orloLime, LIME);
       P.fianco(cc, s, -1.4, orloVerde, VERDE);
       P.fianco(cc, s, u => .74 - .16 * sin(u * PI), 1.4, P.sfumatura(cc, T.ventre, luce));
       P.guancia(cc, fr.x, fr.y, .42, CIELO, .5);                                       // la fronte vira all'azzurro
       if (m) P.bande(cc, s, BARRE, BARRA);
       P.macchie(cc, s, { n: 17, seme: 6, u0: .06, u1: .8, v0: -.75, v1: .62, r0: .026, r1: .046, colore: BLU, cuore: CUORE, lungo: 1 });
+      P.fianco(cc, s, -1.4, -.93, 'rgba(255,255,255,.28)', 0, 1, 8);                     // le luci del bordo: filo di luce sul dorso…
+      P.fianco(cc, s, .9, 1.4, 'rgba(200,243,255,.42)', 0, 1, 8);                        // …e controluce color acqua sotto la pancia
     } });
     const g1 = P.suSpina(s, .77, -.4), g2 = P.suSpina(s, .725, .1), g3 = P.suSpina(s, .78, .62);
     P.solco(c, [g1.x, g1.y, g2.x, g2.y, g3.x, g3.y], T.corpo, .04);                                // opercolo
@@ -3562,7 +3614,8 @@ B.specie.registra({
 /* Boccone — gigante: LA GRANDE LANTERNA, signora dell'abisso. ESEMPIO DI RIFERIMENTO per i giganti (vedi GUIDA-STILE.md):
    tutti gli stati letti con P.statoGigante (calmo, caccia, avviso con o.carica, carica, stordito, sconfitto), mandibola
    sporgente (P.fauci in due parti), esca luminosa che fa da segnale di pericolo, corona.
-   Il segnale da ricordare: esca verde acqua = tranquilla, gialla = ti dà la caccia, lampeggia rossa = sta per attaccare. */
+   Il segnale da ricordare: esca verde acqua = tranquilla, gialla = ti dà la caccia, lampeggia rossa = sta per attaccare.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: solo il solco dell'opercolo, portato alla misura delle linee della cassetta. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -3619,7 +3672,7 @@ B.specie.registra({
     P.bozzi(c, P.puntiSuSpina(s, 6, .32, .8, u => -.6 - .2 * sin(u * 31)), i => .04 + (i % 3) * .012, T.corpo);
     P.lucine(c, P.puntiSuSpina(s, 6, .15, .52, u => .08 + .1 * sin(u * 12)), i => .03 + (i % 2) * .012, FOTOFORI, viva ? .7 + .3 * sin(t * 3) : .15);
     const b0 = P.suSpina(s, .5, -.25), b1 = P.suSpina(s, .46, .1), b2 = P.suSpina(s, .5, .4);
-    P.solco(c, [b0.x, b0.y, b1.x, b1.y, b2.x, b2.y], T.corpo, .05);
+    P.solco(c, [b0.x, b0.y, b1.x, b1.y, b2.x, b2.y], T.corpo, .04);
     P.riflesso(c, .36, -.66, .34, .55, .12);
 
     // ---- 3. sul fianco: pinna pettorale che rema
@@ -3675,7 +3728,10 @@ B.specie.registra({
 /* Boccone — pericolo: MEDUSA. Ombrello traslucido rosa-lilla dall'orlo a festoni, con dentro il «quadrifoglio» viola; sotto,
    quattro braccia orali arricciate e otto tentacoli sottili con la perlina urticante in punta.
    Dipende solo da o.fase (i tentacoli che ondeggiano) e da o.attivo (la spinta: l'ombrello si stringe e si allunga,
-   braccia e tentacoli si distendono, e lei strizza gli occhi per lo sforzo). 1 unità = il raggio che fa male. */
+   braccia e tentacoli si distendono, e lei strizza gli occhi per lo sforzo). 1 unità = il raggio che fa male.
+   RITOCCATA PER LO STILE «FILM D'ANIMAZIONE»: i tentacoli sottili hanno la linea fine (non più il bordo scuro spesso) e un
+   filo di luce; l'ombrello è più traslucido e sotto si accende della luce che lo attraversa (il sotto non è più un ovale
+   a bordo netto ma un'ombra sfumata); gote sfumate; le perline urticanti restano accese: è da lì che punge. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -3683,7 +3739,8 @@ const { sin, abs, max, min } = Math;
 
 // ---- tinte: rosa con le ombre viola; braccia più cariche, tentacoli lilla
 const T = { ombrello: P.tinta('#ff8fd0', '#8a3fd0'), braccia: P.tinta('#ff6fb4', '#9a3ab8'), lontane: P.tinta('#dc62c2', '#6a2aa0'), filo: P.tinta('#dcaaff', '#6a3fd0') };
-const GONADI = P.alfa('#b84fe0', .8), CUORE = P.alfa('#ffe0f6', .6), CANALI = 'rgba(255,255,255,.34)', SOTTO = P.alfa('#8a3ad0', .32), GOTA = P.alfa('#ff3f8f', .38), PERLA = '#fff3a8', BALZA = '#ffd2ee';
+const GONADI = P.alfa('#b84fe0', .8), CUORE = P.alfa('#ffe0f6', .6), CANALI = 'rgba(255,255,255,.34)', SOTTO = '#7a34d0', LUME = '#fff0fb', GOTA = '#ff3f8f', PERLA = '#fff3a8', BALZA = '#ffd2ee';
+const FILO_LUCE = P.alfa(T.filo.luce, .7);
 const FILI = [-.92, -.66, -.4, -.14, .14, .4, .66, .92];             // da dove pendono i tentacoli (in quote della larghezza)
 const OCCHIO = { iride: '#7a3fe0', pelle: T.ombrello, guarda: { x: 0, y: .3 }, palpebra: .24 }, STRIZZATO = { pelle: T.ombrello, tipo: 'chiuso' };
 const SORRISO = { curva: .8, tinta: T.ombrello, spess: .05 }, SFORZO = { apri: .7, alt: .13, curva: .5, tinta: T.ombrello, lingua: false, spess: .05 };
@@ -3711,7 +3768,8 @@ B.specie.registra({
       }
       c.lineTo(px, py); PUNTE.push(px, py);
     }
-    c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = T.filo.bordo; c.lineWidth = .11; c.stroke(); c.strokeStyle = T.filo.base; c.lineWidth = .048; c.stroke();
+    c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = T.filo.linea; c.lineWidth = .092; c.stroke(); c.strokeStyle = T.filo.base; c.lineWidth = .052; c.stroke();   // linea fine, colore…
+    c.translate(-.008, -.006); c.strokeStyle = FILO_LUCE; c.lineWidth = .016; c.stroke(); c.translate(.008, .006);                                                          // …e un filo di luce
     P.lucine(c, PUNTE, .036, PERLA, .55 + .45 * at);
     for (let i = 0; i < 4; i++) {
       const lato = i % 2 ? 1 : -1, vicino = i > 1;
@@ -3727,13 +3785,14 @@ B.specie.registra({
       for (let i = 0; i < 6; i++) { const xa = w - i * w / 3, xb = xa - w / 3; cc.quadraticCurveTo((xa + xb) / 2, orlo + .17, xb, orlo - .04); }   // l'orlo a festoni
       cc.closePath();
     };
-    c.globalAlpha = .9;
+    c.globalAlpha = .88;
     P.volume(c, traccia, T.ombrello, { luce: [.32, top * .8, 1.75], ombra: .1, dentro(cc) {
-      cc.fillStyle = SOTTO; cc.beginPath(); cc.ellipse(0, orlo - .02, w * .88, .2, 0, 0, TAU); cc.fill();
+      P.ombra(cc, 0, orlo + .02, w * .98, .3, 0, .42, SOTTO);         // il sotto dell'ombrello in trasparenza: un'ombra viola che sfuma
+      P.guancia(cc, -.1 * w, orlo - .16, .62 * w, LUME, .34);         // e la luce che attraversa la gelatina
       cc.beginPath(); for (let i = -3; i <= 3; i++) { cc.moveTo(i * .05, top * .8); cc.quadraticCurveTo(i * w * .2, top * .3, i * w * .31, orlo + .1); }
       cc.strokeStyle = CANALI; cc.lineWidth = .026; cc.stroke();
       cc.beginPath(); for (let i = 0; i < 4; i++) { const x = (i - 1.5) * .3 * w, y = top * .6 + abs(i - 1.5) * .05; cc.moveTo(x + .13 * w, y); cc.ellipse(x, y, .13 * w, .1, 0, 0, TAU); }
-      cc.fillStyle = CUORE; cc.fill(); cc.strokeStyle = GONADI; cc.lineWidth = .055; cc.stroke();
+      cc.fillStyle = CUORE; cc.fill(); cc.strokeStyle = GONADI; cc.lineWidth = .048; cc.stroke();
     } });
     c.globalAlpha = 1;
     ORLO.length = 0; for (let i = 0; i <= 6; i++) ORLO.push(w - i * w / 3, orlo - .05);
@@ -3742,7 +3801,7 @@ B.specie.registra({
 
     // ---- 3. il visino: occhi sognanti (strizzati mentre spinge), gote, bocca
     const su = at > .6;
-    c.fillStyle = GOTA; c.beginPath(); c.ellipse(-.53 * w, .0, .1, .06, 0, 0, TAU); c.ellipse(.53 * w, .0, .1, .06, 0, 0, TAU); c.fill();
+    P.guancia(c, -.53 * w, .0, .12, GOTA, .5); P.guancia(c, .53 * w, .0, .12, GOTA, .5);
     P.occhio(c, -.3 * w, -.13, .16, su ? STRIZZATO : OCCHIO); P.occhio(c, .3 * w, -.13, .16, su ? STRIZZATO : OCCHIO);
     P.sorriso(c, 0, su ? .0 : .02, su ? .07 : .1, su ? SFORZO : SORRISO);
     c.restore();
@@ -3759,7 +3818,10 @@ B.specie.registra({
    rosso avvitato su una piastra.
    Dipende solo da o.fase (dondolio, catena, alghe, battito della spia) e da o.attivo: a riposo la spia è spenta; a metà
    si accende e lampeggia rossa; al massimo è incandescente, con i cappucci dei corni roventi e l'alone rosso tutt'intorno.
-   I corni e la catena sono tracciati unici, senza attrezzi pesanti. 1 unità = il raggio che fa male. */
+   I corni e la catena sono tracciati unici, senza attrezzi pesanti. 1 unità = il raggio che fa male.
+   RITOCCATA PER LO STILE «FILM D'ANIMAZIONE»: corni, flange, piastra, catena e alghe non hanno più il contorno scuro spesso
+   ma la linea sottile del loro colore scurito; i corni e la piastra sono modellati dalla luce (in alto a sinistra), i
+   cappucci sono palline con la loro ombra, le alghe sfumano verso la punta, la ruggine ha l'alone morbido. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -3769,7 +3831,8 @@ const { sin, cos, max, min, round } = Math;
 const T = { ferro: P.tinta('#6c7cc4', '#28226a'), corno: P.tinta('#5868ae', '#221c5c'), piastra: P.tinta('#4c58a0', '#1c1850'), catena: P.tinta('#8490c4', '#28226a'),
   ottone: P.tinta('#ffc43a', '#d2571c'), rovente: P.tinta('#ff5a34', '#a0102c'), crema: P.tinta('#fff0d2', '#d8946a'), alga: P.tinta('#4cc670', '#0f5a52') };
 const SPIA = [P.tinta('#a23c62', '#3a1048'), P.tinta('#ff4636', '#8a0f3c'), P.tinta('#ff7a2e', '#c0102a')];      // spenta · accesa · incandescente
-const ROSSO = '#ff3a30', RUGGINE = P.alfa('#c4501c', .82), BRACE = P.alfa('#f39040', .85), SCOLO = P.alfa('#a43c1c', .5), FASCIA = P.alfa(T.ferro.bordo, .42), FILO = P.alfa(T.ferro.luce, .45);
+const ROSSO = '#ff3a30', RUGGINE = P.alfa('#c4501c', .8), ALONE = P.alfa('#c4501c', .22), BRACE = P.alfa('#f39040', .85), SCOLO = P.alfa('#a43c1c', .42), FASCIA = P.alfa(T.ferro.bordo, .42), FILO = P.alfa(T.ferro.luce, .45);
+const ALGA = P.alfa(T.alga.base, .94), ALGA_PUNTA = P.alfa(T.alga.luce, .9), LUME = P.alfa(T.corno.luce, .55);
 const RS = .78, R0 = .66, R1 = .99, HW = .085, LX = 0, LY = .03;                    // raggio della sfera · radice, cima e mezza larghezza dei corni · centro della spia
 const CORNI = [2.46, 3.24, -2.26, -1.47, -.69, .1, .89];                            // i sette corni del contorno (sotto c'è la catena)
 const FRONTE = [[-.17, -.53], [.53, -.17], [-.54, .16]];                            // i tre corni del davanti
@@ -3778,27 +3841,30 @@ for (const a of CORNI) CIME.push(cos(a) * R1, sin(a) * R1);
 for (const p of FRONTE) { const d = Math.hypot(p[0], p[1]); CIME_FRONTE.push(p[0] + p[0] / d * .17, p[1] + p[1] / d * .17); }
 for (let i = 0; i < 9; i++) { const a = .22 + (PI - .44) * i / 8; RIVETTI.push(cos(a) * (RS - .05), -.03 + sin(a) * .25); }
 for (let i = 0; i < 6; i++) BULLONI.push(LX + cos(i * TAU / 6 + .3) * .255, LY + sin(i * TAU / 6 + .3) * .255);
+const CATENA_LUME = P.alfa(T.catena.luce, .85);
 const MACCHIE = [[-.46, -.32, .17], [-.24, .52, .2], [.5, .3, .15], [.2, -.6, .11], [-.64, .1, .09], [.6, -.3, .08], [.08, .56, .07]];   // la ruggine: x, y, raggio
 const CONCHIGLIE = [-.36, .34, -.47, .43, -.3, .46, .44, .52, .52, .43], RAGGI_CONCHIGLIE = [.055, .04, .034, .045, .032];
 
-/* I corni del contorno, tutti in un tracciato: mozziconi di ferro che sfumano dal buio della radice alla cima. */
+/* I corni del contorno, tutti in un tracciato: mozziconi di ferro con la linea sottile, che sfumano dal buio della radice
+   alla cima e schiariscono dalla parte della luce (il centro della sfumatura è spostato verso l'ombra). */
 function corni(c) {
   c.beginPath();
   for (const a of CORNI) {
     const ca = cos(a), sa = sin(a), hx = -sa * HW, hy = ca * HW;
     c.moveTo(ca * R0 + hx, sa * R0 + hy); c.lineTo(ca * R1 + hx, sa * R1 + hy); c.lineTo(ca * R1 - hx, sa * R1 - hy); c.lineTo(ca * R0 - hx, sa * R0 - hy); c.closePath();
   }
-  const g = c.createRadialGradient(0, 0, R0, 0, 0, R1 + .06);
-  g.addColorStop(0, T.corno.scura); g.addColorStop(.55, T.corno.base); g.addColorStop(1, T.corno.chiara);
-  c.lineJoin = 'round'; c.strokeStyle = T.corno.bordo; c.lineWidth = .1; c.stroke(); c.fillStyle = g; c.fill();
+  const g = c.createRadialGradient(.14, .36, R0 * .3, 0, 0, R1 + .06);
+  g.addColorStop(0, T.corno.scura); g.addColorStop(.5, T.corno.ombra); g.addColorStop(.78, T.corno.base); g.addColorStop(1, T.corno.luce);
+  c.lineJoin = 'round'; c.strokeStyle = T.corno.linea; c.lineWidth = .055; c.stroke(); c.fillStyle = g; c.fill();
 }
-/* I cappucci in cima ai corni: bordo, ottone (o ferro rovente) e lucina, tre passate per tutti. */
+/* I cappucci in cima ai corni: palline d'ottone (o di ferro rovente) in quattro passate per tutti: la linea sottile
+   (scivolata verso l'ombra), l'ombra, il colore pieno spostato verso la luce, la lucina. */
 function cappucci(c, p, r, t) {
-  for (let passata = 0; passata < 3; passata++) {
-    const rr = passata === 0 ? r + .045 : passata === 1 ? r : r * .34, d = passata === 2 ? r * .34 : 0;
+  for (let passata = 0; passata < 4; passata++) {
+    const rr = passata === 0 ? r + .022 : passata === 1 ? r : passata === 2 ? r * .8 : r * .3, dx = passata === 0 ? .008 : passata === 2 ? -r * .14 : passata === 3 ? -r * .3 : 0, dy = passata === 0 ? .014 : passata === 2 ? -r * .18 : passata === 3 ? -r * .4 : 0;
     c.beginPath();
-    for (let i = 0; i < p.length; i += 2) { c.moveTo(p[i] + d + rr, p[i + 1] - d); c.arc(p[i] + d, p[i + 1] - d, rr, 0, TAU); }
-    c.fillStyle = passata === 0 ? t.bordo : passata === 1 ? t.base : t.luce; c.fill();
+    for (let i = 0; i < p.length; i += 2) { c.moveTo(p[i] + dx + rr, p[i + 1] + dy); c.arc(p[i] + dx, p[i + 1] + dy, rr, 0, TAU); }
+    c.fillStyle = passata === 0 ? t.linea : passata === 1 ? t.ombra : passata === 2 ? t.base : t.luce; c.fill();
   }
 }
 /* Il pezzo di catena: la staffa sotto la sfera, anelli visti di faccia e di taglio, l'ultimo spezzato. Dondola in ritardo. */
@@ -3813,11 +3879,11 @@ function catena(c, F) {
       else if (i % 2) { c.moveTo(x + .07, y); c.ellipse(x, y, .07, .115, 0, 0, TAU); }
       else { c.moveTo(x, y - .1); c.lineTo(x, y + .1); }
     }
-    c.strokeStyle = passata === 0 ? T.catena.bordo : passata === 1 ? T.catena.base : P.alfa(T.catena.luce, .85);
-    c.lineWidth = passata === 0 ? .125 : passata === 1 ? .062 : .02; c.stroke();
+    c.strokeStyle = passata === 0 ? T.catena.linea : passata === 1 ? T.catena.base : CATENA_LUME;
+    c.lineWidth = passata === 0 ? .108 : passata === 1 ? .064 : .02; c.stroke();
   }
 }
-/* Il ciuffo d'alghe in cima: tre foglie in un tracciato, che ondeggiano. */
+/* Il ciuffo d'alghe in cima: tre foglie in un tracciato, che ondeggiano: linea sottile, verde che schiarisce verso la punta. */
 function ciuffo(c, F) {
   c.beginPath();
   for (let i = 0; i < 3; i++) {
@@ -3825,14 +3891,15 @@ function ciuffo(c, F) {
     const mx = bx + cos(a) * l * .55, my = by + sin(a) * l * .55, tx = bx + cos(a + on) * l, ty = by + sin(a + on) * l;
     c.moveTo(bx - nx, by - ny); c.quadraticCurveTo(mx - nx * 1.5, my - ny * 1.5, tx, ty); c.quadraticCurveTo(mx + nx * 1.5, my + ny * 1.5, bx + nx, by + ny); c.closePath();
   }
-  c.lineJoin = 'round'; c.strokeStyle = T.alga.bordo; c.lineWidth = .075; c.stroke(); c.fillStyle = T.alga.base; c.fill();
+  const g = c.createLinearGradient(-.3, -.62, -.5, -1.12); g.addColorStop(0, T.alga.scura); g.addColorStop(.4, ALGA); g.addColorStop(1, ALGA_PUNTA);
+  c.lineJoin = 'round'; c.strokeStyle = T.alga.linea; c.lineWidth = .045; c.stroke(); c.fillStyle = g; c.fill();
 }
 
 B.specie.registra({
   id: 'mina',
   descrizione: 'Una vecchia mina dimenticata accanto al relitto, tutta ruggine e conchiglie. Se la spia rossa comincia a lampeggiare, allontanati in fretta!',
   forma: { lx: 1, ly: 1 },
-  ingombro: { x0: -1.25, y0: -1.25, x1: 1.25, y1: 2 },
+  ingombro: { x0: -1.16, y0: -1.19, x1: 1.19, y1: 1.94 },
   disegna(c, o) {
     const F = (o.fase || 0) * TAU, at = max(0, min(1, o.attivo || 0)), liv = round(at * 2);
     const lume = at * (.62 + .38 * cos(F * 4));                                     // la spia batte: più è armata, più resta accesa
@@ -3856,8 +3923,11 @@ B.specie.registra({
       cc.beginPath(); cc.ellipse(0, -.1, RS + .03, .25, 0, .1, PI - .1); cc.moveTo(-.12, -RS); cc.ellipse(-.12, 0, .3, RS + .03, 0, -PI / 2, PI / 2, true); cc.strokeStyle = FILO; cc.lineWidth = .028; cc.stroke();
       cc.beginPath(); for (const m of MACCHIE) if (m[2] > .1) cc.rect(m[0] - m[2] * .28, m[1], m[2] * .56, m[2] * 2.3);
       cc.fillStyle = SCOLO; cc.fill();
-      cc.beginPath(); for (const m of MACCHIE) { cc.moveTo(m[0] + m[2] * 1.15, m[1]); cc.ellipse(m[0], m[1], m[2] * 1.15, m[2], .3, 0, TAU); }
-      cc.fillStyle = RUGGINE; cc.fill();
+      for (let giro = 0; giro < 2; giro++) {                          // la ruggine: un alone largo e leggero, poi la chiazza
+        const k = giro ? 1 : 1.5;
+        cc.beginPath(); for (const m of MACCHIE) { cc.moveTo(m[0] + m[2] * 1.15 * k, m[1]); cc.ellipse(m[0], m[1], m[2] * 1.15 * k, m[2] * k, .3, 0, TAU); }
+        cc.fillStyle = giro ? RUGGINE : ALONE; cc.fill();
+      }
       cc.beginPath(); for (const m of MACCHIE) { cc.moveTo(m[0] + m[2] * .5, m[1] - m[2] * .15); cc.arc(m[0] + m[2] * .1, m[1] - m[2] * .15, m[2] * .42, 0, TAU); }
       cc.fillStyle = BRACE; cc.fill();
       if (liv) { cc.beginPath(); cc.arc(0, 0, RS, 0, TAU); cc.fillStyle = P.sfumaturaRossa || (liv === 2 ? 'rgba(255,40,30,.3)' : 'rgba(255,40,30,.14)'); cc.fill(); }
@@ -3868,19 +3938,22 @@ B.specie.registra({
 
     // ---- 4. davanti: i tre corni che puntano verso chi guarda, ognuno sulla sua flangia
     c.beginPath(); for (const p of FRONTE) { c.moveTo(p[0] + .14, p[1]); c.arc(p[0], p[1], .14, 0, TAU); }
-    c.strokeStyle = T.piastra.bordo; c.lineWidth = .07; c.stroke(); c.fillStyle = T.piastra.base; c.fill();
+    c.strokeStyle = T.piastra.linea; c.lineWidth = .045; c.stroke(); c.fillStyle = T.piastra.base; c.fill();
     c.beginPath();
     for (let i = 0; i < 3; i++) {
       const p = FRONTE[i], tx = CIME_FRONTE[i * 2], ty = CIME_FRONTE[i * 2 + 1], d = Math.hypot(tx - p[0], ty - p[1]), hx = -(ty - p[1]) / d * HW, hy = (tx - p[0]) / d * HW;
       c.moveTo(p[0] + hx, p[1] + hy); c.lineTo(tx + hx, ty + hy); c.lineTo(tx - hx, ty - hy); c.lineTo(p[0] - hx, p[1] - hy); c.closePath();
     }
-    c.lineJoin = 'round'; c.strokeStyle = T.corno.bordo; c.lineWidth = .09; c.stroke(); c.fillStyle = T.corno.base; c.fill();
+    c.lineJoin = 'round'; c.strokeStyle = T.corno.linea; c.lineWidth = .05; c.stroke(); c.fillStyle = T.corno.base; c.fill();
+    c.beginPath(); for (let i = 0; i < 3; i++) { const p = FRONTE[i]; c.moveTo(p[0] - .045, p[1] - .04); c.lineTo(CIME_FRONTE[i * 2] - .045, CIME_FRONTE[i * 2 + 1] - .04); }       // il filo di luce sul fianco in alto a sinistra
+    c.lineCap = 'round'; c.strokeStyle = LUME; c.lineWidth = .03; c.stroke();
     cappucci(c, CIME_FRONTE, .105, liv === 2 ? T.rovente : T.ottone);
     if (liv === 2) P.lucine(c, CIME_FRONTE, .05, ROSSO, .9);
 
     // ---- 5. la spia: piastra avvitata, vetro rosso che si accende, il suo bagliore
     P.ombra(c, LX + .03, LY + .07, .38, .38, 0, .4);
-    c.beginPath(); c.arc(LX, LY, .31, 0, TAU); c.strokeStyle = T.piastra.bordo; c.lineWidth = .09; c.stroke(); c.fillStyle = T.piastra.base; c.fill();
+    const gp = c.createLinearGradient(LX - .12, LY - .3, LX + .12, LY + .3); gp.addColorStop(0, T.piastra.chiara); gp.addColorStop(.45, T.piastra.base); gp.addColorStop(1, T.piastra.scura);
+    c.beginPath(); c.arc(LX, LY, .31, 0, TAU); c.strokeStyle = T.piastra.linea; c.lineWidth = .05; c.stroke(); c.fillStyle = gp; c.fill();
     c.beginPath(); c.arc(LX, LY, .2, 0, TAU); c.fillStyle = T.piastra.bordo; c.fill();
     P.bozzi(c, BULLONI, .03, T.piastra);
     P.palla(c, LX, LY, .165, .165, 0, SPIA[liv], { luce: [LX + .05, LY - .07, .3], ombra: .03, bordo: .03 });
@@ -3954,8 +4027,12 @@ B.specie.registra({
 </script>
 <script>
 /* Boccone — banco: PESCIOLINO NEON. Minuscolo e tondetto, con la striscia azzurra elettrica dall'occhio alla coda, la pancia
-   d'argento che dietro diventa rossa e la codina rossa. Come la sardina: pochissimi tratti (due bordi e sei riempimenti),
-   niente attrezzi pesanti, ma bordo scuro colorato, occhio grande e un'anima di luce nella striscia. Dipende solo da o.fase. */
+   d'argento che dietro diventa rossa e la codina rossa. Come la sardina: pochissimi tratti, niente attrezzi pesanti.
+   Dipende solo da o.fase.
+   RIFATTO NELLO STILE «FILM D'ANIMAZIONE» sul modello della sardina: niente più contorno scuro spesso ma una linea sottile
+   indaco scivolata verso il ventre, il corpo modellato dalla luce (filo di luce in cima, dorso blu notte, pancia d'argento
+   che in fondo prende il colore dell'acqua), il rosso della pancia che sfuma in avanti, la codina a membrana, occhio con
+   l'ombra della palpebra in alto e il suo riflesso. Dieci tratti in tutto (tetto di costo ×2,5). */
 (() => {
 'use strict';
 const B = window.B, TAU = Math.PI * 2;
@@ -3963,30 +4040,38 @@ const B = window.B, TAU = Math.PI * 2;
 B.specie.registra({
   id: 'neon',
   forma: { lx: 1, ly: .4 },
-  ingombro: { x0: -1.16, y0: -.77, x1: 1.11, y1: .69 },
+  ingombro: { x0: -1.11, y0: -.74, x1: 1.11, y1: .66 },
   disegna(c, o) {
     const w = Math.sin((o.fase || 0) * TAU), yc = w * .17, ym = -w * .05;      // yc: la coda sbatte; ym: il corpo si flette al contrario
     const sy = -.2 + ym * .6, cy = ym * .4 - .04;                              // la striscia: quota a metà corpo e in coda
     c.save(); c.lineJoin = 'round';
-    // codina rossa a forca
+    // codina rossa a forca: una membrana un po' trasparente
     c.beginPath(); c.moveTo(-.48, ym * .5 - .07); c.lineTo(-1.04, yc - .4); c.quadraticCurveTo(-.8, yc, -1.04, yc + .4); c.lineTo(-.48, ym * .5 + .07); c.closePath();
-    c.strokeStyle = '#2a1460'; c.lineWidth = .1; c.stroke(); c.fillStyle = '#ff3d55'; c.fill();
-    // corpo con la pinnetta del dorso in un solo contorno (costa meno di due sagome sovrapposte): dorso blu notte, fianco e pancia d'argento
-    const g = c.createLinearGradient(0, -.4, 0, .4); g.addColorStop(0, '#4a52c8'); g.addColorStop(.36, '#2c2f8e'); g.addColorStop(.6, '#f4fbff'); g.addColorStop(1, '#c4d6f4');
-    c.beginPath(); c.moveTo(1, .03); c.quadraticCurveTo(.7, -.36, .22, -.345 + ym * .6); c.quadraticCurveTo(0, -.7 + ym, -.26, -.6 + ym); c.lineTo(-.22, -.29 + ym * .8);
-    c.quadraticCurveTo(-.48, -.2 + ym * .7, -.7, ym * .4 - .06); c.lineTo(-.7, ym * .4 + .08); c.bezierCurveTo(-.18, .46 + ym, .74, .44, 1, .03); c.closePath();
-    c.stroke(); c.fillStyle = g; c.fill();
-    // la pancia di dietro è rossa
-    c.beginPath(); c.moveTo(-.66, ym * .4 + .02); c.quadraticCurveTo(-.3, .02 + ym * .7, .08, .04 + ym * .3); c.quadraticCurveTo(-.06, .36 + ym * .6, -.66, ym * .4 + .06); c.closePath();
-    c.fillStyle = '#ff3d55'; c.fill();
-    // la striscia al neon: larga dietro l'occhio (che ne copre l'inizio), a punta verso la coda. I riempimenti costano meno dei tratti spessi
+    c.fillStyle = 'rgba(255,74,98,.88)'; c.fill(); c.strokeStyle = 'rgba(150,20,90,.8)'; c.lineWidth = .035; c.stroke();
+    // corpo con la pinnetta del dorso in un solo contorno: filo di luce in cima, dorso blu notte, pancia d'argento, e in fondo il colore dell'acqua
+    const g = c.createLinearGradient(0, -.42, 0, .44);
+    g.addColorStop(0, '#8a94f6'); g.addColorStop(.2, '#2a2c96'); g.addColorStop(.5, '#3038a6'); g.addColorStop(.62, '#f6fbff'); g.addColorStop(.84, '#bccdf2'); g.addColorStop(1, '#8fdcf6');
+    const corpo = () => {
+      c.beginPath(); c.moveTo(1, .03); c.quadraticCurveTo(.7, -.36, .22, -.345 + ym * .6); c.quadraticCurveTo(0, -.7 + ym, -.26, -.6 + ym); c.lineTo(-.22, -.29 + ym * .8);
+      c.quadraticCurveTo(-.48, -.2 + ym * .7, -.7, ym * .4 - .06); c.lineTo(-.7, ym * .4 + .08); c.bezierCurveTo(-.18, .46 + ym, .74, .44, 1, .03); c.closePath();
+    };
+    c.translate(.012, .028); corpo(); c.strokeStyle = '#1b1872'; c.lineWidth = .06; c.stroke(); c.translate(-.012, -.028);    // la linea: sottile, più visibile dal lato in ombra
+    corpo(); c.fillStyle = g; c.fill();
+    // la pancia di dietro è rossa, e sfuma in avanti
+    const rosso = c.createLinearGradient(-.66, 0, .1, 0); rosso.addColorStop(0, '#ff3d55'); rosso.addColorStop(.5, 'rgba(255,61,85,.9)'); rosso.addColorStop(1, 'rgba(255,61,85,0)');
+    c.beginPath(); c.moveTo(-.66, ym * .4 + .02); c.quadraticCurveTo(-.3, .02 + ym * .7, .1, .04 + ym * .3); c.quadraticCurveTo(-.06, .38 + ym * .6, -.66, ym * .4 + .06); c.closePath();
+    c.fillStyle = rosso; c.fill();
+    // la striscia al neon: larga dietro l'occhio (che ne copre l'inizio), a punta verso la coda
     c.beginPath(); c.moveTo(.72, -.15); c.quadraticCurveTo(.1, sy - .13, -.64, cy); c.quadraticCurveTo(.1, sy + .13, .72, .02); c.closePath();
     c.fillStyle = '#19d3ff'; c.fill();
+    // l'occhio: un disco blu che fa da orbita e da ombra della palpebra (il bianco sta più in basso: in alto ne resta di più)
+    c.fillStyle = '#4a56b8'; c.beginPath(); c.arc(.6, -.036, .19, 0, TAU); c.fill();
     // l'anima chiara della striscia e il bianco dell'occhio in un colpo solo (l'arco gira nello stesso verso, così non si bucano)
     c.beginPath(); c.moveTo(.7, -.095); c.quadraticCurveTo(.1, sy - .05, -.5, cy); c.quadraticCurveTo(.1, sy + .035, .7, -.04); c.closePath();
-    c.moveTo(.77, -.03); c.arc(.6, -.03, .17, 0, TAU, true);
-    c.fillStyle = '#eefeff'; c.fill();
-    c.fillStyle = '#14173a'; c.beginPath(); c.arc(.64, -.02, .095, 0, TAU); c.fill();
+    c.moveTo(.742, -.008); c.arc(.6, -.008, .142, 0, TAU, true);
+    c.fillStyle = '#f2feff'; c.fill();
+    c.fillStyle = '#14173a'; c.beginPath(); c.arc(.64, -.025, .098, 0, TAU); c.fill();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(.61, -.065, .037, 0, TAU); c.fill();
     c.restore();
   },
 });
@@ -3997,15 +4082,18 @@ B.specie.registra({
 <script>
 /* Boccone — specie: PESCE ANGELO (taglia 3, cacciatore). ESEMPIO DI RIFERIMENTO per i pesci «normali» (vedi GUIDA-STILE.md):
    corpo su una spina che ondeggia, pinne a raggi, motivi dipinti dentro il volume, faccia calma e faccia a caccia.
-   Niente squame: sulle righe farebbero confusione (si usano sui pesci a tinta unita, vedi P.squame). */
+   Niente squame: sulle righe farebbero confusione (si usano sui pesci a tinta unita, vedi P.squame).
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: le vele blu sono piene fino in punta (velo: 1), con l'ombra indaco e la punta
+   lilla più chiara, così non spariscono sull'acqua blu; il ventre crema sfuma nel fianco e tiene il suo colore caldo
+   (il velo d'ombra viola lo ingrigiva: vedi luciBordo). */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, max } = Math;
 
 // ---- tinte (una volta sola) e sagoma del corpo: alto e compresso, col muso che sporge
-const T = { corpo: P.tinta('#ffc21a', '#f0641e'), blu: P.tinta('#2a5cf0'), notte: P.tinta('#232a8a'), pinna: P.tinta('#4a5dfa'), coda: P.tinta('#ffb01f', '#f0641e'),
-  labbra: P.tinta('#ff6f8f'), ventre: P.tinta('#fff0c0', '#f0a05a'), pett: P.tinta('#ffd84a', '#ff7a1a') };
+const T = { corpo: P.tinta('#ffc21a', '#f0641e'), blu: P.tinta('#2a5cf0', '#2318a8'), notte: P.tinta('#232a8a'), pinna: P.tinta('#4a5dfa', '#2a1fa8'), coda: P.tinta('#ffb01f', '#f0641e'),
+  labbra: P.tinta('#ff6f8f'), ventre: P.tinta('#fff0c0', '#f6a04e'), pett: P.tinta('#ffd84a', '#ff7a1a') };
 const SU = P.sagoma([[0, .13], [.1, .26], [.26, .7], [.45, .98], [.62, 1.02], [.8, .9], [.93, .66], [1, .44]]);
 const GIU = P.sagoma([[0, .13], [.1, .26], [.26, .66], [.45, .9], [.62, .94], [.8, .8], [.93, .56], [1, .34]]);
 const ONDA = { amp: .11, onde: .5, testa: .14 };
@@ -4014,6 +4102,10 @@ const arco = (u0, d) => v => u0 + d + .07 * (1 - v * v);              // righe i
 const RIGHE = { notte: [], blu: [], filo: [[arco(.8, 0), arco(.8, .014)], [arco(.8, .111), arco(.8, .125)]] };
 for (const u0 of [.2, .39, .58]) { RIGHE.notte.push([arco(u0, -.014), arco(u0, .112)]); RIGHE.blu.push([arco(u0, 0), arco(u0, .098)]); RIGHE.filo.push([arco(u0, .012), arco(u0, .03)]); }
 RIGHE.notte.push([arco(.8, .014), arco(.8, .111)]);
+/* Le luci del bordo fatte in casa (il volume del corpo ha ombra: 0, perché il velo viola della cassetta ingrigiva il giallo,
+   la crema e il bianco: qui ogni zona ha già la sua sfumatura, con l'ombra del suo colore). Un filo di luce lungo il dorso
+   e il controluce color acqua lungo il ventre. Si chiama per ultima dentro `dentro`. */
+const luciBordo = (cc, s) => { P.fianco(cc, s, -1.4, -.93, 'rgba(255,255,255,.28)', 0, 1, 8); P.fianco(cc, s, .9, 1.4, 'rgba(200,243,255,.42)', 0, 1, 8); };
 
 B.specie.registra({
   id: 'pesce_angelo',
@@ -4031,7 +4123,7 @@ B.specie.registra({
     for (const v of [-1, 1]) {
       const a = P.suSpina(s, .7, v * .9), z = P.suSpina(s, .1, v * .8), alza = m ? .2 : 0;      // a caccia le vele si drizzano
       const vela = { x0: a.x, y0: a.y, x1: z.x, y1: z.y, a0: v * (PI / 2 + .5 - alza), a1: v * (PI - .3 - alza * .5), lung: v < 0 ? .98 : .86, profilo: [.34, .52, .68, .86, 1.04, .9], n: 9, piega: v * -.16,
-        onda: .07, fase: F - 1, passo: .55, tinta: T.pinna, orlo: '#ffd23c', punta: '#8f6bff' };
+        onda: .07, fase: F - 1, passo: .55, tinta: T.pinna, orlo: '#ffd23c', punta: '#a48aff', velo: 1 };
       /* Il nastro prosegue il raggio più lungo e si stende all'indietro. P.raggi dice dove finisce il raggio PRIMA di
          disegnare la vela: così il nastro si disegna sotto, e la vela ne copre la radice. */
       const g = P.raggi(vela), i = 7, dx = g.ex[i] - g.mx[i], dy = g.ey[i] - g.my[i], w = sin(F - 2.2) * .06;
@@ -4042,11 +4134,13 @@ B.specie.registra({
     P.pinna(c, { x0: pv.x + .05, y0: pv.y - .05, x1: pv.x - .09, y1: pv.y - .05, a0: PI * .62 + sin(F - .5) * .1, a1: PI * .8 + sin(F - .5) * .1, lung: .62, profilo: [1, .55], n: 3, piega: .12, tinta: T.coda, orlo: '#3d6bff', righe: false });
 
     // ---- 2. il corpo, con ventre chiaro, righe blu orlate di notte e d'azzurro, maschera sull'occhio, squame
-    P.volume(c, s, T.corpo, { luce, dentro(cc) {
-      P.fianco(cc, s, u => .5 - .2 * sin(u * PI), 1.4, T.ventre.base);
+    P.volume(c, s, T.corpo, { luce, ombra: 0, dentro(cc) {
+      P.fianco(cc, s, u => .3 - .2 * sin(u * PI), 1.4, P.alfa(T.ventre.base, .5), 0, 1, 8);         // il ventre: due passate, sfuma nel fianco
+      P.fianco(cc, s, u => .52 - .2 * sin(u * PI), 1.4, P.sfumatura(cc, T.ventre, [.3, .2, 1.6]));
       P.bande(cc, s, RIGHE.notte, T.notte.base);                     // tutte le bande dello stesso colore in un colpo solo
       P.bande(cc, s, RIGHE.blu, P.sfumatura(cc, T.blu, luce));
       P.bande(cc, s, RIGHE.filo, '#86e4ff', 4);
+      luciBordo(cc, s);
     } });
     const g1 = P.suSpina(s, .76, -.5), g2 = P.suSpina(s, .715, 0), g3 = P.suSpina(s, .76, .55);
     P.solco(c, [g1.x, g1.y, g2.x, g2.y, g3.x, g3.y], T.corpo, .04);                                // opercolo
@@ -4074,14 +4168,17 @@ B.specie.registra({
 /* Boccone — specie: PESCE BALESTRA (taglia 3, scattante). Corpo a rombo, occhio piccolo messo in alto e all'indietro,
    bocca minuscola con i dentoni sempre in vista (il tratto esagerato), disegni geometrici: fascia blu notte sull'occhio
    filettata d'azzurro, baffo giallo, sbarre oblique sul fianco. La spina «a grilletto» sta ripiegata da calmo e scatta
-   dritta a caccia. Nuota come i balestra veri: corpo quasi fermo, dorsale e anale che ondeggiano. */
+   dritta a caccia. Nuota come i balestra veri: corpo quasi fermo, dorsale e anale che ondeggiano.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: era diventato pallido. Tinte più sature (dorso arancio dorato, pinne di un
+   azzurro pieno con l'ombra indaco e piene fino in punta); il corpo ha ombra: 0 e il ventre bianco ha la sua sfumatura
+   calda (il velo viola della cassetta lo ingrigiva), più le luci del bordo fatte in casa (luciBordo). */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, max } = Math;
 
 // ---- tinte (una volta sola) e sagoma: un rombo, alto a metà corpo, con la fronte lunga e dritta
-const T = { corpo: P.tinta('#fbc04a', '#d6542c'), ventre: P.tinta('#fffdf0', '#f0a878'), notte: P.tinta('#2b2a80'), pinna: P.tinta('#6fc4ff'), coda: P.tinta('#ffd23a', '#ff6a14'), labbra: P.tinta('#ffcf24', '#ff6a14') };
+const T = { corpo: P.tinta('#ffb42a', '#f0561a'), ventre: P.tinta('#fffdf2', '#f6b088'), notte: P.tinta('#2b2a80'), pinna: P.tinta('#4aaeff', '#2a3fd0'), coda: P.tinta('#ffd23a', '#ff6a14'), labbra: P.tinta('#ffcf24', '#ff6a14') };
 const NOTTE = T.notte.base, BLU = '#2f9dff', GIALLO = '#ffd21f';
 const SU = P.sagoma([[0, .12], [.12, .22], [.32, .56], [.5, .8], [.62, .76], [.8, .5], [.92, .3], [1, .18]]);
 const GIU = P.sagoma([[0, .12], [.12, .22], [.32, .56], [.5, .78], [.62, .72], [.8, .46], [.92, .28], [1, .17]]);
@@ -4090,6 +4187,10 @@ const ONDA = { amp: .06, onde: .45, testa: .2 };                      // corpo r
 const fa = v => .615 - .035 * v, fb = v => .765 - .055 * v;
 const FASCIA = [[fa, fb]], FILETTI = [[v => fa(v) - .034, v => fa(v) - .012], [v => fb(v) + .012, v => fb(v) + .034], [.905, .93]];
 /* Le sbarre oblique sul fianco di dietro: tre quadrilateri in un colpo solo, dal mezzo del corpo al ventre. */
+/* Le luci del bordo fatte in casa (il volume del corpo ha ombra: 0, perché il velo viola della cassetta ingrigiva il giallo,
+   la crema e il bianco: qui ogni zona ha già la sua sfumatura, con l'ombra del suo colore). Un filo di luce lungo il dorso
+   e il controluce color acqua lungo il ventre. Si chiama per ultima dentro `dentro`. */
+const luciBordo = (cc, s) => { P.fianco(cc, s, -1.4, -.93, 'rgba(255,255,255,.28)', 0, 1, 8); P.fianco(cc, s, .9, 1.4, 'rgba(200,243,255,.42)', 0, 1, 8); };
 const SBARRE = [.17, .285, .4];
 const sbarre = (c, s) => {
   const q = {}; c.beginPath();
@@ -4124,21 +4225,23 @@ B.specie.registra({
     for (const v of [-1, 1]) {
       const a = P.suSpina(s, .45, v * .92), z = P.suSpina(s, .09, v * .85);
       P.pinna(c, { x0: a.x, y0: a.y, x1: z.x, y1: z.y, a0: v * (PI / 2 + .4), a1: v * (PI - .3), lung: .52, profilo: [.85, 1, .9, .7, .5, .36], n: 9, smerlo: .2, piega: v * -.08,
-        onda: .17, fase: F * 2 + (v > 0 ? PI : 0), passo: .85, tinta: T.pinna, orlo: '#e8f8ff' });
+        onda: .17, fase: F * 2 + (v > 0 ? PI : 0), passo: .85, tinta: T.pinna, orlo: '#e8f8ff', velo: 1 });
     }
     const t0 = P.suSpina(s, .62, -.94), t1 = P.suSpina(s, .47, -.9), ag = m ? -(PI / 2 + .2) : -(PI - .85);       // il grilletto: giù da calmo, dritto a caccia
-    P.pinna(c, { x0: t0.x, y0: t0.y, x1: t1.x, y1: t1.y, a0: ag, a1: -(PI - .25), lung: m ? .56 : .44, profilo: [.94, .7, .4], n: 3, tinta: T.pinna, orlo: '#e8f8ff', righe: false });
+    P.pinna(c, { x0: t0.x, y0: t0.y, x1: t1.x, y1: t1.y, a0: ag, a1: -(PI - .25), lung: m ? .56 : .44, profilo: [.94, .7, .4], n: 3, tinta: T.pinna, orlo: '#e8f8ff', righe: false, velo: 1 });
     P.corno(c, t0.x - .02, t0.y + .05, ag, m ? .62 : .5, .13, T.notte, { curva: -.12, gonfio: .6 });
     const pv = P.suSpina(s, .5, 1);
     P.corno(c, pv.x + .04, pv.y - .08, PI * .62, .26, .15, T.ventre, { curva: .25 });
 
     // ---- 2. il corpo: ventre bianco, sbarre oblique, baffo giallo, fascia dell'occhio blu notte coi filetti azzurri
-    P.volume(c, s, T.corpo, { luce, dentro(cc) {
-      P.fianco(cc, s, u => .12 - .3 * sin(u * PI), 1.4, T.ventre.base);
+    P.volume(c, s, T.corpo, { luce, ombra: 0, dentro(cc) {
+      P.fianco(cc, s, u => -.06 - .3 * sin(u * PI), 1.4, P.alfa(T.ventre.base, .5));                // il ventre: due passate, sfuma nel fianco
+      P.fianco(cc, s, u => .14 - .3 * sin(u * PI), 1.4, P.sfumatura(cc, T.ventre, [.2, 0, 1.7]));
       sbarre(cc, s);
       P.fianco(cc, s, .1, .3, GIALLO, .7, 1.1, 5);
       P.bande(cc, s, FASCIA, NOTTE);
       P.bande(cc, s, FILETTI, BLU, 4);
+      luciBordo(cc, s);
     } });
     if (P.fine(o)) P.bozzi(c, P.puntiSuSpina(s, 3, .06, .15, -.3).concat(P.puntiSuSpina(s, 3, .06, .15, .3)), .028, T.notte);   // le spinette del gambo della coda
     P.riflesso(c, .0, -.52, .4, -.3, .13);
@@ -4167,15 +4270,18 @@ B.specie.registra({
 <script>
 /* Boccone — specie: PESCE CHIRURGO (taglia 2, branco). Ovale blu intenso con il disegno scuro «a tavolozza» (una fascia
    lungo la schiena e un anello sul fianco), coda gialla orlata di scuro, pettorale con la punta gialla e la piccola lama
-   bianca alla base della coda: da calmo è ripiegata, a caccia scatta in fuori (cambia la sagoma). Niente nero: è blu notte. */
+   bianca alla base della coda: da calmo è ripiegata, a caccia scatta in fuori (cambia la sagoma). Niente nero: è blu notte.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il blu ha l'ombra indaco dichiarata nelle tinte (senza contorno scuro si
+   impastava con l'acqua), il ventre schiarisce a poco a poco e finisce in un filo di luce color acqua, dorsale e anale
+   sono piene fino in punta. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos, max } = Math;
 
 // ---- tinte (una volta sola) e sagoma: ovale pieno, muso piccolo e un po' a punta
-const T = { corpo: P.tinta('#2a6df4'), notte: P.tinta('#28257c'), pinna: P.tinta('#3f8eff'), coda: P.tinta('#ffd21f', '#ff6a14'), lama: P.tinta('#ffffff', '#8cb2ff'), labbra: P.tinta('#ff7fa6') };
-const NOTTE = T.notte.base, CIELO = '#86dcff';
+const T = { corpo: P.tinta('#2a6df4', '#2318a8'), notte: P.tinta('#28257c'), pinna: P.tinta('#3f8eff', '#2a2fc4'), coda: P.tinta('#ffd21f', '#ff6a14'), lama: P.tinta('#ffffff', '#8cb2ff'), labbra: P.tinta('#ff7fa6') };
+const NOTTE = T.notte.base, CIELO = '#86dcff', ACQUA = 'rgba(214,247,255,.55)';
 const SU = P.sagoma([[0, .13], [.1, .26], [.3, .6], [.55, .76], [.78, .7], [.93, .5], [1, .34]]);
 const GIU = P.sagoma([[0, .13], [.1, .26], [.3, .58], [.55, .72], [.78, .64], [.93, .44], [1, .28]]);
 const ONDA = { amp: .1, onde: .5, testa: .14 };
@@ -4212,14 +4318,16 @@ B.specie.registra({
     for (let i = 0; i <= g.n; i += g.n) P.filo(c, [g.bx[i], g.by[i], g.mx[i], g.my[i], g.mx[i] + (g.ex[i] - g.mx[i]) * .72, g.my[i] + (g.ey[i] - g.my[i]) * .72], .09, .04, NOTTE, .03);
     const d0 = P.suSpina(s, .78, -.92), d1 = P.suSpina(s, .08, -.85), a0 = P.suSpina(s, .5, .9), a1 = P.suSpina(s, .08, .85);
     P.pinna(c, { x0: d0.x, y0: d0.y, x1: d1.x, y1: d1.y, a0: -(PI / 2 + .5 - alza), a1: -(PI - .5 - alza * .5), lung: m ? .44 : .36, profilo: [.6, .85, 1, 1, .95, .8], n: 10, smerlo: .25,
-      onda: .07, fase: F * 2, passo: .5, tinta: T.pinna, orlo: CIELO });
-    P.pinna(c, { x0: a0.x, y0: a0.y, x1: a1.x, y1: a1.y, a0: PI / 2 + .6, a1: PI - .5, lung: .32, profilo: [.7, 1, .95, .8], n: 7, smerlo: .25, onda: .07, fase: F * 2 - 1, passo: .5, tinta: T.pinna, orlo: CIELO });
+      onda: .07, fase: F * 2, passo: .5, tinta: T.pinna, orlo: CIELO, velo: 1 });
+    P.pinna(c, { x0: a0.x, y0: a0.y, x1: a1.x, y1: a1.y, a0: PI / 2 + .6, a1: PI - .5, lung: .32, profilo: [.7, 1, .95, .8], n: 7, smerlo: .25, onda: .07, fase: F * 2 - 1, passo: .5, tinta: T.pinna, orlo: CIELO, velo: 1 });
     const pv = P.suSpina(s, .64, .95);
     P.pinna(c, { x0: pv.x + .06, y0: pv.y - .05, x1: pv.x - .1, y1: pv.y - .05, a0: PI * .58 + sin(F - .5) * .1, a1: PI * .8 + sin(F - .5) * .1, lung: .38, profilo: [1, .6], n: 3, piega: .12, tinta: T.pinna, righe: false });
 
     // ---- 2. il corpo: ventre appena più chiaro, la tavolozza blu notte
-    P.volume(c, s, T.corpo, { luce, dentro(cc) {
-      P.fianco(cc, s, .5, 1.4, P.alfa(CIELO, .22));
+    P.volume(c, s, T.corpo, { luce, ombra: .13, dentro(cc) {
+      P.fianco(cc, s, .28, 1.4, P.alfa(CIELO, .2));                                                 // il ventre schiarisce in due passate (sfuma nel fianco)
+      P.fianco(cc, s, .58, 1.4, P.alfa(CIELO, .3));
+      P.fianco(cc, s, .86, 1.4, ACQUA, .06, .92);                                                   // e finisce in un filo di luce d'acqua
       P.fianco(cc, s, -1.4, orloFascia, NOTTE, 0, .93, 14);
       anello(cc, s);
     } });
@@ -4254,14 +4362,17 @@ B.specie.registra({
 <script>
 /* Boccone — specie: PESCE FARFALLA (taglia 1, timido). Disco alto e sottile, bianco davanti e giallo dietro, con la banda
    scura che nasconde l'occhio vero, il finto occhio vicino alla coda e il muso lungo a pinzetta (il tratto esagerato).
-   Il muso fa parte della spina del corpo: così la fronte incavata resta una curva sola. */
+   Il muso fa parte della spina del corpo: così la fronte incavata resta una curva sola.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il velo d'ombra viola della cassetta sporcava la maschera scura e la parte
+   bianca. Ora il corpo ha ombra: 0 e ogni zona ha la sua sfumatura (bianco con l'ombra azzurra chiara, giallo con l'ombra
+   arancio, maschera blu notte), più le luci del bordo fatte in casa (luciBordo). */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, max } = Math;
 
 // ---- tinte (una volta sola): bianco con l'ombra azzurra, giallo con l'ombra arancio, «nero» blu notte
-const T = { bianco: P.tinta('#f7f9ff', '#86a8f2'), corpo: P.tinta('#ffd21f', '#ff6a14'), notte: P.tinta('#2b2a86'), pinna: P.tinta('#ffcf24', '#ff6a14'),
+const T = { bianco: P.tinta('#fbfcff', '#a4bef8'), corpo: P.tinta('#ffd21f', '#ff6a14'), notte: P.tinta('#2b2a86'), pinna: P.tinta('#ffcf24', '#ff6a14'),
   pett: P.tinta('#ffe98a', '#ffa23c'), labbra: P.tinta('#ff6f8f') };
 const ORLO = '#fff8d6', LINEA = P.alfa('#8f8ae6', .55);
 // la spina va dalla coda (u = 0) alla punta del muso (u = 1): il disco finisce a u ≈ .76, poi c'è la pinzetta
@@ -4273,6 +4384,10 @@ const BANDA_OCCHIO = [v => .665 + .03 * (1 - v * v), v => .785 + .03 * (1 - v * 
    dalla banda dell'occhio in avanti il muso è tutto bianco. */
 const liscio = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
 const orloBianco = u => u < .5 ? 1.35 - 1.95 * liscio((u - .12) / .38) : u < .7 ? -.6 - (u - .5) : -.8 - (u - .7) * 7;
+/* Le luci del bordo fatte in casa (il volume del corpo ha ombra: 0, perché il velo viola della cassetta ingrigiva il giallo,
+   la crema e il bianco: qui ogni zona ha già la sua sfumatura, con l'ombra del suo colore). Un filo di luce lungo il dorso
+   e il controluce color acqua lungo il ventre. Si chiama per ultima dentro `dentro`. */
+const luciBordo = (cc, s) => { P.fianco(cc, s, -1.4, -.93, 'rgba(255,255,255,.28)', 0, 1, 8); P.fianco(cc, s, .9, 1.4, 'rgba(200,243,255,.42)', 0, 1, 8); };
 const LINEE = [.34, .42, .5, .58];                                    // le righine oblique sul bianco
 const righine = (c, s) => {
   const q = {}; c.beginPath();
@@ -4315,10 +4430,11 @@ B.specie.registra({
     P.pinna(c, { x0: pv.x + .06, y0: pv.y - .05, x1: pv.x - .09, y1: pv.y - .05, a0: PI * .6 + sin(F - .5) * .1, a1: PI * .8 + sin(F - .5) * .1, lung: .46, profilo: [1, .55], n: 3, piega: .12, tinta: T.pinna, righe: false });
 
     // ---- 2. il corpo: giallo, con il bianco dipinto su fianco e muso (resta gialla la schiena, la coda e la punta della pinzetta), banda scura sull'occhio
-    P.volume(c, s, T.corpo, { luce, dentro(cc) {
+    P.volume(c, s, T.corpo, { luce, ombra: 0, dentro(cc) {
       P.fianco(cc, s, orloBianco, 1.5, P.sfumatura(cc, T.bianco, luce), .1, .93, 16);
       if (P.fine(o)) righine(cc, s);
-      P.banda(cc, s, BANDA_OCCHIO[0], BANDA_OCCHIO[1], T.notte.base);
+      P.banda(cc, s, BANDA_OCCHIO[0], BANDA_OCCHIO[1], P.sfumatura(cc, T.notte, [.5, -.6, 1.9]));
+      luciBordo(cc, s);
     } });
     P.suSpina(s, .17, -.28, q); fintoOcchio(c, q.x, q.y, .12);
     const g1 = P.suSpina(s, .63, -.45), g2 = P.suSpina(s, .595, 0), g3 = P.suSpina(s, .63, .5);
@@ -4505,15 +4621,18 @@ B.specie.registra({
    con un testone da vecchio brontolone: fronte bombata, guance a pieghe e IL SUO SEGNO, i denti storti che
    sporgono anche a bocca chiusa (le zanne di sotto salgono sopra il labbro, come a un bulldog).
    Pinna dorsale continua dalla nuca alla coda (P.cresta), anale lunga, codina tonda, pettorale a ventaglio grande.
-   A caccia spalanca la bocca-tagliola, drizza la cresta e inarca la schiena. */
+   A caccia spalanca la bocca-tagliola, drizza la cresta e inarca la schiena.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: l'azzurro acciaio ha l'ombra indaco dichiarata nelle tinte e le bande sono
+   più decise (senza contorno scuro si impastava con l'acqua); il ventre celeste sfuma nel fianco e finisce in un filo di
+   luce color acqua. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, max } = Math;
 
 // ---- tinte: azzurro acciaio saturo (niente grigio: le ombre vanno al viola-notte), ventre celeste, pinne indaco orlate di chiaro
-const T = { corpo: P.tinta('#5b93e6'), mento: P.tinta('#8fb9f4', '#5a5ecc'), cresta: P.tinta('#4a66cc'), pinna: P.tinta('#6a78ee'), lontana: P.tinta('#3f55b0') };
-const BANDA = P.alfa('#252c80', .5), VENTRE = P.alfa('#b4ecff', .85), NEI = P.alfa(T.corpo.bordo, .5), ORLO = '#cfe6ff', ORLO_IRA = '#ffd9a0';
+const T = { corpo: P.tinta('#6198ea', '#34239c'), mento: P.tinta('#a2c6f8', '#5a5ecc'), cresta: P.tinta('#4a66cc', '#2a1f8e'), pinna: P.tinta('#6a78ee', '#3a2ab0'), lontana: P.tinta('#3f55b0') };
+const BANDA = P.alfa('#211a78', .64), VENTRE = '#c9f1ff', ACQUA = 'rgba(222,249,255,.6)', NEI = P.alfa(T.corpo.bordo, .5), ORLO = '#cfe6ff', ORLO_IRA = '#ffd9a0';
 /* Testone massiccio (il punto più grosso è la nuca, a u = .86), corpo che si assottiglia fino alla codina. Il ventre si
    ritira da u = .76 in avanti: lì lavora la mandibola. */
 const SU = P.sagoma([[0, .07], [.12, .14], [.35, .22], [.58, .3], [.75, .42], [.86, .5], [.94, .46], [1, .33]]);
@@ -4545,9 +4664,11 @@ B.specie.registra({
     if (apri > .25) P.denti(c, ge.x0 + gx * .1, ge.y0 + gy * .1, ge.x0 + gx * .6, ge.y0 + gy * .6, 4, .11, 1, { tipo: 'punta', varia: .4, seme: 5 });
 
     // ---- 2. il corpo: ventre chiaro, bande blu notte, lentiggini sulla testa
-    P.volume(c, s, T.corpo, { luce, ombra: .07, dentro(cc) {
-      P.fianco(cc, s, u => .5 + .1 * sin(u * 13), 1.4, VENTRE, 0, .8);
+    P.volume(c, s, T.corpo, { luce, ombra: .1, dentro(cc) {
+      P.fianco(cc, s, u => .26 + .1 * sin(u * 13), 1.4, P.alfa(VENTRE, .4), 0, .8);                // il ventre: due passate, sfuma nel fianco
+      P.fianco(cc, s, u => .54 + .1 * sin(u * 13), 1.4, P.alfa(VENTRE, .85), 0, .8);
       P.bande(cc, s, BANDE, BANDA, 5);
+      P.fianco(cc, s, .84, 1.4, ACQUA, .02, .78);                                                  // filo di luce d'acqua lungo la pancia
       P.macchie(cc, s, { n: 9, seme: 6, u0: .76, u1: .99, v0: -.85, v1: .1, r0: .016, r1: .032, colore: NEI, lungo: 1 });
     } });
     const g0 = P.suSpina(s, .8, -.62), g1 = P.suSpina(s, .755, -.1), g2 = P.suSpina(s, .77, .42);                     // 3. sopra: opercolo, pieghe della guancia, riflesso
@@ -4688,7 +4809,7 @@ const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos, max } = Math;
 
 // ---- tinte (una volta sola) e sagoma: corpo pieno, testa grossa dalla fronte ripida
-const T = { corpo: P.tinta('#1cc4b6'), ventre: P.tinta('#c4f7d4', '#3fb8a8'), pinna: P.tinta('#ff6aa6', '#d21f7c'), pett: P.tinta('#ffd84a', '#ff7a1a'), becco: P.tinta('#fff3cf', '#e8925c') };
+const T = { corpo: P.tinta('#1cc4b6', '#2a2c8c'), ventre: P.tinta('#c4f7d4', '#3fb8a8'), pinna: P.tinta('#ff6aa6', '#d21f7c'), pett: P.tinta('#ffd84a', '#ff7a1a'), becco: P.tinta('#fff3cf', '#e8925c') };
 const ROSA = '#ff5fa2', ORLO = '#49dcff';
 const SU = P.sagoma([[0, .14], [.12, .32], [.35, .6], [.6, .72], [.8, .7], [.93, .58], [1, .42]]);
 const GIU = P.sagoma([[0, .14], [.12, .3], [.35, .54], [.6, .62], [.8, .6], [.93, .5], [1, .4]]);
@@ -4967,7 +5088,9 @@ B.specie.registra({
 /* Boccone — specie: PESCE VOLANTE (taglia 2, scattante). Un aliante: corpo lungo blu cobalto con la pancia d'argento, quattro
    «ali» color ambra, trasparenti, venate e macchiate come quelle di una farfalla (le due pettorali enormi e a punta, stese
    all'indietro come quelle di una rondine, e le due ventrali più piccole), coda col lobo di sotto lungo il doppio. Diverso dall'eroe Saetta, che è
-   paffuto, azzurro e con le ali celesti. A caccia spalanca le ali, che si orlano di rosso, e drizza la dorsale. */
+   paffuto, azzurro e con le ali celesti. A caccia spalanca le ali, che si orlano di rosso, e drizza la dorsale.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il blu cobalto aveva già l'ombra indaco dichiarata; la coda blu ora è piena
+   fino in punta (velo: 1), perché da piccola spariva sull'acqua blu, e il controluce del corpo è più largo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -5006,7 +5129,7 @@ B.specie.registra({
     P.suSpina(s, 0, 0, q);
     const ac = q.ang + PI + sin(F - 1.1) * .34;
     P.pinna(c, { x0: q.x + .04 + sin(ac) * .08, y0: q.y - Math.cos(ac) * .08, x1: q.x + .04 - sin(ac) * .08, y1: q.y + Math.cos(ac) * .08, a0: ac - .62, a1: ac + .7, lung: .78, profilo: PROFILO_CODA, n: 8, onda: .14, fase: F - 1.9, passo: 0,
-      tinta: T.pinna, orlo: STRISCIA, primo: true });
+      tinta: T.pinna, orlo: STRISCIA, primo: true, velo: 1 });
     const d0 = P.suSpina(s, .3, -.85), d1 = P.suSpina(s, .13, -.8), n0 = P.suSpina(s, .28, .85), n1 = P.suSpina(s, .14, .8);
     P.pinna(c, { x0: d0.x, y0: d0.y, x1: d1.x, y1: d1.y, a0: -(PI / 2 + .55 - alza), a1: -(PI - .3), lung: m ? .36 : .3, profilo: [1, .8, .55, .4], n: 4, onda: .07, fase: F * 2, tinta: T.pinna, orlo: STRISCIA });
     P.pinna(c, { x0: n0.x, y0: n0.y, x1: n1.x, y1: n1.y, a0: PI / 2 + .65, a1: PI - .3, lung: .24, profilo: [1, .75, .5], n: 4, onda: .07, fase: F * 2 - 1, tinta: T.pinna, orlo: STRISCIA });
@@ -5015,7 +5138,7 @@ B.specie.registra({
     macchie(c, gv, .03);
 
     // ---- 2. il corpo: pancia d'argento, striscia celeste, puntini chiari e squame sul dorso
-    P.volume(c, s, T.corpo, { luce, ombra: .08, dentro(cc) {
+    P.volume(c, s, T.corpo, { luce, ombra: .11, dentro(cc) {
       P.fianco(cc, s, u => .08 + max(0, u - .8) * 5, 1.4, T.ventre.base);
       P.fianco(cc, s, u => -.06 + max(0, u - .8) * 5, u => .08 + max(0, u - .8) * 5, STRISCIA, .03, .93);
       P.macchie(cc, s, { n: 7, seme: 4, u0: .1, u1: .7, v0: -.85, v1: -.3, r0: .022, r1: .04, colore: PUNTINI, lungo: 1 });
@@ -5053,7 +5176,9 @@ B.specie.registra({
    con la pancia chiara e la fila di ventose a perline; ognuna si arriccia per conto suo.
    Tutti gli stati letti con P.statoGigante. Il segnale da ricordare: macchie ad anello spente = tranquilla; macchie e
    ventose che si ACCENDONO DI GIALLO (con il sacco che si gonfia e le braccia che si avvolgono come molle) = sta per colpire.
-   Quando parte spalanca le braccia a tenaglia e apre il becco. */
+   Quando parte spalanca le braccia a tenaglia e apre il becco.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: i pezzi disegnati a mano (sifone, membrana fra le braccia, labbro del becco,
+   bozzo dell'occhio, orlo delle ventose) usano la linea sottile della cassetta (t.linea, sotto .04) invece del contorno spesso. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -5123,13 +5248,13 @@ function braccio(c, a, i, K, st, vicino, q) {
     if (st.fine) P.macchie(c, s, { n: 5, seme: i + 2, u0: .1, u1: .72, v0: -la * .62, v1: -la * .12, r0: .016, r1: .03, colore: K.nei, lungo: 1.3 });
   }
   for (let passata = vicino ? 0 : 1; passata < (vicino ? 3 : 2); passata++) {       // le lontane: una passata sola, tutta dentro il braccio
-    const piu = passata ? 0 : .034, k = passata === 2 ? .42 : vicino ? 1 : .8, v = la * (vicino ? .97 : .66);
+    const piu = passata ? 0 : .026, k = passata === 2 ? .42 : vicino ? 1 : .8, v = la * (vicino ? .97 : .66);
     c.beginPath();
     for (let j = 0; j < nv; j++) {
       const u = .1 + .8 * j / (nv - 1), r = (.078 - .046 * u) * k + piu;
       P.suSpina(s, u, v, q); c.moveTo(q.x + r, q.y); c.arc(q.x, q.y, r, 0, TAU);
     }
-    c.fillStyle = passata === 2 ? K.cuoreVentosa : passata ? (vicino ? K.ventosa : K.ventosaLontana) : tinta.bordo; c.fill();
+    c.fillStyle = passata === 2 ? K.cuoreVentosa : passata ? (vicino ? K.ventosa : K.ventosaLontana) : tinta.linea; c.fill();
   }
 }
 
@@ -5169,10 +5294,10 @@ B.specie.registra({
 
     // ---- 3. sotto la testa: l'ombra del collo, il sifone, la membrana fra le braccia, la bocca col becco
     P.ombra(c, HX - .3, HY - .12, .36, .5, .5, .34);
-    c.beginPath(); c.ellipse(HX - .36, HY + .34, .16, .095, .75, 0, TAU); c.strokeStyle = SIFONE.bordo; c.lineWidth = .09; c.stroke(); c.fillStyle = viva ? SIFONE.base : K.sotto; c.fill();
+    c.beginPath(); c.ellipse(HX - .36, HY + .34, .16, .095, .75, 0, TAU); c.strokeStyle = SIFONE.linea; c.lineWidth = .066; c.stroke(); c.fillStyle = viva ? SIFONE.base : K.sotto; c.fill();
     c.beginPath(); c.ellipse(HX - .44, HY + .41, .05, .07, .75, 0, TAU); c.fillStyle = SIFONE.bordo; c.fill();
-    c.beginPath(); c.ellipse(CX + .1, CY + .1, .42, .38, .4, 0, TAU); c.strokeStyle = K.lontano.bordo; c.lineWidth = .1; c.stroke(); c.fillStyle = K.lontano.ombra; c.fill();
-    c.beginPath(); c.ellipse(MX, MY, .2 + becco * .04, .23 + becco * .05, ASSE, 0, TAU); c.strokeStyle = LABBRO.bordo; c.lineWidth = .08; c.stroke(); c.fillStyle = viva ? LABBRO.base : K.sotto; c.fill();
+    c.beginPath(); c.ellipse(CX + .1, CY + .1, .42, .38, .4, 0, TAU); c.strokeStyle = K.lontano.linea; c.lineWidth = .07; c.stroke(); c.fillStyle = K.lontano.ombra; c.fill();
+    c.beginPath(); c.ellipse(MX, MY, .2 + becco * .04, .23 + becco * .05, ASSE, 0, TAU); c.strokeStyle = LABBRO.linea; c.lineWidth = .066; c.stroke(); c.fillStyle = viva ? LABBRO.base : K.sotto; c.fill();
     c.beginPath(); c.ellipse(MX + .02, MY + .01, .11 + becco * .06, .13 + becco * .09, ASSE, 0, TAU); c.fillStyle = '#5a0c34'; c.fill();
     P.corno(c, MX - .06, MY + .06, ASSE + .28 + becco * .55, .22, .18, BECCO, { curva: -.7 });
     P.corno(c, MX - .07, MY - .06, ASSE - .1 - becco * .4, .33, .23, BECCO, { curva: .75 });
@@ -5184,7 +5309,7 @@ B.specie.registra({
     const ex = HX + .09, ey = HY - .17, irto = viva ? G.ira : -.5;
     P.corno(c, ex - .2, ey - .24, -PI / 2 - .55 + irto * .2, .17 + irto * .13, .14, K.pelle, { curva: -.3 });
     P.corno(c, ex + .01, ey - .3, -PI / 2 - .12 + irto * .32, .19 + irto * .16, .15, K.pelle, { curva: -.25 });
-    c.beginPath(); c.ellipse(ex - .04, ey - .08, .32, .3, 0, 0, TAU); c.strokeStyle = K.pelle.bordo; c.lineWidth = .1; c.stroke(); c.fillStyle = K.pelle.chiara; c.fill();   // il bozzo dell'occhio: se ne vede solo l'orlo
+    c.beginPath(); c.ellipse(ex - .04, ey - .08, .32, .3, 0, 0, TAU); c.strokeStyle = K.pelle.linea; c.lineWidth = .07; c.stroke(); c.fillStyle = K.pelle.chiara; c.fill();   // il bozzo dell'occhio: se ne vede solo l'orlo
     P.palla(c, HX, HY, .5, .46, -.15, K.pelle, { luce: [HX + .12, HY - .3, 1], ombra: .09 });
     if (viva) P.guancia(c, HX + .22, HY + .22, .2, '#ff4f8a', .3 + rosso * .05);
     if (st.fine) {
@@ -5317,7 +5442,10 @@ B.specie.registra({
    lunghi dietro, la palla lucida del corpo, una corona di aculei corti davanti, e in mezzo due occhi che spiano.
    Dipende solo da o.fase (gli aculei che dondolano) e da o.attivo (quanto sei vicino): a riposo sonnecchia; a metà
    spalanca gli occhi; da vicino rizza gli aculei (più lunghi, fermi, con le punte che si accendono di rosso) e fa la
-   faccia cattiva. Gli aculei si disegnano tutti insieme, in un tracciato solo. 1 unità = il raggio che fa male. */
+   faccia cattiva. Gli aculei si disegnano tutti insieme, in un tracciato solo. 1 unità = il raggio che fa male.
+   RITOCCATO PER LO STILE «FILM D'ANIMAZIONE»: gli aculei non hanno più il contorno scuro spesso ma la linea sottile del
+   loro viola scurito; li modella la luce (quelli rivolti in alto a sinistra sono più chiari, quelli in basso a destra
+   restano nel buio fin quasi alla punta) e ognuno ha il suo filo di luce sul fianco illuminato. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, R = B.util.rumore, TAU = Math.PI * 2, PI = Math.PI;
@@ -5335,10 +5463,10 @@ const CATTIVO_DX = Object.assign({}, CATTIVO_SX, { guarda: { x: -.35, y: .1 }, t
 const BRONCIO = { curva: -.7, tinta: T.corpo, spess: .05 }, STUPORE = { apri: .8, alt: .09, curva: 0, tinta: T.corpo, lingua: false, spess: .045 };
 const TIARA = [-.2, -.24, 0, -.31, .2, -.24], CIME = [];
 
-/* Una corona di aculei in due tracciati soli: i triangoli sottili da r0 in fuori (bordo e sfumatura che schiarisce verso
-   la punta), poi le punte chiare sopra il bordo. lungo = lunghezza, molle = quanto dondolano. Se cime è una lista, ci
-   scrive dove finiscono le punte. */
-const AX = [], AY = [], AL = [];
+/* Una corona di aculei in tre tracciati soli: i triangoli sottili da r0 in fuori (linea sottile e una sfumatura che
+   schiarisce verso la punta e verso la luce, in alto a sinistra), poi il filo di luce sul fianco illuminato di ognuno,
+   poi le punte chiare. lungo = lunghezza, molle = quanto dondolano. Se cime è una lista, ci scrive dove finiscono le punte. */
+const AX = [], AY = [], AL = [], LUME = P.alfa('#e4dcff', .5);
 function aculei(c, lista, r0, lungo, hw, t, punta, F, molle, cime) {
   let m = 0; const n = lista.length;
   c.beginPath();
@@ -5348,9 +5476,15 @@ function aculei(c, lista, r0, lungo, hw, t, punta, F, molle, cime) {
     c.moveTo(ca * r0 - sa * hw, sa * r0 + ca * hw); c.lineTo(ca * L, sa * L); c.lineTo(ca * r0 + sa * hw, sa * r0 - ca * hw); c.closePath();
     if (cime) cime.push(ca * (L - .02), sa * (L - .02));
   }
-  const g = c.createRadialGradient(0, 0, r0, 0, 0, m);
-  g.addColorStop(0, t.scura); g.addColorStop(.35, t.base); g.addColorStop(1, t.chiara);
-  c.lineJoin = 'round'; c.strokeStyle = t.bordo; c.lineWidth = .075; c.stroke(); c.fillStyle = g; c.fill();
+  const g = c.createRadialGradient(m * .12, m * .32, r0 * .3, 0, 0, m);                // il centro è spostato dalla parte dell'ombra: così il lato in luce schiarisce prima
+  g.addColorStop(0, t.scura); g.addColorStop(.4, t.ombra); g.addColorStop(.66, t.base); g.addColorStop(1, t.luce);
+  c.lineJoin = 'round'; c.strokeStyle = t.linea; c.lineWidth = .045; c.stroke(); c.fillStyle = g; c.fill();
+  c.beginPath();
+  for (let i = 0; i < n; i++) {                                     // il filo di luce: sul fianco che guarda in alto a sinistra
+    const ca = AX[i], sa = AY[i], L = AL[i], k = (.34 * sa - .94 * ca > 0 ? .5 : -.5) * hw, a = r0 + .08, b = L - (L - r0) * .34;
+    c.moveTo(ca * a - sa * k, sa * a + ca * k); c.lineTo(ca * b - sa * k * .5, sa * b + ca * k * .5);
+  }
+  c.lineCap = 'round'; c.strokeStyle = LUME; c.lineWidth = .022; c.stroke();
   c.beginPath();
   for (let i = 0; i < n; i++) {
     const ca = AX[i], sa = AY[i], L = AL[i], b = L - (L - r0) * .3, w = hw * .5;
@@ -5556,7 +5690,7 @@ const { sin, pow } = Math;
 /* Calma è color albicocca; quando si arrabbia arrossisce (le seppie cambiano colore davvero) e le righe si fanno più cupe. */
 const CALMA = { pelle: P.tinta('#f5914a', '#b0304a'), riga: '#8a3558', lontano: P.tinta('#c9603a', '#6a1a40'), iride: '#e8f24a' };
 const IRA = { pelle: P.tinta('#ff5236', '#8a1040'), riga: '#5a0f38', lontano: P.tinta('#c2302c', '#5a0a38'), iride: '#ffb01e' };
-const VENTRE = P.tinta('#ffe6c0', '#e88a5a'), GONNA = P.tinta('#4fe3d3'), PREDA = P.tinta('#ffc4a6', '#d8405a');
+const VENTRE = P.tinta('#ffe6c0', '#e88a5a'), GONNA = P.tinta('#4fe3d3', '#2a2c8c'), PREDA = P.tinta('#ffc4a6', '#d8405a');
 const SU = P.sagoma([[0, .1], [.1, .32], [.35, .5], [.6, .54], [.85, .47], [1, .38]]);
 const GIU = P.sagoma([[0, .1], [.1, .3], [.35, .46], [.6, .5], [.85, .44], [1, .36]]);
 /* Zebratura: sette bande ondulate di traverso al mantello, preparate una volta sola. */
@@ -5891,14 +6025,16 @@ B.specie.registra({
    tondi da cucciolo e IL SUO SEGNO: il lobo di sopra della coda lungo quanto il corpo, a falce. La coda non è una lama
    rigida ma un nastro su una spina (P.spinaAngoli), così frusta l'acqua come quella vera.
    A caccia la arma sopra la schiena come uno scorpione (è così che stordisce le prede), inarca il dorso, abbassa le
-   pettorali, drizza la dorsale e mostra i denti. */
+   pettorali, drizza la dorsale e mostra i denti.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il blu-violetto ha l'ombra indaco dichiarata nelle tinte (corpo, pinne, falce),
+   così senza contorno scuro stacca dall'acqua; il controluce è più largo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos } = Math;
 
 // ---- tinte: blu-violetto saturo (le ombre le fa il viola-notte), ventre bianco con l'ombra azzurra, pinne un tono più scure
-const T = { corpo: P.tinta('#6f63e6'), pinna: P.tinta('#5f52d2'), lontana: P.tinta('#4a3fae'), ventre: P.tinta('#f6f8ff', '#8fb2ea') };
+const T = { corpo: P.tinta('#6f63e6', '#2c1c98'), pinna: P.tinta('#5f52d2', '#28198c'), lontana: P.tinta('#4a3fae', '#201670'), ventre: P.tinta('#f6f8ff', '#8fb2ea') };
 T.mento = Object.assign({}, P.tinta('#f2f5ff', '#8fb2ea'), { bordo: T.corpo.bordo });       // il mento ha il bordo scuro del corpo
 const VENTRE = T.ventre.base, DORSO = P.alfa(T.corpo.bordo, .22), LAMA = P.alfa('#d9d4ff', .5), NEI = P.alfa(T.corpo.bordo, .55), PUNTA = '#3d3296';
 /* Un siluro tozzo: muso corto a cono che sporge sopra la bocca (il ventre si ritira da u = .8), peduncolo robusto. */
@@ -5950,7 +6086,7 @@ B.specie.registra({
     if (apri > .1) P.denti(c, ge.x0 + (ge.x1 - ge.x0) * .15, ge.y0 + (ge.y1 - ge.y0) * .15, ge.x1, ge.y1, 5, .085, 1, { tipo: 'punta', varia: .2 });
 
     // ---- 2. il corpo: dorso più scuro, ventre bianco che risale sopra la pettorale, il lampo chiaro sul fianco
-    P.volume(c, s, T.corpo, { luce, ombra: .09, dentro(cc) {
+    P.volume(c, s, T.corpo, { luce, ombra: .12, dentro(cc) {
       P.fianco(cc, s, -1.4, -.5, DORSO);
       P.fianco(cc, s, u => .14 + .08 * sin(u * 7 + 1) - .34 * Math.exp(-((u - .6) / .09) * ((u - .6) / .09)), 1.4, VENTRE);
       P.fianco(cc, s, u => -.02 - .3 * sin((u - .1) / .42 * PI), u => .06, LAMA, .1, .52);
@@ -6076,7 +6212,10 @@ B.specie.registra({
    fa capolino dietro), boccuccia a cuore, corpo arancio a onde blu dal cuore verde, pinne blu a ventaglio orlate d'arancio:
    due ventagli sotto la pancia su cui «cammina», la coda tonda e la vela sul dorso.
    Tre stadi: cucciolo tutto testa senza vela, adulto con la vela, colosso con la vela alta col pennacchio e i ventagli a festoni.
-   Quattro espressioni: di gioia drizza la vela e canta, di paura la chiude e gli occhi schizzano fuori, colpito la affloscia. */
+   Quattro espressioni: di gioia drizza la vela e canta, di paura la chiude e gli occhi schizzano fuori, colpito la affloscia.
+   RITOCCATO PER LO STILE «FILM D'ANIMAZIONE»: le torrette degli occhi sono palline modellate dalla luce (non più dischi
+   piatti col contorno scuro), il verde ha la sua ombra dichiarata (blu petrolio) per staccare dall'acqua verde, la pancia
+   d'oro sfuma nel fianco, le onde blu hanno un filo sottile, la pettorale d'oro è piena. Il battito di ciglia non è più deciso dal modello (o.t): lo guida P.battito da chi lo disegna dal vivo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -6084,8 +6223,8 @@ const { sin, max, min } = Math;
 
 // ---- tinte e misure dei tre stadi: tutto ciò che cambia crescendo sta qui, il disegno è uno solo
 const ARANCIO = c => P.tinta(c, '#e22a1e'), BLU = c => P.tinta(c, '#3a1fb8');
-const VERDE = P.tinta('#35d484'), VERDE_LONTANO = P.tinta('#1fae7c'), LABBRO = P.tinta('#ff5f93'), VENTRE = '#ffd45e', CUORE = '#58ec9a', IRIDE = '#ff4a30';
-const ORO = P.tinta('#ffc83a', '#ff6a14'), VERDE_LUME = P.alfa(VERDE.luce, .85);
+const VERDE = P.tinta('#3fe08a', '#0c6a8c'), VERDE_LONTANO = P.tinta('#22b47e', '#0a4f80'), LABBRO = P.tinta('#ff5f93'), VENTRE = '#ffdc50', CUORE = '#58ec9a', IRIDE = '#ff4a30';
+const ORO = P.tinta('#ffc83a', '#ff6a14'), ACQUA = '#8fe6ff';
 /* Una banda a onde di traverso al corpo: u = dove sta, larg = mezza larghezza, pend = pendenza, amp e ph = l'onda. */
 const banda = (u, larg, pend, amp, ph) => [v => u - larg + pend * v + amp * sin(v * 3.2 + ph), v => u + larg + pend * v + amp * sin(v * 3.2 + ph + .6)];
 const bande = (lista, k) => lista.map(m => banda(m[0], m[1] * k, m[2], m[3], m[4]));
@@ -6106,7 +6245,24 @@ const STADI = [
     bande: bande(ONDE2, 1), cuori: bande(ONDE2, .36), occhio: .26, eu: .82, ev: -.82, lontano: .43, bocca: .2,
     coda: .7, pin: .54, vela: .9, ventaglio: .72, smerlo: .6, ru: .5 },
 ];
-for (const K of STADI) K.pinnaLontana = P.tinta(K.pinna.ombra, '#2a148f');
+for (const K of STADI) { K.pinnaLontana = P.tinta(K.pinna.ombra, '#2a148f'); K.filoBlu = P.alfa(K.bluBordo, .8); }
+
+/* La torretta di un occhio: una pallina di pelle verde modellata dalla luce (un gradiente solo). Niente contorno scuro:
+   la linea sottile scivola dal lato in ombra, dove corre anche il filo di controluce color acqua. */
+const torretta = (c, x, y, r, t, lontana) => {
+  c.beginPath(); c.arc(x + .01, y + .018, r, 0, TAU); c.strokeStyle = t.linea; c.lineWidth = .05; c.stroke();
+  const g = c.createRadialGradient(x - r * .42, y - r * .5, r * .08, x - r * .25, y - r * .3, r * 1.55);
+  g.addColorStop(0, t.luce); g.addColorStop(.32, t.base); g.addColorStop(.7, t.ombra); g.addColorStop(1, t.scura);
+  c.beginPath(); c.arc(x, y, r, 0, TAU); c.fillStyle = g; c.fill();
+  if (lontana) return;                                              // quella lontana resta quasi tutta nascosta: niente controluce
+  c.beginPath(); c.arc(x, y, r * .94, .1, PI * .62); c.lineCap = 'round'; c.strokeStyle = P.alfa(ACQUA, .5); c.lineWidth = r * .09; c.stroke();
+};
+/* Il ventre che sfuma nel fianco (come aerografato): una fascia fino al filo della pancia, trasparente in alto (quota y0)
+   e piena in basso (quota y1). */
+const ventre = (cc, s, colore, y0, y1) => {
+  const g = cc.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, P.alfa(colore, 0)); g.addColorStop(.5, P.alfa(colore, .7)); g.addColorStop(1, colore);
+  P.fianco(cc, s, .02, 1.4, g);
+};
 
 B.eroi.registra({
   id: 'arlecchino',
@@ -6122,8 +6278,7 @@ B.eroi.registra({
     c.rotate(sin(F) * .04 + (colpito ? -.14 : 0));
     const s = P.spinaPesce(13, K.x0, K.x1, fase, K.onda, K.su, K.giu, { testa: K.testa }), luce = [.25, -.5, 1.7];
     const e = P.suSpina(s, K.eu, K.ev), r = K.occhio, salta = paura ? .13 : 0;          // di paura gli occhi schizzano in su
-    const ammicca = (t % 4.6) > 4.46;
-    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? P.SGUARDI.spaventato : ammicca ? P.SGUARDI.felice : st === 2 ? P.SGUARDI.calmo : P.SGUARDI.normale;
+    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? P.SGUARDI.spaventato : st === 2 ? P.SGUARDI.calmo : P.SGUARDI.normale;
 
     // ---- 1. dietro al corpo: ventaglio lontano, coda, pinne del dorso e del ventre, vela, ventaglio vicino, occhio lontano
     const p0 = P.suSpina(s, .68, .9), p1 = P.suSpina(s, .52, .9), av = PI / 2 + .25 + (1 - drizza) * .7;
@@ -6146,13 +6301,13 @@ B.eroi.registra({
     P.pinna(c, { x0: p0.x, y0: p0.y, x1: p1.x, y1: p1.y, a0: av - .6 + passo * .16, a1: av + .5 + passo * .16, lung: K.ventaglio, profilo: [.75, 1, .95, .7], n: 5, smerlo: K.smerlo,
       onda: .06, fase: F * 2, tinta: K.pinna, orlo: K.orlo, primo: true });
     const lx = e.x + K.lontano, ly = e.y - .09 - salta, rl = r * .8;
-    c.beginPath(); c.arc(lx, ly + rl * .1, rl * 1.22, 0, TAU); c.lineWidth = P.BORDO * 2; c.strokeStyle = VERDE_LONTANO.bordo; c.stroke(); c.fillStyle = VERDE_LONTANO.base; c.fill();
+    torretta(c, lx, ly + rl * .1, rl * 1.22, VERDE_LONTANO, true);
     P.occhio(c, lx + .02, ly, rl, Object.assign({ iride: IRIDE, pelle: VERDE_LONTANO, raggioIride: .74, guarda: P.sguardo(o.sguardo, lx, ly) }, sg));
 
     // ---- 2. il corpo: arancio, pancia dorata, onde blu col cuore verde, occhielli sulla guancia
     P.volume(c, s, K.corpo, { luce, ombra: .12, dentro(cc) {
-      P.fianco(cc, s, .5, 1.4, VENTRE);
-      P.bande(cc, s, K.bande, K.blu); cc.lineJoin = 'round'; cc.strokeStyle = K.bluBordo; cc.lineWidth = .04; cc.stroke();
+      ventre(cc, s, VENTRE, .04, .44);                                // la pancia d'oro sfuma nel fianco
+      P.bande(cc, s, K.bande, K.blu); cc.lineJoin = 'round'; cc.strokeStyle = K.filoBlu; cc.lineWidth = .03; cc.stroke();
       P.bande(cc, s, K.cuori, CUORE);
       P.macchie(cc, s, { n: 4 + st, seme: 3, u0: .84, u1: 1.03, v0: -.15, v1: .8, r0: .04, r1: .065, colore: K.blu, cuore: CUORE, lungo: 1 });
     } });
@@ -6161,15 +6316,14 @@ B.eroi.registra({
 
     // ---- 3. sul fianco: la pinna pettorale che rema, con la sua ombra di contatto
     const pp = P.suSpina(s, .58, .3), ap = PI * .9 + rema * .4;
-    P.ombra(c, pp.x - .2, pp.y + .1, K.pin * .9, K.pin * .5, -.4, .26);
+    P.ombra(c, pp.x - .2, pp.y + .1, K.pin * .9, K.pin * .5, -.4, .34);
     P.pinna(c, { x0: pp.x + .07, y0: pp.y - .1, x1: pp.x - .02, y1: pp.y + .13, a0: ap - .8 * drizza - rema * .1, a1: ap + .8 * drizza + rema * .1, lung: K.pin, profilo: [.6, .88, 1, 1, .88, .6], n: 6,
-      smerlo: K.smerlo, onda: .12, fase: F * 2, passo: .7, tinta: ORO, orlo: K.blu, primo: true });
+      smerlo: K.smerlo, onda: .12, fase: F * 2, passo: .7, tinta: ORO, orlo: K.blu, primo: true, velo: 1 });
 
     // ---- 4. la faccia: l'occhio vicino sulla sua torretta verde, la boccuccia a cuore
     const ty = e.y - salta + r * .12, rt = r * 1.34;
     P.ombra(c, e.x - .04, e.y + r * 1.25, r * 1.3, r * .55, 0, .3);
-    c.beginPath(); c.arc(e.x, ty, rt, 0, TAU); c.lineWidth = P.BORDO * 2; c.strokeStyle = VERDE.bordo; c.stroke(); c.fillStyle = VERDE.base; c.fill();
-    c.beginPath(); c.arc(e.x, ty, rt - r * .13, -PI * .9, -PI * .25); c.lineCap = 'round'; c.lineWidth = r * .11; c.strokeStyle = VERDE_LUME; c.stroke();
+    torretta(c, e.x, ty, rt, VERDE);
     P.occhio(c, e.x + .02, e.y - salta, r, Object.assign({ iride: IRIDE, pelle: VERDE, raggioIride: .74, guarda: P.sguardo(o.sguardo, e.x, e.y) }, sg));
     if (paura) P.sopracciglio(c, e.x + .02, e.y - salta - r * 1.5, r * 1.1, -.3, VERDE.bordo, .06);
     const l = P.suSpina(s, 1, .12), lx2 = l.x + K.testa * .82, w = K.bocca;
@@ -6193,7 +6347,10 @@ B.eroi.registra({
    ciuffo di braccia arricciate che seguono dietro pulsando: tre lontane scure e tre vicine con le ventose a perline.
    Tre stadi: cucciolo tutto testa con i riccioli corti, adulto con la testa che si allunga all'indietro e gli occhielli,
    colosso viola dal testone a cupola, cornetti sopra gli occhi e braccia lunghe e grosse.
-   Quattro espressioni: di gioia alza un braccio e sventola, di paura sbianca e si raggomitola, colpito lascia penzolare le braccia. */
+   Quattro espressioni: di gioia alza un braccio e sventola, di paura sbianca e si raggomitola, colpito lascia penzolare le braccia.
+   RITOCCATO PER LO STILE «FILM D'ANIMAZIONE»: sotto il mento la testa prende il colore dell'acqua (luce di rimbalzo) e gli
+   occhielli hanno un alone morbido; il resto rendeva già bene con la cassetta nuova. Il battito di ciglia non è più deciso
+   dal modello (o.t): lo guida P.battito da chi lo disegna dal vivo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, U = B.util, TAU = Math.PI * 2, PI = Math.PI, GRADI = PI / 180;
@@ -6202,7 +6359,7 @@ const { sin, cos, max, min } = Math;
 // ---- tinte e misure dei tre stadi: tutto ciò che cambia crescendo sta qui, il disegno è uno solo
 const CX = .12, CY = -.06, SU = -.07, RX = -.22, RY = .5;                // centro della testa (alzata di SU), radice delle braccia
 const PALLIDA = P.tinta('#f7dcf6', '#b490e6'), PALLIDA_LONTANA = P.tinta('#d3b4ea', '#8a6ad0');
-const LABBRO = P.tinta('#b02a8c'), IRIDE = '#1fc9be', VENTOSA = '#ffe1f2';
+const LABBRO = P.tinta('#b02a8c'), IRIDE = '#1fc9be', VENTOSA = '#ffe1f2', ACQUA = '#8fe6ff';
 const STADI = [
   { rx: .86, ry: .84, gobbe: [[-120, 50, .03]], corpo: P.tinta('#ff8fd6', '#a43ae0'), lontano: P.tinta('#c45fd0', '#5a1f9a'), anello: '#ffc2ec', cuore: '#fff0fa',
     occhio: .33, ex: .27, ey: -.06, fx: .8, bx: .66, by: .36, bocca: .12, lung: .8, spess: .34, nv: 3, corni: 0,
@@ -6214,6 +6371,7 @@ const STADI = [
     occhio: .28, ex: .29, ey: -.04, fx: .8, bx: .68, by: .37, bocca: .15, lung: 1.22, spess: .44, nv: 6, corni: 1,
     occhielli: [[-.56, -.66, .12], [-.22, -.84, .085], [-.78, -.3, .09], [-.4, -.34, .07], [-.9, -.72, .07], [-.62, -.98, .06], [-.1, -.56, .05]] },
 ];
+for (const K of STADI) K.alone = P.alfa(K.anello, .32);
 /* Le braccia: [angolo, lunghezza, ricciolo, spessore]. Tre vicine e tre lontane, a ventaglio da sotto il mento a dietro la nuca. */
 const VICINE = [[1.8, .86, -2.5, .95], [2.5, 1.05, 2.4, 1], [3.2, .95, 2.9, .9]], LONTANE = [[1.45, .7, -2.2, .85], [2.15, .95, -2.7, .9], [2.85, 1, 2.6, .9]];
 /* Raggio della testa nella direzione ang (0 = muso, 90° = mento): un'ellisse con qualche gobba (la nuca che cresce). */
@@ -6255,14 +6413,15 @@ B.eroi.registra({
       P.corno(c, CX + .32, CY - .74, -PI / 2 + .05 + (paura ? .5 : 0), .27, .2, pelle, { curva: .4 });
       P.corno(c, CX + .64, CY - .5, -PI / 2 + .6 + (paura ? .5 : 0), .22, .18, pelle, { curva: .4 });
     }
-    const r = K.occhio, ammicca = (t % 4.8) > 4.66;
-    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? P.SGUARDI.spaventato : ammicca ? P.SGUARDI.felice : st === 2 ? { palpebra: .2, taglio: -.12, brillio: 1.15 } : { palpebra: .08, taglio: -.2, brillio: 1.25 };
+    const r = K.occhio;
+    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? P.SGUARDI.spaventato : st === 2 ? { palpebra: .2, taglio: -.12, brillio: 1.15 } : { palpebra: .08, taglio: -.2, brillio: 1.25 };
     P.volume(c, cc => P.profilo(cc, sag), pelle, { luce: [.3, -.5, 1.6], ombra: .12, dentro(cc) {
       P.guancia(cc, .6, .5, .56, '#fff2fa', .62);                     // il musetto chiaro
-      for (let giro = 0; giro < 2; giro++) {
+      P.guancia(cc, .2, .84, .62, ACQUA, .34);                        // sotto il mento la pelle prende il colore dell'acqua
+      for (let giro = 0; giro < 3; giro++) {                          // gli occhielli: alone morbido, anello, cuore chiaro
         cc.beginPath();
-        for (const m of K.occhielli) { const rr = m[2] * (giro ? .5 : 1); cc.moveTo(m[0] + rr, m[1]); cc.arc(m[0], m[1], rr, 0, TAU); }
-        cc.fillStyle = giro ? K.cuore : K.anello; cc.fill();
+        for (const m of K.occhielli) { const rr = m[2] * (giro === 2 ? .5 : giro ? 1 : 1.55); cc.moveTo(m[0] + rr, m[1]); cc.arc(m[0], m[1], rr, 0, TAU); }
+        cc.fillStyle = giro === 2 ? K.cuore : giro ? K.anello : K.alone; cc.fill();
       }
       P.occhio(cc, K.fx, K.ey - .04, r * .8, Object.assign({ iride: IRIDE, pelle, guarda: P.sguardo(o.sguardo, K.fx, K.ey) }, sg));
     } });
@@ -6536,26 +6695,31 @@ B.eroi.registra({
    Tre stadi: cucciolo tutto testa con il guscio liscio e tondo, adulto con le pale lunghe e i primi bozzi sul dorso,
    colosso dal guscio possente con la cresta di punte d'oro, le borchie sugli scudi e due patelle attaccate dietro.
    Quattro espressioni: di gioia allunga il collo e sventola le pale; di paura tira la testa sotto il guscio e sbircia;
-   colpito resta con le pale a penzoloni. La testa e la sua faccia si disegnano PRIMA del guscio, che ne copre il collo. */
+   colpito resta con le pale a penzoloni. La testa e la sua faccia si disegnano PRIMA del guscio, che ne copre il collo.
+   RITOCCATO PER LO STILE «FILM D'ANIMAZIONE»: i verdi sono più vivi e non prendono più il velo viola della cassetta (sul
+   verde il viola ingrigisce: sono colori opposti), ma un'ombra blu petrolio fatta qui (vedi `velo` e `fili`); il guscio
+   resta smeraldo fino all'orlo, l'oro è pulito, pale e bozzi hanno la linea sottile e il filo di controluce.
+   Il battito di ciglia non è più deciso dal modello (o.t): lo guida P.battito da chi lo disegna dal vivo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos, max, min } = Math;
 
 // ---- tinte e misure dei tre stadi: tutto ciò che cambia crescendo sta qui, il disegno è uno solo
-const PELLE = c => P.tinta(c, '#0e8f78'), GUSCIO = c => P.tinta(c, '#0b4f92');
+const PELLE = c => P.tinta(c, '#0a8f66'), GUSCIO = c => P.tinta(c, '#0a4a9c');
 const ORO = P.tinta('#ffd23f', '#ff7a1a'), CREMA = P.tinta('#fff3c4', '#e8925c'), CALCARE = P.tinta('#fff1d6', '#d98a5a');
-const IRIDE = '#c8551c', GOLA = '#f6ffb4', ROSA = '#ff5f8f', TACCA = P.alfa(ORO.bordo, .45), PIEGA = P.alfa(CREMA.scura, .5);
+const IRIDE = '#c8551c', GOLA = '#ecff84', ROSA = '#ff5f8f', TACCA = P.alfa(ORO.bordo, .45), PIEGA = P.alfa(CREMA.scura, .5);
+const CONTROLUCE = P.alfa('#c8f3ff', .36), BLU = '#06357a', VELO = [P.alfa(BLU, 0), P.alfa(BLU, .14), P.alfa(BLU, .3), P.alfa(BLU, .2)];
 /* gx, gy, grx, gry, ang: centro, mezze misure e inclinazione del guscio; hx, hy, r: centro e raggio della testa;
    pala: lunghezza delle pinne davanti; nodi: quanto spuntano i bozzi della cresta (0 = guscio liscio);
    rit: di quanto la testa rientra sotto il guscio per la paura. */
 const STADI = [
   { gx: -.44, gy: -.1, grx: .6, gry: .68, ang: -.1, hx: .56, hy: -.02, r: .58, occhio: .3, bocca: .18, pala: .6, nodi: 0, rit: .2,
-    pelle: PELLE('#a4ea5c'), guscio: GUSCIO('#3fd3a2'), sguardo: { palpebra: .05, brillio: 1.25 } },
+    pelle: PELLE('#a2f04a'), guscio: GUSCIO('#24dc9a'), sguardo: { palpebra: .05, brillio: 1.25 } },
   { gx: -.46, gy: -.08, grx: .76, gry: .78, ang: -.08, hx: .68, hy: -.01, r: .52, occhio: .28, bocca: .17, pala: .8, nodi: .45, rit: .22,
-    pelle: PELLE('#86dc48'), guscio: GUSCIO('#17b488'), sguardo: { palpebra: .2, sotto: .1 } },
+    pelle: PELLE('#86e23a'), guscio: GUSCIO('#12c48a'), sguardo: { palpebra: .2, sotto: .1 } },
   { gx: -.5, gy: -.1, grx: .86, gry: .88, ang: -.07, hx: .72, hy: .01, r: .5, occhio: .25, bocca: .17, pala: .96, nodi: 1, rit: .24,
-    pelle: PELLE('#68c63c'), guscio: GUSCIO('#0e9080'), sguardo: { palpebra: .3, taglio: .1, sotto: .08 } },
+    pelle: PELLE('#68cc30'), guscio: GUSCIO('#0aa27e'), sguardo: { palpebra: .3, taglio: .1, sotto: .08 } },
 ];
 /* Le forme «in misura del guscio» (u da -1 dietro a +1 davanti, v da -1 in cima a circa +.45 all'orlo) e della testa
    (in raggi della testa): si riportano una volta sola nelle misure di ogni stadio. */
@@ -6587,12 +6751,27 @@ for (const K of STADI) {
     K.nodiP.push(e);
   }
   K.lontana = P.tinta(K.pelle.scura, '#0a3f6e'); K.placca = P.alfa(K.pelle.scura, .5);
-  K.lustro = P.alfa(K.guscio.luce, .3); K.solco = P.alfa(K.guscio.bordo, .6); K.filo = P.alfa(K.guscio.luce, .5);
+  K.lustro = P.alfa(P.mescola(K.guscio.luce, '#e2ff7a', .45), .18); K.solco = P.alfa(K.guscio.bordo, .6); K.filo = P.alfa(K.guscio.luce, .5);
 }
 const SCAGLIE = [[.3, -.09, .075], [.47, -.12, .07], [.64, -.12, .06], [.8, -.09, .045], [.4, .035, .04], [.58, .035, .035], [.74, .025, .03]];
 const PAURA = Object.assign({ raggioIride: .54 }, P.SGUARDI.spaventato);      // occhio sbarrato: tanto bianco, iride piccola
 const TMP = new Array(20);                                          // il profilo della testa col mento che scende (riscritto a ogni disegno)
 
+/* L'ombra dei pezzi VERDI, da usare dentro `dentro` di un P.volume con `ombra: 0`: lo stesso velo che modella i motivi
+   nella cassetta, ma blu petrolio invece che viola. L = la luce del volume, [x, y, r]. */
+const velo = (cc, L) => {
+  const r = L[2], x = L[0] - .24 * r, y = L[1], g = cc.createRadialGradient(x, y, r * .34, x, y, r);
+  g.addColorStop(0, VELO[0]); g.addColorStop(.5, VELO[1]); g.addColorStop(.8, VELO[2]); g.addColorStop(1, VELO[3]);
+  cc.fillStyle = g; cc.fillRect(x - r * 1.5, y - r * 1.5, r * 3, r * 3);
+};
+/* …e i due fili che la cassetta mette con l'ombra: il controluce color acqua lungo il bordo in ombra (largo w) e il filo
+   di luce lungo il bordo illuminato. Vanno per ultimi, sopra i motivi. */
+const fili = (cc, traccia, w) => {
+  cc.save();
+  cc.translate(-.17 * w, -.47 * w); traccia(cc); cc.strokeStyle = CONTROLUCE; cc.lineWidth = w; cc.stroke();
+  cc.translate(.31 * w, .86 * w); traccia(cc); cc.strokeStyle = 'rgba(255,255,255,.24)'; cc.lineWidth = w * .84; cc.stroke();
+  cc.restore();
+};
 /* Tante spezzate in un tracciato solo, spostate di (dx, dy): cuciture, tacche, pieghe. */
 const linee = (c, liste, dx, dy) => {
   c.beginPath();
@@ -6604,15 +6783,17 @@ const pala = (c, x, y, fi, L, tinta, macchia) => {
   c.save(); c.translate(x, y); c.rotate(fi);
   c.beginPath(); c.moveTo(-.06 * L, -.15 * L); c.bezierCurveTo(.25 * L, -.36 * L, .78 * L, -.32 * L, L, -.07 * L);
   c.quadraticCurveTo(1.07 * L, .06 * L, .92 * L, .11 * L); c.bezierCurveTo(.62 * L, .18 * L, .3 * L, .1 * L, -.06 * L, .17 * L); c.closePath();
-  c.lineJoin = 'round'; c.strokeStyle = tinta.bordo; c.lineWidth = P.BORDO * 2; c.stroke();
-  const g = c.createLinearGradient(0, 0, L, 0); g.addColorStop(0, tinta.scura); g.addColorStop(.35, tinta.base); g.addColorStop(1, tinta.chiara);
+  c.lineJoin = 'round'; c.strokeStyle = tinta.linea; c.lineWidth = .055; c.stroke();                             // la linea: sottile (metà resta sotto il colore)
+  const g = c.createLinearGradient(0, 0, L, 0); g.addColorStop(0, tinta.scura); g.addColorStop(.3, tinta.base); g.addColorStop(1, tinta.chiara);
   c.fillStyle = g; c.fill();
   if (macchia) {
     c.fillStyle = macchia; c.beginPath();
     for (const m of SCAGLIE) { c.moveTo((m[0] + m[2]) * L, m[1] * L); c.arc(m[0] * L, m[1] * L, m[2] * L, 0, TAU); }
     c.fill();
-    c.beginPath(); c.moveTo(.2 * L, -.215 * L); c.quadraticCurveTo(.55 * L, -.29 * L, .86 * L, -.15 * L);         // filo di luce sul bordo d'attacco
-    c.lineCap = 'round'; c.strokeStyle = P.alfa(tinta.luce, .7); c.lineWidth = .028; c.stroke();
+    c.beginPath(); c.moveTo(.2 * L, -.215 * L); c.quadraticCurveTo(.55 * L, -.29 * L, .86 * L, -.15 * L);         // il bordo d'attacco volta le spalle alla luce: filo di controluce
+    c.lineCap = 'round'; c.strokeStyle = CONTROLUCE; c.lineWidth = .03; c.stroke();
+    c.beginPath(); c.moveTo(.3 * L, .075 * L); c.quadraticCurveTo(.6 * L, .12 * L, .88 * L, .07 * L);              // e l'altro bordo prende la luce
+    c.strokeStyle = P.alfa(tinta.luce, .55); c.lineWidth = .026; c.stroke();
   }
   c.restore();
 };
@@ -6641,7 +6822,7 @@ B.eroi.registra({
     if (K.nodi) {
       c.beginPath();
       for (const e of K.nodiP) { c.moveTo(e[0], e[1]); c.quadraticCurveTo(e[2], e[3], e[4], e[5]); c.quadraticCurveTo(e[6], e[7], e[8], e[9]); }
-      c.lineJoin = 'round'; c.strokeStyle = K.guscio.bordo; c.lineWidth = P.BORDO * 2; c.stroke();
+      c.lineJoin = 'round'; c.strokeStyle = K.guscio.linea; c.lineWidth = .05; c.stroke();
       const g = c.createRadialGradient(K.gx, K.gy, K.gry * .92, K.gx, K.gy, K.gry * 1.17); g.addColorStop(0, K.guscio.base); g.addColorStop(.5, K.guscio.chiara); g.addColorStop(1, ORO.base);
       c.fillStyle = g; c.fill();
     }
@@ -6657,15 +6838,17 @@ B.eroi.registra({
     c.save(); c.translate(hx, hy); c.rotate(sin(F - .9) * .03 + sin(t * 1.7) * .012 + (felice ? -.13 : colpito ? .12 : 0));
     for (let i = 0; i < 20; i++) TMP[i] = K.testa[i];
     TMP[13] += .1 * r * apre; TMP[14] += .03 * r * apre; TMP[15] += .26 * r * apre; TMP[17] += .12 * r * apre;
-    P.volume(c, cc => P.profilo(cc, TMP), K.pelle, { luce: [.25 * r, -.4 * r, 1.9 * r], ombra: .055, dentro(cc) {
-      P.guancia(cc, .3 * r, .95 * r, .85 * r, GOLA, .7);              // la gola chiara
+    const testa = cc => P.profilo(cc, TMP), luceTesta = [.25 * r, -.4 * r, 2.1 * r];
+    P.volume(c, testa, K.pelle, { luce: luceTesta, ombra: 0, dentro(cc) {
+      velo(cc, luceTesta);
+      P.guancia(cc, .3 * r, .95 * r, .85 * r, GOLA, .7);              // la gola chiara, che sfuma nella guancia
       cc.fillStyle = K.placca; cc.beginPath();                        // le placche scure sulla testa
       for (const m of PLACCHE) { cc.moveTo((m[0] + m[2]) * r, m[1] * r); cc.arc(m[0] * r, m[1] * r, m[2] * r, 0, TAU); }
       cc.fill();
+      fili(cc, testa, .05);
     } });
     P.guancia(c, -.25 * r, .56 * r, .32 * r, ROSA, paura ? .25 : felice ? .85 : .55);
-    const ammicca = (t % 4.6) > 4.42;
-    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? PAURA : ammicca ? P.SGUARDI.felice : K.sguardo;
+    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? PAURA : K.sguardo;
     P.occhio(c, ex, ey, ro, Object.assign({ iride: IRIDE, pelle: K.pelle, guarda: P.sguardo(o.sguardo, hx + ex, hy + ey) }, sg));
     if (paura) P.sopracciglio(c, ex + .04, ey - ro * 1.42, ro * 1.1, -.32, K.pelle.bordo, .06);
     else if (st === 2 && !colpito && !felice) P.sopracciglio(c, ex + .05, ey - ro * 1.04, ro * 1.8, .16, K.pelle.bordo, .085);      // da colosso: lo sguardo di chi ne ha viste tante
@@ -6681,15 +6864,18 @@ B.eroi.registra({
     P.ombra(c, X(.2, .56), Y(.2, .56), K.grx * .55, .1, K.ang, .3);
 
     // ---- 5. il guscio: una cupola sola; dentro, il lustro degli scudi, la fascia d'oro dell'orlo e le cuciture incise
-    P.volume(c, cc => P.profilo(cc, K.sag), K.guscio, { luce: [X(.35, -.55), Y(.35, -.55), K.grx * 1.75], ombra: .12, dentro(cc) {
+    const guscio = cc => P.profilo(cc, K.sag), luceGuscio = [X(.35, -.55), Y(.35, -.55), K.grx * 2.2];
+    P.volume(c, guscio, K.guscio, { luce: luceGuscio, ombra: 0, dentro(cc) {
       cc.fillStyle = K.lustro; cc.beginPath();
       for (const m of K.centri) { cc.moveTo(m[0] + m[2], m[1]); cc.ellipse(m[0], m[1], m[2], m[3], 0, 0, TAU); }
       cc.fill();
-      linee(cc, K.fascia, 0, 0); cc.fillStyle = P.sfumatura(cc, ORO, [X(.4, .1), Y(.4, .1), K.grx * 1.7]); cc.fill();
+      velo(cc, luceGuscio);                                           // l'ombra blu del verde, PRIMA dell'oro (che ha la sua, arancio)
+      linee(cc, K.fascia, 0, 0); cc.fillStyle = P.sfumatura(cc, ORO, [X(.4, .1), Y(.4, .1), K.grx * 1.9]); cc.fill();
       cc.lineJoin = cc.lineCap = 'round';
-      linee(cc, K.cuciture, 0, 0); cc.strokeStyle = K.solco; cc.lineWidth = .05; cc.stroke();
-      linee(cc, K.cuciture, .022, .018); cc.strokeStyle = K.filo; cc.lineWidth = .022; cc.stroke();
-      linee(cc, K.tacche, 0, 0); cc.strokeStyle = TACCA; cc.lineWidth = .035; cc.stroke();
+      linee(cc, K.cuciture, 0, 0); cc.strokeStyle = K.solco; cc.lineWidth = .036; cc.stroke();
+      linee(cc, K.cuciture, .02, .016); cc.strokeStyle = K.filo; cc.lineWidth = .02; cc.stroke();
+      linee(cc, K.tacche, 0, 0); cc.strokeStyle = TACCA; cc.lineWidth = .03; cc.stroke();
+      fili(cc, guscio, .06);
     } });
     if (st === 2 && P.fine(o)) { P.bozzi(c, K.borchie, .05, K.guscio); P.bozzi(c, K.patelle, .05, CALCARE); }
     P.riflesso(c, X(.36, -.7), Y(.36, -.7), K.grx * .55, .4 + K.ang, .16);
@@ -6711,15 +6897,19 @@ B.eroi.registra({
    Tre stadi: cucciolo corto e tondo con tre dentini e le pinnette arrotondate; adulto affusolato con il sopracciglio
    da sbruffone; colosso dal petto largo e il dorso scuro, pinna alta, zanne irregolari e lo sfregio ricucito sull'occhio.
    Quattro espressioni: di gioia strizza l'occhio e spalanca il ghigno scodinzolando; di paura si ingobbisce, abbassa la
-   pinna, stringe le pettorali e batte i denti; colpito resta a bocca aperta con le pinne flosce. */
+   pinna, stringe le pettorali e batte i denti; colpito resta a bocca aperta con le pinne flosce.
+   RITOCCATO PER LO STILE «FILM D'ANIMAZIONE»: l'azzurro del corpo ha un'ombra indaco più decisa (dichiarata nelle tinte),
+   così senza contorno scuro stacca dall'acqua blu; la pancia bianca è tonda (ombra fredda azzurra) e da sotto prende il
+   colore dell'acqua; la pinna del dorso ha il filo di controluce; lo sfregio è più fine.
+   Il battito di ciglia non è più deciso dal modello (o.t): lo guida P.battito da chi lo disegna dal vivo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos, max, min } = Math;
 
 // ---- tinte e misure dei tre stadi: tutto ciò che cambia crescendo sta qui, il disegno è uno solo
-const BLU = c => P.tinta(c, '#3a2c9e'), BIANCO = P.tinta('#f6fbff', '#86a8f0');
-const IRIDE = '#ff931c', ROSA = '#ff5f93', VENTRE = BIANCO.base, SFREGIO = '#ffe3ec';
+const INDACO = '#2b22b6', BLU = c => P.tinta(c, INDACO), BIANCO = P.tinta('#f8fcff', '#7a9cf2');
+const IRIDE = '#ff931c', ROSA = '#ff5f93', SFREGIO = '#ffe3ec', ACQUA = '#8fe6ff';
 /* x0, x1, testa: la spina dal codino al muso e la calotta del muso; cu, cv: la cerniera della mandibola sulla spina;
    mang, mand, malt: direzione, lunghezza e spessore della mandibola (segue il labbro); lu0, lu1: il tratto dei denti di sopra;
    nd, ld: quanti denti e quanto lunghi; dors, coda, pett: grandezza della pinna del dorso, della coda, delle pettorali. */
@@ -6727,21 +6917,21 @@ const STADI = [
   { x0: -.56, x1: .78, testa: .34, onda: { amp: .1, onde: .5, testa: .14, potenza: 1.5 },
     su: P.sagoma([[0, .1], [.16, .3], [.38, .58], [.6, .72], [.8, .68], [.93, .52], [1, .34]]),
     giu: P.sagoma([[0, .1], [.16, .3], [.38, .56], [.58, .66], [.68, .6], [.75, .46], [.84, .4], [.93, .36], [1, .32]]),
-    corpo: BLU('#86b8ff'), occhio: .3, eu: .78, ev: -.22, cu: .74, cv: .85, mang: -.3, mand: .44, malt: .17, lu0: .79, lu1: .985, nd: 3, ld: .11, br: 2,
+    corpo: BLU('#7cb4ff'), occhio: .3, eu: .78, ev: -.22, cu: .74, cv: .85, mang: -.3, mand: .44, malt: .17, lu0: .79, lu1: .985, nd: 3, ld: .11, br: 2,
     dors: .36, coda: .6, pett: .6, tondo: .36, falce: .05, sguardo: { palpebra: .05, brillio: 1.25, pupilla: 1.15 } },
   { x0: -.9, x1: .84, testa: .28, onda: { amp: .12, onde: .55, testa: .12, potenza: 1.6 },
     su: P.sagoma([[0, .09], [.14, .22], [.34, .46], [.55, .62], [.72, .64], [.86, .54], [.95, .38], [1, .26]]),
     giu: P.sagoma([[0, .09], [.14, .21], [.34, .42], [.54, .56], [.66, .56], [.74, .44], [.83, .36], [.92, .3], [1, .25]]),
-    corpo: BLU('#6298f0'), occhio: .27, eu: .82, ev: -.28, cu: .73, cv: .85, mang: -.34, mand: .55, malt: .19, lu0: .77, lu1: .985, nd: 5, ld: .12, br: 3,
+    corpo: BLU('#5a94f6'), occhio: .27, eu: .82, ev: -.28, cu: .73, cv: .85, mang: -.34, mand: .55, malt: .19, lu0: .77, lu1: .985, nd: 5, ld: .12, br: 3,
     dors: .5, coda: .8, pett: .82, tondo: .18, falce: .16, sguardo: { palpebra: .12, taglio: .14, sotto: .12, pupilla: 1.15 } },
   { x0: -.96, x1: .88, testa: .26, onda: { amp: .12, onde: .55, testa: .1, potenza: 1.7 },
     su: P.sagoma([[0, .1], [.12, .22], [.3, .48], [.5, .68], [.68, .72], [.84, .58], [.94, .4], [1, .26]]),
     giu: P.sagoma([[0, .1], [.12, .22], [.3, .42], [.5, .58], [.64, .6], [.73, .47], [.82, .38], [.92, .31], [1, .25]]),
-    corpo: BLU('#4a78dc'), occhio: .23, eu: .85, ev: -.3, cu: .72, cv: .85, mang: -.36, mand: .61, malt: .22, lu0: .76, lu1: .985, nd: 6, ld: .15, br: 3,
+    corpo: BLU('#4274e4'), occhio: .23, eu: .85, ev: -.3, cu: .72, cv: .85, mang: -.36, mand: .61, malt: .22, lu0: .76, lu1: .985, nd: 6, ld: .15, br: 3,
     dors: .66, coda: .95, pett: 1, tondo: .12, falce: .2, sguardo: { palpebra: .26, taglio: .3, sotto: .08, pupilla: 1.1 } },
 ];
 for (const K of STADI) {
-  K.pinna = P.tinta(P.mescola(K.corpo.base, '#3a2c9e', .28), '#32258f'); K.lontana = P.tinta(K.corpo.scura, '#241a78');
+  K.pinna = P.tinta(P.mescola(K.corpo.base, INDACO, .26), '#2a1f9c'); K.lontana = P.tinta(K.corpo.scura, '#241a78');
   K.mento = Object.assign({}, BIANCO, { bordo: K.corpo.bordo });      // la mandibola è bianca ma ha il bordo scuro del corpo
   K.dorso = P.alfa(K.corpo.bordo, .24); K.neo = P.alfa(K.corpo.bordo, .75);
 }
@@ -6752,7 +6942,7 @@ const sfregio = (c, x0, y0, x1, y1, punti, scuro) => {
   const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy) || 1, nx = -dy / d * .055, ny = dx / d * .055;
   c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1);
   for (const k of punti) { c.moveTo(x0 + dx * k - nx, y0 + dy * k - ny); c.lineTo(x0 + dx * k + nx, y0 + dy * k + ny); }
-  c.lineCap = 'round'; c.strokeStyle = scuro; c.lineWidth = .085; c.stroke(); c.strokeStyle = SFREGIO; c.lineWidth = .04; c.stroke();
+  c.lineCap = 'round'; c.strokeStyle = scuro; c.lineWidth = .072; c.stroke(); c.strokeStyle = SFREGIO; c.lineWidth = .036; c.stroke();
 };
 const SOTTO = [.55], SOPRA = [];
 
@@ -6783,7 +6973,7 @@ B.eroi.registra({
     const v0 = P.suSpina(s, .36, .85), v1 = P.suSpina(s, .25, .85);
     P.lama(c, { x0: v0.x, y0: v0.y, x1: v1.x, y1: v1.y, px: v1.x - .12, py: v1.y + .14 + kp * .12, tondo: K.tondo, tinta: K.lontana });
     const d0 = P.suSpina(s, .66, -.85), d1 = P.suSpina(s, .38, -.85), giu = paura ? .55 : colpito ? .25 : 0;      // la pinna del dorso: si abbassa con la paura
-    P.lama(c, { x0: d0.x, y0: d0.y, x1: d1.x, y1: d1.y, px: d1.x - .1 - giu * .3 + sin(F - .6) * .03, py: d1.y - K.dors * (1 - giu * .6) - (felice ? .05 : 0), tinta: K.pinna, davanti: .16, dietro: K.falce, tondo: K.tondo });
+    P.lama(c, { x0: d0.x, y0: d0.y, x1: d1.x, y1: d1.y, px: d1.x - .1 - giu * .3 + sin(F - .6) * .03, py: d1.y - K.dors * (1 - giu * .6) - (felice ? .05 : 0), tinta: K.pinna, davanti: .16, dietro: K.falce, tondo: K.tondo, ombra: .06 });
     const ce = P.suSpina(s, K.cu, K.cv);
     const apri = paura ? .3 + sin(t * 30) * .07 : colpito ? .5 : (felice ? max(b, .5) : b) * .58 + .26;       // il ghigno resta sempre socchiuso
     const ge = P.fauci(c, { x: ce.x, y: ce.y, ang: ce.ang + K.mang, lung: K.mand, apri, alt: K.malt, su: .3, tinta: K.mento, interno: '#8a1240', lingua: '#ff7d9c' });
@@ -6792,7 +6982,8 @@ B.eroi.registra({
     // ---- 2. il corpo: dorso più scuro da grande, pancia bianca; sopra, le branchie e il riflesso
     P.volume(c, s, K.corpo, { luce: [.35, -.5, 2], ombra: .07, dentro(cc) {
       if (st) P.fianco(cc, s, -1.4, u => -.52 + .1 * sin(u * 9), K.dorso);
-      P.fianco(cc, s, u => .2 + .1 * sin(u * 6.5 + .8) + max(0, u - .62) * 1.5, 1.4, VENTRE);      // il bianco si stringe verso il labbro: il muso resta azzurro
+      P.fianco(cc, s, u => .2 + .1 * sin(u * 6.5 + .8) + max(0, u - .62) * 1.5, 1.4, P.sfumatura(cc, BIANCO, [.3, .12, 1.8]));      // il bianco (tondo, con l'ombra azzurra) si stringe verso il labbro: il muso resta azzurro
+      P.guancia(cc, .05, .62, .5, ACQUA, .22);                        // da sotto, il colore dell'acqua
     } });
     P.anelli(c, s, K.cu - .13, K.cu - .23, K.br, K.corpo, { v0: -.4, v1: .2, curva: .012, spess: .032 });
     P.suSpina(s, .68, -.62, q); P.riflesso(c, q.x, q.y, .4, q.ang - .05, .12);
@@ -6812,8 +7003,7 @@ B.eroi.registra({
     c.lineCap = 'round'; c.strokeStyle = bordo; c.lineWidth = .05; c.stroke();
     const e = P.suSpina(s, K.eu, K.ev), ro = K.occhio;
     if (st === 2) sfregio(c, e.x - ro * .78, e.y + ro * .7, e.x - ro * 1.2, e.y + ro * 1.75, SOTTO, K.neo);      // lo sfregio passa dietro l'occhio: qui il pezzo di sotto
-    const ammicca = (t % 3.7) > 3.56;
-    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? PAURA : ammicca ? P.SGUARDI.felice : K.sguardo;
+    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? PAURA : K.sguardo;
     P.occhio(c, e.x, e.y, ro, Object.assign({ iride: IRIDE, pelle: K.corpo, guarda: P.sguardo(o.sguardo, e.x, e.y) }, sg));
     if (paura) P.sopracciglio(c, e.x + .02, e.y - ro * 1.42, ro * 1.1, -.32, bordo, .06);
     else if (st && !colpito && !felice) P.sopracciglio(c, e.x + .04, e.y - ro * 1.03, ro * 1.9, e.ang + .06 + st * .13, bordo, .045 + st * .03);      // lo sguardo da sbruffone
@@ -11874,22 +12064,24 @@ const M_SPINTA = nuovaMolla(17, .5);     // spostamenti: rincorsa, slancio, cont
 const MOLLE = [M_CORPO, M_BOING, M_PIEGA, M_SPINTA];
 const BATTITO = .15;                     // secondi che dura un battito di ciglia
 const scosse = { boccone: 0, morso: 0, colpito: 0, cresciuto: 0, scatto: 0 };      // ciò che è appena successo all'eroe (dagli eventi del mondo)
-let nFoto = 0, calma = 1, kSguardo = 1, kBocca = 1, mondoVisto = null, miraEroe = null;
+const impatto = { x: 0, y: 0, r: 0, da: -9 };                                    // il lampo nel punto di un morso al gigante
+let nFoto = 0, calma = 1, kSguardo = 1, kBocca = 1, kAttesa = 1, mondoVisto = null, miraEroe = null, gigateATiro = 0;
 
 function preparaMolle(dt) {
   for (let i = 0; i < MOLLE.length; i++) {
     const m = MOLLE[i], w = m.omega * Math.sqrt(1 - m.smorza * m.smorza), e = Math.exp(-m.smorza * m.omega * dt), co = Math.cos(w * dt), si = Math.sin(w * dt), q = m.smorza * m.omega / w;
     m.a = e * (co + q * si); m.b = e * si / w; m.c = -e * m.omega * m.omega / w * si; m.d = e * (co - q * si);
   }
-  kSguardo = 1 - Math.exp(-dt * 9); kBocca = 1 - Math.exp(-dt * 30);
+  kSguardo = 1 - Math.exp(-dt * 9); kBocca = 1 - Math.exp(-dt * 30); kAttesa = 1 - Math.exp(-dt * 10);
 }
 /* La scheda di una creatura. s = allungamento lungo il corpo (0 = a riposo), g = grandezza in più, i = inclinazione,
    k = spostamento lungo il muso e u = contraccolpo lungo (ux, uy), in raggi; ognuno con la sua velocità (v…).
-   gx, gy = sguardo ammorbidito (nel mondo); b = bocca ammorbidita; il resto sono ricordi del fotogramma prima. */
+   gx, gy = sguardo ammorbidito (nel mondo); b = bocca ammorbidita; att = attesa del morso (anche per il gigante);
+   il resto sono ricordi del fotogramma prima. */
 function animaDi(e) {
   let a = anime.get(e);
   if (!a) {
-    a = { foto: -9, ang: 0, vel: 0, s: 0, vs: 0, g: 0, vg: 0, i: 0, vi: 0, k: 0, vk: 0, u: 0, vu: 0, ux: 0, uy: 0, gx: 0, gy: 0, b: 0,
+    a = { foto: -9, ang: 0, vel: 0, s: 0, vs: 0, g: 0, vg: 0, i: 0, vi: 0, k: 0, vk: 0, u: 0, vu: 0, ux: 0, uy: 0, gx: 0, gy: 0, b: 0, att: 0,
       occhiT: -1, occhiDa: -9, seme: Math.random() * TAU, morsi: 0, bordo: 1, esp: 'normale', espT: -9, morsoT: -9, ruttoT: 0, rutto: 0, sciaT: 0 };
     anime.set(e, a);
   }
@@ -11931,12 +12123,21 @@ function disegnaBollicine(t, dt) {
   }
   ctx.globalAlpha = 1;
 }
-function spegniBollicine() { for (let i = 0; i < N_BOLLICINE; i++) bollicine[i].eta = bollicine[i].vita; bollicineFino = -1; }
+function spegniBollicine() { for (let i = 0; i < N_BOLLICINE; i++) bollicine[i].eta = bollicine[i].vita; bollicineFino = -1; impatto.da = -9; }
+/* Il lampo dell'impatto: un bagliore chiaro e un anello che si allargano in un quarto di secondo dove l'eroe ha morso. */
+function disegnaImpatto(t) {
+  const u = (t - impatto.da) / .24;
+  if (u < 0 || u >= 1) return;
+  const q = 1 - (1 - u) * (1 - u), sp = 1 - u;
+  macchia(impatto.x, impatto.y, impatto.r * (.4 + .9 * q), sfumatura('impatto', [0, 'rgba(255,255,255,.95)', .4, 'rgba(255,244,190,.65)', 1, 'rgba(255,214,110,0)']), sp * sp);
+  ctx.globalAlpha = sp; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5 + impatto.r * .09 * sp;
+  ctx.beginPath(); ctx.arc(impatto.x, impatto.y, impatto.r * (.35 + 1.15 * q), 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+}
 
 let mira = null, miraD = 0;
 function disegnaPredatori(M, t, dt) {
   const h = M.eroe, leggera = vista.qualita === 0;
-  mira = M.inseguitore; miraD = mira ? -1e9 : 1e9;
+  mira = M.inseguitore; miraD = mira ? -1e9 : 1e9; gigateATiro = 0;
   for (const e of M.predatori) {
     if (!visibile(e.x, e.y, e.r * (e.gigante ? 3.6 : 2.9))) continue;
     /* Chi guarda l'eroe: il pericolo che lo insegue; se no la preda (o il prepotente) più vicino. Chi stava già
@@ -11985,9 +12186,9 @@ function disegnaPredatori(M, t, dt) {
           a.ang = e.ang; a.vel = e.vAtt;
           /* Schiaccia e allunga: guizzo allungato quando accelera, scatta o fugge; si raccoglie mentre prende la mira;
              si schiaccia quando frena e quando inverte la rotta. */
-          let sT = limita(acc * .00006, -.09, .09);
+          let sT = limita(acc * .00006, -.09, .06);
           if (e.def.assetto === 'dritto') sT *= .5; else sT -= Math.min(.12, Math.max(0, Math.abs(giro) - 1.2) * .035);
-          if (st === 'carica') sT += .13; else if (st === 'avviso') sT -= .1 * U.dolce(e.carica); else if (st === 'fuga') sT += .05;
+          if (st === 'carica') sT += .11; else if (st === 'avviso') sT -= .1 * U.dolce(e.carica); else if (st === 'fuga') sT += .05;
           let y = a.s - sT, w = a.vs;
           a.s = sT + M_CORPO.a * y + M_CORPO.b * w; a.vs = M_CORPO.c * y + M_CORPO.d * w;
           if (vivo) {
@@ -11999,7 +12200,8 @@ function disegnaPredatori(M, t, dt) {
             else if (st === 'sconfitto') gT = -.05;
             if (e.morsi !== a.morsi) {
               if (e.morsi > a.morsi && h) {
-                const dx = e.x - h.x, dy = e.y - h.y, d = Math.hypot(dx, dy) || 1;
+                const dx = e.x - h.x, dy = e.y - h.y, d = Math.hypot(dx, dy) || 1, q = Math.min(1, h.r * 1.1 / d);
+                impatto.x = h.x + dx * q; impatto.y = h.y + dy * q; impatto.r = e.r * .75; impatto.da = t;
                 a.ux = dx / d; a.uy = dy / d; a.vu += 9; a.vs -= 8; a.vg -= 3;
                 a.vi += (Math.cos(e.ang) * -dy + Math.sin(e.ang) * dx) > 0 ? -5 : 5;
                 chiudiOcchi(a, t);
@@ -12019,6 +12221,7 @@ function disegnaPredatori(M, t, dt) {
           rr *= 1 + limita(a.g, -.2, .25) * calma; incl = a.i * calma;
           px += (co * a.k + a.ux * a.u) * e.r * calma; py += (si * a.k + a.uy * a.u) * e.r * calma;
           occhi = batte(a, t);
+          if (h && e.mordibile && Math.abs(e.x - h.x) + Math.abs(e.y - h.y) < h.r * 3 + e.r * 1.25) gigateATiro = 1;      // l'eroe sta per morderlo
           /* Lo sguardo: fissa l'eroe. Si ammorbidisce nel mondo e poi si porta nelle coordinate del modello (che può
              essere girato e specchiato): così non scatta quando il gigante si volta. */
           let mx = co, my = si;
@@ -12083,18 +12286,23 @@ function disegnaEroe(M, t, dt) {
   if (!h || !h.vivo || !h.def) { scosse.boccone = scosse.morso = scosse.colpito = scosse.cresciuto = scosse.scatto = 0; return; }
   const vel = Math.hypot(h.vx, h.vy), co = Math.cos(h.ang), si = Math.sin(h.ang), a = animaDi(h);
   faseEroe = (faseEroe + dt * (1.1 + vel * .006)) % 1;
-  if (a.foto !== nFoto - 1) { a.ang = h.ang; a.vel = vel; a.gx = co; a.gy = si; a.bordo = 1; a.esp = h.espressione; a.b = h.bocca; }   // la prima volta, o dopo un'assenza
+  if (a.foto !== nFoto - 1) {                                                // la prima volta, o dopo un'assenza
+    if (a.foto < 0) a.g = -.4;                                               // entra in scena con un piccolo «boing»
+    a.ang = h.ang; a.vel = vel; a.gx = co; a.gy = si; a.bordo = 1; a.esp = h.espressione; a.b = h.bocca; a.att = h.attesa;
+  }
   a.foto = nFoto;
   const quiete = 1 - U.dolce(vel / 70);                                      // 1 = fermo: allora respira e dondola
   if (dt > 0) {
     let giro = (h.ang - a.ang) % TAU;
     if (giro > PI) giro -= TAU; else if (giro < -PI) giro += TAU;
+    if (giro > 2 || giro < -2) a.vs -= 3;                                    // dietrofront: si schiaccia mentre si volta
     giro = vel > 40 ? limita(giro / dt, -9, 9) : 0;                          // da quasi fermo l'angolo non dice nulla
     const acc = (vel - a.vel) / dt, scatto = M.scatto.attivo > 0;
     a.ang = h.ang; a.vel = vel;
+    a.att += (Math.max(h.attesa, gigateATiro) - a.att) * kAttesa;            // una preda a tiro (o il gigante da mordere)
     /* Schiaccia e allunga: si allunga un filo quando accelera e nello scatto, si schiaccia quando frena, quando vira
        stretto e mentre prende la rincorsa per il morso; fermo, respira. */
-    let sT = limita(acc * .00005, -.1, .08) + (scatto ? .1 : 0) - Math.min(.06, Math.abs(giro) * .01) - h.attesa * .05 + Math.sin(t * 2.2 + 1) * .012 * quiete;
+    let sT = limita(acc * .00005, -.1, .06) + (scatto ? .09 : 0) - Math.min(.06, Math.abs(giro) * .01) - a.att * .05 + Math.sin(t * 2.2 + 1) * .02 * quiete;
     const contro = h.x <= h.r + .5 ? -h.vx : h.x >= M.largo - h.r - .5 ? h.vx : h.y <= h.r + .5 ? -h.vy : h.y >= M.alto - h.r - .5 ? h.vy : -1e9;   // quanto spinge contro il bordo del mondo
     if (contro > -1e8) {
       if (!a.bordo && contro > 60) a.vs -= 2 + Math.min(4.5, contro / 100);  // ci sbatte: si schiaccia e rimbalza
@@ -12104,20 +12312,20 @@ function disegnaEroe(M, t, dt) {
     /* Ciò che è appena successo (dagli eventi del mondo): un colpo lo strizza, la crescita fa «boing», il boccone è
        uno slancio in avanti seguito da un sussulto di soddisfazione (più forte per il morso a un gigante). */
     if (scosse.colpito) { a.vs -= 7; a.vg -= 2.2; a.vi += a.seme > PI ? 3.2 : -3.2; chiudiOcchi(a, t); }
-    if (scosse.cresciuto) { a.vg += 5.5; a.vs -= 2.5; }
+    if (scosse.cresciuto) { a.vg += 4.6; a.vs -= 2.5; }
     if (scosse.morso) { a.vg += 3.6; a.vs += 4.5; a.vk += 7; a.morsoT = t; a.rutto = 6; a.ruttoT = t + .16; }
     else if (scosse.boccone) { a.vg += 2.8; a.vs += 3; a.vk += 5; a.morsoT = t; a.rutto = 4; a.ruttoT = t + .16; }
-    if (scosse.scatto) a.vs += 2;
+    if (scosse.scatto) a.vs += 1.2;
     const gT = Math.min(h.pulsa, .5) * .07;                                  // i pesciolini: un palpito
-    const iT = limita(giro * .04, -.24, .24) + Math.sin(t * 1.25) * .035 * quiete;   // nelle virate il muso anticipa; fermo, dondola
-    const kT = -.1 * h.attesa;                                               // anticipazione: arretra appena prima del morso
+    const iT = limita(giro * .04, -.24, .24) + Math.sin(t * 1.25) * .05 * quiete;   // nelle virate il muso anticipa; fermo, dondola
+    const kT = -.1 * a.att;                                                  // anticipazione: arretra appena prima del morso
     let y = a.s - sT, w = a.vs;
     a.s = sT + M_CORPO.a * y + M_CORPO.b * w; a.vs = M_CORPO.c * y + M_CORPO.d * w;
     y = a.g - gT; w = a.vg; a.g = gT + M_BOING.a * y + M_BOING.b * w; a.vg = M_BOING.c * y + M_BOING.d * w;
     y = a.i - iT; w = a.vi; a.i = iT + M_PIEGA.a * y + M_PIEGA.b * w; a.vi = M_PIEGA.c * y + M_PIEGA.d * w;
     y = a.k - kT; w = a.vk; a.k = kT + M_SPINTA.a * y + M_SPINTA.b * w; a.vk = M_SPINTA.c * y + M_SPINTA.d * w;
     /* La bocca: si socchiude in anticipo quando c'è una preda a tiro, si spalanca al morso, poi mastica due volte. */
-    let bT = Math.max(h.bocca, h.attesa * .62);
+    let bT = Math.max(h.bocca, a.att * .62);
     const dopo = t - a.morsoT;
     if (dopo > .2 && dopo < .68) { const q = (dopo - .2) / .48, m = Math.sin(q * TAU); bT = Math.max(bT, .3 * m * m * (1 - q * .5)); }
     a.b += (bT - a.b) * kBocca;
@@ -12126,7 +12334,7 @@ function disegnaEroe(M, t, dt) {
       if (a.rutto > 0 && t >= a.ruttoT) {                                    // dopo un boccone grosso, bollicine dalla bocca
         for (let i = 0; i < a.rutto; i++) {
           const av = h.ang + (Math.random() - .5) * 1.1, v0 = 50 + Math.random() * 90;
-          bollicina(t, h.x + co * h.r * .85, h.y + si * h.r * .85 + h.r * .15, Math.cos(av) * v0, Math.sin(av) * v0 - 30, rb * (.07 + Math.random() * .1), .7 + Math.random() * .6);
+          bollicina(t, h.x + co * h.r * .9, h.y + si * h.r * .9 + h.r * .15, Math.cos(av) * v0 + h.vx * .6, Math.sin(av) * v0 + h.vy * .6 - 30, rb * (.07 + Math.random() * .1), .7 + Math.random() * .6);
         }
         a.rutto = 0;
       }
@@ -12170,8 +12378,8 @@ function disegnaEroe(M, t, dt) {
   }
   if (ai.frenesiaT > 0) macchia(h.x, h.y, h.r * (1.75 + .1 * Math.sin(t * 12)), sfumatura('frenesia', [0, 'rgba(255,170,60,.55)', .6, 'rgba(255,120,40,.28)', 1, 'rgba(255,120,40,0)']), 1);
   const k = a.k * h.r * calma;
-  o.x = h.x + co * k; o.y = h.y + si * k + Math.sin(t * 2.2) * h.r * .045 * quiete * calma;
-  o.r = h.r * (1 + limita(a.g, -.2, .3) * calma); o.stira = 1 + limita(a.s, -.28, .3) * calma; o.inclina = a.i * calma;
+  o.x = h.x + co * k; o.y = h.y + si * k + Math.sin(t * 2.2) * h.r * .075 * quiete * calma;
+  o.r = h.r * (1 + limita(a.g, -.45, .3) * calma); o.stira = 1 + limita(a.s, -.28, .3) * calma; o.inclina = a.i * calma;
   o.ang = h.ang; o.fase = faseEroe; o.bocca = limita(a.b, 0, 1); o.battito = batte(a, t);
   o.minaccia = false; o.alfa = h.invul > 0 && Math.floor(t * 10) % 2 === 0 ? .5 : 1; o.stato = 'calmo'; o.t = t; o.attivo = 0; o.carica = 0; o.furia = 0;
   o.vivo = true; o.dettaglio = 1; o.stadio = h.stadio; o.espressione = esp;
@@ -12443,6 +12651,7 @@ function fotogramma() {
   disegnaColpi(M, t);
   disegnaEroe(M, t, dt);
   disegnaBollicine(t, dt);
+  disegnaImpatto(t);
   disegnaNuvole(M);
   disegnaParticelle(M);
   pulito();

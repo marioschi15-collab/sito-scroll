@@ -2,14 +2,16 @@
    tondi da cucciolo e IL SUO SEGNO: il lobo di sopra della coda lungo quanto il corpo, a falce. La coda non è una lama
    rigida ma un nastro su una spina (P.spinaAngoli), così frusta l'acqua come quella vera.
    A caccia la arma sopra la schiena come uno scorpione (è così che stordisce le prede), inarca il dorso, abbassa le
-   pettorali, drizza la dorsale e mostra i denti. */
+   pettorali, drizza la dorsale e mostra i denti.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il blu-violetto ha l'ombra indaco dichiarata nelle tinte (corpo, pinne, falce),
+   così senza contorno scuro stacca dall'acqua; il controluce è più largo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos } = Math;
 
 // ---- tinte: blu-violetto saturo (le ombre le fa il viola-notte), ventre bianco con l'ombra azzurra, pinne un tono più scure
-const T = { corpo: P.tinta('#6f63e6'), pinna: P.tinta('#5f52d2'), lontana: P.tinta('#4a3fae'), ventre: P.tinta('#f6f8ff', '#8fb2ea') };
+const T = { corpo: P.tinta('#6f63e6', '#2c1c98'), pinna: P.tinta('#5f52d2', '#28198c'), lontana: P.tinta('#4a3fae', '#201670'), ventre: P.tinta('#f6f8ff', '#8fb2ea') };
 T.mento = Object.assign({}, P.tinta('#f2f5ff', '#8fb2ea'), { bordo: T.corpo.bordo });       // il mento ha il bordo scuro del corpo
 const VENTRE = T.ventre.base, DORSO = P.alfa(T.corpo.bordo, .22), LAMA = P.alfa('#d9d4ff', .5), NEI = P.alfa(T.corpo.bordo, .55), PUNTA = '#3d3296';
 /* Un siluro tozzo: muso corto a cono che sporge sopra la bocca (il ventre si ritira da u = .8), peduncolo robusto. */
@@ -61,7 +63,7 @@ B.specie.registra({
     if (apri > .1) P.denti(c, ge.x0 + (ge.x1 - ge.x0) * .15, ge.y0 + (ge.y1 - ge.y0) * .15, ge.x1, ge.y1, 5, .085, 1, { tipo: 'punta', varia: .2 });
 
     // ---- 2. il corpo: dorso più scuro, ventre bianco che risale sopra la pettorale, il lampo chiaro sul fianco
-    P.volume(c, s, T.corpo, { luce, ombra: .09, dentro(cc) {
+    P.volume(c, s, T.corpo, { luce, ombra: .12, dentro(cc) {
       P.fianco(cc, s, -1.4, -.5, DORSO);
       P.fianco(cc, s, u => .14 + .08 * sin(u * 7 + 1) - .34 * Math.exp(-((u - .6) / .09) * ((u - .6) / .09)), 1.4, VENTRE);
       P.fianco(cc, s, u => -.02 - .3 * sin((u - .1) / .42 * PI), u => .06, LAMA, .1, .52);

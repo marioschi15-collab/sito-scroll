@@ -5,7 +5,9 @@
    Tutti gli stati letti con P.statoGigante. Da calmo tiene le braccia chiuse a punta, come un tulipano; a caccia le apre a
    fiore, mostra il becco e allunga i tentacoli a tenaglia. Il segnale da ricordare: LE LUCINE AZZURRE che si accendono in
    fila sul fianco e sulle clave, mentre i due tentacoli si avvolgono a molla sopra e sotto la testa = sta per colpire.
-   Quando parte li scaglia dritti in avanti, col mantello stirato e le pinne piegate all'indietro. */
+   Quando parte li scaglia dritti in avanti, col mantello stirato e le pinne piegate all'indietro.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: i pezzi disegnati a mano (membrana fra le braccia, labbro del becco, sifone,
+   orlo delle ventose) usano la linea sottile della cassetta (t.linea, sotto .04) invece del contorno spesso. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
@@ -57,13 +59,13 @@ function braccio(c, a, i, K, st, vicino, q) {
     fase: st.F + i * 1.9, tinta, ombra: 0, lume: vicino ? .04 : 0, n: vicino ? 11 : 8 });
   if (vicino) P.fianco(c, s, la * .2, la * .96, K.sotto, .03, .96, 9);
   for (let passata = vicino ? 0 : 1; passata < (vicino ? 3 : 2); passata++) {       // le lontane: una passata sola, tutta dentro il braccio
-    const piu = passata ? 0 : .03, k = passata === 2 ? .42 : vicino ? 1 : .8, v = la * (vicino ? .97 : .62);
+    const piu = passata ? 0 : .024, k = passata === 2 ? .42 : vicino ? 1 : .8, v = la * (vicino ? .97 : .62);
     c.beginPath();
     for (let j = 0; j < nv; j++) {
       const u = .12 + .78 * j / (nv - 1), r = (.058 - .036 * u) * k + piu;
       P.suSpina(s, u, v, q); c.moveTo(q.x + r, q.y); c.arc(q.x, q.y, r, 0, TAU);
     }
-    c.fillStyle = passata === 2 ? K.cuoreVentosa : passata ? (vicino ? K.ventosa : K.ventosaLontana) : tinta.bordo; c.fill();
+    c.fillStyle = passata === 2 ? K.cuoreVentosa : passata ? (vicino ? K.ventosa : K.ventosaLontana) : tinta.linea; c.fill();
   }
 }
 /* Un tentacolo da preda: stelo sottile e clava in fondo. Quello lontano sta di sopra, quello vicino di sotto. Da calmi
@@ -115,8 +117,8 @@ B.specie.registra({
     for (let i = 0; i < 4; i++) braccio(c, LONTANE[i], i * 2, K, st, false, q);
 
     // ---- 2. in mezzo alle braccia: la membrana scura, la bocca col becco
-    c.beginPath(); c.ellipse(CX + .14, CY, .3, .3, 0, 0, TAU); c.strokeStyle = K.lontano.bordo; c.lineWidth = .1; c.stroke(); c.fillStyle = K.lontano.ombra; c.fill();
-    c.beginPath(); c.ellipse(MX, MY, .2 + becco * .03, .22 + becco * .05, ASSE, 0, TAU); c.strokeStyle = LABBRO.bordo; c.lineWidth = .07; c.stroke(); c.fillStyle = viva ? LABBRO.base : K.sotto; c.fill();
+    c.beginPath(); c.ellipse(CX + .14, CY, .3, .3, 0, 0, TAU); c.strokeStyle = K.lontano.linea; c.lineWidth = .07; c.stroke(); c.fillStyle = K.lontano.ombra; c.fill();
+    c.beginPath(); c.ellipse(MX, MY, .2 + becco * .03, .22 + becco * .05, ASSE, 0, TAU); c.strokeStyle = LABBRO.linea; c.lineWidth = .062; c.stroke(); c.fillStyle = viva ? LABBRO.base : K.sotto; c.fill();
     c.beginPath(); c.ellipse(MX + .02, MY + .01, .11 + becco * .05, .12 + becco * .09, ASSE, 0, TAU); c.fillStyle = '#5a0c34'; c.fill();
     P.corno(c, MX - .06, MY + .07, ASSE + .3 + becco * .55, .25, .19, BECCO, { curva: -.7 });
     P.corno(c, MX - .07, MY - .07, ASSE - .1 - becco * .4, .37, .25, BECCO, { curva: .75 });
@@ -128,7 +130,7 @@ B.specie.registra({
     // ---- 4. la testa (copre le radici delle braccia) e il sifone, che spunta da sotto il colletto
     P.palla(c, HX, HY, .43, .34, -.06, K.pelle, { luce: [HX + .14, HY - .3, 1], ombra: .08 });
     if (viva) P.guancia(c, HX + .27, HY + .2, .17, '#ff4f8a', .34);
-    c.beginPath(); c.ellipse(0, HY + .31, .2, .085, .2, 0, TAU); c.strokeStyle = SIFONE.bordo; c.lineWidth = .08; c.stroke(); c.fillStyle = viva ? SIFONE.base : K.sotto; c.fill();
+    c.beginPath(); c.ellipse(0, HY + .31, .2, .085, .2, 0, TAU); c.strokeStyle = SIFONE.linea; c.lineWidth = .066; c.stroke(); c.fillStyle = viva ? SIFONE.base : K.sotto; c.fill();
     c.beginPath(); c.ellipse(.15, HY + .345, .042, .062, .2, 0, TAU); c.fillStyle = SIFONE.bordo; c.fill();
 
     P.ombra(c, X1 + .12, HY, .2, .38, 0, .4);                                         // l'ombra del colletto sulla testa

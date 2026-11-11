@@ -3,7 +3,10 @@
    ciuffo di braccia arricciate che seguono dietro pulsando: tre lontane scure e tre vicine con le ventose a perline.
    Tre stadi: cucciolo tutto testa con i riccioli corti, adulto con la testa che si allunga all'indietro e gli occhielli,
    colosso viola dal testone a cupola, cornetti sopra gli occhi e braccia lunghe e grosse.
-   Quattro espressioni: di gioia alza un braccio e sventola, di paura sbianca e si raggomitola, colpito lascia penzolare le braccia. */
+   Quattro espressioni: di gioia alza un braccio e sventola, di paura sbianca e si raggomitola, colpito lascia penzolare le braccia.
+   RITOCCATO PER LO STILE «FILM D'ANIMAZIONE»: sotto il mento la testa prende il colore dell'acqua (luce di rimbalzo) e gli
+   occhielli hanno un alone morbido; il resto rendeva già bene con la cassetta nuova. Il battito di ciglia non è più deciso
+   dal modello (o.t): lo guida P.battito da chi lo disegna dal vivo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, U = B.util, TAU = Math.PI * 2, PI = Math.PI, GRADI = PI / 180;
@@ -12,7 +15,7 @@ const { sin, cos, max, min } = Math;
 // ---- tinte e misure dei tre stadi: tutto ciò che cambia crescendo sta qui, il disegno è uno solo
 const CX = .12, CY = -.06, SU = -.07, RX = -.22, RY = .5;                // centro della testa (alzata di SU), radice delle braccia
 const PALLIDA = P.tinta('#f7dcf6', '#b490e6'), PALLIDA_LONTANA = P.tinta('#d3b4ea', '#8a6ad0');
-const LABBRO = P.tinta('#b02a8c'), IRIDE = '#1fc9be', VENTOSA = '#ffe1f2';
+const LABBRO = P.tinta('#b02a8c'), IRIDE = '#1fc9be', VENTOSA = '#ffe1f2', ACQUA = '#8fe6ff';
 const STADI = [
   { rx: .86, ry: .84, gobbe: [[-120, 50, .03]], corpo: P.tinta('#ff8fd6', '#a43ae0'), lontano: P.tinta('#c45fd0', '#5a1f9a'), anello: '#ffc2ec', cuore: '#fff0fa',
     occhio: .33, ex: .27, ey: -.06, fx: .8, bx: .66, by: .36, bocca: .12, lung: .8, spess: .34, nv: 3, corni: 0,
@@ -24,6 +27,7 @@ const STADI = [
     occhio: .28, ex: .29, ey: -.04, fx: .8, bx: .68, by: .37, bocca: .15, lung: 1.22, spess: .44, nv: 6, corni: 1,
     occhielli: [[-.56, -.66, .12], [-.22, -.84, .085], [-.78, -.3, .09], [-.4, -.34, .07], [-.9, -.72, .07], [-.62, -.98, .06], [-.1, -.56, .05]] },
 ];
+for (const K of STADI) K.alone = P.alfa(K.anello, .32);
 /* Le braccia: [angolo, lunghezza, ricciolo, spessore]. Tre vicine e tre lontane, a ventaglio da sotto il mento a dietro la nuca. */
 const VICINE = [[1.8, .86, -2.5, .95], [2.5, 1.05, 2.4, 1], [3.2, .95, 2.9, .9]], LONTANE = [[1.45, .7, -2.2, .85], [2.15, .95, -2.7, .9], [2.85, 1, 2.6, .9]];
 /* Raggio della testa nella direzione ang (0 = muso, 90° = mento): un'ellisse con qualche gobba (la nuca che cresce). */
@@ -65,14 +69,15 @@ B.eroi.registra({
       P.corno(c, CX + .32, CY - .74, -PI / 2 + .05 + (paura ? .5 : 0), .27, .2, pelle, { curva: .4 });
       P.corno(c, CX + .64, CY - .5, -PI / 2 + .6 + (paura ? .5 : 0), .22, .18, pelle, { curva: .4 });
     }
-    const r = K.occhio, ammicca = (t % 4.8) > 4.66;
-    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? P.SGUARDI.spaventato : ammicca ? P.SGUARDI.felice : st === 2 ? { palpebra: .2, taglio: -.12, brillio: 1.15 } : { palpebra: .08, taglio: -.2, brillio: 1.25 };
+    const r = K.occhio;
+    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? P.SGUARDI.spaventato : st === 2 ? { palpebra: .2, taglio: -.12, brillio: 1.15 } : { palpebra: .08, taglio: -.2, brillio: 1.25 };
     P.volume(c, cc => P.profilo(cc, sag), pelle, { luce: [.3, -.5, 1.6], ombra: .12, dentro(cc) {
       P.guancia(cc, .6, .5, .56, '#fff2fa', .62);                     // il musetto chiaro
-      for (let giro = 0; giro < 2; giro++) {
+      P.guancia(cc, .2, .84, .62, ACQUA, .34);                        // sotto il mento la pelle prende il colore dell'acqua
+      for (let giro = 0; giro < 3; giro++) {                          // gli occhielli: alone morbido, anello, cuore chiaro
         cc.beginPath();
-        for (const m of K.occhielli) { const rr = m[2] * (giro ? .5 : 1); cc.moveTo(m[0] + rr, m[1]); cc.arc(m[0], m[1], rr, 0, TAU); }
-        cc.fillStyle = giro ? K.cuore : K.anello; cc.fill();
+        for (const m of K.occhielli) { const rr = m[2] * (giro === 2 ? .5 : giro ? 1 : 1.55); cc.moveTo(m[0] + rr, m[1]); cc.arc(m[0], m[1], rr, 0, TAU); }
+        cc.fillStyle = giro === 2 ? K.cuore : giro ? K.anello : K.alone; cc.fill();
       }
       P.occhio(cc, K.fx, K.ey - .04, r * .8, Object.assign({ iride: IRIDE, pelle, guarda: P.sguardo(o.sguardo, K.fx, K.ey) }, sg));
     } });

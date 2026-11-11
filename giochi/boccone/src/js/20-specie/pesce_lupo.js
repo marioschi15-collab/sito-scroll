@@ -2,15 +2,18 @@
    con un testone da vecchio brontolone: fronte bombata, guance a pieghe e IL SUO SEGNO, i denti storti che
    sporgono anche a bocca chiusa (le zanne di sotto salgono sopra il labbro, come a un bulldog).
    Pinna dorsale continua dalla nuca alla coda (P.cresta), anale lunga, codina tonda, pettorale a ventaglio grande.
-   A caccia spalanca la bocca-tagliola, drizza la cresta e inarca la schiena. */
+   A caccia spalanca la bocca-tagliola, drizza la cresta e inarca la schiena.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: l'azzurro acciaio ha l'ombra indaco dichiarata nelle tinte e le bande sono
+   più decise (senza contorno scuro si impastava con l'acqua); il ventre celeste sfuma nel fianco e finisce in un filo di
+   luce color acqua. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, max } = Math;
 
 // ---- tinte: azzurro acciaio saturo (niente grigio: le ombre vanno al viola-notte), ventre celeste, pinne indaco orlate di chiaro
-const T = { corpo: P.tinta('#5b93e6'), mento: P.tinta('#8fb9f4', '#5a5ecc'), cresta: P.tinta('#4a66cc'), pinna: P.tinta('#6a78ee'), lontana: P.tinta('#3f55b0') };
-const BANDA = P.alfa('#252c80', .5), VENTRE = P.alfa('#b4ecff', .85), NEI = P.alfa(T.corpo.bordo, .5), ORLO = '#cfe6ff', ORLO_IRA = '#ffd9a0';
+const T = { corpo: P.tinta('#6198ea', '#34239c'), mento: P.tinta('#a2c6f8', '#5a5ecc'), cresta: P.tinta('#4a66cc', '#2a1f8e'), pinna: P.tinta('#6a78ee', '#3a2ab0'), lontana: P.tinta('#3f55b0') };
+const BANDA = P.alfa('#211a78', .64), VENTRE = '#c9f1ff', ACQUA = 'rgba(222,249,255,.6)', NEI = P.alfa(T.corpo.bordo, .5), ORLO = '#cfe6ff', ORLO_IRA = '#ffd9a0';
 /* Testone massiccio (il punto più grosso è la nuca, a u = .86), corpo che si assottiglia fino alla codina. Il ventre si
    ritira da u = .76 in avanti: lì lavora la mandibola. */
 const SU = P.sagoma([[0, .07], [.12, .14], [.35, .22], [.58, .3], [.75, .42], [.86, .5], [.94, .46], [1, .33]]);
@@ -42,9 +45,11 @@ B.specie.registra({
     if (apri > .25) P.denti(c, ge.x0 + gx * .1, ge.y0 + gy * .1, ge.x0 + gx * .6, ge.y0 + gy * .6, 4, .11, 1, { tipo: 'punta', varia: .4, seme: 5 });
 
     // ---- 2. il corpo: ventre chiaro, bande blu notte, lentiggini sulla testa
-    P.volume(c, s, T.corpo, { luce, ombra: .07, dentro(cc) {
-      P.fianco(cc, s, u => .5 + .1 * sin(u * 13), 1.4, VENTRE, 0, .8);
+    P.volume(c, s, T.corpo, { luce, ombra: .1, dentro(cc) {
+      P.fianco(cc, s, u => .26 + .1 * sin(u * 13), 1.4, P.alfa(VENTRE, .4), 0, .8);                // il ventre: due passate, sfuma nel fianco
+      P.fianco(cc, s, u => .54 + .1 * sin(u * 13), 1.4, P.alfa(VENTRE, .85), 0, .8);
       P.bande(cc, s, BANDE, BANDA, 5);
+      P.fianco(cc, s, .84, 1.4, ACQUA, .02, .78);                                                  // filo di luce d'acqua lungo la pancia
       P.macchie(cc, s, { n: 9, seme: 6, u0: .76, u1: .99, v0: -.85, v1: .1, r0: .016, r1: .032, colore: NEI, lungo: 1 });
     } });
     const g0 = P.suSpina(s, .8, -.62), g1 = P.suSpina(s, .755, -.1), g2 = P.suSpina(s, .77, .42);                     // 3. sopra: opercolo, pieghe della guancia, riflesso

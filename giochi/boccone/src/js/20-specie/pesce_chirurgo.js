@@ -1,14 +1,17 @@
 /* Boccone — specie: PESCE CHIRURGO (taglia 2, branco). Ovale blu intenso con il disegno scuro «a tavolozza» (una fascia
    lungo la schiena e un anello sul fianco), coda gialla orlata di scuro, pettorale con la punta gialla e la piccola lama
-   bianca alla base della coda: da calmo è ripiegata, a caccia scatta in fuori (cambia la sagoma). Niente nero: è blu notte. */
+   bianca alla base della coda: da calmo è ripiegata, a caccia scatta in fuori (cambia la sagoma). Niente nero: è blu notte.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il blu ha l'ombra indaco dichiarata nelle tinte (senza contorno scuro si
+   impastava con l'acqua), il ventre schiarisce a poco a poco e finisce in un filo di luce color acqua, dorsale e anale
+   sono piene fino in punta. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos, max } = Math;
 
 // ---- tinte (una volta sola) e sagoma: ovale pieno, muso piccolo e un po' a punta
-const T = { corpo: P.tinta('#2a6df4'), notte: P.tinta('#28257c'), pinna: P.tinta('#3f8eff'), coda: P.tinta('#ffd21f', '#ff6a14'), lama: P.tinta('#ffffff', '#8cb2ff'), labbra: P.tinta('#ff7fa6') };
-const NOTTE = T.notte.base, CIELO = '#86dcff';
+const T = { corpo: P.tinta('#2a6df4', '#2318a8'), notte: P.tinta('#28257c'), pinna: P.tinta('#3f8eff', '#2a2fc4'), coda: P.tinta('#ffd21f', '#ff6a14'), lama: P.tinta('#ffffff', '#8cb2ff'), labbra: P.tinta('#ff7fa6') };
+const NOTTE = T.notte.base, CIELO = '#86dcff', ACQUA = 'rgba(214,247,255,.55)';
 const SU = P.sagoma([[0, .13], [.1, .26], [.3, .6], [.55, .76], [.78, .7], [.93, .5], [1, .34]]);
 const GIU = P.sagoma([[0, .13], [.1, .26], [.3, .58], [.55, .72], [.78, .64], [.93, .44], [1, .28]]);
 const ONDA = { amp: .1, onde: .5, testa: .14 };
@@ -45,14 +48,16 @@ B.specie.registra({
     for (let i = 0; i <= g.n; i += g.n) P.filo(c, [g.bx[i], g.by[i], g.mx[i], g.my[i], g.mx[i] + (g.ex[i] - g.mx[i]) * .72, g.my[i] + (g.ey[i] - g.my[i]) * .72], .09, .04, NOTTE, .03);
     const d0 = P.suSpina(s, .78, -.92), d1 = P.suSpina(s, .08, -.85), a0 = P.suSpina(s, .5, .9), a1 = P.suSpina(s, .08, .85);
     P.pinna(c, { x0: d0.x, y0: d0.y, x1: d1.x, y1: d1.y, a0: -(PI / 2 + .5 - alza), a1: -(PI - .5 - alza * .5), lung: m ? .44 : .36, profilo: [.6, .85, 1, 1, .95, .8], n: 10, smerlo: .25,
-      onda: .07, fase: F * 2, passo: .5, tinta: T.pinna, orlo: CIELO });
-    P.pinna(c, { x0: a0.x, y0: a0.y, x1: a1.x, y1: a1.y, a0: PI / 2 + .6, a1: PI - .5, lung: .32, profilo: [.7, 1, .95, .8], n: 7, smerlo: .25, onda: .07, fase: F * 2 - 1, passo: .5, tinta: T.pinna, orlo: CIELO });
+      onda: .07, fase: F * 2, passo: .5, tinta: T.pinna, orlo: CIELO, velo: 1 });
+    P.pinna(c, { x0: a0.x, y0: a0.y, x1: a1.x, y1: a1.y, a0: PI / 2 + .6, a1: PI - .5, lung: .32, profilo: [.7, 1, .95, .8], n: 7, smerlo: .25, onda: .07, fase: F * 2 - 1, passo: .5, tinta: T.pinna, orlo: CIELO, velo: 1 });
     const pv = P.suSpina(s, .64, .95);
     P.pinna(c, { x0: pv.x + .06, y0: pv.y - .05, x1: pv.x - .1, y1: pv.y - .05, a0: PI * .58 + sin(F - .5) * .1, a1: PI * .8 + sin(F - .5) * .1, lung: .38, profilo: [1, .6], n: 3, piega: .12, tinta: T.pinna, righe: false });
 
     // ---- 2. il corpo: ventre appena più chiaro, la tavolozza blu notte
-    P.volume(c, s, T.corpo, { luce, dentro(cc) {
-      P.fianco(cc, s, .5, 1.4, P.alfa(CIELO, .22));
+    P.volume(c, s, T.corpo, { luce, ombra: .13, dentro(cc) {
+      P.fianco(cc, s, .28, 1.4, P.alfa(CIELO, .2));                                                 // il ventre schiarisce in due passate (sfuma nel fianco)
+      P.fianco(cc, s, .58, 1.4, P.alfa(CIELO, .3));
+      P.fianco(cc, s, .86, 1.4, ACQUA, .06, .92);                                                   // e finisce in un filo di luce d'acqua
       P.fianco(cc, s, -1.4, orloFascia, NOTTE, 0, .93, 14);
       anello(cc, s);
     } });

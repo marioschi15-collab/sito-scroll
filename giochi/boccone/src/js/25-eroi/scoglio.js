@@ -4,26 +4,31 @@
    Tre stadi: cucciolo tutto testa con il guscio liscio e tondo, adulto con le pale lunghe e i primi bozzi sul dorso,
    colosso dal guscio possente con la cresta di punte d'oro, le borchie sugli scudi e due patelle attaccate dietro.
    Quattro espressioni: di gioia allunga il collo e sventola le pale; di paura tira la testa sotto il guscio e sbircia;
-   colpito resta con le pale a penzoloni. La testa e la sua faccia si disegnano PRIMA del guscio, che ne copre il collo. */
+   colpito resta con le pale a penzoloni. La testa e la sua faccia si disegnano PRIMA del guscio, che ne copre il collo.
+   RITOCCATO PER LO STILE «FILM D'ANIMAZIONE»: i verdi sono più vivi e non prendono più il velo viola della cassetta (sul
+   verde il viola ingrigisce: sono colori opposti), ma un'ombra blu petrolio fatta qui (vedi `velo` e `fili`); il guscio
+   resta smeraldo fino all'orlo, l'oro è pulito, pale e bozzi hanno la linea sottile e il filo di controluce.
+   Il battito di ciglia non è più deciso dal modello (o.t): lo guida P.battito da chi lo disegna dal vivo. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos, max, min } = Math;
 
 // ---- tinte e misure dei tre stadi: tutto ciò che cambia crescendo sta qui, il disegno è uno solo
-const PELLE = c => P.tinta(c, '#0e8f78'), GUSCIO = c => P.tinta(c, '#0b4f92');
+const PELLE = c => P.tinta(c, '#0a8f66'), GUSCIO = c => P.tinta(c, '#0a4a9c');
 const ORO = P.tinta('#ffd23f', '#ff7a1a'), CREMA = P.tinta('#fff3c4', '#e8925c'), CALCARE = P.tinta('#fff1d6', '#d98a5a');
-const IRIDE = '#c8551c', GOLA = '#f6ffb4', ROSA = '#ff5f8f', TACCA = P.alfa(ORO.bordo, .45), PIEGA = P.alfa(CREMA.scura, .5);
+const IRIDE = '#c8551c', GOLA = '#ecff84', ROSA = '#ff5f8f', TACCA = P.alfa(ORO.bordo, .45), PIEGA = P.alfa(CREMA.scura, .5);
+const CONTROLUCE = P.alfa('#c8f3ff', .36), BLU = '#06357a', VELO = [P.alfa(BLU, 0), P.alfa(BLU, .14), P.alfa(BLU, .3), P.alfa(BLU, .2)];
 /* gx, gy, grx, gry, ang: centro, mezze misure e inclinazione del guscio; hx, hy, r: centro e raggio della testa;
    pala: lunghezza delle pinne davanti; nodi: quanto spuntano i bozzi della cresta (0 = guscio liscio);
    rit: di quanto la testa rientra sotto il guscio per la paura. */
 const STADI = [
   { gx: -.44, gy: -.1, grx: .6, gry: .68, ang: -.1, hx: .56, hy: -.02, r: .58, occhio: .3, bocca: .18, pala: .6, nodi: 0, rit: .2,
-    pelle: PELLE('#a4ea5c'), guscio: GUSCIO('#3fd3a2'), sguardo: { palpebra: .05, brillio: 1.25 } },
+    pelle: PELLE('#a2f04a'), guscio: GUSCIO('#24dc9a'), sguardo: { palpebra: .05, brillio: 1.25 } },
   { gx: -.46, gy: -.08, grx: .76, gry: .78, ang: -.08, hx: .68, hy: -.01, r: .52, occhio: .28, bocca: .17, pala: .8, nodi: .45, rit: .22,
-    pelle: PELLE('#86dc48'), guscio: GUSCIO('#17b488'), sguardo: { palpebra: .2, sotto: .1 } },
+    pelle: PELLE('#86e23a'), guscio: GUSCIO('#12c48a'), sguardo: { palpebra: .2, sotto: .1 } },
   { gx: -.5, gy: -.1, grx: .86, gry: .88, ang: -.07, hx: .72, hy: .01, r: .5, occhio: .25, bocca: .17, pala: .96, nodi: 1, rit: .24,
-    pelle: PELLE('#68c63c'), guscio: GUSCIO('#0e9080'), sguardo: { palpebra: .3, taglio: .1, sotto: .08 } },
+    pelle: PELLE('#68cc30'), guscio: GUSCIO('#0aa27e'), sguardo: { palpebra: .3, taglio: .1, sotto: .08 } },
 ];
 /* Le forme «in misura del guscio» (u da -1 dietro a +1 davanti, v da -1 in cima a circa +.45 all'orlo) e della testa
    (in raggi della testa): si riportano una volta sola nelle misure di ogni stadio. */
@@ -55,12 +60,27 @@ for (const K of STADI) {
     K.nodiP.push(e);
   }
   K.lontana = P.tinta(K.pelle.scura, '#0a3f6e'); K.placca = P.alfa(K.pelle.scura, .5);
-  K.lustro = P.alfa(K.guscio.luce, .3); K.solco = P.alfa(K.guscio.bordo, .6); K.filo = P.alfa(K.guscio.luce, .5);
+  K.lustro = P.alfa(P.mescola(K.guscio.luce, '#e2ff7a', .45), .18); K.solco = P.alfa(K.guscio.bordo, .6); K.filo = P.alfa(K.guscio.luce, .5);
 }
 const SCAGLIE = [[.3, -.09, .075], [.47, -.12, .07], [.64, -.12, .06], [.8, -.09, .045], [.4, .035, .04], [.58, .035, .035], [.74, .025, .03]];
 const PAURA = Object.assign({ raggioIride: .54 }, P.SGUARDI.spaventato);      // occhio sbarrato: tanto bianco, iride piccola
 const TMP = new Array(20);                                          // il profilo della testa col mento che scende (riscritto a ogni disegno)
 
+/* L'ombra dei pezzi VERDI, da usare dentro `dentro` di un P.volume con `ombra: 0`: lo stesso velo che modella i motivi
+   nella cassetta, ma blu petrolio invece che viola. L = la luce del volume, [x, y, r]. */
+const velo = (cc, L) => {
+  const r = L[2], x = L[0] - .24 * r, y = L[1], g = cc.createRadialGradient(x, y, r * .34, x, y, r);
+  g.addColorStop(0, VELO[0]); g.addColorStop(.5, VELO[1]); g.addColorStop(.8, VELO[2]); g.addColorStop(1, VELO[3]);
+  cc.fillStyle = g; cc.fillRect(x - r * 1.5, y - r * 1.5, r * 3, r * 3);
+};
+/* …e i due fili che la cassetta mette con l'ombra: il controluce color acqua lungo il bordo in ombra (largo w) e il filo
+   di luce lungo il bordo illuminato. Vanno per ultimi, sopra i motivi. */
+const fili = (cc, traccia, w) => {
+  cc.save();
+  cc.translate(-.17 * w, -.47 * w); traccia(cc); cc.strokeStyle = CONTROLUCE; cc.lineWidth = w; cc.stroke();
+  cc.translate(.31 * w, .86 * w); traccia(cc); cc.strokeStyle = 'rgba(255,255,255,.24)'; cc.lineWidth = w * .84; cc.stroke();
+  cc.restore();
+};
 /* Tante spezzate in un tracciato solo, spostate di (dx, dy): cuciture, tacche, pieghe. */
 const linee = (c, liste, dx, dy) => {
   c.beginPath();
@@ -72,15 +92,17 @@ const pala = (c, x, y, fi, L, tinta, macchia) => {
   c.save(); c.translate(x, y); c.rotate(fi);
   c.beginPath(); c.moveTo(-.06 * L, -.15 * L); c.bezierCurveTo(.25 * L, -.36 * L, .78 * L, -.32 * L, L, -.07 * L);
   c.quadraticCurveTo(1.07 * L, .06 * L, .92 * L, .11 * L); c.bezierCurveTo(.62 * L, .18 * L, .3 * L, .1 * L, -.06 * L, .17 * L); c.closePath();
-  c.lineJoin = 'round'; c.strokeStyle = tinta.bordo; c.lineWidth = P.BORDO * 2; c.stroke();
-  const g = c.createLinearGradient(0, 0, L, 0); g.addColorStop(0, tinta.scura); g.addColorStop(.35, tinta.base); g.addColorStop(1, tinta.chiara);
+  c.lineJoin = 'round'; c.strokeStyle = tinta.linea; c.lineWidth = .055; c.stroke();                             // la linea: sottile (metà resta sotto il colore)
+  const g = c.createLinearGradient(0, 0, L, 0); g.addColorStop(0, tinta.scura); g.addColorStop(.3, tinta.base); g.addColorStop(1, tinta.chiara);
   c.fillStyle = g; c.fill();
   if (macchia) {
     c.fillStyle = macchia; c.beginPath();
     for (const m of SCAGLIE) { c.moveTo((m[0] + m[2]) * L, m[1] * L); c.arc(m[0] * L, m[1] * L, m[2] * L, 0, TAU); }
     c.fill();
-    c.beginPath(); c.moveTo(.2 * L, -.215 * L); c.quadraticCurveTo(.55 * L, -.29 * L, .86 * L, -.15 * L);         // filo di luce sul bordo d'attacco
-    c.lineCap = 'round'; c.strokeStyle = P.alfa(tinta.luce, .7); c.lineWidth = .028; c.stroke();
+    c.beginPath(); c.moveTo(.2 * L, -.215 * L); c.quadraticCurveTo(.55 * L, -.29 * L, .86 * L, -.15 * L);         // il bordo d'attacco volta le spalle alla luce: filo di controluce
+    c.lineCap = 'round'; c.strokeStyle = CONTROLUCE; c.lineWidth = .03; c.stroke();
+    c.beginPath(); c.moveTo(.3 * L, .075 * L); c.quadraticCurveTo(.6 * L, .12 * L, .88 * L, .07 * L);              // e l'altro bordo prende la luce
+    c.strokeStyle = P.alfa(tinta.luce, .55); c.lineWidth = .026; c.stroke();
   }
   c.restore();
 };
@@ -109,7 +131,7 @@ B.eroi.registra({
     if (K.nodi) {
       c.beginPath();
       for (const e of K.nodiP) { c.moveTo(e[0], e[1]); c.quadraticCurveTo(e[2], e[3], e[4], e[5]); c.quadraticCurveTo(e[6], e[7], e[8], e[9]); }
-      c.lineJoin = 'round'; c.strokeStyle = K.guscio.bordo; c.lineWidth = P.BORDO * 2; c.stroke();
+      c.lineJoin = 'round'; c.strokeStyle = K.guscio.linea; c.lineWidth = .05; c.stroke();
       const g = c.createRadialGradient(K.gx, K.gy, K.gry * .92, K.gx, K.gy, K.gry * 1.17); g.addColorStop(0, K.guscio.base); g.addColorStop(.5, K.guscio.chiara); g.addColorStop(1, ORO.base);
       c.fillStyle = g; c.fill();
     }
@@ -125,15 +147,17 @@ B.eroi.registra({
     c.save(); c.translate(hx, hy); c.rotate(sin(F - .9) * .03 + sin(t * 1.7) * .012 + (felice ? -.13 : colpito ? .12 : 0));
     for (let i = 0; i < 20; i++) TMP[i] = K.testa[i];
     TMP[13] += .1 * r * apre; TMP[14] += .03 * r * apre; TMP[15] += .26 * r * apre; TMP[17] += .12 * r * apre;
-    P.volume(c, cc => P.profilo(cc, TMP), K.pelle, { luce: [.25 * r, -.4 * r, 1.9 * r], ombra: .055, dentro(cc) {
-      P.guancia(cc, .3 * r, .95 * r, .85 * r, GOLA, .7);              // la gola chiara
+    const testa = cc => P.profilo(cc, TMP), luceTesta = [.25 * r, -.4 * r, 2.1 * r];
+    P.volume(c, testa, K.pelle, { luce: luceTesta, ombra: 0, dentro(cc) {
+      velo(cc, luceTesta);
+      P.guancia(cc, .3 * r, .95 * r, .85 * r, GOLA, .7);              // la gola chiara, che sfuma nella guancia
       cc.fillStyle = K.placca; cc.beginPath();                        // le placche scure sulla testa
       for (const m of PLACCHE) { cc.moveTo((m[0] + m[2]) * r, m[1] * r); cc.arc(m[0] * r, m[1] * r, m[2] * r, 0, TAU); }
       cc.fill();
+      fili(cc, testa, .05);
     } });
     P.guancia(c, -.25 * r, .56 * r, .32 * r, ROSA, paura ? .25 : felice ? .85 : .55);
-    const ammicca = (t % 4.6) > 4.42;
-    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? PAURA : ammicca ? P.SGUARDI.felice : K.sguardo;
+    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? PAURA : K.sguardo;
     P.occhio(c, ex, ey, ro, Object.assign({ iride: IRIDE, pelle: K.pelle, guarda: P.sguardo(o.sguardo, hx + ex, hy + ey) }, sg));
     if (paura) P.sopracciglio(c, ex + .04, ey - ro * 1.42, ro * 1.1, -.32, K.pelle.bordo, .06);
     else if (st === 2 && !colpito && !felice) P.sopracciglio(c, ex + .05, ey - ro * 1.04, ro * 1.8, .16, K.pelle.bordo, .085);      // da colosso: lo sguardo di chi ne ha viste tante
@@ -149,15 +173,18 @@ B.eroi.registra({
     P.ombra(c, X(.2, .56), Y(.2, .56), K.grx * .55, .1, K.ang, .3);
 
     // ---- 5. il guscio: una cupola sola; dentro, il lustro degli scudi, la fascia d'oro dell'orlo e le cuciture incise
-    P.volume(c, cc => P.profilo(cc, K.sag), K.guscio, { luce: [X(.35, -.55), Y(.35, -.55), K.grx * 1.75], ombra: .12, dentro(cc) {
+    const guscio = cc => P.profilo(cc, K.sag), luceGuscio = [X(.35, -.55), Y(.35, -.55), K.grx * 2.2];
+    P.volume(c, guscio, K.guscio, { luce: luceGuscio, ombra: 0, dentro(cc) {
       cc.fillStyle = K.lustro; cc.beginPath();
       for (const m of K.centri) { cc.moveTo(m[0] + m[2], m[1]); cc.ellipse(m[0], m[1], m[2], m[3], 0, 0, TAU); }
       cc.fill();
-      linee(cc, K.fascia, 0, 0); cc.fillStyle = P.sfumatura(cc, ORO, [X(.4, .1), Y(.4, .1), K.grx * 1.7]); cc.fill();
+      velo(cc, luceGuscio);                                           // l'ombra blu del verde, PRIMA dell'oro (che ha la sua, arancio)
+      linee(cc, K.fascia, 0, 0); cc.fillStyle = P.sfumatura(cc, ORO, [X(.4, .1), Y(.4, .1), K.grx * 1.9]); cc.fill();
       cc.lineJoin = cc.lineCap = 'round';
-      linee(cc, K.cuciture, 0, 0); cc.strokeStyle = K.solco; cc.lineWidth = .05; cc.stroke();
-      linee(cc, K.cuciture, .022, .018); cc.strokeStyle = K.filo; cc.lineWidth = .022; cc.stroke();
-      linee(cc, K.tacche, 0, 0); cc.strokeStyle = TACCA; cc.lineWidth = .035; cc.stroke();
+      linee(cc, K.cuciture, 0, 0); cc.strokeStyle = K.solco; cc.lineWidth = .036; cc.stroke();
+      linee(cc, K.cuciture, .02, .016); cc.strokeStyle = K.filo; cc.lineWidth = .02; cc.stroke();
+      linee(cc, K.tacche, 0, 0); cc.strokeStyle = TACCA; cc.lineWidth = .03; cc.stroke();
+      fili(cc, guscio, .06);
     } });
     if (st === 2 && P.fine(o)) { P.bozzi(c, K.borchie, .05, K.guscio); P.bozzi(c, K.patelle, .05, CALCARE); }
     P.riflesso(c, X(.36, -.7), Y(.36, -.7), K.grx * .55, .4 + K.ang, .16);

@@ -1,14 +1,17 @@
 /* Boccone — specie: CASTAGNOLA (taglia 1, branco). Pesciolino ovale blu notte: squame orlate d'azzurro elettrico, un filo
    di luce lungo il dorso, occhione dorato e la coda a forbice dai bordi scuri, che si apre e si chiude mentre nuota.
-   Il tratto esagerato sono l'occhio e la forbice della coda. */
+   Il tratto esagerato sono l'occhio e la forbice della coda.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: il blu ha l'ombra indaco dichiarata nelle tinte (senza contorno scuro si
+   impastava con l'acqua), il ventre lilla è più chiaro e sfuma nel fianco, le pinne sono piene fino in punta e sotto la
+   pancia corre un filo di luce color acqua. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, max } = Math;
 
 // ---- tinte (una volta sola) e sagoma: ovale e un po' alto, testa grossa
-const T = { corpo: P.tinta('#3848dc'), ventre: P.tinta('#8f9cff', '#5b4bd6'), pinna: P.tinta('#3d7bff'), pett: P.tinta('#63b0ff'), labbra: P.tinta('#ff6f8f') };
-const NEON = '#4fe0ff', GHIACCIO = '#b4f2ff', SQUAMA = { luce: NEON, scura: T.corpo.bordo };
+const T = { corpo: P.tinta('#3848dc', '#23158c'), ventre: P.tinta('#b3bcff', '#5b4bd6'), pinna: P.tinta('#3d7bff', '#2a2fc4'), pett: P.tinta('#63b0ff', '#2b55e8'), labbra: P.tinta('#ff6f8f') };
+const NEON = '#4fe0ff', GHIACCIO = '#b4f2ff', SQUAMA = { luce: NEON, scura: T.corpo.bordo }, ACQUA = 'rgba(214,247,255,.6)';
 const SU = P.sagoma([[0, .1], [.12, .22], [.3, .48], [.5, .62], [.7, .63], [.88, .52], [1, .32]]);
 const GIU = P.sagoma([[0, .1], [.12, .2], [.3, .43], [.5, .55], [.7, .55], [.88, .43], [1, .25]]);
 const ONDA = { amp: .12, onde: .55, testa: .13 };
@@ -36,8 +39,10 @@ B.specie.registra({
     P.pinna(c, { x0: pv.x + .06, y0: pv.y - .05, x1: pv.x - .08, y1: pv.y - .05, a0: PI * .6 + sin(F - .5) * .1, a1: PI * .8 + sin(F - .5) * .1, lung: .42, profilo: [1, .5], n: 3, piega: .1, tinta: T.pinna, orlo: NEON, righe: false });
 
     // ---- 2. il corpo: ventre lilla, filo elettrico lungo il dorso, squame orlate d'azzurro
-    P.volume(c, s, T.corpo, { luce, ombra: .09, dentro(cc) {
-      P.fianco(cc, s, u => .5 - .18 * sin(u * PI), 1.4, T.ventre.base);
+    P.volume(c, s, T.corpo, { luce, ombra: .12, dentro(cc) {
+      P.fianco(cc, s, u => .3 - .18 * sin(u * PI), 1.4, P.alfa(T.ventre.base, .45));              // il ventre: due passate, sfuma nel fianco
+      P.fianco(cc, s, u => .52 - .18 * sin(u * PI), 1.4, T.ventre.chiara);
+      P.fianco(cc, s, .86, 1.4, ACQUA, .05, .9);                                                  // filo di luce d'acqua sotto la pancia
       P.fianco(cc, s, -.93, -.78, NEON, .2, .97);
       if (P.fine(o)) P.squame(cc, s, { u0: .14, u1: .7, v0: -.68, v1: .4, righe: 4, tinta: SQUAMA, forza: .95 });
     } });

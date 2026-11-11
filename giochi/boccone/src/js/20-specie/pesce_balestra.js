@@ -1,14 +1,17 @@
 /* Boccone — specie: PESCE BALESTRA (taglia 3, scattante). Corpo a rombo, occhio piccolo messo in alto e all'indietro,
    bocca minuscola con i dentoni sempre in vista (il tratto esagerato), disegni geometrici: fascia blu notte sull'occhio
    filettata d'azzurro, baffo giallo, sbarre oblique sul fianco. La spina «a grilletto» sta ripiegata da calmo e scatta
-   dritta a caccia. Nuota come i balestra veri: corpo quasi fermo, dorsale e anale che ondeggiano. */
+   dritta a caccia. Nuota come i balestra veri: corpo quasi fermo, dorsale e anale che ondeggiano.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: era diventato pallido. Tinte più sature (dorso arancio dorato, pinne di un
+   azzurro pieno con l'ombra indaco e piene fino in punta); il corpo ha ombra: 0 e il ventre bianco ha la sua sfumatura
+   calda (il velo viola della cassetta lo ingrigiva), più le luci del bordo fatte in casa (luciBordo). */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, max } = Math;
 
 // ---- tinte (una volta sola) e sagoma: un rombo, alto a metà corpo, con la fronte lunga e dritta
-const T = { corpo: P.tinta('#fbc04a', '#d6542c'), ventre: P.tinta('#fffdf0', '#f0a878'), notte: P.tinta('#2b2a80'), pinna: P.tinta('#6fc4ff'), coda: P.tinta('#ffd23a', '#ff6a14'), labbra: P.tinta('#ffcf24', '#ff6a14') };
+const T = { corpo: P.tinta('#ffb42a', '#f0561a'), ventre: P.tinta('#fffdf2', '#f6b088'), notte: P.tinta('#2b2a80'), pinna: P.tinta('#4aaeff', '#2a3fd0'), coda: P.tinta('#ffd23a', '#ff6a14'), labbra: P.tinta('#ffcf24', '#ff6a14') };
 const NOTTE = T.notte.base, BLU = '#2f9dff', GIALLO = '#ffd21f';
 const SU = P.sagoma([[0, .12], [.12, .22], [.32, .56], [.5, .8], [.62, .76], [.8, .5], [.92, .3], [1, .18]]);
 const GIU = P.sagoma([[0, .12], [.12, .22], [.32, .56], [.5, .78], [.62, .72], [.8, .46], [.92, .28], [1, .17]]);
@@ -17,6 +20,10 @@ const ONDA = { amp: .06, onde: .45, testa: .2 };                      // corpo r
 const fa = v => .615 - .035 * v, fb = v => .765 - .055 * v;
 const FASCIA = [[fa, fb]], FILETTI = [[v => fa(v) - .034, v => fa(v) - .012], [v => fb(v) + .012, v => fb(v) + .034], [.905, .93]];
 /* Le sbarre oblique sul fianco di dietro: tre quadrilateri in un colpo solo, dal mezzo del corpo al ventre. */
+/* Le luci del bordo fatte in casa (il volume del corpo ha ombra: 0, perché il velo viola della cassetta ingrigiva il giallo,
+   la crema e il bianco: qui ogni zona ha già la sua sfumatura, con l'ombra del suo colore). Un filo di luce lungo il dorso
+   e il controluce color acqua lungo il ventre. Si chiama per ultima dentro `dentro`. */
+const luciBordo = (cc, s) => { P.fianco(cc, s, -1.4, -.93, 'rgba(255,255,255,.28)', 0, 1, 8); P.fianco(cc, s, .9, 1.4, 'rgba(200,243,255,.42)', 0, 1, 8); };
 const SBARRE = [.17, .285, .4];
 const sbarre = (c, s) => {
   const q = {}; c.beginPath();
@@ -51,21 +58,23 @@ B.specie.registra({
     for (const v of [-1, 1]) {
       const a = P.suSpina(s, .45, v * .92), z = P.suSpina(s, .09, v * .85);
       P.pinna(c, { x0: a.x, y0: a.y, x1: z.x, y1: z.y, a0: v * (PI / 2 + .4), a1: v * (PI - .3), lung: .52, profilo: [.85, 1, .9, .7, .5, .36], n: 9, smerlo: .2, piega: v * -.08,
-        onda: .17, fase: F * 2 + (v > 0 ? PI : 0), passo: .85, tinta: T.pinna, orlo: '#e8f8ff' });
+        onda: .17, fase: F * 2 + (v > 0 ? PI : 0), passo: .85, tinta: T.pinna, orlo: '#e8f8ff', velo: 1 });
     }
     const t0 = P.suSpina(s, .62, -.94), t1 = P.suSpina(s, .47, -.9), ag = m ? -(PI / 2 + .2) : -(PI - .85);       // il grilletto: giù da calmo, dritto a caccia
-    P.pinna(c, { x0: t0.x, y0: t0.y, x1: t1.x, y1: t1.y, a0: ag, a1: -(PI - .25), lung: m ? .56 : .44, profilo: [.94, .7, .4], n: 3, tinta: T.pinna, orlo: '#e8f8ff', righe: false });
+    P.pinna(c, { x0: t0.x, y0: t0.y, x1: t1.x, y1: t1.y, a0: ag, a1: -(PI - .25), lung: m ? .56 : .44, profilo: [.94, .7, .4], n: 3, tinta: T.pinna, orlo: '#e8f8ff', righe: false, velo: 1 });
     P.corno(c, t0.x - .02, t0.y + .05, ag, m ? .62 : .5, .13, T.notte, { curva: -.12, gonfio: .6 });
     const pv = P.suSpina(s, .5, 1);
     P.corno(c, pv.x + .04, pv.y - .08, PI * .62, .26, .15, T.ventre, { curva: .25 });
 
     // ---- 2. il corpo: ventre bianco, sbarre oblique, baffo giallo, fascia dell'occhio blu notte coi filetti azzurri
-    P.volume(c, s, T.corpo, { luce, dentro(cc) {
-      P.fianco(cc, s, u => .12 - .3 * sin(u * PI), 1.4, T.ventre.base);
+    P.volume(c, s, T.corpo, { luce, ombra: 0, dentro(cc) {
+      P.fianco(cc, s, u => -.06 - .3 * sin(u * PI), 1.4, P.alfa(T.ventre.base, .5));                // il ventre: due passate, sfuma nel fianco
+      P.fianco(cc, s, u => .14 - .3 * sin(u * PI), 1.4, P.sfumatura(cc, T.ventre, [.2, 0, 1.7]));
       sbarre(cc, s);
       P.fianco(cc, s, .1, .3, GIALLO, .7, 1.1, 5);
       P.bande(cc, s, FASCIA, NOTTE);
       P.bande(cc, s, FILETTI, BLU, 4);
+      luciBordo(cc, s);
     } });
     if (P.fine(o)) P.bozzi(c, P.puntiSuSpina(s, 3, .06, .15, -.3).concat(P.puntiSuSpina(s, 3, .06, .15, .3)), .028, T.notte);   // le spinette del gambo della coda
     P.riflesso(c, .0, -.52, .4, -.3, .13);

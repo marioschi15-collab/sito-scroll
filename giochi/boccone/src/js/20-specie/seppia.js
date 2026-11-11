@@ -9,7 +9,7 @@ const { sin, pow } = Math;
 /* Calma è color albicocca; quando si arrabbia arrossisce (le seppie cambiano colore davvero) e le righe si fanno più cupe. */
 const CALMA = { pelle: P.tinta('#f5914a', '#b0304a'), riga: '#8a3558', lontano: P.tinta('#c9603a', '#6a1a40'), iride: '#e8f24a' };
 const IRA = { pelle: P.tinta('#ff5236', '#8a1040'), riga: '#5a0f38', lontano: P.tinta('#c2302c', '#5a0a38'), iride: '#ffb01e' };
-const VENTRE = P.tinta('#ffe6c0', '#e88a5a'), GONNA = P.tinta('#4fe3d3'), PREDA = P.tinta('#ffc4a6', '#d8405a');
+const VENTRE = P.tinta('#ffe6c0', '#e88a5a'), GONNA = P.tinta('#4fe3d3', '#2a2c8c'), PREDA = P.tinta('#ffc4a6', '#d8405a');
 const SU = P.sagoma([[0, .1], [.1, .32], [.35, .5], [.6, .54], [.85, .47], [1, .38]]);
 const GIU = P.sagoma([[0, .1], [.1, .3], [.35, .46], [.6, .5], [.85, .44], [1, .36]]);
 /* Zebratura: sette bande ondulate di traverso al mantello, preparate una volta sola. */

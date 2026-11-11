@@ -3,15 +3,17 @@
    chiara con la bocca, occhi su peduncoli che spuntano sopra il guscio, chele dalla punta arancio, tre paia di zampe che
    penzolano e, dietro, le ultime due zampe a paletta che girano come remi. Calmo tiene le chele basse e sorride; a caccia
    le alza e le fa scattare (le punte diventano rosse), aggrotta gli occhi e mostra i denti. Il tratto esagerato sono le
-   chele e gli occhi a periscopio. */
+   chele e gli occhi a periscopio.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: guscio, zampe, chele e palette hanno l'ombra indaco dichiarata nelle tinte
+   (senza contorno scuro si impastavano con l'acqua); palette e antennine usano la linea sottile. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, max } = Math;
 
 // ---- tinte (una volta sola)
-const T = { guscio: P.tinta('#5b54e6'), ventre: P.tinta('#e9e0ff', '#9a86e6'), zampa: P.tinta('#4d86ee'), chela: P.tinta('#6f60f4'), pala: P.tinta('#38a4ee') };
-const MACCHIA = P.alfa('#aab8ff', .75), AVORIO = '#fff0d2', BAFFO = '#ffd9a0';
+const T = { guscio: P.tinta('#5b54e6', '#2a1890'), ventre: P.tinta('#e9e0ff', '#9a86e6'), zampa: P.tinta('#4d86ee', '#2a2fc4'), chela: P.tinta('#6f60f4', '#30209e'), pala: P.tinta('#38a4ee', '#2a3fd0') };
+const MACCHIA = P.alfa('#aab8ff', .75), AVORIO = '#fff0d2', BAFFO = '#ffd9a0', NERVO = P.alfa(T.pala.scura, .6);
 /* Il carapace è un volume su una spina orizzontale ferma (u = 0 la spina di sinistra, u = 1 quella di destra): così ombra,
    luce, macchie e orlo seguono la sua curva. SU è il guscio visto da sopra, GIU la faccia. */
 const SU = P.sagoma([[0, .03], [.08, .2], [.25, .4], [.5, .47], [.75, .4], [.92, .2], [1, .03]]);
@@ -30,10 +32,10 @@ const gira = (a, sg) => sg > 0 ? a : PI - a;                                   /
 const ovale = (c, L, h, e) => { c.beginPath(); c.moveTo(-e, 0); c.bezierCurveTo(L * .2, -h * 1.5 - e, L * .85, -h * 1.45 - e, L + e, 0); c.bezierCurveTo(L * .85, h * 1.45 + e, L * .2, h * 1.5 + e, -e, 0); c.closePath(); };
 const pala = (c, x, y, ang, sg, L, h, t) => {
   c.save(); c.translate(x, y); c.rotate(ang); c.scale(1, sg);
-  ovale(c, L, h, .045); c.fillStyle = t.bordo; c.fill();
+  ovale(c, L, h, .03); c.fillStyle = t.linea; c.fill();
   ovale(c, L, h, 0); c.fillStyle = t.base; c.fill();
   c.beginPath(); c.ellipse(L * .58, -h * .38, L * .3, h * .36, 0, 0, TAU); c.fillStyle = t.luce; c.fill();
-  c.beginPath(); c.moveTo(L * .12, h * .1); c.lineTo(L * .8, h * .1); c.strokeStyle = t.scura; c.lineWidth = .03; c.stroke();
+  c.beginPath(); c.moveTo(L * .12, h * .1); c.lineTo(L * .8, h * .1); c.strokeStyle = NERVO; c.lineWidth = .028; c.stroke();
   c.restore();
 };
 
@@ -41,7 +43,7 @@ B.specie.registra({
   id: 'granchio_nuotatore',
   descrizione: 'Le sue ultime zampe sono fatte a paletta: le fa girare come due remi e nuota di lato, svelto come un pesce. Se qualcuno lo disturba non scappa: alza le chele e gli va incontro.',
   forma: { lx: .95, ly: .55 },
-  ingombro: { x0: -1.44, y0: -1.19, x1: 1.47, y1: .91 },
+  ingombro: { x0: -1.44, y0: -1.19, x1: 1.44, y1: .91 },
   disegna(c, o) {
     const F = (o.fase || 0) * TAU, m = !!o.minaccia, b = o.bocca || 0, polsi = [];
     c.save();
@@ -65,7 +67,7 @@ B.specie.registra({
     }
 
     // ---- 2. il carapace: guscio blu-viola a macchie chiare, sotto la faccia chiara
-    P.volume(c, S, T.guscio, { luce: [.3, -.5, 1.5], ombra: .08, dentro(cc) {
+    P.volume(c, S, T.guscio, { luce: [.3, -.5, 1.5], ombra: .11, dentro(cc) {
       P.fianco(cc, S, orlo, 1.4, P.sfumatura(cc, T.ventre, [.2, -.1, 1.1]));
       if (P.fine(o)) P.macchie(cc, S, { n: 10, seme: 5, u0: .08, u1: .92, v0: -.85, v1: -.2, r0: .025, r1: .055, colore: MACCHIA, lungo: 1.3 });
     } });
@@ -84,7 +86,7 @@ B.specie.registra({
     c.lineCap = 'round';
     for (let passata = 0; passata < 2; passata++) {                                               // le due antennine, in due passate
       c.beginPath(); c.moveTo(.06, -.1); c.quadraticCurveTo(.02, -.3, -.06 + sin(F * 2) * .03, -.42); c.moveTo(.2, -.1); c.quadraticCurveTo(.25, -.3, .33 + sin(F * 2 + 1) * .03, -.42);
-      c.strokeStyle = passata ? BAFFO : T.guscio.bordo; c.lineWidth = passata ? .028 : .07; c.stroke();
+      c.strokeStyle = passata ? BAFFO : T.guscio.linea; c.lineWidth = passata ? .028 : .06; c.stroke();
     }
     for (let i = 0; i < 2; i++) {
       const x = OCCHI[i][0], la = OCCHI[i][1], ex = x + la * .05 + sin(F + i * 2) * .025, ey = -.72 + sin(F * 2 + i) * .02 - (m ? .03 : 0);

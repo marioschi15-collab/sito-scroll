@@ -1,15 +1,20 @@
 /* Boccone — specie: CAVALLUCCIO MARINO (taglia 1, timido, assetto 'dritto': il motore non lo ruota, lo specchia soltanto).
    Sta in piedi col muso a tubo verso +x: testa da cavallino con la coroncina, collo arcuato, pancia tonda, coda a ricciolo.
    Il corpo è UNA spina costruita per angoli dalla nuca alla punta della coda (così la testa resta ferma e la coda dondola);
-   la testa è un pezzo a parte, appoggiato sul collo. Il tratto esagerato sono il muso a trombetta e l'occhione. */
+   la testa è un pezzo a parte, appoggiato sul collo. Il tratto esagerato sono il muso a trombetta e l'occhione.
+   RITOCCO PER LO STILE «FILM D'ANIMAZIONE»: era diventato pallido e brunito. Il velo d'ombra viola della cassetta scende
+   dall'alto in basso e su un corpo in piedi sporcava pancia e coda: ora il corpo ha ombra: 0 e le luci del bordo fatte in
+   casa (filo di luce lungo la schiena, controluce color acqua lungo la pancia); tinte più sature (giallo oro con l'ombra
+   arancio, pancia crema più calda, pinne verde acqua con l'ombra blu e piene fino in punta); la testa prende più luce e le
+   fascette del tubo si disegnano dopo il volume, così il muso non scurisce. */
 (() => {
 'use strict';
 const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos, max, min, round } = Math;
 
 // ---- tinte (una volta sola)
-const T = { corpo: P.tinta('#ffc21a', '#f0541e'), ventre: P.tinta('#fff1c4', '#f0a05a'), pinna: P.tinta('#27c9c0'), corona: P.tinta('#ff7a2e', '#d02a3a'), labbra: P.tinta('#ff6f8f') };
-const ORLO = '#c9fff6', PUNTINI = P.alfa('#fff6d0', .85), FASCIA = P.alfa('#e2401e', .8);
+const T = { corpo: P.tinta('#ffbe14', '#f8600e'), ventre: P.tinta('#ffeeb0', '#f89a3c'), pinna: P.tinta('#22d3c4', '#1b62c4'), corona: P.tinta('#ff7a2e', '#d02a3a'), labbra: P.tinta('#ff6f8f') };
+const ORLO = '#c9fff6', PUNTINI = P.alfa('#fff6d0', .85), FASCIA = P.alfa('#e8421a', .8);
 // ---- il corpo: 30 tratti lunghi in tutto 2.7, dalla punta della coda (u = 0) alla nuca (u = 1). SU è la schiena (-x), GIU la pancia (+x)
 const NT = 30, LUNG = 2.7, K0 = .44;
 const SU = P.sagoma([[0, .028], [.15, .045], [.3, .065], [.44, .1], [.54, .17], [.66, .24], [.8, .26], [.92, .21], [1, .16]]);
@@ -51,14 +56,17 @@ B.specie.registra({
     // ---- 1. dietro al corpo: la pinna della schiena che vibra, i nodi ossei lungo la schiena
     const d0 = P.suSpina(s, .85, -.85), d1 = P.suSpina(s, .67, -.85);
     P.pinna(c, { x0: d0.x, y0: d0.y, x1: d1.x, y1: d1.y, a0: PI + .75 + (m ? .25 : 0), a1: PI - .55 - (m ? .15 : 0), lung: m ? .52 : .43, profilo: [.75, 1, 1, .8], n: 8, smerlo: .35,
-      onda: .16, fase: F * 4, passo: 1.1, tinta: T.pinna, orlo: ORLO });
+      onda: .16, fase: F * 4, passo: 1.1, tinta: T.pinna, orlo: ORLO, velo: 1 });
     nodi(c, P.puntiSuSpina(s, 8, .535, .96, -1.06), raggioNodo, T.corpo);
 
     // ---- 2. il corpo: pancia chiara, puntini, anelli incisi dalla coda al collo
-    P.volume(c, s, T.corpo, { luce, ombra: .08, dentro(cc) {
-      P.fianco(cc, s, u => .3 + max(0, .66 - u) * 7, 1.4, T.ventre.base, .52, .97);
+    P.volume(c, s, T.corpo, { luce, ombra: 0, dentro(cc) {
+      P.fianco(cc, s, u => .1 + max(0, .66 - u) * 7, 1.4, P.alfa(T.ventre.base, .5), .52, .97, 7); // la pancia: due passate, sfuma nel fianco
+      P.fianco(cc, s, u => .34 + max(0, .66 - u) * 7, 1.4, T.ventre.base, .52, .97);
       P.anelli(cc, s, .05, .96, 16, T.corpo, { spess: .04 });
       if (P.fine(o)) P.macchie(cc, s, { n: 9, seme: 4, u0: .56, u1: .95, v0: -.75, v1: .15, r0: .018, r1: .03, colore: PUNTINI, lungo: 1 });
+      P.fianco(cc, s, -1.4, -.86, 'rgba(255,255,255,.3)', .3, 1, 9);                                 // filo di luce lungo la schiena (guarda la luce)
+      P.fianco(cc, s, .88, 1.4, 'rgba(200,243,255,.46)', .3, 1, 9);                                  // controluce color acqua lungo la pancia
     } });
     P.suSpina(s, .86, -.1, q); P.riflesso(c, q.x, q.y, .3, q.ang + PI, .12);
 
@@ -72,9 +80,10 @@ B.specie.registra({
     P.ombra(c, n0.x + .07, n0.y + .14, .32, .15, .4, .3);
     c.save(); c.translate(hx, hy); c.rotate(ha);
     for (const k of CORONA) P.corno(c, k[0], k[1], k[2] + (m ? .12 : 0), k[3] * (m ? 1.3 : 1), .12, T.corona, { punta: m ? '#ffe14a' : T.corona.luce });
-    P.volume(c, cc => P.profilo(cc, TESTA), T.corpo, { luce: [.1, -.3, 1], ombra: .06, dentro(cc) {
-      cc.beginPath(); for (const x of FASCE) cc.rect(x, -.2, .05, .4); cc.fillStyle = FASCIA; cc.fill();   // fascette sul tubo
-    } });
+    P.volume(c, cc => P.profilo(cc, TESTA), T.corpo, { luce: [.2, -.3, 1.5], ombra: .07 });
+    c.save(); P.profilo(c, TESTA); c.clip();
+    c.beginPath(); for (const x of FASCE) c.rect(x, -.2, .05, .4); c.fillStyle = FASCIA; c.fill();         // fascette sul tubo
+    c.restore();
     P.solco(c, OPERCOLO, T.corpo, .03);
     P.riflesso(c, .56, -.045, .2, 0, .04);
     c.restore();
