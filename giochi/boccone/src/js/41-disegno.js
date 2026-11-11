@@ -468,9 +468,11 @@ function fotogramma() {
   const ora = performance.now(), dtVero = prima ? Math.min(.1, (ora - prima) / 1000) : 1 / 60;
   prima = ora;
   const M = B.partita && B.partita.mondo, vw = vista.vw, vh = vista.vh;
+  /* Prima la misura della fluidità: se abbassa la qualità cambia le misure della tela, e una tela che cambia misure
+     perde la trasformazione. Va fatto prima di impostarla, altrimenti lo sfondo di quel fotogramma esce rimpicciolito. */
+  if (M) misuraFluidita(dtVero);
   schermo(); pulito();
   if (!M) { ctx.fillStyle = '#0a1f44'; ctx.fillRect(0, 0, vw, vh); return; }
-  misuraFluidita(dtVero);
   const t = M.t, cam = M.cam, z = cam.z, dt = limita(t - tPrima, 0, .05), stato = B.partita.stato;
   tPrima = t;
   v.t = t; v.dt = dt || 1 / 60; v.vw = vw; v.vh = vh; v.dpr = vista.dpr; v.qualita = vista.qualita;
