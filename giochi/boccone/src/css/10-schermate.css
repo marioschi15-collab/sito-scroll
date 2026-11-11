@@ -40,6 +40,10 @@ p { margin: 0 0 12px; font-size: 16px; line-height: 1.4; }
 .borsa { display: inline-flex; align-items: center; gap: 7px; font-weight: 900; font-size: 17px; padding: 7px 14px; border-radius: 18px; background: rgba(255, 255, 255, .12); white-space: nowrap; flex: none; }
 .pallino { position: absolute; top: -6px; right: -4px; min-width: 22px; height: 22px; padding: 0 5px; box-sizing: border-box; border-radius: 11px; background: var(--rosa); color: #fff; font-size: 13px; font-weight: 900; display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0, 0, 0, .4); }
 .stelle { font-size: 22px; letter-spacing: 3px; color: var(--oro); white-space: nowrap; } .stelle i { font-style: normal; color: rgba(255, 255, 255, .25); }
+/* Il morso più forte dello scontro con il gigante, nella schermata del risultato. */
+.morso-forte { margin: 4px 0 10px; padding: 9px 12px; border-radius: 14px; background: rgba(255, 92, 122, .16); font-size: 14px; font-weight: 800; line-height: 1.25; }
+.morso-forte b { display: block; font-size: 30px; font-weight: 900; line-height: 1.15; color: #ffc93c; background: linear-gradient(180deg, #fff3a6, #ffc93c 45%, #ff4f5e); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 2px 0 rgba(70, 6, 20, .6)); }
+.morso-forte small { display: block; font-size: 12.5px; font-weight: 700; opacity: .8; }
 .numero { font-size: 42px; font-weight: 900; color: var(--oro); margin: 2px 0 10px; text-shadow: 0 3px 0 rgba(0, 0, 0, .35); }
 
 /* ----- Casa ----- */

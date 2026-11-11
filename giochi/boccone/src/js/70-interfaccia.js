@@ -168,15 +168,41 @@ function metti(id, proprieta, valore) {
   if (!e) return;
   if (proprieta === 'width') e.style.width = valore; else e[proprieta] = valore;
 }
+/* La barra della vita del gigante: una riga intera sotto l'avanzamento, con il nome e il numero che gli resta
+   (♛ Don Cernia … 2,4 mln). La pagina non ce l'ha: la si aggiunge qui, una volta sola. */
+function creaBarraVita() {
+  const alto = $('cr-alto');
+  if (!alto || $('cr-vita')) return;
+  const b = el('div', 'vetro');
+  b.id = 'cr-vita';
+  for (const [tag, id] of [['i', 'cr-vita-piena'], ['span', 'cr-vita-nome'], ['b', 'cr-vita-num']]) { const e = el(tag); e.id = id; b.append(e); }
+  alto.insertBefore(b, $('cr-sotto'));
+}
+creaBarraVita();
+/* Aggiorna la barra del gigante: quanto è piena, di che colore (la furia sale quando la vita scende sotto i due terzi e
+   sotto un terzo; verde quando l'eroe lo può mangiare in un boccone) e un sussulto a ogni morso. */
+function aggiornaVita(ob) {
+  const c = $('cruscotto'), b = $('cr-vita'), gigante = !!ob && ob.gigante;
+  if (cache.gigante !== gigante) { cache.gigante = gigante; cache.vita = -1; if (c) c.classList.toggle('con-gigante', gigante); }
+  if (!gigante || !b) return;
+  metti('cr-vita-nome', 'textContent', '♛ ' + ob.nome);
+  metti('cr-vita-num', 'textContent', ob.potenza > 0 ? numero(ob.potenza) : 'sconfitto!');
+  metti('cr-vita-piena', 'width', (U.limita(ob.vita, 0, 1) * 100).toFixed(1) + '%');
+  const stato = ob.boccone ? 'verde' : ob.vita > 2 / 3 ? '' : ob.vita > 1 / 3 ? 'furia1' : 'furia2';
+  if (cache.vitaStato !== stato) { cache.vitaStato = stato; for (const k of ['verde', 'furia1', 'furia2']) b.classList.toggle(k, k === stato); }
+  if (cache.vita >= 0 && ob.potenza < cache.vita) { b.classList.remove('colpo'); void b.offsetWidth; b.classList.add('colpo'); }   // un morso: la barra sussulta
+  cache.vita = ob.potenza;
+}
 function aggiornaCruscotto() {
   const d = B.partita.dati, ob = d.obiettivo;
   let largoObiettivo = '';
   if (ob) {
-    let s = '♛ ' + numero(ob.potenza);
-    if (ob.morsiTotali > 1) for (let i = 0; i < ob.morsiTotali; i++) s += '<i class="morso' + (i < ob.morsi ? '' : ' dato') + '"></i>';
-    metti('cr-obiettivo', 'innerHTML', s);
-    largoObiettivo = numero(ob.potenza).length + ':' + ob.morsiTotali;
+    // con il gigante la riga in alto dice da quando lo si può mordere (la sua vita sta nella barra rossa)
+    const s = !ob.gigante ? '♛ ' + numero(ob.potenza) : ob.boccone ? 'Mangialo!' : ob.puoMordere ? 'Mordilo!' : 'morso da ' + numero(ob.sogliaMorso);
+    metti('cr-obiettivo', 'textContent', s);
+    largoObiettivo = String(s.length);
   } else metti('cr-obiettivo', 'textContent', minuti(d.tempo));
+  aggiornaVita(ob);
   const perle = numero(B.progressi.perle());
   metti('cr-perle-num', 'textContent', perle);
   /* Il nome dell'ambiente si scrive solo se c'è posto accanto all'obiettivo: se non ci sta resta "Livello 3". Si

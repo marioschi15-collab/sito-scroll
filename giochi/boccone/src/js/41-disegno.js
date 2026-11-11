@@ -396,6 +396,39 @@ function etichetta(x, y, s, sfondo, px, icona) {
   if (icona) iconaEtichetta(icona, x - w / 2 + px * .5 + wi * .42, y, px);
 }
 const VERDE = 'rgba(26,160,90,.94)', ROSSO = 'rgba(214,40,70,.94)', GRIGIO = 'rgba(96,108,130,.92)', BLU = 'rgba(12,40,90,.92)', ARANCIO = 'rgba(255,150,30,.96)';
+const ORO = 'rgba(255,196,40,.97)';
+
+/* L'etichetta del gigante: il numero è la vita che gli resta (rosso; verde quando l'eroe lo può mangiare in un boccone),
+   più grande di quello dei pesci e con un sussulto a ogni morso. Sotto, la barra della vita con le due tacche della
+   furia (due terzi e un terzo). Sopra, l'invito: "MORDI!" quando si può mordere, "MANGIALO!" quando è verde; il
+   lucchetto finché l'eroe non è cresciuto abbastanza per morderlo. */
+function etichettaGigante(M, e, ex, ey, px, t) {
+  const ob = B.partita.dati.obiettivo, puo = !!ob && ob.puoMordere;
+  const colpo = limita((e.intoccabile - 2) / .4, 0, 1), pg = Math.round(px * 1.15 * (1 + .14 * colpo)), testo = scritta(e.p);
+  // il numero resta sempre leggibile: dentro lo schermo ai lati e sotto il cruscotto
+  ctx.font = '900 ' + pg + 'px ' + CARATTERE;
+  const mezzo = (ctx.measureText(testo).width + pg * 1.9) / 2 + 6;
+  ex = limita(ex, Math.min(mezzo, vista.vw / 2), Math.max(vista.vw - mezzo, vista.vw / 2)); ey = Math.max(ey, 204 + pg * 2.3);   // sopra resta il posto per "MORDI!" e per "!"
+
+  etichetta(ex, ey, testo, e.mangiabile ? VERDE : ROSSO, pg, !puo && !e.mangiabile ? 'lucchetto' : null);
+  if (e.vitaTotale > 0 && e.sconfitto <= 0) {
+    const w = Math.max(px * 5.2, 86), hh = Math.max(7, px * .34), x0 = ex - w / 2, yy = ey + pg * .72 + 5, vita = limita(e.vita, 0, 1);
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x0, yy, w, hh, hh / 2); else ctx.rect(x0, yy, w, hh);
+    ctx.fillStyle = 'rgba(8,20,48,.78)'; ctx.fill();
+    if (vita > 0) {
+      ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x0, yy, Math.max(hh, w * vita), hh, hh / 2); else ctx.rect(x0, yy, w * vita, hh);
+      ctx.fillStyle = e.mangiabile ? '#3fd68a' : e.furia > 1 ? '#ffb02e' : e.furia > 0 ? '#ff7a3d' : '#ff4f6e'; ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(x0 + w / 3 - 1, yy + 1, 2, hh - 2); ctx.fillRect(x0 + w * 2 / 3 - 1, yy + 1, 2, hh - 2);
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x0, yy, w, hh, hh / 2); else ctx.rect(x0, yy, w, hh);
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  if (e.avviso > 0) etichetta(ex, ey - pg * 1.9, '!', ARANCIO, Math.round(px * 1.3));
+  else if ((e.mordibile || e.mangiabile) && e.sconfitto <= 0) {
+    const batte = 1 + .1 * Math.sin(t * 9);
+    etichetta(ex, ey - pg * 1.75, e.mangiabile ? 'MANGIALO!' : 'MORDI!', e.mangiabile ? VERDE : ORO, Math.round(Math.max(13, px * .72) * batte));
+  }
+}
 
 function disegnaEtichette(M, t) {
   const h = M.eroe, z = v.cam.z;
@@ -410,16 +443,10 @@ function disegnaEtichette(M, t) {
     if (inchiostro) alfa *= 1 - .85 * copertura(M, e.x, e.y);
     if (alfa < .06) continue;
     ctx.globalAlpha = alfa;
+    if (e.gigante) { etichettaGigante(M, e, ex, ey - px * .5, px, t); continue; }
     const sp = e.def.speciale, chiuso = !e.mangiabile && h.p > e.p && (sp === 'corazza' || sp === 'veleno');
     etichetta(ex, ey, scritta(e.p), e.mangiabile ? VERDE : e.minaccia ? ROSSO : GRIGIO, px, chiuso ? (sp === 'corazza' ? 'scudo' : 'lucchetto') : null);
     if (e.avviso > 0) etichetta(ex, ey - px * 2, '!', ARANCIO, Math.round(px * 1.3));
-    if (e.gigante && e.morsiTotali > 1) {                                   // i morsi che mancano al gigante
-      const n = e.morsiTotali, passo = px * .95, x0 = ex - (n - 1) * passo / 2, yy = ey + px * 1.25;
-      for (let i = 0; i < n; i++) {
-        ctx.beginPath(); ctx.arc(x0 + i * passo, yy, px * .32, 0, TAU);
-        ctx.fillStyle = i < e.morsi ? '#ff5c7a' : 'rgba(8,20,48,.6)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.stroke();
-      }
-    }
   }
   ctx.globalAlpha = 1;
   if (h.vivo) etichetta(ax(h.x), ay(h.y - h.r) - 20, scritta(h.p), BLU, Math.round(16 + h.pulsa * 4));
@@ -436,9 +463,38 @@ function disegnaFreccia(M, t) {
   ctx.restore();
 }
 
+/* Il danno di un morso al gigante: un numero grosso, dal giallo oro al rosso, che compare con un rimbalzo (più grande
+   e con un sussulto quando c'è un moltiplicatore, o quando è il boccone finale), sale piano e sfuma. Resta sempre dentro
+   lo schermo e sotto il cruscotto. */
+function disegnaDanno(s) {
+  const vw = vista.vw, sec = s.eta * s.durata, forte = s.danno > 1;
+  const px = Math.round((forte ? 50 : 40) * limita(vw / 390, .82, 1.25));
+  const balzo = sec < .1 ? .5 + sec / .1 * (forte ? 1.05 : .85) : sec < .28 ? (forte ? 1.55 : 1.35) - (sec - .1) / .18 * (forte ? .55 : .35) : 1;
+  ctx.font = '900 ' + px + 'px ' + CARATTERE;
+  const w = ctx.measureText(s.s).width * balzo / 2 + 10;
+  const x = limita(ax(s.x), Math.min(w, vw / 2), Math.max(vw - w, vw / 2)), y = limita(ay(s.y), 200 + px * (s.molt > 1 ? 1.5 : .7), vista.vh - 120);
+  ctx.save(); ctx.translate(x, y);
+  if (forte && sec < .5) ctx.rotate(Math.sin(sec * 40) * .07 * (1 - sec / .5));
+  ctx.scale(balzo, balzo);
+  ctx.globalAlpha = s.eta < .75 ? 1 : Math.max(0, 1 - (s.eta - .75) / .25);
+  const g = ctx.createLinearGradient(0, -px * .5, 0, px * .5);
+  g.addColorStop(0, '#fff3a6'); g.addColorStop(.45, '#ffc93c'); g.addColorStop(1, '#ff3b4e');
+  ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(6, px * .2); ctx.strokeStyle = 'rgba(70,6,20,.95)'; ctx.strokeText(s.s, 0, 0);
+  ctx.lineWidth = Math.max(2, px * .06); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.strokeText(s.s, 0, 0);
+  ctx.fillStyle = g; ctx.fillText(s.s, 0, 0);
+  if (s.molt > 1) {                                                          // il moltiplicatore, più piccolo, sopra al numero
+    const pm = Math.round(px * .46), scrittaM = 'Morso ×' + s.molt;
+    ctx.font = '900 ' + pm + 'px ' + CARATTERE; ctx.lineWidth = Math.max(4, pm * .22); ctx.strokeStyle = 'rgba(70,6,20,.95)';
+    ctx.strokeText(scrittaM, 0, -px * .82); ctx.fillStyle = '#ffe066'; ctx.fillText(scrittaM, 0, -px * .82);
+  }
+  ctx.restore();
+}
+
 function disegnaTesti(M) {
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(8,20,48,.85)';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(8,20,48,.85)';
   for (const s of M.testi) {
+    if (s.danno > 0) continue;
     const px = s.grande ? 24 : 16, x = limita(ax(s.x), 40, vista.vw - 40), y = ay(s.y);
     if (y < -20 || y > vista.vh + 20) continue;
     ctx.globalAlpha = s.eta < .7 ? 1 : Math.max(0, 1 - (s.eta - .7) / .3);
@@ -449,6 +505,8 @@ function disegnaTesti(M) {
       g.addColorStop(0, '#fff'); g.addColorStop(1, '#e09ccc'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x + w, y, 7, 0, TAU); ctx.fill();
     }
   }
+  ctx.globalAlpha = 1;
+  for (const s of M.testi) if (s.danno > 0) disegnaDanno(s);                // i danni per ultimi, sopra a tutte le altre scritte
   ctx.globalAlpha = 1;
 }
 

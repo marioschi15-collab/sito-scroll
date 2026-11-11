@@ -457,6 +457,55 @@ prova('eventi → acquario e specie scoperte', () => {
   uguale([m2.P.acquario('ghiozzo'), m2.P.acquario('murena'), m2.P.scoperte()], [{ visti: 2, mangiati: 3 }, { visti: 1, mangiati: 1 }, 2], 'acquario ritrovato alla riapertura');
 });
 
+prova('giganti: il danno dei morsi (il più forte, il totale) e i traguardi da milioni', () => {
+  let m = mondo(), P = m.P;
+  const st = () => P.stato.statistiche, morso = (danno, vitaRimasta, altro) => m.emetti('gigante:morso', Object.assign({ id: 'don_cernia', danno, vitaRimasta, vitaTotale: 3e6 }, altro));
+  const fatti = () => ['morso_da_un_milione', 'morso_da_dieci_milioni', 'cento_milioni'].map(id => P.traguardo(id).fatto);
+  uguale([st().morsoMassimo, st().danniGiganti], [0, 0], 'si parte da zero');
+  for (const id of ['morso_da_un_milione', 'morso_da_dieci_milioni', 'cento_milioni']) vero(P.TRAGUARDI.some(t => t.id === id && t.premio > 0 && t.gruppo === 'Avventura'), 'c\'è il traguardo ' + id);
+  m.emetti('partita:inizio', { livello: 5, modalita: 'avventura' });
+  morso(400000, 2600000, { rimasti: 6 }); morso(850000, 1750000, { rimasti: 3 });
+  uguale([st().morsiGiganti, st().morsoMassimo, st().danniGiganti], [2, 850000, 1250000], 'due morsi: il più forte e la somma');
+  uguale([P.traguardo('morso_da_un_milione').valore, ...fatti()], [850000, false, false, false], 'sotto il milione nessun traguardo');
+  morso(600000, 1150000, { rimasti: 2 });
+  uguale([st().morsoMassimo, st().danniGiganti], [850000, 1850000], 'un morso più debole non abbassa il massimo');
+  morso(1200000.4, 0, { rimasti: 0 });
+  uguale([st().morsoMassimo, st().danniGiganti, st().gigantiSconfitti], [1200000, 3050000, 1], 'il morso che lo finisce conta, e il gigante è sconfitto');
+  uguale(fatti(), [true, false, false], 'morso da un milione');
+  uguale(m.visti('traguardo').filter(d => d.id === 'morso_da_un_milione').length, 1, 'annunciato una volta');
+  m.emetti('mangiato', { id: 'don_cernia', tipo: 'gigante', potenza: 0, guadagno: 900000 });
+  uguale([st().gigantiSconfitti, P.acquario('don_cernia').mangiati], [1, 1], 'morso finale e "mangiato": una sconfitta sola');
+  // senza "rimasti" la sconfitta si riconosce dalla vita rimasta a zero
+  m.emetti('partita:inizio', { livello: 10, modalita: 'avventura' });
+  m.emetti('gigante:morso', { id: 'piovra', danno: 2e6, vitaRimasta: 3e6, vitaTotale: 5e6 });
+  uguale(st().gigantiSconfitti, 1, 'con la vita che resta non è sconfitto');
+  m.emetti('gigante:morso', { id: 'piovra', danno: 3e6, vitaRimasta: 0, vitaTotale: 5e6 }); m.emetti('mangiato', { id: 'piovra', tipo: 'gigante' });
+  uguale([st().gigantiSconfitti, P.acquario('piovra').mangiati, st().morsoMassimo, st().danniGiganti], [2, 1, 3000000, 8050000], 'vita a zero: sconfitto una volta');
+  // danni rovinati non contano (ma il morso sì), e i morsi di una volta (senza danno) funzionano ancora
+  const errori = m.errori.length;
+  for (const danno of [NaN, -5, 'tanto', Infinity, null, undefined, {}]) morso(danno, 1e6, { rimasti: 1 });
+  m.emetti('gigante:morso', { id: 'don_cernia', rimasti: 2 }); m.emetti('gigante:morso', null);
+  uguale([st().morsiGiganti, st().morsoMassimo, st().danniGiganti, m.errori.length - errori], [15, 3000000, 8050000, 0], 'danni rovinati ignorati senza errori');
+  // dieci milioni in un morso, cento milioni in tutto
+  morso(12.5e6, 5e6, { rimasti: 1 });
+  uguale([st().morsoMassimo, ...fatti()], [12500000, true, true, false], 'morso da dieci milioni');
+  for (let i = 0; i < 8; i++) morso(1e7, 1e6, { rimasti: 1 });
+  uguale([st().danniGiganti, ...fatti()], [100550000, true, true, true], 'cento milioni di danni');
+  morso(Number.MAX_SAFE_INTEGER * 4, 1, { rimasti: 1 });
+  vero(st().morsoMassimo <= Number.MAX_SAFE_INTEGER && st().danniGiganti <= Number.MAX_SAFE_INTEGER, 'i numeri enormi restano interi sicuri');
+  const premi = ['morso_da_un_milione', 'morso_da_dieci_milioni', 'cento_milioni'].map(id => P.riscuoti(id));
+  vero(premi.every(n => n > 0) && premi[0] < premi[1] && premi[1] < premi[2], 'premi crescenti: ' + premi.join(', '));
+  // alla riapertura si ritrova tutto; un salvataggio di prima (senza i due contatori) riparte da zero senza perdere il resto
+  m.emetti('partita:fine', { esito: 'vinto', livello: 10, modalita: 'avventura', stelle: 2, tempo: 200, potenza: 3e6 });
+  const m2 = riapri(m);
+  uguale([m2.P.traguardo('cento_milioni').riscosso, m2.P.stato.statistiche.morsoMassimo > 1e7, m2.P.stato.statistiche.danniGiganti > 1e8], [true, true, true], 'salvato e ritrovato');
+  const vecchio = JSON.parse(JSON.stringify(m.salvato()));
+  delete vecchio.statistiche.morsoMassimo; delete vecchio.statistiche.danniGiganti; delete vecchio.traguardi.morso_da_un_milione;
+  const m3 = mondo({ archivio: archivioFinto({ 'boccone-salvataggio-3': JSON.stringify(vecchio) }) });
+  uguale([m3.P.stato.statistiche.morsoMassimo, m3.P.stato.statistiche.danniGiganti, m3.P.stato.statistiche.morsiGiganti, m3.P.traguardo('morso_da_un_milione').fatto],
+    [0, 0, st().morsiGiganti, false], 'salvataggio di prima: contatori nuovi a zero');
+});
+
 prova('giganti: la sconfitta si conta una volta sola', () => {
   const quanti = P => [P.stato.statistiche.gigantiSconfitti, P.acquario('piovra').mangiati, P.stato.statistiche.pesciMangiati];
   let m = mondo();
@@ -978,13 +1027,18 @@ prova('una carriera intera: tutti i traguardi si possono raggiungere', () => {
       if (n % 4 === 0) m.emetti('colpito', { da: 'medusa', cuori: 2 });
       if (ultimo) {
         m.emetti('visto', { id: ambiente.gigante });
-        for (const rimasti of [2, 1, 0]) m.emetti('gigante:morso', { id: ambiente.gigante, rimasti });
+        // lo scontro: sei morsi che tolgono tutta la vita (3, 5, 8… 50 milioni secondo l'ambiente); l'ultimo è il più forte
+        const vita = [3, 5, 8, 12, 18, 25, 35, 50][n / cast.livelliPerAmbiente - 1] * 1e6, parti = [0.08, 0.1, 0.14, 0.18, 0.22, 0.28];
+        let resta = vita;
+        parti.forEach((parte, i) => { resta = i === parti.length - 1 ? 0 : resta - vita * parte; m.emetti('gigante:morso', { id: ambiente.gigante, rimasti: parti.length - 1 - i, danno: vita * parte, vitaRimasta: resta, vitaTotale: vita }); });
         m.emetti('mangiato', { id: ambiente.gigante, tipo: 'gigante' });
       }
       paga(90);
     } });
   }
   uguale([P.livelliSuperati(), P.stelleTotali(), st().gigantiSconfitti, P.scoperte(), P.totaleSpecie()], [40, 120, 8, 70, 70], 'avventura finita, acquario completo');
+  uguale([st().morsiGiganti, st().morsoMassimo, st().danniGiganti], [48, 14e6, 156e6], 'otto giganti: 48 morsi, il più forte da 14 milioni, 156 milioni di danni');
+  uguale(['morso_da_un_milione', 'morso_da_dieci_milioni', 'cento_milioni'].map(id => P.traguardo(id).fatto), [true, true, true], 'i traguardi da milioni arrivano con l\'avventura');
   const fattiDopoAvventura = P.TRAGUARDI.filter(t => P.traguardo(t.id).fatto), premiDopoAvventura = fattiDopoAvventura.reduce((s, t) => s + t.premio, 0);
   const costi = P.POTENZIAMENTI.reduce((s, p) => s + p.costi.reduce((a, b) => a + b, 0), 0) + cast.eroi.reduce((s, e) => s + e.costo, 0);
   vero(fattiDopoAvventura.length >= 30, 'finita l\'avventura sono fatti almeno 30 traguardi (sono ' + fattiDopoAvventura.length + ')');

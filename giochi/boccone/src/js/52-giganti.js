@@ -2,8 +2,10 @@
    degli altri livelli, e i loro attacchi per nome.
    Il gigante è un abitante del mondo come gli altri (sta in M.predatori): qui c'è solo ciò che lo rende speciale.
    Il mondo (50-mondo.js) chiama prepara() alla nascita, pensa() a ogni fotogramma quando non è stordito né in avviso né
-   in carica, colpisce() quando finisce l'avviso, e morso() quando l'eroe, diventato più forte, lo tocca.
-   Vedi ARCHITETTURA.md §8. */
+   in carica, colpisce() quando finisce l'avviso, e morso() quando l'eroe, abbastanza cresciuto, lo morde.
+   Lo scontro con il gigante: ha una vita in milioni (è il suo numero, e.p); ogni morso gliene toglie quanto vale il
+   numero dell'eroe. Dopo un morso resta stordito, poi è "furente": finché non ha sferrato i suoi contrattacchi non si
+   può mordere di nuovo, e toccarlo fa male. Vedi ARCHITETTURA.md §5 e §8. */
 (() => {
 'use strict';
 const B = window.B;
@@ -12,15 +14,21 @@ const { caso } = B.util;
 // ---------------------------------------------------------------- taratura
 const PAUSA_ATTACCHI = [4, 6];       // secondi fra un attacco e l'altro dei giganti
 const CARICA_GIGANTE = 2.9, CARICA_CAPO = 2.7;   // quante volte la sua velocità, durante lo scatto della carica
-const FURIA_PAUSA = 0.22;            // a ogni morso la pausa si accorcia di questa parte
+// La furia va da 0 a 2 secondo la vita che gli resta: 0 sopra i due terzi, 1 fra un terzo e due terzi, 2 sotto un terzo.
+const FURIA_PAUSA = 0.22;            // a ogni grado di furia la pausa si accorcia di questa parte
 const FURIA_VEL = 0.1;               // … e nuota più svelto di questa parte
 const FURIA_AVVISO = 0.12;           // … e gli avvisi si accorciano di questa parte
-const FURIA_POTENZA = 1.15;          // … e diventa più forte: l'eroe deve crescere ancora un po' prima di morderlo di nuovo
-const NON_TI_DEGNA = 40;             // si accorge dell'eroe solo quando la potenza di lui × 40 arriva alla sua
+const NON_TI_DEGNA = 40;             // si accorge dell'eroe solo quando la potenza di lui × 40 arriva alla soglia del morso
 const STORDITO_DOPO_MORSO = 1.6;
-const INTOCCABILE_DOPO_MORSO = 2.4;  // secondi in cui non si può mordere di nuovo (e non fa male)
+const INTOCCABILE_DOPO_MORSO = 2.4;  // secondi in cui non si può mordere di nuovo (e toccarlo non fa male)
+const CONTRATTACCHI = [2, 2, 2];      // attacchi che sferra dopo un morso prima che lo si possa mordere di nuovo, per grado di furia
+const RITIRATA = [2.6, 2, 1.4];      // dopo lo stordimento arretra per questi secondi (accusa il colpo), poi torna alla carica
+const RITIRATA_VEL = 1.25;           // … a questa parte della sua velocità
+const RINCORSA = 1.7;                // furente e fuori tiro, rincorre l'eroe a questa parte della sua velocità
+const CONTRATTACCO = [1, 0.7, 0.45]; // secondi fra la fine della ritirata e il primo contrattacco, per grado di furia
+const SEGUITO = [1.4, 1.1, 0.8];     // secondi fra un contrattacco e il successivo
 const SPINTA_MORSO = 520;            // quanto viene respinto
-const ARRETRA = 0.6;                 // quando l'eroe è più forte indietreggia piano: si lascia raggiungere
+const ARRETRA = 0.6;                 // quando il numero dell'eroe supera la vita che gli resta indietreggia piano: si lascia raggiungere
 
 const RISUCCHIO = { raggio: 640, forza: 0.74, durata: 2.6 };          // forza: parte della velocità dell'eroe
 const ONDA = { vel: 560, tentacoli: { rMax: 440, rMale: 300 }, onda: { rMax: 600, rMale: 330 } };
@@ -159,7 +167,9 @@ function smette(e) { e.attacco = null; e.inAttacco = null; e.attaccoNome = ''; e
 // ---------------------------------------------------------------- vita del gigante
 /* Aggiunge all'abitante i campi del gigante (o del capobranco). ob è l'obiettivo della configurazione del livello. */
 function prepara(e, ob) {
-  e.morsi = ob.morsi; e.morsiTotali = ob.morsi; e.vita = 1; e.furia = 0;
+  e.morsi = 0; e.vita = 1; e.furia = 0; e.furente = 0; e.ritirata = 0; e.inCorso = false; e.mordibile = false;
+  e.vitaTotale = e.gigante ? ob.vita || e.p : 0;                  // il capobranco non ha vita: si mangia in un boccone
+  e.sogliaMorso = e.gigante ? ob.sogliaMorso || e.p : e.p; e.nutre = ob.nutre || 0;
   e.attacchi = ob.attacchi && ob.attacchi.length ? ob.attacchi : ['carica'];
   e.pausa = ob.pausa || PAUSA_ATTACCHI; e.degna = ob.degna || NON_TI_DEGNA;
   e.indiceAttacco = 0; e.prossimoAttacco = caso(3, 5);
@@ -168,26 +178,41 @@ function prepara(e, ob) {
 }
 
 /* Decide la mossa m del gigante per questo fotogramma. s sono i sensi calcolati dal mondo (distanza dall'eroe, se è
-   più forte, se gli interessa). Finché l'eroe è più debole lo insegue e, quando è a tiro, lancia i suoi attacchi a turno. */
+   più forte, se gli interessa). Finché il suo numero è più alto di quello dell'eroe lo insegue e, quando è a tiro, lancia
+   i suoi attacchi a turno. Il mondo non chiama pensa() durante l'avviso e la carica: la prima chiamata dopo un attacco
+   (o dopo l'ultima mossa di un attacco che dura) vuol dire che l'attacco è finito, e che la rabbia del morso è sfogata. */
 function pensa(e, s, m, dt, M) {
   if (e.attacco) {                                  // un attacco che dura si gestisce da solo
     e.attT += dt;
     if (s.inGioco && e.attacco.aggiorna(e, s, m, dt, M)) return;
     smette(e);
   }
-  if (!s.vicino) return;                            // lontano: gira per conto suo
-  if (!s.forte) {                                   // l'eroe è più forte: indietreggia
+  if (e.inCorso) {                                  // un attacco è appena finito: un contrattacco in meno da sferrare
+    e.inCorso = false;
+    if (e.furente > 0 && --e.furente > 0) e.prossimoAttacco = Math.min(e.prossimoAttacco, SEGUITO[e.furia]);
+  }
+  if (e.ritirata > 0) {                             // ha appena preso un morso: si allontana per riprendersi
+    e.ritirata -= dt;
+    if (s.inGioco && s.forte) { m.verso = Math.atan2(-s.dy, -s.dx); m.vel = e.vel * RITIRATA_VEL; m.fugge = true; return; }
+    e.ritirata = 0;
+  }
+  const furente = e.furente > 0 && s.inGioco;       // deve ancora sfogarsi: cerca l'eroe dovunque sia
+  if (!s.vicino && !furente) return;                // lontano: gira per conto suo
+  if (!s.forte) {                                   // il numero dell'eroe è più alto: indietreggia
     m.verso = Math.atan2(-s.dy, -s.dx); m.vel = e.vel * ARRETRA; m.fugge = true;
     return;
   }
   if (s.ignora) return;                             // riposa, o l'eroe è ancora troppo piccolo per interessargli
   m.verso = Math.atan2(s.dy, s.dx); m.vel = e.vel; m.insegue = true;
   e.prossimoAttacco -= dt;
-  if (e.prossimoAttacco > 0) return;
   const nome = e.attacchi[e.indiceAttacco % e.attacchi.length], a = attacco(nome);
-  if (s.d > a.portata + e.r * 0.5) return;          // aspetta di essere a tiro
+  if (s.d > a.portata + e.r * 0.5) {                // aspetta di essere a tiro (furente, ci arriva di corsa)
+    if (furente) m.vel = e.vel * RINCORSA;
+    return;
+  }
+  if (e.prossimoAttacco > 0) return;
   e.indiceAttacco++; e.prossimoAttacco = pausa(e);
-  e.inAttacco = a; e.attaccoNome = ATTACCHI[nome] ? nome : 'carica';
+  e.inAttacco = a; e.attaccoNome = ATTACCHI[nome] ? nome : 'carica'; e.inCorso = true;
   a.inizia(e, s, M);
 }
 
@@ -203,22 +228,27 @@ function colpisce(e, M) {
   return true;
 }
 
-/* Un morso dell'eroe. Risponde quanti morsi mancano: a zero il gigante è sconfitto.
-   Altrimenti resta stordito, viene respinto, perde una parte della vita e si infuria: più svelto, attacchi più
-   frequenti e più forte di prima (così l'eroe deve crescere ancora un po' prima del morso successivo). */
-function morso(e, M) {
-  e.morsi = Math.max(0, e.morsi - 1);
-  e.vita = e.morsi / e.morsiTotali;
-  e.avviso = 0; e.sprint = 0; e.carica = 0; smette(e);
-  if (e.morsi === 0) { e.stato = 'sconfitto'; e.sconfitto = 1.3; e.stordito = 9; return 0; }
-  e.furia++;
-  e.p = Math.round(e.p * FURIA_POTENZA / 1000) * 1000; e.soglia = e.p;
+/* Il grado di furia per la vita che resta (0..1). */
+function furiaDi(vita) { return vita > 2 / 3 ? 0 : vita > 1 / 3 ? 1 : 2; }
+
+/* Un morso dell'eroe che toglie "danno" alla vita del gigante. Risponde la vita che resta: a zero il gigante è sconfitto.
+   Altrimenti resta stordito, viene respinto, e torna furente (e.furente = quanti contrattacchi deve ancora sferrare):
+   finché non li ha fatti non si può mordere di nuovo. Più la vita scende, più si infuria: più svelto, attacchi più
+   frequenti, avvisi più corti. */
+function morso(e, M, danno) {
+  e.morsi++;
+  e.p = Math.max(0, e.p - Math.max(0, Math.round(danno) || 0)); e.soglia = e.p;
+  e.vita = e.vitaTotale > 0 ? e.p / e.vitaTotale : 0;
+  e.avviso = 0; e.sprint = 0; e.carica = 0; e.inCorso = false; e.mordibile = false; smette(e);
+  if (e.p <= 0) { e.furente = 0; e.ritirata = 0; e.stato = 'sconfitto'; e.sconfitto = 1.3; e.stordito = 9; return 0; }
+  e.furia = furiaDi(e.vita);
   e.vel = e.velCalmo * (1 + FURIA_VEL * e.furia);
-  e.stordito = STORDITO_DOPO_MORSO; e.intoccabile = INTOCCABILE_DOPO_MORSO; e.prossimoAttacco = 1;
+  e.stato = 'stordito'; e.stordito = STORDITO_DOPO_MORSO; e.intoccabile = INTOCCABILE_DOPO_MORSO; e.furente = CONTRATTACCHI[e.furia];
+  e.ritirata = RITIRATA[e.furia]; e.prossimoAttacco = CONTRATTACCO[e.furia];
   const h = M.eroe, a = h ? Math.atan2(e.y - h.y, e.x - h.x) : 0;
   e.kx = Math.cos(a) * SPINTA_MORSO; e.ky = Math.sin(a) * SPINTA_MORSO;
-  return e.morsi;
+  return e.p;
 }
 
-B.giganti = { attacchi: ATTACCHI, attacco, prepara, pensa, colpisce, morso };
+B.giganti = { attacchi: ATTACCHI, attacco, prepara, pensa, colpisce, morso, furiaDi };
 })();

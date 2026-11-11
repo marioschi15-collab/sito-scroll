@@ -19,7 +19,8 @@
      --sopravvivenza         gioca la sopravvivenza al posto dei livelli
      --sottoinsieme          registra solo una parte dei contenuti (per provare che il gioco regge lo stesso)
      --colpi                 stampa anche da chi sono arrivati i colpi e da dove le perle
-     --diario                stampa, partita per partita, quando è arrivato ogni colpo e da chi
+     --diario                stampa, partita per partita, quando è arrivato ogni colpo e da chi (e i morsi dati al gigante)
+     --scontro               stampa, partita per partita, che cosa fa il gigante dal primo morso in poi (per tarare lo scontro)
    Esce con codice 1 se trova errori. Il pilota è poco furbo: una persona gioca meglio. */
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -53,6 +54,7 @@ function argomenti(argv) {
     else if (v === '--sottoinsieme') a.sottoinsieme = true;
     else if (v === '--colpi') a.colpi = true;
     else if (v === '--diario') a.diario = true;
+    else if (v === '--scontro') a.scontro = true;
     else if (v === '--freccia') a.freccia = true;
     else if (v === '--pubblicato') a.pubblicato = true;
     else { console.error('Opzione sconosciuta: ' + v); process.exit(2); }
@@ -136,7 +138,10 @@ function creaScatola(opzioni = {}) {
    addosso, e sa le poche cose che una persona vede a colpo d'occhio: si allontana di più da chi sta per attaccare
    (avviso) e dalla mina che lampeggia, si sposta di lato da sotto la stalattite e dalla colonna dello sfiatatoio,
    scansa i proiettili, e se resta chiuso in un angolo scivola lungo il bordo invece di restare fermo. Non usa lo
-   scatto, non cerca le bolle né le conchiglie. */
+   scatto, non cerca le bolle né le conchiglie.
+   Contro il gigante fa quello che il gioco dice di fare: da quando può morderlo ("Ora puoi morderlo!") segue la freccia
+   e gli va addosso ogni volta che si può mordere (la scritta "MORDI!", o il numero verde); quando non si può (appena
+   morso, furente, in carica) lo tratta come ogni altro pericolo: gli sta alla larga e intanto mangia lì attorno. */
 function creaPilota({ cautela, errore }, casuale, freccia) {
   let rx = 0, ry = 0, quando = 0;
   const mossa = { x: 0, y: 0 };
@@ -144,7 +149,8 @@ function creaPilota({ cautela, errore }, casuale, freccia) {
     const h = M.eroe;
     let fx = 0, fy = 0, pericolo = false;
     for (const e of M.predatori) {
-      if (!e.minaccia) continue;
+      // il gigante che prepara un attacco ("!") si evita anche quando si potrebbe mordere: l'attacco parte lo stesso
+      if (!e.minaccia && !(e.gigante && e.avviso > 0 && !e.mangiabile)) continue;
       const d = Math.hypot(e.x - h.x, e.y - h.y) - e.r - h.r;
       const soglia = e.avviso > 0 ? cautela * 2.2 : e.vAtt > 100 ? cautela : cautela * 0.8;
       if (d < soglia) { const q = Math.max(5, d + 30); fx += (h.x - e.x) / q; fy += (h.y - e.y) / q; pericolo = true; }
@@ -163,10 +169,15 @@ function creaPilota({ cautela, errore }, casuale, freccia) {
       const d = Math.hypot(q.x - h.x, q.y - h.y) || 1;
       if (d < cautela * 0.8 + h.r + q.r) { fx += (h.x - q.x) / d * 3; fy += (h.y - q.y) / d * 3; pericolo = true; }
     }
+    for (const o of M.onde) {                          // l'onda d'urto di un gigante: finché l'anello non è passato, alla larga
+      if (o.tipo !== 'onda' || o.fatto) continue;
+      const d = Math.hypot(o.x - h.x, o.y - h.y) || 1;
+      if (d - h.r < o.rMale + cautela * 0.5) { fx += (h.x - o.x) / d * 3; fy += (h.y - o.y) / d * 3; pericolo = true; }
+    }
     if (!pericolo) {
       let meta = null, vicino = 1e9;
       const ob = M.obiettivo;
-      if (freccia && ob && ob.mangiabile && !ob.via && !(ob.intoccabile > 0)) meta = ob;
+      if (ob && !ob.via && !(ob.intoccabile > 0) && (ob.gigante ? ob.mangiabile || (ob.mordibile && !(ob.avviso > 0)) : freccia && ob.mangiabile)) meta = ob;
       if (!meta) for (const e of M.predatori) {
         if (!e.mangiabile || e.via || e.intoccabile > 0) continue;
         const d = Math.hypot(e.x - h.x, e.y - h.y);
@@ -210,21 +221,38 @@ function gioca(scatola, o) {
       + (h.x < 200 || h.x > M.largo - 200 || h.y < 200 || h.y > M.alto - 200 ? ' al bordo' : '') + ' → cuori ' + d.cuori);
   });
   const via2 = B.eventi.su('perle', d => { perle[d.motivo] = (perle[d.motivo] || 0) + d.quante; });
-  const via = () => { via1(); via2(); };
+  const morsi = [];                                  // i morsi al gigante: quando, quanto danno, quanta vita resta
+  const via3 = B.eventi.su('gigante:morso', d => {
+    const M = B.partita.mondo, a = M.aiuti;
+    morsi.push({ t: M.tempo, danno: d.danno, resta: d.vitaRimasta, molt: Math.max(a.molt, a.frenesiaT > 0 ? 2 : 1) });
+  });
+  const via = () => { via1(); via2(); via3(); };
   B.partita.avvia({ livello: o.livello, modalita: o.modalita });
   const limite = Math.round(o.secondi / PASSO), inizio = process.hrtime.bigint();
   let passi = 0;
-  while (B.partita.stato === 'gioco' && passi < limite) { B.partita.aggiorna(PASSO); passi++; }
+  const fasi = [];                                   // --scontro: che cosa fa il gigante, da quando l'eroe può morderlo
+  let fase = '';
+  while (B.partita.stato === 'gioco' && passi < limite) {
+    B.partita.aggiorna(PASSO); passi++;
+    if (!o.scontro) continue;
+    const M = B.partita.mondo, g = M.obiettivo, h = M.eroe;
+    if (!g || !g.gigante || !h || !(h.p > g.sogliaMorso)) continue;
+    const ora = g.sconfitto > 0 ? 'sconfitto' : g.stordito > 0 ? 'stordito' : g.avviso > 0 ? 'avviso ' + g.attaccoNome : g.sprint > 0 ? 'carica' : g.attacco ? g.attaccoNome
+      : g.ritirata > 0 ? 'arretra' : g.mangiabile ? 'VERDE' : g.mordibile ? 'MORDI' : g.furente > 0 ? 'furente' : 'altro';
+    if (ora !== fase) { fase = ora; fasi.push(minuti(M.tempo) + ' ' + ora + ' (a ' + Math.round(Math.hypot(g.x - h.x, g.y - h.y) - g.r - h.r) + ')'); }
+  }
   const ms = Number(process.hrtime.bigint() - inizio) / 1e6;
   via();
   const M = B.partita.mondo, stato = B.partita.stato;
   const esito = { esito: stato === 'gioco' ? 'tempo' : stato, tempo: M.tempo, potenza: M.eroe ? M.eroe.p : 0, colpi: M.colpi, perle: M.perle,
-    cuori: M.cuori, ottava: M.ottava, daChi: colpi, perlePer: perle, diario, generi, passi, ms };
+    cuori: M.cuori, ottava: M.ottava, daChi: colpi, perlePer: perle, diario, generi, passi, ms, morsi, fasi,
+    morsoMassimo: morsi.reduce((q, m) => Math.max(q, m.danno), 0), scontro: morsi.length ? morsi[morsi.length - 1].t - morsi[0].t : 0 };
   if (stato === 'gioco') B.partita.abbandona();
   return esito;
 }
 
 // ---------------------------------------------------------------- tabelle
+const limita = (v, a, b) => Math.max(a, Math.min(b, v));
 const media = lista => lista.length ? lista.reduce((a, b) => a + b, 0) / lista.length : NaN;
 const minuti = s => s === s ? Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0') : '  —';
 const tondo = n => n === n ? (n >= 1e6 ? (n / 1e6).toFixed(1) + ' mln' : String(Math.round(n))) : '—';
@@ -240,14 +268,25 @@ function tabella(scatola, a) {
     const nome = a.sopravvivenza ? 'sopravvivenza' : n + ' ' + cfg.ambiente.nome + (cfg.obiettivo.tipo === 'gigante' ? ' ♛' : '') + (cfg.particolarita ? ' [' + cfg.particolarita.tipo + ']' : '');
     for (const pilota of a.piloti) {
       const esiti = [];
-      for (let g = 0; g < a.giri; g++) esiti.push(gioca(scatola, { livello: n, modalita: a.sopravvivenza ? 'sopravvivenza' : 'avventura', pilota, secondi: a.secondi, freccia: a.freccia, diario: a.diario,
+      for (let g = 0; g < a.giri; g++) esiti.push(gioca(scatola, { livello: n, modalita: a.sopravvivenza ? 'sopravvivenza' : 'avventura', pilota, secondi: a.secondi, freccia: a.freccia, diario: a.diario, scontro: a.scontro,
         seme: a.seme * 100003 + n * 1009 + g * 31 + (pilota === 'attento' ? 0 : 7) }));
       const vinte = esiti.filter(e => e.esito === 'vinto'), perse = esiti.filter(e => e.esito !== 'vinto');
       for (const e of esiti) for (const [genere, q] of Object.entries(e.generi)) generi[genere] = (generi[genere] || 0) + q;
       const perleVinte = vinte.length ? vinte.map(e => e.perle) : esiti.map(e => e.perle);
       console.log(riga([nome, pilota, vinte.length + '/' + esiti.length, minuti(media(vinte.map(e => e.tempo))), minuti(media(perse.map(e => e.tempo))),
         media(esiti.map(e => e.colpi)).toFixed(1), tondo(media(esiti.map(e => e.potenza))), tondo(media(perleVinte)) + (vinte.length ? '' : '°')], larghezze));
-      if (a.diario) for (const e of esiti) console.log('    ' + e.esito + ' a ' + minuti(e.tempo) + ' con p' + tondo(e.potenza) + ': ' + (e.diario.join(' · ') || 'nessun colpo'));
+      if (cfg && cfg.obiettivo.tipo === 'gigante') {
+        // lo scontro: quanti morsi sono serviti nelle partite vinte, quanto è durato, a che numero è arrivato l'eroe
+        const quanti = vinte.map(e => e.morsi.length).sort((x, y) => x - y);
+        console.log('    scontro (vinte): morsi ' + (quanti.length ? media(quanti).toFixed(1) + ' (' + [...new Set(quanti)].map(q => quanti.filter(x => x === q).length + ' volte ' + q).join(', ') + ')' : '—')
+          + ', dal primo all\'ultimo morso ' + minuti(media(vinte.map(e => e.scontro))) + ', primo morso a ' + minuti(media(vinte.map(e => e.morsi[0].t)))
+          + ', potenza finale ' + tondo(media(vinte.map(e => e.potenza))) + (vinte.length ? ' (da ' + tondo(Math.min(...vinte.map(e => e.potenza))) + ' a ' + tondo(Math.max(...vinte.map(e => e.potenza))) + ')' : '')
+          + ', morso più forte ' + tondo(media(vinte.map(e => e.morsoMassimo)))
+          + ' — perse: ' + perse.length + ', di cui ' + perse.filter(e => e.morsi.length > 0).length + ' a scontro cominciato');
+      }
+      if (a.diario) for (const e of esiti) console.log('    ' + e.esito + ' a ' + minuti(e.tempo) + ' con p' + tondo(e.potenza) + ': ' + (e.diario.join(' · ') || 'nessun colpo')
+        + (e.morsi.length ? ' — morsi: ' + e.morsi.map(m => minuti(m.t) + ' −' + tondo(m.danno) + (m.molt > 1 ? ' (×' + m.molt + ')' : '')).join(', ') : ''));
+      if (a.scontro) for (const e of esiti) if (e.fasi.length) console.log('    ' + e.esito + ' a ' + minuti(e.tempo) + ': ' + e.fasi.join(' · '));
       if (a.colpi) {
         const somma = {};
         for (const e of esiti) for (const [chi, q] of Object.entries(e.daChi)) somma[chi] = (somma[chi] || 0) + q;
@@ -332,29 +371,94 @@ function proveMirate(scatola) {
   const fermo = () => { B.prova.pilota = () => ({ x: 0, y: 0 }); };
   const trova = (M, filtro) => M.predatori.find(e => e.indole && !e.via && filtro(e));
 
-  prova('gigante: tre morsi, a ogni morso si infuria, poi la vittoria', () => {
+  prova('gigante: vita in milioni, ogni morso toglie quanto vale il numero dell\'eroe, furia secondo la vita, boccone finale', () => {
     scatola.seme(11); fermo();
-    const morsi = [], fine = [];
-    const via1 = B.eventi.su('gigante:morso', d => morsi.push(d.rimasti)), via2 = B.eventi.su('partita:fine', d => fine.push(d));
+    const morsi = [], fine = [], mangiati = [];
+    const via1 = B.eventi.su('gigante:morso', d => morsi.push(d)), via2 = B.eventi.su('partita:fine', d => fine.push(d)), via3 = B.eventi.su('mangiato', d => mangiati.push(d));
+    const via = () => { via1(); via2(); via3(); };
+    try {
+      B.partita.avvia({ livello: 5 });
+      const M = B.partita.mondo, g = M.obiettivo, h = M.eroe, a = M.aiuti, nutre = M.cfg.obiettivo.nutre;
+      if (!g || !g.gigante) return 'al livello 5 non c\'è un gigante';
+      if (g.p !== 3e6 || g.vitaTotale !== 3e6 || g.vita !== 1) return 'Don Cernia non ha 3 milioni di vita: ' + g.p + ' / ' + g.vitaTotale;
+      if (!(g.sogliaMorso > M.cfg.fasce[M.cfg.fasce.length - 1].max && g.sogliaMorso < g.p)) return 'soglia del morso fuori posto: ' + g.sogliaMorso;
+      soloLui(B, g); M.bolle.length = 0;
+      for (const f of M.pesciolini) f.morto = 1e9;        // niente pesciolini: il numero dell'eroe cambia solo con i morsi
+      const pulito = p => { h.invul = 0; h.p = p; a.molt = 1; a.moltT = 0; a.frenesia = 0; a.frenesiaT = 0; g.furente = 0; g.ritirata = 0; g.stordito = 0; g.riposo = 0; };
+      // sotto la soglia il gigante fa solo male
+      pulito(g.sogliaMorso - 10); addosso(B, g);
+      if (morsi.length) return 'sotto la soglia l\'eroe ha morso lo stesso';
+      if (M.cuori !== M.cuoriMax - 1) return 'sotto la soglia il gigante non ha tolto un cuore';
+      // sopra la soglia: un morso toglie quanto vale il numero dell'eroe, e l'eroe cresce di una parte
+      pulito(400000); addosso(B, g);
+      if (morsi.length !== 1) return 'sopra la soglia l\'eroe non ha morso (' + morsi.length + ' morsi)';
+      let m = morsi[0];
+      if (m.id !== g.def.id || m.danno !== 400000 || m.vitaRimasta !== 2600000 || m.vitaTotale !== 3e6 || !(m.rimasti >= 1)) return 'gigante:morso sbagliato: ' + JSON.stringify(m);
+      if (g.p !== 2600000 || Math.abs(g.vita - 2.6 / 3) > 1e-9) return 'la vita non è scesa di 400.000: ' + g.p + ' (' + g.vita + ')';
+      if (h.p !== 400000 + Math.round(400000 * nutre)) return 'l\'eroe non è cresciuto di una parte del danno: ' + h.p;
+      if (g.stato !== 'stordito' || g.furia !== 0 || !(g.furente > 0) || !(g.intoccabile > 0)) return 'dopo il morso: stato ' + g.stato + ', furia ' + g.furia + ', furente ' + g.furente;
+      if (!M.testi.some(t => t.danno > 0 && t.s === '−400.000')) return 'il danno non vola sullo schermo: ' + M.testi.map(t => t.s).join(' | ');
+      // niente raffiche: subito dopo non si morde (e non ci si fa male)…
+      const cuori = M.cuori;
+      for (let i = 0; i < 20; i++) { h.x = g.x; h.y = g.y; B.partita.aggiorna(PASSO); }
+      if (morsi.length !== 1) return 'due morsi di fila stando addosso';
+      if (M.cuori !== cuori) return 'subito dopo il morso l\'eroe non è al sicuro';
+      // …e finché è furente toccarlo fa male
+      h.invul = 0; g.stordito = 0; addosso(B, g);
+      if (morsi.length !== 1) return 'il gigante furente si è lasciato mordere';
+      if (M.cuori !== cuori - 1) return 'il gigante furente non fa male';
+      if (g.furente !== 0) return 'dopo aver colpito l\'eroe il gigante è ancora furente';
+      // la furia segue la vita che resta; l'aiuto attivo moltiplica il danno (frenesia ×2, bolla ×5: vale il più alto)
+      pulito(350001); a.frenesiaT = 5; addosso(B, g); m = morsi[morsi.length - 1];
+      if (morsi.length !== 2 || m.danno !== 700002) return 'con la frenesia il danno non raddoppia: ' + JSON.stringify(m);
+      if (g.p !== 1899998 || g.furia !== 1) return 'sotto i due terzi di vita la furia non sale a 1: vita ' + g.p + ', furia ' + g.furia;
+      if (!M.testi.some(t => t.danno === 2 && t.s === '−700.002!')) return 'il danno moltiplicato non vola con il punto esclamativo';
+      pulito(360000); a.frenesiaT = 5; a.molt = 5; a.moltT = 5; addosso(B, g); m = morsi[morsi.length - 1];
+      if (morsi.length !== 3 || m.danno !== 1800000) return 'con la bolla ×5 il danno non vale cinque volte: ' + JSON.stringify(m);
+      if (g.p !== 99998 || g.furia !== 2) return 'sotto un terzo di vita la furia non sale a 2: vita ' + g.p + ', furia ' + g.furia;
+      // il numero dell'eroe supera la vita rimasta: verde, e un boccone solo
+      pulito(360000); g.intoccabile = 0; h.x = limita(g.x + 600, 100, M.largo - 100) === g.x + 600 ? g.x + 600 : g.x - 600; h.vx = 0; h.kx = 0; B.partita.aggiorna(PASSO);
+      if (!g.mangiabile || g.mordibile || g.minaccia) return 'con il numero più alto della vita rimasta il gigante non è verde';
+      const prima = h.p;
+      addosso(B, g); m = morsi[morsi.length - 1];
+      if (morsi.length !== 4 || m.rimasti !== 0 || m.vitaRimasta !== 0) return 'l\'ultimo boccone non chiude lo scontro: ' + JSON.stringify(m);
+      if (g.stato !== 'sconfitto' || g.p !== 0) return 'dopo l\'ultimo boccone il gigante non è sconfitto (' + g.stato + ', vita ' + g.p + ')';
+      if (h.p !== prima + Math.round(3e6 * 0.3)) return 'mangiato il gigante l\'eroe non guadagna il 30% del suo numero: ' + (h.p - prima);
+      for (let i = 0; i < 90 && B.partita.stato === 'gioco'; i++) B.partita.aggiorna(PASSO);
+      if (B.partita.stato !== 'vinto') return 'la partita non è vinta (' + B.partita.stato + ')';
+      const f = fine[0];
+      if (!f || f.esito !== 'vinto' || !(f.stelle >= 1 && f.stelle <= 3)) return 'partita:fine sbagliato: ' + JSON.stringify(f);
+      if (f.morsi !== 4 || f.morsoMassimo !== 1800000 || f.danni !== 400000 + 700002 + 1800000 + 360000) return 'partita:fine non porta morsi e danni giusti: ' + f.morsi + ', ' + f.morsoMassimo + ', ' + f.danni;
+      if (!(f.mangiati[g.def.id] === 1)) return 'il gigante non è fra i mangiati';
+      if (mangiati.filter(d => d.tipo === 'gigante').length !== 1 || morsi.filter(d => d.rimasti === 0).length !== 1) return 'la sconfitta del gigante non arriva una volta sola';
+    } finally { via(); }
+  });
+
+  prova('gigante: dopo un morso arretra, contrattacca due volte e solo allora si lascia mordere di nuovo', () => {
+    scatola.seme(14); fermo();
     B.partita.avvia({ livello: 5 });
-    const M = B.partita.mondo, g = M.obiettivo;
-    if (!g || !g.gigante) return 'al livello 5 non c\'è un gigante';
-    soloLui(B, g);
-    const potenze = [g.p];
-    M.eroe.invul = 0; M.eroe.p = g.p - 10; addosso(B, g);
-    if (M.cuori !== M.cuoriMax - 1) return 'il gigante più forte non ha tolto un cuore';
-    for (let i = 0; i < 3 && B.partita.stato === 'gioco'; i++) {
-      M.eroe.invul = 0; M.eroe.p = g.p * 1.5; addosso(B, g); potenze.push(g.p);
-      if (i < 2 && g.stato !== 'stordito') return 'dopo il morso ' + (i + 1) + ' il gigante non è stordito (' + g.stato + ')';
+    const M = B.partita.mondo, g = M.obiettivo, h = M.eroe;
+    soloLui(B, g); M.bolle.length = 0;
+    g.x = M.largo / 2; g.y = M.alto / 2; h.p = 400000; h.invul = 0; addosso(B, g);
+    if (g.morsi !== 1 || !(g.furente > 0)) return 'il primo morso non è andato a segno';
+    const lontano = Math.hypot(g.x - h.x, g.y - h.y);
+    let attacchi = 0, inAvviso = false, arretrato = 0, presto = false, t = 0;
+    h.invul = 999;                                        // l'eroe sta a guardare da vicino, al sicuro
+    for (; t < 40 && !g.mordibile; t += PASSO) {
+      const ang = Math.atan2(h.y - g.y, h.x - g.x), d = g.r + h.r + 220;
+      if (!(g.ritirata > 0) && !(g.stordito > 0)) { h.x = limita(g.x + Math.cos(ang) * d, 100, M.largo - 100); h.y = limita(g.y + Math.sin(ang) * d, 100, M.alto - 100); h.vx = 0; h.vy = 0; h.kx = 0; h.ky = 0; }
+      B.partita.aggiorna(PASSO);
+      arretrato = Math.max(arretrato, Math.hypot(g.x - h.x, g.y - h.y) - lontano);
+      if (g.avviso > 0 && !inAvviso) attacchi++;
+      inAvviso = g.avviso > 0;
+      if (g.mordibile && attacchi < 2) presto = true;
     }
-    if (g.stato !== 'sconfitto') return 'dopo tre morsi il gigante non è sconfitto (' + g.stato + ')';
-    for (let i = 0; i < 90 && B.partita.stato === 'gioco'; i++) B.partita.aggiorna(PASSO);
-    via1(); via2();
-    if (morsi.join() !== '2,1,0') return 'morsi rimasti: ' + morsi.join() + ' (attesi 2,1,0)';
-    if (!(potenze[1] > potenze[0] && potenze[2] > potenze[1])) return 'il gigante non diventa più forte a ogni morso: ' + potenze.join(' → ');
-    if (B.partita.stato !== 'vinto') return 'la partita non è vinta (' + B.partita.stato + ')';
-    if (!fine.length || fine[0].esito !== 'vinto' || !(fine[0].stelle >= 1 && fine[0].stelle <= 3)) return 'partita:fine sbagliato: ' + JSON.stringify(fine[0]);
-    if (!(fine[0].mangiati[g.def.id] === 1)) return 'il gigante non è fra i mangiati';
+    if (presto) return 'si lascia mordere prima di aver contrattaccato due volte (' + attacchi + ')';
+    if (!g.mordibile) return 'dopo 40 secondi non si può ancora mordere (attacchi ' + attacchi + ', furente ' + g.furente + ')';
+    if (attacchi !== 2) return 'contrattacchi prima del morso: ' + attacchi + ' (attesi 2)';
+    if (!(arretrato > 120)) return 'dopo il morso non arretra (' + Math.round(arretrato) + ')';
+    if (!(t > 5 && t < 25)) return 'il giro stordito-ritirata-contrattacchi dura ' + t.toFixed(1) + ' s';
+    if (!g.minaccia === !g.mordibile) return 'mordibile e minaccia insieme';
   });
 
   prova('capobranco: un morso solo', () => {
@@ -662,7 +766,7 @@ function proveMirate(scatola) {
         soloLui(B, g); M.bolle.length = 0;
         g.x = M.largo / 2; g.y = M.alto / 2; g.nasce = 0; g.ang = 0; g.riposo = 0;
         g.indiceAttacco = g.attacchi.indexOf(nome); g.prossimoAttacco = 0;
-        h.p = Math.round(g.p / 8); h.invul = 999;
+        h.p = Math.round(g.sogliaMorso / 8); h.invul = 999;
         const d = Math.min(a.portata * 0.7, g.r + h.r + 170);
         h.x = g.x + d; h.y = g.y; h.vx = 0; h.vy = 0;
         const visto = { avviso: 0, carica: false, onde: 0, proiettili: 0, sparati: 0, nuvole: 0, scie: 0, buio: 0, tiro: 0, branco: 0, nome: '' };
@@ -708,7 +812,7 @@ function proveMirate(scatola) {
       const M = B.partita.mondo, g = M.obiettivo, h = M.eroe;
       soloLui(B, g); M.bolle.length = 0;
       g.x = M.largo / 2; g.y = M.alto / 2; g.nasce = 0; g.ang = 0; g.riposo = 0; g.indiceAttacco = g.attacchi.indexOf(nome); g.prossimoAttacco = 0;
-      h.p = Math.round(g.p / 8); h.invul = 0; h.x = g.x + g.r + h.r + distanza; h.y = g.y;
+      h.p = Math.round(g.sogliaMorso / 8); h.invul = 0; h.x = g.x + g.r + h.r + distanza; h.y = g.y;
       return { M, g, h, x: h.x, y: h.y };
     };
     for (const nome of ['tentacoli', 'onda']) {
@@ -750,7 +854,7 @@ function proveMirate(scatola) {
   prova('livelli: ambienti aperti, fasce, obiettivi, pericoli, difficoltà', () => {
     const L = B.livelli, aperti = B.cast.aperti;
     if (L.totale !== aperti.length * L.perAmbiente) return 'totale = ' + L.totale + ' con ' + aperti.length + ' ambienti aperti';
-    let prima = -1;
+    let prima = -1, vitaPrima = 0;
     for (let n = 1; n <= L.totale; n++) {
       const c = L.config(n), posto = (n - 1) % L.perAmbiente + 1, idAmb = aperti[Math.ceil(n / L.perAmbiente) - 1];
       if (c.ambiente.id !== idAmb) return 'livello ' + n + ': ambiente ' + c.ambiente.id + ' (atteso ' + idAmb + ')';
@@ -762,7 +866,12 @@ function proveMirate(scatola) {
         if (!f.specie.some(s => s.ambienti.includes(idAmb))) return 'livello ' + n + ': la fascia ' + f.taglia + ' non ha specie dell\'ambiente';
       }
       const ob = c.obiettivo;
-      if (posto === L.perAmbiente) { if (ob.tipo !== 'gigante' || ob.def.id !== c.ambiente.gigante || ob.morsi !== 3) return 'livello ' + n + ': manca il gigante dell\'ambiente con tre morsi'; }
+      if (posto === L.perAmbiente) {
+        if (ob.tipo !== 'gigante' || ob.def.id !== c.ambiente.gigante) return 'livello ' + n + ': manca il gigante dell\'ambiente';
+        if (!(ob.vita >= 3e6) || ob.vita % 1e6 !== 0 || ob.potenza !== ob.vita || !(ob.vita > vitaPrima)) return 'livello ' + n + ': la vita del gigante (' + ob.vita + ') non è in milioni tondi che crescono';
+        if (!(ob.sogliaMorso > c.fasce[c.fasce.length - 1].max && ob.sogliaMorso < ob.vita / 4) || !(ob.nutre > 0 && ob.nutre <= 1)) return 'livello ' + n + ': soglia del morso ' + ob.sogliaMorso + ' o parte che nutre ' + ob.nutre + ' fuori posto';
+        vitaPrima = ob.vita;
+      }
       else if (ob.tipo !== 'capobranco' || !ob.def || ob.def.taglia !== 5 || ob.morsi !== 1 || !(ob.r > B.cast.raggi[4]) || !ob.def.ambienti.includes(idAmb)) return 'livello ' + n + ': capobranco sbagliato (' + (ob.def && ob.def.id) + ')';
       if (!(ob.potenza > c.fasce[c.fasce.length - 1].max)) return 'livello ' + n + ': l\'obiettivo non è più forte dei pesci';
       if (n === 1 && c.pericoli.length) return 'al livello 1 ci sono pericoli';

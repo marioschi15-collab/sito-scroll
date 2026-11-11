@@ -31,12 +31,25 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 #cr-etichette { display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; font-size: 12px; font-weight: 800; margin-bottom: 4px; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
 #cr-livello { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 #cr-obiettivo { flex: none; color: var(--oro); }
-#cr-obiettivo .morso { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-left: 3px; background: var(--rosa); box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .85); }
-#cr-obiettivo .morso.dato { background: rgba(8, 20, 48, .6); }
 #cr-barra { height: 13px; border-radius: 8px; overflow: hidden; }
 #cr-barra i { display: block; height: 100%; width: 0%; border-radius: 8px; background: linear-gradient(90deg, #35e0c8, #ffe066); transition: width .25s; }
 #cr-frenesia { height: 5px; border-radius: 4px; margin-top: 4px; overflow: hidden; background: rgba(8, 20, 48, .45); }
 #cr-frenesia i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #ff9d3b, #ff4f7b); }
+/* La barra della vita del gigante (la crea 70-interfaccia.js): si vede solo nei livelli dei giganti. */
+#cr-vita { display: none; position: relative; height: 26px; border-radius: 13px; overflow: hidden; margin-top: 8px; }
+#cruscotto.con-gigante #cr-vita { display: block; }
+#cr-vita i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; border-radius: 13px; background: linear-gradient(90deg, #c81e3c, #ff5c7a); transition: width .4s cubic-bezier(.2, .9, .3, 1), background-color .3s; }
+#cr-vita.furia1 i { background: linear-gradient(90deg, #d8431e, #ff8a3d); }
+#cr-vita.furia2 i { background: linear-gradient(90deg, #d97706, #ffc02e); }
+#cr-vita.verde i { background: linear-gradient(90deg, #128a4a, #4fdc8f); }
+#cr-vita::before, #cr-vita::after { content: ''; position: absolute; top: 4px; bottom: 4px; width: 2px; border-radius: 1px; background: rgba(255, 255, 255, .5); z-index: 1; }
+#cr-vita::before { left: 33.33%; } #cr-vita::after { left: 66.66%; }
+#cr-vita span, #cr-vita b { position: absolute; top: 0; z-index: 2; line-height: 26px; white-space: nowrap; text-shadow: 0 1px 2px rgba(0, 0, 0, .75), 0 0 6px rgba(0, 0, 0, .45); }
+#cr-vita span { left: 12px; right: 96px; overflow: hidden; text-overflow: ellipsis; font-size: 13px; font-weight: 800; }
+#cr-vita b { right: 12px; font-size: 16px; font-weight: 900; }
+#cr-vita.colpo { animation: colpo-vita .4s ease-out; }
+@keyframes colpo-vita { 0% { transform: scale(1.03, 1.3); filter: brightness(1.9); } 100% { transform: none; filter: none; } }
+#cruscotto.con-gigante ~ #avvisi.in-partita { top: calc(var(--sopra) + 172px); }
 #cr-perle { flex: none; height: 44px; border-radius: 22px; padding: 0 14px 0 10px; display: flex; align-items: center; gap: 7px; font-weight: 900; font-size: 16px; }
 #cr-sotto { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; min-height: 28px; }
 #cr-cuori { font-size: 21px; letter-spacing: 2px; text-shadow: 0 2px 3px rgba(0, 0, 0, .5); margin-right: 4px; white-space: nowrap; }

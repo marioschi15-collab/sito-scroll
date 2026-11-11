@@ -66,12 +66,14 @@ const veroEroe = id => { const d = B.eroi.prendi(id); return d && !d.provvisoria
 (() => {
   const tasti = new Map(), conti = new Map();
   let scelto = 1, titolo, riga, vai;
+  /* La vita di un gigante in parole: "3 milioni", "un milione"; se non è un numero tondo, come lo scrive il gioco. */
+  const milioni = v => v >= 1e6 && v % 1e6 === 0 ? (v === 1e6 ? 'un milione' : I.numero(v / 1e6) + ' milioni') : I.numero(v);
   function scegli(n) {
     scelto = n;
     for (const [k, b] of tasti) b.classList.toggle('scelto', k === n);
     const cfg = L.config(n), ob = cfg.obiettivo, aperto = P.livelloSbloccato(n);
     titolo.textContent = 'Livello ' + n + ' · ' + cfg.ambiente.nome;
-    let s = ob.tipo === 'gigante' ? 'Affronta ' + ob.nome + ': servono ' + ob.morsi + ' morsi.' : 'Cresci e mangia il capobranco' + (ob.def ? ' (' + ob.def.nome.toLowerCase() + ').' : '.');
+    let s = ob.tipo === 'gigante' ? 'Affronta ' + ob.nome + ': ' + milioni(ob.vita) + ' di vita.' : 'Cresci e mangia il capobranco' + (ob.def ? ' (' + ob.def.nome.toLowerCase() + ').' : '.');
     if (cfg.particolarita) s += ' ' + cfg.particolarita.nome + ': ' + cfg.particolarita.descrizione.charAt(0).toLowerCase() + cfg.particolarita.descrizione.slice(1);
     s += ' Terza stella entro ' + I.minuti(cfg.tempoStella) + '.';
     riga.textContent = aperto ? s : 'Per aprirlo supera prima il livello ' + (n - 1) + '.';
@@ -190,7 +192,7 @@ const veroEroe = id => { const d = B.eroi.prendi(id); return d && !d.provvisoria
     if (visto) {
       scheda.append(el('div', 'dove', (def.tipo === 'gigante' ? 'Gigante · ' : 'Taglia ' + def.taglia + ' di 5 · ') + nomiAmbienti(def)));
       scheda.append(el('p', '', def.descrizione || ''));
-      const carattere = def.tipo === 'gigante' ? 'Si può mordere solo dopo essere diventati più forti di lui.' : [INDOLI[def.indole], SPECIALI[def.speciale]].filter(Boolean).join(' ');
+      const carattere = def.tipo === 'gigante' ? 'Ha milioni di vita: ogni morso gliene toglie quanto vale il tuo numero. Quando il tuo numero supera il suo, lo mangi in un boccone.' : [INDOLI[def.indole], SPECIALI[def.speciale]].filter(Boolean).join(' ');
       if (carattere) scheda.append(el('p', 'piccolo', carattere));
       const conti = el('div', 'conti'), c1 = el('div'), c2 = el('div');
       c1.append(el('b', '', I.numero(a.visti)), def.tipo === 'gigante' ? 'volte incontrato' : 'volte visto'); c2.append(el('b', '', I.numero(a.mangiati)), def.tipo === 'gigante' ? 'volte sconfitto' : 'volte mangiato');
@@ -344,7 +346,7 @@ S.registra('aiuto', {
       ['giallo', '⚡', 'Il tasto <strong>Scatto</strong> ti dà uno sprint, per scappare o per acchiappare.'],
       ['rosso', '!', 'Meduse, ricci, mine e gli altri <strong>pericoli</strong> fanno male sempre, anche se sei enorme.'],
       ['verde', '♛', 'Diventa il più grosso e mangia il <strong>capobranco</strong> con la corona: il livello è superato.'],
-      ['rosso', '♛', 'Ogni quinto livello c\'è un <strong>gigante</strong>: schiva i suoi attacchi, cresci e mordilo tre volte.'],
+      ['rosso', '♛', 'Ogni quinto livello c\'è un <strong>gigante</strong> con milioni di vita: cresci finché puoi morderlo. Ogni morso gli toglie quanto vale il tuo numero; dopo, schiva i suoi attacchi e mordi ancora.'],
       ['giallo', '★', 'Tre <strong>stelle</strong>: supera il livello, non perdere cuori, fai in fretta.'],
     ];
     for (const [colore, segno, testo] of REGOLE) {
@@ -383,7 +385,13 @@ S.registra('pausa', {
       voce(!!d.senzaColpi, d.senzaColpi ? 'Senza perdere cuori' : 'Senza perdere cuori (ne hai persi ' + d.colpi + ')');
       voce(!!d.inTempo, 'Entro ' + I.minuti(d.tempoStella || cfg.tempoStella) + ' (tu: ' + I.minuti(d.tempo) + ')');
       const p = el('p'); p.append(perle(d.perle));
-      col.append(stelle, lista, p);
+      col.append(stelle, lista);
+      if (ob.tipo === 'gigante' && d.morsoMassimo > 0) {                    // lo scontro in una riga: il morso più forte
+        const m = el('p', 'morso-forte');
+        m.append('Il tuo morso più forte: ', el('b', '', '−' + I.numero(d.morsoMassimo)), el('small', '', d.morsi === 1 ? 'Sconfitto con un morso solo!' : 'Sconfitto con ' + d.morsi + ' morsi'));
+        col.append(m);
+      }
+      col.append(p);
       if (d.livello < L.totale) col.append(bottone('Prossimo livello', 'grande', () => I.gioca({ livello: d.livello + 1, modalita: 'avventura' }), 'Livello ' + (d.livello + 1) + ' · ' + L.ambienteDi(d.livello + 1).nome));
       else col.append(el('p', '', 'Hai finito l\'avventura: sei il re degli oceani!'), bottone('Torna all\'inizio', 'grande', () => I.esci('casa')));
       fila.append(bottone('Rigioca', 'medio', () => I.gioca()), bottone('Negozio', 'medio', () => S.mostra('negozio')));
@@ -395,7 +403,11 @@ S.registra('pausa', {
       const rec = P.recordSopravvivenza(), nuovo = d.tempo >= rec.tempo - 0.01 && d.tempo > 5;
       col.append(el('h2', 'titolo', nuovo ? 'Nuovo record!' : 'Fine della corsa!'), el('p', '', 'Hai resistito'), el('div', 'numero', I.minuti(d.tempo)),
         el('p', 'piccolo', 'Potenza raggiunta: ' + I.numero(d.potenza) + (nuovo ? '' : ' · Il tuo record: ' + I.minuti(rec.tempo))));
-    } else col.append(el('h2', 'titolo', 'Ti hanno mangiato!'), el('p', '', 'Eri arrivato a'), el('div', 'numero', I.numero(d.potenza)));
+    } else {
+      col.append(el('h2', 'titolo', 'Ti hanno mangiato!'), el('p', '', 'Eri arrivato a'), el('div', 'numero', I.numero(d.potenza)));
+      const ob = d.esito === 'perso' && d.danni > 0 ? L.config(d.livello).obiettivo : null;   // perso contro il gigante: quanto gli si è tolto
+      if (ob && ob.tipo === 'gigante') col.append(el('p', 'piccolo', 'Hai tolto a ' + ob.nome + ' ' + I.numero(Math.min(d.danni, ob.vita)) + ' di vita su ' + I.numero(ob.vita) + '.'));
+    }
     const p = el('p'); p.append(perle(d.perle));
     col.append(p, el('p', 'piccolo', CONSIGLI[Math.floor(Math.random() * CONSIGLI.length)]), bottone('Riprova', 'grande', () => I.gioca()));
     fila.append(bottone('Negozio', 'medio', () => S.mostra('negozio')), bottone('Inizio', 'medio', () => I.esci('casa')));

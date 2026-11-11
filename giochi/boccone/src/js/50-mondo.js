@@ -24,8 +24,10 @@ const FRENESIA_DURATA = 7, FRENESIA_VEL = 1.2;
 const CALAMITA_DURATA = 9, MOLT_DURATA = 8;
 const INVUL_INIZIO = 3, INVUL_COLPO = 2.6, INVUL_SCUDO = 1.6;
 const PARTE_GUADAGNATA = 0.3;                     // mangiando un pesce si guadagna il 30% della sua potenza
-const PARTE_MORSO_GIGANTE = 0.1;                  // un morso al gigante (non l'ultimo) rende meno
-const NON_TI_DEGNA = 6;                           // chi è più forte di tua × 6 + 20 non ti insegue (capobranco e gigante: × 40, vedi cfg.obiettivo.degna)
+const INVUL_MORSO = 1.4;                          // dopo un morso al gigante l'eroe è al sicuro per un attimo
+const TREGUA_DOPO_COLPO = 1;                      // il gigante che ha appena colpito l'eroe non si può mordere per un attimo
+const DOPO_IL_DANNO = 0.9;                        // gli annunci dopo un morso aspettano che il danno abbia fatto la sua scena
+const NON_TI_DEGNA = 6;                           // chi è più forte di tua × 6 + 20 non ti insegue (capobranco e gigante: × 40, vedi cfg.obiettivo.degna; per il gigante conta la soglia del morso)
 const CONTATTO = 0.72;                            // ci si tocca a questa parte della somma dei raggi
 const PERLA_DAL_PESCE = 0.14;                     // probabilità di una perla mangiando un pesce (due se è delle taglie più grosse)
 const PERLE_PESCI_META = 25;                      // dopo tante perle prese dai pesci la probabilità è dimezzata (e così via)
@@ -48,7 +50,7 @@ const MAI = 1e9;                                  // "morto" di un pesciolino ch
 const COLORI = {
   spruzzo: '#ffffff', oro: '#ffe066', perla: '#ffd9f0', scudo: '#9be7ff', cuore: '#ff5c7a', cuoreScritta: '#ff8fa3',
   boccone: '#b9ffd0', scia: 'rgba(255,255,255,.7)', calamita: '#ff9ecb', duro: '#d7e3f4', veleno: '#c9a8ff',
-  fuoco: '#ffb24a', ghiaccio: '#cfefff', scossa: '#fff27a', rovente: '#ffd9a0',
+  fuoco: '#ffb24a', ghiaccio: '#cfefff', scossa: '#fff27a', rovente: '#ffd9a0', danno: '#ff4f5e',
   festa: ['#ffe066', '#ff9ecb', '#35e0c8', '#ffffff'],
 };
 
@@ -73,7 +75,7 @@ const dati = {
   cuori: 0, cuoriMax: 0, perle: 0, tempo: 0, frenesia: 0, frenesiaT: 0, molt: 1, moltT: 0, calamitaT: 0, scudo: false,
   scatto: 1, fascia: 0, ottava: 0,
 };
-const datiObiettivo = { nome: '', potenza: 0, morsi: 0, morsiTotali: 0 };
+const datiObiettivo = { nome: '', potenza: 0, gigante: false, vita: 1, vitaTotale: 0, sogliaMorso: 0, puoMordere: false, boccone: false };
 
 const raggioEroe = p => 18 * (1 + 0.7 * Math.log10(p + 1));
 const stadioDi = fascia => fascia < 2 ? 0 : fascia < 4 ? 1 : 2;
@@ -88,6 +90,9 @@ function suono(nome, opzioni) {
 }
 function vibra(ms) { emetti('vibra', { ms }); }
 function annuncia(titolo, sotto, durata = 2.4) { emetti('annuncio', { titolo, sotto: sotto || '', durata }); }
+/* Un annuncio che aspetta un attimo (lo fa partire passo()): dopo un morso al gigante prima si guarda il danno che vola,
+   poi si legge la scritta. Ne aspetta uno solo: il più recente. */
+function annunciaDopo(secondi, titolo, sotto, durata = 2.4) { const a = M.annuncioDopo; a.t = secondi; a.titolo = titolo; a.sotto = sotto || ''; a.durata = durata; }
 
 function scoppio(x, y, colore, quanti, forza, grandezza = 1) {
   for (let i = 0; i < quanti && M.particelle.length < TETTO.particelle; i++) {
@@ -108,7 +113,16 @@ function testo(x, y, scritta, colore, grande, perla) {
   if (M.testi.length >= TETTO.testi) riserva.testi.push(M.testi.shift());
   const s = riserva.testi.pop() || {};
   s.x = x; s.y = y; s.s = scritta; s.c = colore; s.eta = 0; s.grande = !!grande; s.perla = !!perla;
+  s.danno = 0; s.molt = 1; s.durata = 1; s.sale = 46;
   M.testi.push(s);
+  return s;
+}
+/* Il danno di un morso al gigante: un numero grosso che resta di più sullo schermo (lo disegna la vista, in rosso e oro,
+   con un rimbalzo e, sopra, "Morso ×5" quando c'è un moltiplicatore). forza: 1 = morso semplice, 2 = con un
+   moltiplicatore (bolla o frenesia), 3 = il boccone finale. */
+function testoDanno(x, y, scritta, forza, molt) {
+  const s = testo(x, y, scritta, COLORI.danno, true);
+  s.danno = forza; s.molt = molt; s.durata = forza > 1 ? 2 : 1.6; s.sale = 22;
 }
 /* Una nuvola che copre la vista: la disegna la vista, sopra le creature. tipo: 'inchiostro' oppure 'scia'. */
 function nuvola(x, y, r, vita, tipo) {
@@ -521,7 +535,8 @@ function nuovoAbitante(def, fascia, p, r) {
     cx: 0, cy: 0, rondaRaggio: 0, rondaAng: 0, rondaVerso: 1, specialeT: caso(1, 4),
     alone: 0, aloneR: 0, scarica: 0, evocato: false,
     // campi di gigante e capobranco (li riempie B.giganti.prepara)
-    morsi: 1, morsiTotali: 1, vita: 1, furia: 0, attacchi: null, indiceAttacco: 0, attacco: null, prossimoAttacco: 0,
+    morsi: 0, vita: 1, vitaTotale: 0, sogliaMorso: p, nutre: 0, furia: 0, furente: 0, ritirata: 0, inCorso: false, mordibile: false,
+    attacchi: null, indiceAttacco: 0, attacco: null, prossimoAttacco: 0,
     inAttacco: null, attaccoNome: '', attT: 0, attN: 0, attDurata: 0, scia: false, sciaT: 0,
     velCalmo: 0, intoccabile: 0, sconfitto: 0, degna: 40, pausa: null,
   };
@@ -677,7 +692,9 @@ function creaMondo(cfg, conEroe) {
     guida: { x: largo / 2, y: alto / 2 }, vistaPesci: part === 'buio' ? 0.85 : 1, valore: 1,
     accumulo: 0, accumuloT: 0, bollaT: 3, gruppoQuanti: 0, gruppoDorati: 0, gruppoId: '', gruppoT: 0.5, vistoT: 0, gnamT: 0, duroT: 0,
     giro: 0,
-    pericoloT: cfg.pericoloOgni || 0, appoggiUsati: 0, avvisatoObiettivo: false,
+    pericoloT: cfg.pericoloOgni || 0, appoggiUsati: 0, avvisatoObiettivo: false, avvisatoBoccone: false,
+    // lo scontro con il gigante: morsi dati, danno in tutto e il morso più forte (finiscono in 'partita:fine')
+    morsi: 0, danni: 0, morsoMassimo: 0, annuncioDopo: { t: 0, titolo: '', sotto: '', durata: 2.4 },
   };
   M.scena = creaScena(amb, cfg.seme);
   if (conEroe) M.eroe = nuovoEroe();
@@ -703,11 +720,14 @@ function nomiDi(fascia) {
   return nomi.join(' e ');
 }
 
+/* Il moltiplicatore dell'aiuto attivo: bolla ×2 o ×5, frenesia ×2. Non si sommano: vale il più alto. */
+function aiutoAttivo() { const a = M.aiuti; return Math.max(a.molt, a.frenesiaT > 0 ? 2 : 1); }
+
 /* L'eroe mangia e cresce. base = potenza guadagnata prima dei moltiplicatori (che valgono pieni sui pesciolini,
-   in radice sui pesci grossi). Risponde il guadagno vero. */
+   in radice sui pesci grossi e sui morsi al gigante). Risponde il guadagno vero. */
 function guadagna(base, x, y, grosso) {
   const h = M.eroe, a = M.aiuti;
-  const mm = Math.max(a.molt, a.frenesiaT > 0 ? 2 : 1), m = grosso ? Math.sqrt(mm) : mm, g = Math.max(1, Math.round(base * m));
+  const mm = aiutoAttivo(), m = grosso ? Math.sqrt(mm) : mm, g = Math.max(1, Math.round(base * m));
   h.p += g; h.r = raggioEroe(h.p / M.valore); h.bocca = 1; h.pulsa = grosso ? 1 : Math.max(h.pulsa, 0.35);
   if (grosso) {
     testo(x, y, '+' + numero(g), COLORI.oro, true);
@@ -739,10 +759,19 @@ function controllaCrescita() {
   }
   if (!ob || stato !== 'gioco') return;
   if (!M.obiettivo) { if (h.p > ob.potenza) vittoria(); return; }      // nessun modello registrato: basta crescere
-  if (!M.avvisatoObiettivo && h.p * E.morso > M.obiettivo.soglia) {
+  const e = M.obiettivo, hp = h.p * E.morso;
+  if (!e.gigante) {
+    if (!M.avvisatoObiettivo && hp > e.soglia) { M.avvisatoObiettivo = true; annuncia('Sei il più grosso!', 'Segui la freccia e mangia il capobranco', 3); }
+    return;
+  }
+  if (e.sconfitto > 0 || e.via) return;
+  if (!M.avvisatoObiettivo && hp > e.sogliaMorso) {
     M.avvisatoObiettivo = true;
-    if (M.obiettivo.gigante) annuncia('Sei più forte del gigante!', 'Segui la freccia e mordilo: servono ' + M.obiettivo.morsiTotali + ' morsi', 3);
-    else annuncia('Sei il più grosso!', 'Segui la freccia e mangia il capobranco', 3);
+    annuncia('Ora puoi morderlo!', 'Ogni morso gli toglie quanto vale il tuo numero', 3.4);
+  }
+  if (!M.avvisatoBoccone && hp > e.soglia) {       // il numero dell'eroe ha superato la vita che resta al gigante
+    M.avvisatoBoccone = true;
+    if (M.morsi > 0) annunciaDopo(DOPO_IL_DANNO, 'Finiscilo!', 'Il tuo numero è più alto del suo: mangialo in un boccone', 2.8);
   }
 }
 
@@ -768,6 +797,9 @@ function colpito(nemico) {
   if (nemico.sprint !== undefined) {               // un pesce (o il gigante): smette ciò che stava facendo e lo lascia stare per un po'
     nemico.sprint = 0; nemico.avviso = 0; nemico.carica = 0; nemico.riposo = Math.max(nemico.riposo, RIPOSO_DOPO_COLPO);
     nemico.attacco = null; nemico.inAttacco = null; nemico.attaccoNome = ''; nemico.scia = false;
+    if (nemico.gigante) {                          // il gigante che ha colpito si è sfogato; per un attimo non si può mordere
+      nemico.furente = 0; nemico.ritirata = 0; nemico.inCorso = false; nemico.intoccabile = Math.max(nemico.intoccabile, TREGUA_DOPO_COLPO);
+    }
   }
   // chi è nei paraggi molla la presa per qualche secondo
   for (const e of M.predatori) if (Math.hypot(e.x - h.x, e.y - h.y) < 450 + e.r) e.riposo = Math.max(e.riposo, caso(2.5, 4));
@@ -819,20 +851,31 @@ function mangia(e) {
   if (!e.evocato && M.rinascite.length < TETTO.rinascite) M.rinascite.push({ fascia: e.fascia, t: RINASCITA });
 }
 
-/* Un morso al gigante: ne servono tre, e a ogni morso si infuria (vedi 52-giganti.js). */
+/* Un morso al gigante: gli toglie quanto vale il numero dell'eroe, per l'aiuto attivo (bolla o frenesia) e per il morso
+   dell'eroe scelto. Il danno vola sullo schermo, e una parte (e.nutre) fa crescere l'eroe: così i numeri salgono a
+   valanga. Quando il danno arriva alla vita che resta, il gigante è sconfitto (vedi 52-giganti.js). */
 function mordiGigante(e) {
-  const h = M.eroe, potenza = e.p, rimasti = B.giganti.morso(e, M);
-  suono('morso'); vibra(80); M.scossa = Math.max(M.scossa, 14);
-  scoppio(e.x, e.y, COLORI.spruzzo, 40, 460, 1.5);
-  emetti('gigante:morso', { id: e.def.id, rimasti });
-  if (rimasti > 0) {
-    guadagna(potenza * PARTE_MORSO_GIGANTE, e.x, e.y - e.r, true);
-    h.invul = Math.max(h.invul, 1.4);
-    annuncia('Bel morso!', (rimasti === 1 ? 'Ancora un morso' : 'Ancora ' + rimasti + ' morsi') + ': attento, si è infuriato', 2.6);
-    M.avvisatoObiettivo = h.p * E.morso > e.soglia;
-    return;
+  const h = M.eroe, molt = aiutoAttivo(), danno = Math.max(1, Math.round(h.p * E.morso * molt));
+  const furiaPrima = e.furia, resta = B.giganti.morso(e, M, danno), finito = resta <= 0;
+  M.morsi++; M.danni += danno; M.morsoMassimo = Math.max(M.morsoMassimo, danno);
+  suono('morso'); if (molt > 1 || finito) suono('scoppio');
+  vibra(finito ? 160 : molt > 1 ? 120 : 80); M.scossa = Math.max(M.scossa, finito ? 24 : molt > 1 ? 20 : 13);
+  scoppio(e.x, e.y, COLORI.spruzzo, 40, 460, 1.5); scoppio(e.x, e.y, COLORI.danno, molt > 1 || finito ? 26 : 14, 380, 1.3);
+  if (molt > 1) scoppio(e.x, e.y, COLORI.oro, 22, 520, 1.4);
+  // il danno vola sopra il gigante, dalla parte lontana dall'eroe (così non copre il numero dell'eroe)
+  const dx = e.x - h.x, dy = e.y - h.y, dd = Math.hypot(dx, dy) || 1;
+  testoDanno(e.x + dx / dd * e.r * 0.3, e.y + dy / dd * e.r * 0.3 - e.r * 0.2, '−' + numero(danno) + (molt > 1 ? '!' : ''), finito ? 3 : molt > 1 ? 2 : 1, molt);
+  emetti('gigante:morso', { id: e.def.id, rimasti: finito ? 0 : Math.max(1, Math.ceil(resta / danno)), danno, vitaRimasta: resta, vitaTotale: e.vitaTotale });
+  if (!finito) {
+    h.invul = Math.max(h.invul, INVUL_MORSO);
+    if (e.furia > furiaPrima) annunciaDopo(DOPO_IL_DANNO, 'Si è infuriato!', e.furia > 1 ? 'Gli resta poca vita: attacca ancora più svelto' : 'Attento: adesso attacca più svelto', 2.4);
+    else if (M.morsi === 1) annunciaDopo(DOPO_IL_DANNO, 'Bel morso!', 'Schiva i suoi attacchi, poi mordilo ancora', 2.6);
   }
-  const g = guadagna(potenza * PARTE_GUADAGNATA, e.x, e.y - e.r, true);
+  // l'eroe cresce di una parte del danno (l'aiuto attivo qui vale in radice, come per i pesci grossi); se ora il suo
+  // numero supera la vita rimasta, lo dice controllaCrescita. Con l'ultimo boccone si mangia il gigante intero: come
+  // per ogni pesce, guadagna il 30% del suo numero (la vita che aveva all'inizio)
+  const g = guadagna(finito ? e.vitaTotale * PARTE_GUADAGNATA : h.p * E.morso * e.nutre, h.x - dx / dd * h.r * 0.5, h.y - h.r - 54 / M.cam.z, true);
+  if (!finito) return;
   prendiPerle(PERLE_OBIETTIVO, e.x, e.y, 'gigante');
   segnaMangiato(e, g);
   h.invul = 30;                                    // la partita è vinta: nessuno gli fa più male
@@ -843,6 +886,7 @@ function chiudi(esito, stelle, extra) {
   emetti('partita:fine', Object.assign({
     esito, livello: M.livello, modalita: M.modalita, ambiente: M.ambiente.id, tempo: M.tempo, potenza: h ? h.p : 0,
     colpi: M.colpi, perle: M.perle, stelle, mangiati: Object.assign({}, M.mangiati),
+    morsi: M.morsi, danni: M.danni, morsoMassimo: M.morsoMassimo,
   }, extra));
 }
 
@@ -1053,7 +1097,7 @@ function senti(e, inGioco) {
   S.inGioco = inGioco;
   if (!inGioco) {
     S.dx = 0; S.dy = 0; S.d = MAI; S.forte = false; S.vicino = false; S.ignora = true;
-    e.minaccia = false; e.mangiabile = false; e.avviso = 0; e.sprint = 0; e.carica = 0; e.alone = 0; e.scarica = 0;
+    e.minaccia = false; e.mangiabile = false; e.mordibile = false; e.avviso = 0; e.sprint = 0; e.carica = 0; e.alone = 0; e.scarica = 0;
     e.attacco = null; e.inAttacco = null; e.attaccoNome = '';
     return;
   }
@@ -1061,8 +1105,16 @@ function senti(e, inGioco) {
   S.dx = h.x - e.x; S.dy = h.y - e.y; S.d = Math.hypot(S.dx, S.dy);
   S.forte = e.p >= hp;
   S.vicino = S.d < e.senso * M.vistaPesci + h.r + e.r;
-  S.ignora = e.riposo > 0 || e.p > hp * (e.indole ? NON_TI_DEGNA : e.degna) + 20;
+  S.ignora = e.riposo > 0 || (e.indole ? e.p > hp * NON_TI_DEGNA + 20 : e.sogliaMorso > hp * e.degna + 20);
   e.mangiabile = hp > e.soglia;
+  if (e.gigante) {
+    /* Il gigante: verde (mangiabile) quando il numero dell'eroe supera la vita che gli resta. Prima si può mordere
+       (mordibile) se l'eroe ha superato la soglia, lui non è appena stato morso né furente e non sta colpendo (in
+       carica, o in un attacco che dura). In tutti gli altri momenti toccarlo fa male. */
+    e.mordibile = !e.mangiabile && hp > e.sogliaMorso && e.intoccabile <= 0 && e.furente <= 0 && e.sprint <= 0 && e.attacco === null && e.sconfitto <= 0;
+    e.minaccia = !e.mangiabile && !e.mordibile && e.sconfitto <= 0;
+    return;
+  }
   e.minaccia = !e.neutro && (S.forte || (!e.mangiabile && e.speciale !== null && e.speciale.punge));
 }
 
@@ -1133,7 +1185,8 @@ function scosta(e, i, dt) {
 function tocca(e) {
   const h = M.eroe;
   if (e.nasce > 0 || e.intoccabile > 0 || e.sconfitto > 0 || S.d >= (h.r + e.r) * CONTATTO) return;
-  if (e.mangiabile) { if (e.gigante) mordiGigante(e); else mangia(e); }
+  if (e.gigante) { if (e.mangiabile || e.mordibile) mordiGigante(e); else colpito(e); }
+  else if (e.mangiabile) mangia(e);
   else if (e.minaccia) colpito(e);
   else if (!e.neutro) rimbalza(e);
 }
@@ -1330,8 +1383,11 @@ function aggiornaEffetti(dt) {
     if (p.eta >= p.vita) togliVeloce(pp, i, riserva.particelle);
   }
   const tt = M.testi;
-  for (let i = 0; i < tt.length; i++) { tt[i].eta += dt; tt[i].y -= 46 * dt; }
-  while (tt.length && tt[0].eta > 1) riserva.testi.push(tt.shift());
+  for (let i = tt.length - 1; i >= 0; i--) {
+    const s = tt[i];
+    s.eta += dt / s.durata; s.y -= s.sale * dt;
+    if (s.eta > 1) riserva.testi.push(tt.splice(i, 1)[0]);
+  }
   const nn = M.nuvole;
   for (let i = nn.length - 1; i >= 0; i--) {
     nn[i].eta += dt;
@@ -1366,9 +1422,13 @@ function aggiornaDati() {
   d.livello = M.livello; d.modalita = M.modalita; d.nomeAmbiente = M.ambiente.nome; d.potenza = p;
   if (ob) {
     const o = datiObiettivo;
-    o.nome = ob.nome; o.potenza = e ? e.p : ob.potenza; o.morsi = e ? e.morsi : ob.morsi; o.morsiTotali = ob.morsi;
+    o.nome = ob.nome; o.potenza = e ? e.p : ob.potenza;
+    o.gigante = !!e && e.gigante; o.vitaTotale = o.gigante ? e.vitaTotale : 0; o.vita = o.gigante ? e.vita : 1;
+    o.sogliaMorso = o.gigante ? e.sogliaMorso : o.potenza; o.puoMordere = o.gigante && p * E.morso > e.sogliaMorso;
+    o.boccone = !!e && !e.via && p * E.morso > e.soglia;
     d.obiettivo = o;
-    d.avanzamento = Math.min(1, Math.log(p + 1) / Math.log(o.potenza + 2));
+    // la barra dell'eroe: quanto manca per mangiare il capobranco, o per poter mordere il gigante
+    d.avanzamento = Math.min(1, Math.log(p + 1) / Math.log(o.sogliaMorso + 2));
   } else {
     d.obiettivo = null;
     const fasce = M.cfg.fasce, cima = fasce.length ? fasce[fasce.length - 1].min : 1, base = M.ottava > 0 ? cima / M.cfg.ottava.potenza : 0;
@@ -1403,6 +1463,8 @@ function passo(dt) {
     aggiungiPericoli(dt);
   }
   if (h) aggiornaEspressione(h, dt);
+  const ad = M.annuncioDopo;
+  if (ad.t > 0 && (ad.t -= dt) <= 0 && inPartita()) annuncia(ad.titolo, ad.sotto, ad.durata);
   aggiornaEffetti(dt);
   aggiornaVisuale(dt, inPartita());
   aggiornaDati();

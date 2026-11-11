@@ -107,7 +107,7 @@ function statistichePredefinite() {
     perleTotali: 0, perleSpese: 0,
     colpiPresi: 0, frenesie: 0, scatti: 0, crescite: 0,
     aiuti: { x2: 0, x5: 0, calamita: 0, scudo: 0, perla: 0, cuore: 0, altro: 0 },
-    gigantiSconfitti: 0, morsiGiganti: 0,
+    gigantiSconfitti: 0, morsiGiganti: 0, morsoMassimo: 0, danniGiganti: 0,
     potenzaMassima: 0, tempoGioco: 0, stelle: 0,
     regali: 0, serieMassima: 0,
   };
@@ -327,6 +327,9 @@ const fino = n => Math.min(n, TOTALE_LIVELLI), finoStelle = n => Math.min(n, TOT
   T(g, 'domatore_di_giganti', 'Domatore di giganti', 'Sconfiggi 4 giganti diversi.', 4, 80, () => derivati().giganti);
   T(g, 'il_piu_grosso', 'Il più grosso sei tu', 'Sconfiggi tutti i giganti.', () => catalogo().gigante.length, 250, () => derivati().giganti);
   T(g, 'mordi_e_fuggi', 'Mordi e fuggi', 'Dai 30 morsi ai giganti.', 30, 60, () => stat().morsiGiganti);
+  T(g, 'morso_da_un_milione', 'Morso da un milione', 'Togli a un gigante un milione di vita con un morso solo.', 1e6, 40, () => stat().morsoMassimo);
+  T(g, 'morso_da_dieci_milioni', 'Morso da dieci milioni', 'Togli a un gigante dieci milioni di vita con un morso solo.', 1e7, 150, () => stat().morsoMassimo);
+  T(g, 'cento_milioni', 'Cento milioni di danni', 'Togli ai giganti cento milioni di vita in tutto.', 1e8, 200, () => stat().danniGiganti);
 
   g = 'Stelle';
   T(g, 'da_manuale', 'Da manuale', 'Prendi 3 stelle in un livello.', 1, 20, () => derivati().treStelle);
@@ -469,8 +472,8 @@ function segnaMangiato(id, quanti) {
   return true;
 }
 
-/* La sconfitta di un gigante può arrivare con due segnali: 'mangiato' (tipo gigante) e 'gigante:morso' con rimasti 0.
-   Conta il primo che arriva; l'altro, se arriva, è la stessa sconfitta. */
+/* La sconfitta di un gigante può arrivare con due segnali: 'mangiato' (tipo gigante) e 'gigante:morso' con rimasti 0
+   (o con vitaRimasta 0). Conta il primo che arriva; l'altro, se arriva, è la stessa sconfitta. */
 const sconfitte = new Map();
 function nuovaSconfitta(id, segnale) {
   const chiave = typeof id === 'string' ? id : '?', prima = sconfitte.get(chiave);
@@ -539,8 +542,14 @@ ascolta('frenesia', () => { stat().frenesie++; modificato('statistiche'); });
 ascolta('scatto', () => { stat().scatti++; modificato('statistiche'); });
 
 ascolta('gigante:morso', d => {
-  stat().morsiGiganti++;
-  if (typeof d.rimasti === 'number' && d.rimasti <= 0) { if (nuovaSconfitta(d.id, 'morso')) giganteSconfitto(d.id); }
+  const st = stat(), danno = Math.round(misura(d.danno));
+  st.morsiGiganti++;
+  if (danno > 0) {                                  // il danno del morso: il più forte di sempre e il totale
+    st.danniGiganti = somma(st.danniGiganti, danno);
+    if (danno > st.morsoMassimo) st.morsoMassimo = Math.min(danno, Number.MAX_SAFE_INTEGER);
+  }
+  const finito = typeof d.rimasti === 'number' ? d.rimasti <= 0 : typeof d.vitaRimasta === 'number' && d.vitaRimasta <= 0;
+  if (finito) { if (nuovaSconfitta(d.id, 'morso')) giganteSconfitto(d.id); }
   else sconfitte.delete(typeof d.id === 'string' ? d.id : '?');
   modificato('statistiche');
 });

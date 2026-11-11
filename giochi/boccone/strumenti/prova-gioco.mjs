@@ -82,7 +82,7 @@ const installaPilota = (page, cattivo) => page.evaluate(cattivo => {
       return meta ? { x: (meta.x - h.x) / (vicino || 1), y: (meta.y - h.y) / (vicino || 1) } : { x: 1, y: 0 };
     }
     for (const e of M.predatori) {
-      if (!e.minaccia) continue;
+      if (!e.minaccia && !(e.gigante && e.avviso > 0 && !e.mangiabile)) continue;      // il gigante che prepara un attacco si evita sempre
       const d = Math.hypot(e.x - h.x, e.y - h.y) - e.r - h.r, soglia = e.avviso > 0 ? cautela * 2.2 : e.vAtt > 100 ? cautela : cautela * 0.8;
       if (d < soglia) { const q = Math.max(5, d + 30); fx += (h.x - e.x) / q; fy += (h.y - e.y) / q; pericolo = true; }
     }
@@ -97,10 +97,11 @@ const installaPilota = (page, cattivo) => page.evaluate(cattivo => {
       if ((sopra || sotto) && Math.abs(dx) < lato) { fx += dx >= 0 ? 3 : -3; pericolo = true; }
     }
     for (const q of M.proiettili) { const d = Math.hypot(q.x - h.x, q.y - h.y) || 1; if (d < cautela * 0.8 + h.r + q.r) { fx += (h.x - q.x) / d * 3; fy += (h.y - q.y) / d * 3; pericolo = true; } }
+    for (const o of M.onde) { if (o.tipo !== 'onda' || o.fatto) continue; const d = Math.hypot(o.x - h.x, o.y - h.y) || 1; if (d - h.r < o.rMale + cautela * 0.5) { fx += (h.x - o.x) / d * 3; fy += (h.y - o.y) / d * 3; pericolo = true; } }
     if (!pericolo) {
       let meta = null, vicino = 1e9;
       const ob = M.obiettivo;
-      if (ob && ob.mangiabile && !ob.via && !(ob.intoccabile > 0)) meta = ob;
+      if (ob && !ob.via && !(ob.intoccabile > 0) && (ob.mangiabile || (ob.gigante && ob.mordibile && !(ob.avviso > 0)))) meta = ob;   // segue la freccia; il gigante lo morde quando si può
       if (!meta) for (const e of M.predatori) { if (!e.mangiabile || e.via || e.intoccabile > 0) continue; const d = Math.hypot(e.x - h.x, e.y - h.y); if (d < vicino && d < 900) { vicino = d; meta = e; } }
       if (!meta) for (const b of M.banchi) { const d = Math.hypot(b.x - h.x, b.y - h.y); if (d < vicino) { vicino = d; meta = b; } }
       if (meta) { fx = meta.x - h.x; fy = meta.y - h.y; }
@@ -222,14 +223,70 @@ await avvia(page, { livello: 5, modalita: 'avventura' });
 await installaPilota(page, false);
 s = await corri(page, 200, 3000);
 // per la foto: il gigante si avvicina all'eroe (che per un attimo non può essere colpito)
-await page.evaluate(() => { const M = B.partita.mondo, h = M.eroe, g = M.obiettivo; if (g && h) { h.invul = 6; g.x = Math.min(M.largo - 200, h.x + 250); g.y = Math.max(200, h.y - 190); g.ang = 2.5; g.nasce = 0; g.riposo = 0; } });
+await page.evaluate(() => { const M = B.partita.mondo, h = M.eroe, g = M.obiettivo; if (g && h) { h.invul = 6; g.x = Math.min(M.largo - 200, h.x + 150); g.y = Math.max(200, h.y - 210); g.ang = 2.2; g.nasce = 0; g.riposo = 0; } });
 await page.waitForTimeout(1300);
 await fotoControllata(page, '13-gigante');
+if (!(await page.locator('#cr-vita').isVisible())) problema('nel livello del gigante non si vede la barra della vita');
 await fluidita(page, 'livello 5, con il gigante');
+// si cresce fino a poterlo mordere; poi due morsi per le foto (uno semplice, uno con la bolla ×5): l'eroe viene messo
+// accanto al gigante, il morso lo dà il gioco
+const soglia = await page.evaluate(() => B.partita.dati.obiettivo.sogliaMorso);
+s = await corri(page, 1200, soglia + 1);
+const mordi = (page, molt) => page.evaluate(molt => {
+  const M = B.partita.mondo, h = M.eroe, g = M.obiettivo, a = M.aiuti;
+  if (!h || !g || B.partita.stato !== 'gioco') return null;
+  a.molt = molt; a.moltT = molt > 1 ? 8 : 0; a.frenesiaT = 0;
+  g.x = Math.min(M.largo - 300, Math.max(300, h.x + 150)); g.y = Math.min(M.alto - 300, Math.max(300, h.y - 60));
+  g.nasce = 0; g.intoccabile = 0; g.furente = 0; g.ritirata = 0; g.stordito = 0; g.sprint = 0; g.avviso = 0; g.attacco = null; g.inAttacco = null;
+  h.invul = 0; h.x = g.x - (g.r + h.r) * 0.6; h.y = g.y + 20; h.vx = 0; h.vy = 0;
+  const prima = { vita: g.p, potenza: h.p, morsi: M.morsi };
+  B.prova.pilota = () => ({ x: 0, y: 0 });
+  B.prova.passo(1 / 30);
+  return { tolto: prima.vita - g.p, potenza: prima.potenza, cresciuto: h.p - prima.potenza, morsi: M.morsi - prima.morsi, danno: M.testi.filter(t => t.danno > 0).map(t => t.s).join(' '),
+    barra: document.getElementById('cr-vita-num').textContent, vita: g.p };
+}, molt);
+if (s.stato === 'gioco') {
+  let m = await mordi(page, 1);
+  if (!m || m.morsi !== 1 || !(m.tolto > 0) || !m.danno) problema('il morso al gigante non toglie vita o non fa volare il danno: ' + JSON.stringify(m));
+  else nota('morso al gigante: eroe a ' + Math.round(m.potenza) + ', danno "' + m.danno + '", cresce di ' + Math.round(m.cresciuto) + ', al gigante restano ' + Math.round(m.vita));
+  await page.waitForTimeout(260);
+  await fotoControllata(page, '13b-gigante-morso');
+  await page.waitForTimeout(2600);
+  m = await mordi(page, 5);
+  if (!m || m.morsi !== 1 || !/!$/.test(m.danno)) problema('il morso con la bolla ×5 non vola con il punto esclamativo: ' + JSON.stringify(m));
+  else nota('morso ×5: danno "' + m.danno + '", al gigante restano ' + Math.round(m.vita));
+  await page.waitForTimeout(260);
+  await fotoControllata(page, '13c-gigante-morso-x5');
+  const barra = await page.evaluate(() => document.getElementById('cr-vita-num').textContent);
+  if (!/\d/.test(barra)) problema('la barra della vita del gigante non mostra il numero: "' + barra + '"');
+  await installaPilota(page, false);
+} else problema('il pilota non è arrivato a poter mordere il gigante (stato: ' + s.stato + ', potenza ' + Math.round(s.potenza) + ')');
 s = await corri(page, 1200);
 nota('livello 5 (con aiuti di prova): ' + s.stato + ' in ' + Math.round(s.tempo) + ' s, potenza ' + Math.round(s.potenza) + ', cuori ' + s.cuori);
 await page.waitForTimeout(2600);
 await fotoControllata(page, '14-risultato-gigante');
+if (s.stato === 'vinto' && !(await page.locator('.schermata.visibile .morso-forte').count())) problema('nel risultato del gigante manca il morso più forte');
+
+// lo scontro su uno schermo piccolo (360×640): la barra, il numero sopra il gigante e il danno devono starci
+{
+  const salvato = await page.evaluate(() => { B.progressi.salva(); return localStorage.getItem('boccone-salvataggio-3'); });
+  const piccolo = await apri(360, 640, salvato);
+  await piccolo.page.evaluate(() => { B.prova.effetti = { cuori: 4 }; });
+  await avvia(piccolo.page, { livello: 5, modalita: 'avventura' });
+  await piccolo.page.evaluate(() => { const M = B.partita.mondo, h = M.eroe; h.p = 420000; h.r = B.partita.raggioEroe(h.p); M.fascia = M.cfg.fasce.length; h.stadio = 2; });
+  await piccolo.page.waitForTimeout(1500);
+  const m = await mordi(piccolo.page, 5);
+  if (!m || m.morsi !== 1) problema('360×640: il morso al gigante non va a segno: ' + JSON.stringify(m));
+  await piccolo.page.waitForTimeout(260);
+  await fotoControllata(piccolo.page, '360x640-gigante-morso');
+  await piccolo.page.waitForTimeout(2700);
+  // il gigante si è sfogato e si può mordere di nuovo: sopra di lui compare "MORDI!"
+  await piccolo.page.evaluate(() => { const M = B.partita.mondo, h = M.eroe, g = M.obiettivo, a = M.aiuti; a.molt = 1; a.moltT = 0; h.invul = 9; g.furente = 0; g.ritirata = 0; g.stordito = 0; g.intoccabile = 0; g.riposo = 3; g.prossimoAttacco = 9; g.x = h.x + 330; g.y = h.y - 60; g.ang = Math.PI; });
+  await piccolo.page.waitForTimeout(500);
+  if (!(await piccolo.page.evaluate(() => B.partita.mondo.obiettivo.mordibile))) problema('360×640: dopo i contrattacchi il gigante non si può mordere');
+  await fotoControllata(piccolo.page, '360x640-gigante-mordi');
+  await piccolo.contesto.close();
+}
 
 // =====================================================================  5. una sconfitta (livello 2, pilota che va addosso ai grossi)
 console.log('\n5. Una sconfitta');
