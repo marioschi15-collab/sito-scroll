@@ -41,7 +41,7 @@ B.specie.registra({
   id: 'granchio_nuotatore',
   descrizione: 'Le sue ultime zampe sono fatte a paletta: le fa girare come due remi e nuota di lato, svelto come un pesce. Se qualcuno lo disturba non scappa: alza le chele e gli va incontro.',
   forma: { lx: .95, ly: .55 },
-  ingombro: { x0: -1.4, y0: -1.1, x1: 1.45, y1: .95 },
+  ingombro: { x0: -1.44, y0: -1.19, x1: 1.47, y1: .91 },
   disegna(c, o) {
     const F = (o.fase || 0) * TAU, m = !!o.minaccia, b = o.bocca || 0, polsi = [];
     c.save();
@@ -93,7 +93,9 @@ B.specie.registra({
       if (m) P.sopracciglio(c, ex - la * .02, ey - .17, .4, -la * .5, T.guscio.bordo, .1);
     }
     if (!m) { P.guancia(c, -.2, .14, .11); P.guancia(c, .46, .14, .11); }
-    P.sorriso(c, .13, m ? .15 : .1, m ? .27 : .2, { apri: m ? max(b, .45) : b * .5, alt: m ? .3 : .2, curva: m ? -.3 : .75, denti: m ? 'tutti' : 0, lingua: !m, tinta: T.ventre });
+    const apri = m ? max(b, .45) : b * .5;
+    P.sorriso(c, .13, m ? .15 : .1, m ? .27 : .2, { apri, alt: m ? .3 : .2, curva: m ? -.3 : .75, denti: m ? 'giu' : 0, lingua: !m, tinta: T.ventre });
+    if (m) { const fr = .056 + .075 * apri; P.denti(c, -.06, .195 - fr * .51, .32, .195 - fr * .51, 5, .085, -1, { curva: -fr * .49, arco: true }); }   // i denti di sopra seguono il labbro
     c.restore();
   },
 });
