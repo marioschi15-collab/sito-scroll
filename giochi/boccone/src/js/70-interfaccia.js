@@ -177,10 +177,13 @@ function aggiornaCruscotto() {
     metti('cr-obiettivo', 'innerHTML', s);
     largoObiettivo = numero(ob.potenza).length + ':' + ob.morsiTotali;
   } else metti('cr-obiettivo', 'textContent', minuti(d.tempo));
+  const perle = numero(B.progressi.perle());
+  metti('cr-perle-num', 'textContent', perle);
   /* Il nome dell'ambiente si scrive solo se c'è posto accanto all'obiettivo: se non ci sta resta "Livello 3". Si
-     ricontrolla solo quando cambia il testo, la larghezza dell'obiettivo o quella dello schermo. */
+     ricontrolla solo quando cambia il testo, la larghezza dell'obiettivo, quella del conto delle perle (che ruba
+     posto alla riga) o quella dello schermo. */
   const corto = d.modalita === 'sopravvivenza' ? 'Sopravvivenza' : 'Livello ' + d.livello, lungo = corto + ' · ' + d.nomeAmbiente;
-  const chiave = lungo + '|' + largoObiettivo + '|' + window.innerWidth;
+  const chiave = lungo + '|' + largoObiettivo + '|' + perle.length + '|' + window.innerWidth;
   if (cache.livelloChiave !== chiave) {
     const e = $('cr-livello');
     if (e) {
@@ -190,7 +193,6 @@ function aggiornaCruscotto() {
   }
   metti('cr-barra-piena', 'width', (d.avanzamento * 100).toFixed(1) + '%');
   metti('cr-frenesia-piena', 'width', (d.frenesia * 100).toFixed(0) + '%');
-  metti('cr-perle-num', 'textContent', numero(B.progressi.perle()));
   metti('cr-cuori', 'innerHTML', '<span class="pieno">' + '♥'.repeat(Math.max(0, d.cuori)) + '</span><span class="vuoto">' + '♥'.repeat(Math.max(0, d.cuoriMax - d.cuori)) + '</span>');
   let s = '';
   if (d.frenesiaT > 0) s += '<span class="gettone vetro fre">Frenesia ×2 · ' + Math.ceil(d.frenesiaT) + ' s</span>';
