@@ -835,7 +835,7 @@ function rimbalza(e) {
 function segnaMangiato(e, guadagno) {
   const id = e.def.id;
   M.mangiati[id] = (M.mangiati[id] || 0) + 1;
-  emetti('mangiato', { id, tipo: e.def.tipo, taglia: e.def.taglia || 0, potenza: e.p, guadagno });
+  emetti('mangiato', { id, tipo: e.def.tipo, taglia: e.def.taglia || 0, potenza: e.gigante ? e.vitaTotale : e.p, guadagno });   // del gigante conta la vita che aveva
 }
 
 /* L'eroe mangia un pesce (o il capobranco, che chiude il livello). */

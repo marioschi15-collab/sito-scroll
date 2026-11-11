@@ -455,7 +455,7 @@ function disegnaEtichette(M, t) {
 function disegnaFreccia(M, t) {
   const h = M.eroe, e = M.obiettivo;
   if (!h || !h.vivo || !e || e.via || B.partita.stato !== 'gioco' || visibile(e.x, e.y, -e.r * .3)) return;
-  const vw = vista.vw, vh = vista.vh, a = Math.atan2(e.y - h.y, e.x - h.x), rr = Math.min(vw, vh) * .4, pronto = e.mangiabile, batte = pronto ? 1 + .15 * Math.sin(t * 8) : 1;
+  const vw = vista.vw, vh = vista.vh, a = Math.atan2(e.y - h.y, e.x - h.x), rr = Math.min(vw, vh) * .4, ob = B.partita.dati.obiettivo, pronto = e.mangiabile || (e.gigante && !!ob && ob.puoMordere), batte = pronto ? 1 + .15 * Math.sin(t * 8) : 1;
   ctx.save(); ctx.translate(vw / 2 + Math.cos(a) * rr, vh / 2 + Math.sin(a) * rr * Math.min(1.5, vh / vw)); ctx.rotate(a); ctx.scale(batte, batte);
   ctx.fillStyle = pronto ? 'rgba(124,242,154,.95)' : 'rgba(255,123,123,.8)'; ctx.strokeStyle = 'rgba(8,20,48,.6)'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
   ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-10, -13); ctx.lineTo(-3, 0); ctx.lineTo(-10, 13); ctx.closePath(); ctx.fill(); ctx.stroke();

@@ -178,10 +178,36 @@ B.ambienti.registra({
 quell'ordine: il livello `n` appartiene all'ambiente `aperti[ceil(n/5) − 1]`); gli altri compaiono sulla mappa come
 "in arrivo". L'elenco si allunga man mano che i modelli veri di un ambiente sono pronti.
 Nei livelli 1–4 di ogni ambiente l'obiettivo è crescere e mangiare il **capobranco** (un esemplare enorme con la
-corona di una specie di taglia 5 di quell'ambiente). Il livello 5 è il **gigante** dell'ambiente, con i suoi attacchi:
-servono tre morsi, e a ogni morso si infuria. In ogni livello l'eroe riparte da 1.
+corona di una specie di taglia 5 di quell'ambiente). Il livello 5 è il **gigante** dell'ambiente, con i suoi attacchi
+e una vita in milioni: lo scontro è descritto qui sotto. In ogni livello l'eroe riparte da 1.
 Ogni livello può avere una **particolarità** (corrente che spinge, buio con la vista ridotta, tanti branchi, sciame di
 meduse, banco dorato…) e dà fino a 3 stelle: superato, senza perdere cuori, entro un tempo.
+
+**Lo scontro con il gigante ("boss da milioni").** Il numero rosso sopra il gigante è la sua **vita**: Don Cernia
+3 milioni, poi 5, 8, 12, 18, 25, 35 e 50 milioni (uno per ambiente, nell'ordine dell'avventura).
+
+- Finché l'eroe non ha superato la **soglia del morso** (350.000, la potenza di un capobranco; sul numero c'è il
+  lucchetto) il gigante fa solo male. Superata la soglia: «Ora puoi morderlo! Ogni morso gli toglie quanto vale il tuo
+  numero».
+- Ogni **morso** toglie al gigante un **danno** = numero dell'eroe × aiuto attivo (bolla ×2 o ×5, frenesia ×2: vale il
+  più alto, non si sommano) × il "morso" dell'eroe scelto. Il danno vola sullo schermo in grande, rosso e oro
+  («−850.000»; con un moltiplicatore «−4,2 mln!», più grosso, con "Morso ×5" sopra e uno scossone). Il numero sopra
+  il gigante scende: è la vita che gli resta.
+- Ogni morso fa anche **crescere l'eroe** di una parte del suo numero (dal 20% con Don Cernia all'80% con l'ultimo
+  gigante: i più grossi nutrono di più; l'aiuto attivo qui vale in radice, come per i pesci grossi): i numeri salgono
+  a valanga.
+- Dopo un morso l'eroe è al sicuro per un attimo e il gigante **accusa il colpo**: stordito, respinto, arretra. Poi
+  torna **furente**: sferra due dei suoi attacchi, uno dopo l'altro, e finché non l'ha fatto non si può mordere di
+  nuovo (toccarlo fa male). Finiti i contrattacchi sopra di lui compare **MORDI!**: si può mordere anche mentre
+  insegue o prepara un attacco ("!"), ma non mentre è in carica o in un attacco che dura (risucchio, buio, raffica).
+  Se colpisce l'eroe si è sfogato: dopo un attimo si può mordere.
+- La **furia** segue la vita rimasta: calmo sopra i due terzi, infuriato fra un terzo e due terzi, furibondo sotto un
+  terzo (più svelto, attacchi più frequenti, avvisi più corti, ritirata più breve).
+- Quando il numero dell'eroe **supera la vita rimasta** l'etichetta diventa verde («Finiscilo!», "MANGIALO!"), il
+  gigante indietreggia e l'eroe lo mangia **in un boccone**: guadagna il 30% della vita che il gigante aveva
+  all'inizio, pioggia di perle, vittoria. (Anche un morso moltiplicato che supera la vita rimasta lo finisce.)
+- Di solito servono da 4 a 8 morsi; a fine partita il numero dell'eroe è fra 1 e 5 milioni con i primi tre giganti,
+  poi cresce con loro (fino a una quarantina di milioni con l'ultimo).
 
 **Sopravvivenza.** Si sblocca dopo il livello 5: senza fine, i pesci crescono con te, conta il record.
 
@@ -189,7 +215,7 @@ meduse, banco dorato…) e dà fino a 3 stelle: superato, senza perdere cuori, e
 potenza più bassa della tua e guadagni il 30% della sua (i moltiplicatori valgono pieni sui pesciolini, radice sui
 pesci grossi). I pesciolini dei banchi valgono `[1,1,2,6,25,100]` secondo la tua fascia. Chi è molto più grosso di te
 (`potenza > tua·6 + 20`) non ti degna; chi insegue si stanca dopo qualche secondo; dopo un colpo chi è nei paraggi
-molla la presa. Il gigante si accorge di te solo quando `tua·40 ≥ sua`. Tre cuori, scatto con ricarica, frenesia
+molla la presa. Il gigante si accorge di te solo quando `tua·40 ≥ soglia del morso`. Tre cuori, scatto con ricarica, frenesia
 (tutto vale doppio) quando mangi tanto di fila, bolle con gli aiuti (×2, ×5, calamita, scudo, perla, cuore),
 conchiglie con le perle sul fondo.
 
@@ -211,8 +237,8 @@ destra o a sinistra, azzera i progressi). Consigli guidati alla prima partita. T
 | evento | dati | quando |
 |---|---|---|
 | `partita:inizio` | `{ livello, modalita, ambiente, eroe }` | comincia una partita (`modalita`: `'avventura'` o `'sopravvivenza'`) |
-| `partita:fine` | `{ esito, livello, modalita, ambiente, tempo, potenza, colpi, perle, stelle, mangiati }` | `esito`: `'vinto'`, `'perso'`, `'abbandonato'`; `mangiati` = `{ idSpecie: quanti }` |
-| `mangiato` | `{ id, tipo, taglia, potenza, guadagno }` | mangiato un pesce o un gigante (non i pesciolini) |
+| `partita:fine` | `{ esito, livello, modalita, ambiente, tempo, potenza, colpi, perle, stelle, mangiati, morsi, danni, morsoMassimo }` | `esito`: `'vinto'`, `'perso'`, `'abbandonato'`; `mangiati` = `{ idSpecie: quanti }`; `morsi`, `danni`, `morsoMassimo` = i morsi dati al gigante, il danno in tutto e il morso più forte (0 senza gigante) |
+| `mangiato` | `{ id, tipo, taglia, potenza, guadagno }` | mangiato un pesce o un gigante (non i pesciolini); per il gigante `potenza` è la vita che aveva all'inizio |
 | `pesciolini` | `{ quanti, dorati }` | pesciolini dei banchi mangiati, raggruppati ogni mezzo secondo circa |
 | `visto` | `{ id }` | una specie entra nello schermo per la prima volta nella partita |
 | `cresciuto` | `{ fascia }` | l'eroe sale di fascia |
@@ -220,7 +246,7 @@ destra o a sinistra, azzera i progressi). Consigli guidati alla prima partita. T
 | `aiuto` | `{ tipo }` | presa una bolla: `x2`, `x5`, `calamita`, `scudo`, `perla`, `cuore` |
 | `perle` | `{ quante, motivo }` | guadagnate perle |
 | `frenesia` | `{}` | parte la frenesia |
-| `gigante:morso` | `{ id, rimasti }` | un morso al gigante |
+| `gigante:morso` | `{ id, rimasti, danno, vitaRimasta, vitaTotale }` | un morso al gigante: `danno` è il numero volato sullo schermo, `vitaRimasta` la vita dopo il morso; `rimasti` = quanti morsi così servirebbero ancora (0 = sconfitto: arriva una volta sola, seguito da `mangiato`) |
 | `scatto` | `{}` | usato lo scatto |
 | `impostazioni` | `{ chiave, valore }` | cambiata un'impostazione |
 | `progressi` | `{ motivo }` | il salvataggio è cambiato (per aggiornare le schermate) |
@@ -253,13 +279,18 @@ B.progressi.sopravvivenzaSbloccata() → bool   recordSopravvivenza() → { pote
 B.progressi.acquario(id) → { visti, mangiati }
 B.progressi.scoperte(gruppo) → quante specie viste      totaleSpecie(gruppo) → quante ce ne sono
         gruppo: niente (pesci e giganti: le specie dell'acquario), 'pesce', 'gigante', 'banco', 'pericolo', 'tutti' o l'id di un ambiente
-B.progressi.TRAGUARDI                      [{ id, gruppo, nome, descrizione, obiettivo, premio }]   (71, in 9 gruppi)
+B.progressi.TRAGUARDI                      [{ id, gruppo, nome, descrizione, obiettivo, premio }]   (74, in 9 gruppi)
 B.progressi.traguardo(id) → { valore, fatto, riscosso }   riscuoti(id) → perle   riscuotiTutti() → perle   daRiscuotere() → n
 B.progressi.regalo() → { disponibile, serie, perle, giorno (1..7), premi: [7 premi] }   riscuotiRegalo() → { perle, serie } | null
 B.progressi.impostazione(chiave) → valore   imposta(chiave, valore) → bool
         chiavi: suoni (bool), musica (bool), vibrazione (bool), qualita ('auto'|'alta'|'media'|'bassa'), mano ('destra'|'sinistra')
 B.progressi.tutorialFatto() → bool   segnaTutorial()
 ```
+
+Dei morsi ai giganti tiene il più forte di sempre (`statistiche.morsoMassimo`) e il danno in tutto (`danniGiganti`):
+li leggono i traguardi "Morso da un milione", "Morso da dieci milioni" e "Cento milioni di danni". La sconfitta di un
+gigante si conta una volta sola anche se arrivano tutti e due i segnali (`gigante:morso` con `rimasti` 0, o senza
+`rimasti` ma con `vitaRimasta` 0, e `mangiato`); un `gigante:morso` senza `danno` conta solo come morso.
 
 Emette anche `traguardo` `{ id, nome, premio }` quando un traguardo viene raggiunto (il premio si ritira con
 `riscuoti`) e `scoperta` `{ id, nome, tipo }` la prima volta che una specie entra nell'acquario. I traguardi che
@@ -314,7 +345,9 @@ Il motore sono tre file senza disegno e senza pagina: `50-mondo.js` (`B.partita`
 - `B.livelli`: `totale` (ambienti aperti × 5), `perAmbiente`, `aperti` (gli id, in ordine), `primoLivelloDi(idAmbiente)`
   (0 se non è aperto), `ambienteDi(n)`, `config(n)`, `configSopravvivenza(idAmbiente)`, `PARTICOLARITA`.
   Per la mappa: `config(n)` dà `{ n, ambiente, posto (1..5), obiettivo: { tipo: 'capobranco' | 'gigante', nome, def,
-  potenza, morsi }, particolarita: { tipo, nome, descrizione } | null, tempoStella, fasce, banchi, pericoli }`.
+  potenza }, particolarita: { tipo, nome, descrizione } | null, tempoStella, fasce, banchi, pericoli }`. L'obiettivo
+  `'gigante'` ha anche `vita` (= `potenza`: 3, 5, 8… milioni), `sogliaMorso` (350.000) e `nutre` (la parte del numero
+  dell'eroe che lo fa crescere a ogni morso); il `'capobranco'` ha `morsi: 1`.
 
 ### 8.2 Lo stato della partita: `M = B.partita.mondo`
 
@@ -334,7 +367,7 @@ Misure in unità di mondo, tempi in secondi, angoli in radianti. Tutte le liste 
 | `bolle[]` | `{ tipo, x, y, f }` con `tipo`: `x2`, `x5`, `calamita`, `scudo`, `perla`, `cuore`; `f` = fase per farle ondeggiare |
 | `conchiglie[]` | `{ x, y, attesa, apre }`: sul fondale; `apre` > 0 = si sta aprendo; `attesa` > 0 = vuota |
 | `particelle[]` | `{ x, y, r, c, eta, vita }` (colore `c`, sfumano con `eta / vita`) |
-| `testi[]` | `{ x, y, s, c, eta, grande, perla }`: scritte che salgono, `eta` da 0 a 1 |
+| `testi[]` | `{ x, y, s, c, eta, grande, perla, danno, molt, durata }`: scritte che salgono, `eta` da 0 a 1 (in `durata` secondi). `danno` > 0 = il danno di un morso al gigante, da disegnare in grande, rosso e oro, con un rimbalzo, sopra a tutte le altre scritte: 1 = morso semplice, 2 = con un moltiplicatore (`molt` = 2 o 5: sopra si scrive "Morso ×5"), 3 = il boccone finale |
 | `nuvole[]` | `{ x, y, r, eta, vita, tipo }`: `tipo` `'inchiostro'` (seppie, piovra, kraken: nere, coprono la vista) o `'scia'` (la scia torbida di una carica). Si disegnano **sopra** le creature, sfumando all'inizio e alla fine (`eta / vita`). Al massimo 12 |
 | `onde[]` | `{ x, y, r, rMax, eta, vita, tipo }`: anelli che si allargano; `tipo` `'onda'` (attacco di un gigante) o `'scoppio'` (mina). Un cerchio di raggio `r`, sempre più trasparente verso `rMax`. Al massimo 6 |
 | `proiettili[]` | `{ x, y, r, ang, eta, vita, tipo, def }`: `tipo` `'sparo'` o `'raffica'`, `def` = il gigante che li ha lanciati (per il colore). Al massimo 20 |
@@ -345,9 +378,11 @@ Misure in unità di mondo, tempi in secondi, angoli in radianti. Tutte le liste 
 | `scatto` | `{ attivo, ricarica, durataRicarica, durata }` (`attivo` > 0 = sta scattando) |
 | `cuori`, `cuoriMax`, `perle`, `colpi`, `fascia`, `ottava` | `perle` e `colpi` sono quelli della partita; `fascia` = quante taglie l'eroe ha superato; `ottava` solo in sopravvivenza |
 | `dorato` | `{ attivo, banco }` o `null`: il banco dorato quando passa |
+| `morsi`, `danni`, `morsoMassimo` | lo scontro con il gigante in questa partita: morsi dati, danno in tutto, morso più forte |
 
 **`M.predatori[i]`**: `{ def, gigante, capo, neutro, x, y, ang, r, p, fase, bocca, minaccia, mangiabile, nasce, mangiato, stordito,
-avviso, carica, stato, fascia }` più, per chi li ha, `alone`, `aloneR`, `vita`, `morsi`, `morsiTotali`, `furia`, `attaccoNome`.
+avviso, carica, stato, fascia }` più, per chi li ha, `alone`, `aloneR`, `attaccoNome` e, per il gigante, `vita`, `vitaTotale`,
+`sogliaMorso`, `mordibile`, `furente`, `intoccabile`, `morsi`, `furia`.
 
 - `minaccia` = fa male se lo tocchi (etichetta rossa); `mangiabile` = l'eroe può mangiarlo adesso (etichetta verde);
   né l'uno né l'altro = corazza ancora troppo dura o pesce timido (`neutro`: etichetta grigia). `capo` = capobranco:
@@ -357,9 +392,15 @@ avviso, carica, stato, fascia }` più, per chi li ha, `alone`, `aloneR`, `vita`,
   `'sconfitto'`; i pesci normali hanno anche `'fuga'`. Ai giganti si passa così com'è nelle opzioni del modello.
 - `alone` 0..1 e `aloneR`: l'alone elettrico (specie con `speciale: 'scossa'`): un cerchio di raggio `aloneR` che
   crepita piano mentre `alone` sale fino a 0,45 e scatta a 1 quando dà la scossa.
-- Gigante e capobranco: `vita` 1..0 e `morsi` / `morsiTotali` (barra della vita), `furia` 0..2 (occhi sempre più
-  cattivi), `attaccoNome` (`''` oppure `carica`, `morso`, `scia`, `risucchio`, `inchiostro`, `tentacoli`, `onda`, `sparo`,
-  `raffica`, `evoca`, `buio`) per chi vuole animazioni diverse. Durante il risucchio `bocca` vale 1.
+- Gigante: `p` è la **vita che gli resta** (il numero da scrivere sopra, rosso; verde quando `mangiabile`, cioè quando
+  il numero dell'eroe la supera), `vitaTotale` quella dell'inizio, `vita` = `p / vitaTotale` (1..0: la barra), `furia`
+  0..2 secondo la vita (occhi sempre più cattivi), `morsi` = quanti ne ha presi. `mordibile` = l'eroe lo può mordere
+  adesso (la vista scrive "MORDI!"); `minaccia` = toccarlo fa male (per il gigante vale sempre l'uno o l'altro, o
+  `mangiabile`). `sogliaMorso` = il numero che l'eroe deve superare per morderlo (prima, il lucchetto). `furente` =
+  quanti contrattacchi deve ancora sferrare dopo un morso; `intoccabile` > 0 = appena morso (da 2,4 a 0: nei primi
+  decimi l'etichetta sussulta). `attaccoNome` (`''` oppure `carica`, `morso`, `scia`, `risucchio`, `inchiostro`,
+  `tentacoli`, `onda`, `sparo`, `raffica`, `evoca`, `buio`) per chi vuole animazioni diverse. Durante il risucchio
+  `bocca` vale 1. Il capobranco ha `vitaTotale` 0: si mangia in un boccone quando è `mangiabile`.
 
 **`M.pericoli[i]`**: `{ def, x, y, r, ang, fase, attivo, alfa }` più `x0`, `zona`, `colonna`.
 
@@ -375,8 +416,13 @@ avviso, carica, stato, fascia }` più, per chi li ha, `alone`, `aloneR`, `vita`,
 ### 8.3 Il cruscotto: `B.partita.dati`
 
 Sempre lo stesso oggetto, aggiornato a ogni passo: `{ livello, modalita, nomeAmbiente, potenza, obiettivo: { nome,
-potenza, morsi, morsiTotali } | null, avanzamento (0..1), cuori, cuoriMax, perle, tempo, frenesia (0..1: la barra; se
+potenza, gigante, vita, vitaTotale, sogliaMorso, puoMordere, boccone } | null, avanzamento (0..1), cuori, cuoriMax, perle, tempo, frenesia (0..1: la barra; se
 frenesiaT > 0 è il tempo che resta), frenesiaT, molt, moltT, calamitaT, scudo, scatto (0..1: 1 = pronto), fascia, ottava }`.
+Con il gigante `obiettivo.potenza` è la vita che gli resta, `vita` la stessa da 1 a 0, `puoMordere` dice se l'eroe ha
+superato `sogliaMorso` e `boccone` se il suo numero supera la vita rimasta; `avanzamento` misura la strada verso la
+soglia del morso (verso la potenza del capobranco negli altri livelli). Il cruscotto mostra la vita del gigante in una
+barra tutta sua (`#cr-vita`, la crea `70-interfaccia.js`: «♛ Don Cernia … 2,4 mln», rossa, poi arancione e gialla con
+la furia, verde quando è da mangiare) e accanto al livello scrive «morso da 350.000», poi «Mordilo!» e «Mangialo!».
 In sopravvivenza `obiettivo` è `null` e `avanzamento` misura la strada verso la prossima "ottava" (quando il mare
 cresce); la potenza lì si moltiplica per 6 a ogni ottava e diventa presto un numero enorme: conviene mostrarla
 abbreviata, o mostrare l'ottava.
@@ -388,11 +434,15 @@ abbreviata, o mostrare l'ottava.
 - `partita:fine` con esito `'vinto'` porta anche `senzaColpi`, `inTempo`, `tempoStella` (per spiegare le stelle);
   `pesciolini` porta anche `id` (la specie del banco); `colpito.da` è l'id di chi ha colpito (specie, pericolo o gigante).
 - `visto` arriva anche per i banchi e i pericoli.
+- Gli annunci dopo un morso al gigante («Bel morso!», «Si è infuriato!», «Finiscilo!») partono con nove decimi di
+  ritardo, perché prima si veda il danno che vola. Il morso suona `morso`; con un moltiplicatore, o quando è l'ultimo,
+  anche `scoppio`.
 - Suoni: il mondo chiama `B.audio.effetto(nome)` se esiste, con i nomi `gnam`, `gnamGrosso`, `bolla`, `perla`, `cuore`,
   `scudo`, `colpo`, `sconfitta`, `vittoria`, `frenesia`, `cresciuto`, `scatto`, `conchiglia`, `avviso`, `carica`, `morso`,
   `inchiostro`, `scossa`, `scoppio`.
 - Perle: il mondo le consegna a `B.progressi.guadagna(n, motivo)` (motivi: `pesce`, `conchiglia`, `bolla`, `dorato`,
-  `capobranco`, `gigante`, `livello`) e le somma in `M.perle`. Un livello vinto ne rende di solito da 75 a 125 (i livelli dei giganti, più lunghi, fino a 145).
+  `capobranco`, `gigante`, `livello`) e le somma in `M.perle`. Un livello vinto ne rende di solito da 75 a 125 (quelli
+  dei giganti da 85 a 105).
 - Stelle: una per aver superato il livello, una senza perdere cuori (lo scudo non conta), una entro `cfg.tempoStella`
   (200 s al livello 1, 300 s con il capobranco, 420 s con il gigante).
 
@@ -407,12 +457,15 @@ abbreviata, o mostrare l'ottava.
 - **Pericoli** (`B.partita.comportamenti`): `deriva`, `fermo`, `mina`, `pendolo`, `eruzione`, `caduta` (vedi 8.2).
   Ricci e sfiatatoi stanno sul fondale; se lo scenario offre `scena.appoggi = [{ x, y }]` (punti su scogli e rocce)
   una parte di loro si posa lì.
-- **Giganti** (`B.giganti.attacchi`, tabella nome → attacco): tre morsi, e si può mordere solo dopo averne superato la
-  potenza; a ogni morso resta stordito, viene respinto e si infuria (più svelto, attacchi più frequenti, un po' più
-  forte). Finché l'eroe è più debole usa a turno gli attacchi del cast, sempre dopo un avviso. Il capobranco si mangia
-  con un morso solo e sa fare la carica. Tutti e due si accorgono dell'eroe solo quando questo arriva a un
-  quarantesimo della loro potenza (al primo livello a un dodicesimo); chi ha appena colpito l'eroe lo lascia stare per
-  qualche secondo.
+- **Giganti** (`B.giganti.attacchi`, tabella nome → attacco): le regole dello scontro sono al §5. Nel motore:
+  `mordiGigante` (`50-mondo.js`) calcola il danno e fa crescere l'eroe; `B.giganti.morso(e, M, danno)` toglie la vita,
+  aggiorna la furia (`furiaDi(vita)`) e mette il gigante stordito (1,6 s), `intoccabile` (2,4 s), in `ritirata` (2,6 s,
+  2 e 1,4 secondo la furia) e `furente` (2 contrattacchi: `CONTRATTACCHI`); `pensa` scala `furente` a ogni attacco
+  finito e, finché è furente, cerca l'eroe dovunque sia (di corsa, se è fuori tiro). Finché il suo numero è più alto di
+  quello dell'eroe usa a turno gli attacchi del cast, sempre dopo un avviso; quando è più basso indietreggia piano e si
+  lascia mangiare. Il capobranco si mangia con un morso solo e sa fare la carica. Il gigante si accorge dell'eroe solo
+  quando questo arriva a un quarantesimo della soglia del morso, il capobranco a un quarantesimo della sua potenza (al
+  primo livello a un dodicesimo); chi ha appena colpito l'eroe lo lascia stare per qualche secondo.
 - **Sopravvivenza**: nessun obiettivo; quando l'eroe supera l'ultima fascia il mare "cresce" (potenze × 6, pesci più
   svelti) e si ricomincia a salire; ogni 40 secondi arriva un pericolo in più; finisce con i cuori.
 - Per aggiungere un'indole, una capacità, un comportamento o un attacco basta una voce nella tabella giusta e il nome

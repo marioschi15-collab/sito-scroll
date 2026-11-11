@@ -152,6 +152,6 @@ B.cast = {
   livelliPerAmbiente: 5,
   /* Gli ambienti giocabili, in ordine: quelli non elencati compaiono sulla mappa come "in arrivo".
      Si allunga man mano che i modelli veri di un ambiente sono pronti. */
-  aperti: ['laguna', 'alghe'],
+  aperti: ['laguna', 'alghe', 'relitto'],
 };
 })();

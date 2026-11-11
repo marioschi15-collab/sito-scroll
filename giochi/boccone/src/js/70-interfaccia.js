@@ -134,6 +134,8 @@ function mostraSchermata(id, dati, opzioni) {
   s.radice.classList.add('visibile');
   const corpo = s.radice.querySelector('.corpo');
   if (corpo && !o.fermo) corpo.scrollTop = 0;
+  /* Nella schermata del risultato il titolo sta in alto: lì gli avvisi a comparsa scendono in fondo. */
+  const casaAvvisi = $('avvisi'); if (casaAvvisi) casaAvvisi.classList.toggle('in-basso', id === 'risultato');
   B.eventi.emetti('schermata', { id });
 }
 function nascondiCorrente() {

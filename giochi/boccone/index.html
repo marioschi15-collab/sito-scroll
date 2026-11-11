@@ -98,6 +98,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 /* ----- Avvisi a comparsa ----- */
 #avvisi { position: fixed; left: 0; right: 0; top: calc(var(--sopra) + 70px); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; z-index: 30; padding: 0 14px; }
 #avvisi.in-partita { top: calc(var(--sopra) + 138px); }
+#avvisi.in-basso { top: auto; bottom: calc(var(--sotto) + 16px); }
 .avviso {
   max-width: 340px; display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 16px; font-size: 14px; line-height: 1.25; font-weight: 800;
   background: rgba(10, 26, 60, .92); box-shadow: inset 0 0 0 1.5px rgba(255, 224, 102, .8), 0 6px 18px rgba(0, 0, 0, .4); animation: avviso var(--durata, 3s) ease-out both;
@@ -572,7 +573,7 @@ B.cast = {
   livelliPerAmbiente: 5,
   /* Gli ambienti giocabili, in ordine: quelli non elencati compaiono sulla mappa come "in arrivo".
      Si allunga man mano che i modelli veri di un ambiente sono pronti. */
-  aperti: ['laguna', 'alghe'],
+  aperti: ['laguna', 'alghe', 'relitto'],
 };
 })();
 
@@ -12008,7 +12009,7 @@ function disegnaEtichette(M, t) {
 function disegnaFreccia(M, t) {
   const h = M.eroe, e = M.obiettivo;
   if (!h || !h.vivo || !e || e.via || B.partita.stato !== 'gioco' || visibile(e.x, e.y, -e.r * .3)) return;
-  const vw = vista.vw, vh = vista.vh, a = Math.atan2(e.y - h.y, e.x - h.x), rr = Math.min(vw, vh) * .4, pronto = e.mangiabile, batte = pronto ? 1 + .15 * Math.sin(t * 8) : 1;
+  const vw = vista.vw, vh = vista.vh, a = Math.atan2(e.y - h.y, e.x - h.x), rr = Math.min(vw, vh) * .4, ob = B.partita.dati.obiettivo, pronto = e.mangiabile || (e.gigante && !!ob && ob.puoMordere), batte = pronto ? 1 + .15 * Math.sin(t * 8) : 1;
   ctx.save(); ctx.translate(vw / 2 + Math.cos(a) * rr, vh / 2 + Math.sin(a) * rr * Math.min(1.5, vh / vw)); ctx.rotate(a); ctx.scale(batte, batte);
   ctx.fillStyle = pronto ? 'rgba(124,242,154,.95)' : 'rgba(255,123,123,.8)'; ctx.strokeStyle = 'rgba(8,20,48,.6)'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
   ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-10, -13); ctx.lineTo(-3, 0); ctx.lineTo(-10, 13); ctx.closePath(); ctx.fill(); ctx.stroke();
@@ -13046,7 +13047,7 @@ function rimbalza(e) {
 function segnaMangiato(e, guadagno) {
   const id = e.def.id;
   M.mangiati[id] = (M.mangiati[id] || 0) + 1;
-  emetti('mangiato', { id, tipo: e.def.tipo, taglia: e.def.taglia || 0, potenza: e.p, guadagno });
+  emetti('mangiato', { id, tipo: e.def.tipo, taglia: e.def.taglia || 0, potenza: e.gigante ? e.vitaTotale : e.p, guadagno });   // del gigante conta la vita che aveva
 }
 
 /* L'eroe mangia un pesce (o il capobranco, che chiude il livello). */
@@ -14183,7 +14184,7 @@ function prepara(e, ob) {
   e.vitaTotale = e.gigante ? ob.vita || e.p : 0;                  // il capobranco non ha vita: si mangia in un boccone
   e.sogliaMorso = e.gigante ? ob.sogliaMorso || e.p : e.p; e.nutre = ob.nutre || 0;
   e.attacchi = ob.attacchi && ob.attacchi.length ? ob.attacchi : ['carica'];
-  e.pausa = ob.pausa || PAUSA_ATTACCHI; e.degna = ob.degna || NON_TI_DEGNA;
+  e.pausa = ob.pausa || PAUSA_ATTACCHI; e.degna = ob.degna || (e.gigante ? 12 : NON_TI_DEGNA);
   e.indiceAttacco = 0; e.prossimoAttacco = caso(3, 5);
   e.velCalmo = e.vel; e.intoccabile = 0; e.sconfitto = 0; e.attT = 0; e.attN = 0; e.attDurata = 0;
   smette(e);
@@ -14556,6 +14557,8 @@ function mostraSchermata(id, dati, opzioni) {
   s.radice.classList.add('visibile');
   const corpo = s.radice.querySelector('.corpo');
   if (corpo && !o.fermo) corpo.scrollTop = 0;
+  /* Nella schermata del risultato il titolo sta in alto: lì gli avvisi a comparsa scendono in fondo. */
+  const casaAvvisi = $('avvisi'); if (casaAvvisi) casaAvvisi.classList.toggle('in-basso', id === 'risultato');
   B.eventi.emetti('schermata', { id });
 }
 function nascondiCorrente() {

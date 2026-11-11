@@ -171,7 +171,7 @@ function prepara(e, ob) {
   e.vitaTotale = e.gigante ? ob.vita || e.p : 0;                  // il capobranco non ha vita: si mangia in un boccone
   e.sogliaMorso = e.gigante ? ob.sogliaMorso || e.p : e.p; e.nutre = ob.nutre || 0;
   e.attacchi = ob.attacchi && ob.attacchi.length ? ob.attacchi : ['carica'];
-  e.pausa = ob.pausa || PAUSA_ATTACCHI; e.degna = ob.degna || NON_TI_DEGNA;
+  e.pausa = ob.pausa || PAUSA_ATTACCHI; e.degna = ob.degna || (e.gigante ? 12 : NON_TI_DEGNA);
   e.indiceAttacco = 0; e.prossimoAttacco = caso(3, 5);
   e.velCalmo = e.vel; e.intoccabile = 0; e.sconfitto = 0; e.attT = 0; e.attN = 0; e.attDurata = 0;
   smette(e);
