@@ -3,7 +3,10 @@
    risoluzione (a scatti di circa √2) alcuni fotogrammi del nuoto per due stati (calmo; a caccia, con la bocca che si
    apre e si chiude lungo il ciclo). Si preparano poche per fotogramma, con un tetto di tempo e uno di memoria; finché
    una figurina non è pronta il modello si disegna dal vivo. I pesciolini dei banchi hanno un atlante in 16 direzioni.
-   Eroi, giganti e capobranco si disegnano sempre dal vivo. */
+   Eroi, giganti e capobranco si disegnano sempre dal vivo.
+   Il movimento "da film" lo decide il disegno (41-disegno.js) e arriva qui come trasformazione: o.stira allunga lungo il
+   corpo e stringe di traverso (il volume resta quello), o.inclina piega il corpo nelle virate, o.battito chiude gli
+   occhi di chi è disegnato dal vivo (B.pittura.battito: 0 = aperti, 1 = chiusi; le figurine si creano sempre con 0). */
 (() => {
 'use strict';
 const B = window.B, U = B.util, TAU = Math.PI * 2;
@@ -50,6 +53,7 @@ function preparaCella(a) {
   }
   const i = a.fatte % a.n, st = Math.floor(a.fatte / a.n), c = a.c;
   opz.fase = i / a.n; opz.t = 0; opz.dettaglio = Math.min(1, a.s / 40); opz.stato = 'calmo';
+  if (B.pittura) B.pittura.battito = 0;          // le figurine hanno sempre gli occhi aperti
   if (a.def.tipo === 'pericolo') { opz.attivo = st / (a.stati - 1); opz.bocca = 0; opz.minaccia = false; }
   else { opz.attivo = 0; opz.minaccia = st === 1; opz.bocca = st === 1 ? 0.55 + 0.4 * Math.sin(i / a.n * TAU) : 0; if (st === 1) opz.stato = 'caccia'; }
   c.save();
@@ -80,18 +84,21 @@ function atlantePer(def, px) {
   return null;
 }
 
-/* Disegna un modello nel mondo. o = { x, y, r, ang, fase, bocca, minaccia, alfa, stato, t, attivo, vivo, stira, … }:
-   o.vivo = true lo disegna sempre dal vivo (eroi, giganti, capobranco); gli altri campi passano al modello così come sono. */
+/* Disegna un modello nel mondo. o = { x, y, r, ang, fase, bocca, minaccia, alfa, stato, t, attivo, vivo, stira, inclina,
+   battito, … }: o.vivo = true lo disegna sempre dal vivo (eroi, giganti, capobranco); gli altri campi passano al modello
+   così come sono. L'animazione: o.stira (1 = niente) scala di stira lungo il corpo e di 1/stira di traverso; o.inclina
+   (radianti) si somma alla rotazione senza cambiare il verso in cui la creatura è specchiata; o.battito (0..1) vale
+   solo per chi è disegnato dal vivo: finisce in B.pittura.battito per la durata del disegno e poi torna a 0, sempre. */
 function disegna(c, def, o) {
   const r = o.r, alfa = o.alfa === undefined ? 1 : o.alfa;
   if (!(r > 0) || alfa <= 0.01 || !def) return;
-  const ang = o.ang || 0, sinistra = Math.cos(ang) < 0, tipo = def.tipo;
+  const ang = o.ang || 0, sinistra = Math.cos(ang) < 0, tipo = def.tipo, inclina = o.inclina || 0;
   c.save();
   c.translate(o.x, o.y);
   if (tipo === 'pericolo') { if (ang) c.rotate(ang); }
-  else if (def.assetto === 'dritto') { if (sinistra) c.scale(-1, 1); }
-  else { c.rotate(ang); if (sinistra) c.scale(1, -1); }
-  if (o.stira) c.scale(o.stira, 1 / o.stira);
+  else if (def.assetto === 'dritto') { if (inclina) c.rotate(inclina); if (sinistra) c.scale(-1, 1); }
+  else { c.rotate(ang + inclina); if (sinistra) c.scale(1, -1); }
+  if (o.stira > 0 && o.stira !== 1) c.scale(o.stira, 1 / o.stira);
   if (alfa < 1) c.globalAlpha = alfa;
   const a = !o.vivo && (tipo === 'pesce' || tipo === 'pericolo') ? atlantePer(def, r * scala) : null;
   if (a) {
@@ -101,7 +108,10 @@ function disegna(c, def, o) {
   } else {
     c.scale(r, r);
     if (o.dettaglio === undefined) o.dettaglio = Math.min(1, r * scala / 40);
+    const P = B.pittura;
+    if (P) P.battito = o.vivo && o.battito > 0 ? Math.min(1, o.battito) : 0;
     try { def.disegna(c, o); } catch (e) { if (errori++ < 5) console.error('[Boccone] il modello "' + def.id + '" non si disegna', e); }
+    finally { if (P) P.battito = 0; }            // gli occhi tornano aperti, anche se il modello è andato in errore
   }
   c.restore();
 }
@@ -120,6 +130,7 @@ function banco(def, r) {
     faiPosto(a.pixel);
     a.tela = U.tela(lato * DIREZIONI, lato * PASSI_BANCO); a.c = a.tela.getContext('2d'); pixel += a.pixel;
     opz.bocca = 0; opz.minaccia = false; opz.attivo = 0; opz.t = 0; opz.dettaglio = Math.min(1, s / 40); opz.stato = 'calmo';
+    if (B.pittura) B.pittura.battito = 0;
     for (let p = 0; p < PASSI_BANCO; p++) for (let d = 0; d < DIREZIONI; d++) {
       const ang = d / DIREZIONI * TAU, c = a.c;
       opz.fase = p / PASSI_BANCO;

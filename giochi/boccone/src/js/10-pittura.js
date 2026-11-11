@@ -1,6 +1,10 @@
-/* Boccone — B.pittura: la cassetta degli attrezzi dello stile «Giocattolo lucido».
-   Le creature sono figurine di vinile: volumi gonfi (sfumatura radiale, ombra propria in basso, luce di rimbalzo), bordo
-   scuro colorato, riflessi bianchi netti, ombre di contatto nelle pieghe, particolari in rilievo.
+/* Boccone — B.pittura: la cassetta degli attrezzi dello stile «Film d'animazione».
+   Le creature sembrano uscite da un film in 3D: volumi morbidi modellati dalla luce (luce principale dall'alto a sinistra,
+   ombra propria fredda e colorata, luce di rimbalzo color acqua dal basso, filo di controluce sul bordo in ombra), linea
+   di contorno sottile del colore del pezzo, pelle umida (riflesso largo e morbido più un puntino netto), pinne
+   semitrasparenti, occhi grandi con sclera ombreggiata, iride profonda, due riflessi e palpebre con spessore.
+   P.battito (0 aperti … 1 chiusi) fa battere le ciglia a tutti gli occhi disegnati con P.occhio: è l'unico stato della
+   cassetta, e chi lo usa lo rimette a 0 subito dopo aver disegnato.
    - Tutte le misure sono in unità del modello (1 = raggio di contatto), gli angoli in radianti, +x muso, +y pancia.
    - Nessuna funzione tiene stato né usa il caso: lo stesso ingresso dà sempre lo stesso disegno.
    - Nessuna funzione usa shadowBlur, filter, setTransform o clearRect; ognuna lascia la tela come l'ha trovata
@@ -14,9 +18,17 @@ const { sin, cos, min, max, round, hypot, atan2, abs, pow, PI } = Math;
 const P = B.pittura = {};
 const val = (v, a) => typeof v === 'function' ? v(a) : v;          // un numero oppure una funzione
 const lerp = (a, b, k) => a + (b - a) * k;
+/* La luce del film. Viene dall'alto e un po' da sinistra (LX, LY: il verso della luce principale). Il controluce e la luce
+   di rimbalzo hanno un filo del colore dell'acqua; l'ombra propria è viola: fredda e satura, mai grigia né nera. */
+const LX = -.34, LY = -.94, ACQUA = '#c8f3ff', FREDDA = '78,30,142';
+/* P.battito: battito di ciglia, da 0 (occhi aperti) a 1 (chiusi). Chi disegna una creatura dal vivo lo imposta prima di
+   chiamare disegna() e lo rimette a 0 subito dopo. Con P.battito = 0 ogni disegno resta una funzione pura delle opzioni. */
+P.battito = 0;
+/* Un colore più vivo (q > 0 allontana i canali dalla loro media): le ombre dei film sono più sature della luce. */
+const satura = (col, q) => { const p = P.rgb(col), m = (p[0] * .3 + p[1] * .5 + p[2] * .2); return esa(p[0] + (p[0] - m) * q, p[1] + (p[1] - m) * q, p[2] + (p[2] - m) * q); };
 
 // =========================================================================== 1. COLORI
-const NOTTE = [30, 14, 70];            // il viola-notte verso cui tendono le ombre: mai nero puro
+const NOTTE = [26, 16, 92];            // il viola-notte verso cui tendono le ombre: mai nero puro
 const memo = new Map();
 const canale = v => v < 0 ? 0 : v > 255 ? 255 : round(v);
 const esa = (r, g, b) => '#' + ((1 << 24) | (canale(r) << 16) | (canale(g) << 8) | canale(b)).toString(16).slice(1);
@@ -47,10 +59,11 @@ P.alfa = (col, a) => { const p = P.rgb(col); return 'rgba(' + p[0] + ',' + p[1] 
 P.tinta = (base, ombra) => {
   const chiave = 't' + base + (ombra || '');
   let t = memo.get(chiave); if (t) return t;
-  t = { base, luce: P.schiarisci(base, .5), chiara: P.schiarisci(base, .24) };
-  if (ombra) { t.ombra = P.mescola(base, ombra, .5); t.scura = P.mescola(base, ombra, .9); t.bordo = P.scurisci(ombra, .58); }
-  else { t.ombra = P.scurisci(base, .3); t.scura = P.scurisci(base, .52); t.bordo = P.scurisci(base, .76); }
-  t.velo = 'rgba(92,22,66,.16)';       // il velo color prugna che, steso due volte, fa l'ombra propria (calda: non ingrigisce i chiari)
+  t = { base, luce: P.schiarisci(base, .36), chiara: P.schiarisci(base, .16) };
+  if (ombra) { t.ombra = P.mescola(base, ombra, .5); t.scura = P.mescola(base, ombra, .9); t.bordo = P.scurisci(ombra, .5); t.linea = P.scurisci(ombra, .3); }
+  else { const viva = satura(base, .3); t.ombra = P.scurisci(viva, .34); t.scura = P.scurisci(viva, .58); t.bordo = P.scurisci(base, .72); t.linea = P.scurisci(base, .62); }
+  t.rimbalzo = P.mescola(t.scura, ACQUA, .3);       // l'ultimo tratto dell'ombra, schiarito dalla luce di rimbalzo
+  t.velo = 'rgba(' + FREDDA + ',.11)';              // il velo freddo dell'ombra propria dei pezzi a tinta piatta
   return ricorda(chiave, t);
 };
 
@@ -157,43 +170,71 @@ P.tracciaSpina = (c, s) => {
 };
 
 // =========================================================================== 3. VOLUMI, BORDI, LUCI E OMBRE
-P.BORDO = .05;                         // spessore del bordo scuro dei pezzi grandi (se ne vede la metà esterna)
-/* P.volume(c, forma, t, o): IL MATTONE DELLO STILE. Disegna un pezzo gonfio e lucido da una sagoma.
+P.BORDO = .035;                        // misura della linea di contorno dei pezzi grandi (sottile, del colore del pezzo scurito)
+/* P.volume(c, forma, t, o): IL MATTONE DELLO STILE. Disegna un pezzo pieno e morbido, modellato dalla luce.
    forma: una spina (P.spina…) oppure una funzione traccia(c) che fa beginPath e traccia la sagoma (viene chiamata più volte).
    t: tinta del pezzo. o: {
-     luce: [x, y, r]  centro del punto illuminato (in alto, verso il muso) e raggio a cui il colore arriva in ombra
-                      (≈ 1,5 volte la grandezza del pezzo). Se manca, il pezzo è tinto piatto e riceve una lama di luce
-                      in alto: va bene per nastri, tentacoli e pezzi sottili;
+     luce: [x, y, r]  centro del punto illuminato (in alto, verso il muso: la cassetta lo sposta da sé dalla parte della luce)
+                      e raggio a cui il colore arriva in ombra (≈ 1,5 volte la grandezza del pezzo). Se manca, il pezzo è
+                      tinto piatto e riceve una lama di luce in alto: va bene per nastri, tentacoli e pezzi sottili;
      colore           riempimento a scelta (un colore o un gradiente) al posto della sfumatura della tinta;
-     bordo            spessore del bordo (P.BORDO; 0 = senza);
-     ombra            spessore dell'ombra propria a falce in basso (.11; 0 = senza). Regola: circa un decimo del pezzo;
+     bordo            misura della linea di contorno (P.BORDO; 0 = senza);
+     ombra            quanta ombra propria e quanto controluce (.11; 0 = senza: pezzi lontani, economici);
      lume             spessore della lama di luce in alto (.1 se manca `luce`, altrimenti 0);
      dentro(c)        disegna i motivi (ventre, righe, macchie, squame) ritagliati nella sagoma, sotto ombra e luce } */
 P.volume = (c, forma, t, o = {}) => {
   const spina = typeof forma !== 'function', traccia = spina ? cc => P.tracciaSpina(cc, forma) : forma;
-  const b = o.bordo === undefined ? P.BORDO : o.bordo, om = o.ombra === undefined ? .11 : o.ombra, lu = o.lume === undefined ? (o.luce ? 0 : .1) : o.lume;
+  const b = o.bordo === undefined ? P.BORDO : o.bordo, om = o.ombra === undefined ? .11 : o.ombra, lu = o.lume === undefined ? (o.luce ? 0 : .1) : o.lume, L = o.luce;
   c.lineJoin = 'round'; c.lineCap = 'round';
+  if (b) {                                                          // la linea: sottile, e scivolata dalla parte dell'ombra (dal lato della luce quasi sparisce)
+    const d = b * .5;
+    c.translate(-LX * d, -LY * d); traccia(c); c.strokeStyle = t.bordo; c.lineWidth = b * 1.5; c.stroke(); c.translate(LX * d, LY * d);
+  }
   traccia(c);
-  if (b) { c.strokeStyle = t.bordo; c.lineWidth = b * 2; c.stroke(); }
-  c.fillStyle = o.colore || (o.luce ? P.sfumatura(c, t, o.luce) : t.base);
+  c.fillStyle = o.colore || (L ? P.sfumatura(c, t, L) : t.base);
   c.fill();
   if (!om && !lu && !o.dentro) return;
   if (spina) {
-    /* Corpi su una spina: luce e ombra sono fasce lungo i fianchi, che seguono le curve e costano poco. Se c'è il bordo si
-       disegnano senza ritaglio (la fascia d'ombra sconfina appena sotto il bordo, dove non si vede). */
-    const e = orloSpina(forma), ritaglia = !b;
-    if (o.dentro || ritaglia) { c.save(); c.clip(); if (o.dentro) o.dentro(c); if (!ritaglia) c.restore(); }
-    if (lu) { c.fillStyle = P.alfa(t.luce, .3); fascia(c, e, lu * .2, lu * 2, 1, 0); c.fill(); fascia(c, e, lu * .5, lu * 1.55, 1, 0); c.fill(); }
-    if (om) { c.fillStyle = t.velo; fascia(c, e, 0, om * 2, -1, b * .4); c.fill(); fascia(c, e, 0, om * 1.05, -1, b * .4); c.fill(); }
-    if (ritaglia) c.restore();
+    /* Corpi su una spina: i motivi, poi un velo che attraversa il corpo dall'alto in basso (luce sul dorso, ombra fredda
+       verso il ventre) e il filo di controluce lungo i fianchi in ombra. */
+    const e = orloSpina(forma);
+    if (o.dentro) { c.save(); c.clip(); o.dentro(c); c.restore(); }
+    if (!b) { c.save(); traccia(c); c.clip(); }
+    if (L && om) {
+      let y0 = Infinity, y1 = -Infinity; for (let i = 0; i < e.y.length; i++) { if (e.y[i] < y0) y0 = e.y[i]; if (e.y[i] > y1) y1 = e.y[i]; }
+      const g = c.createLinearGradient(0, y0, 0, y1);
+      g.addColorStop(0, 'rgba(255,255,255,.04)'); g.addColorStop(.2, 'rgba(255,255,255,0)'); g.addColorStop(.4, 'rgba(' + FREDDA + ',0)'); g.addColorStop(.76, 'rgba(' + FREDDA + ',.24)'); g.addColorStop(1, 'rgba(' + FREDDA + ',.37)');
+      traccia(c); c.fillStyle = g; c.fill();
+    } else {
+      if (lu) { c.fillStyle = P.alfa(t.luce, .28); fascia(c, e, lu * .15, lu * 2.1, 1, 0); c.fill(); fascia(c, e, lu * .5, lu * 1.4, 1, 0); c.fill(); }
+      if (om) { c.fillStyle = t.velo; fascia(c, e, 0, om * 2.9, -1, 0); c.fill(); fascia(c, e, 0, om * 2, -1, 0); c.fill(); fascia(c, e, 0, om * 1.1, -1, 0); c.fill(); }
+    }
+    if (om) {
+      c.fillStyle = P.alfa(ACQUA, .3); fascia(c, e, 0, om * .5, -1, 0); c.fill();                    // controluce sul bordo in ombra
+      if (L) { c.fillStyle = 'rgba(255,255,255,.24)'; fascia(c, e, 0, om * .42, 1, 0); c.fill(); }      // filo di luce sul bordo illuminato
+    }
+    if (!b) c.restore();
     return;
   }
-  /* Sagome qualsiasi: la sagoma stessa, spostata e ripassata dentro il ritaglio. */
+  /* Sagome qualsiasi: tutto dentro il ritaglio della sagoma. */
   c.save(); c.clip();
   if (o.dentro) o.dentro(c);
-  c.lineJoin = 'round';
-  if (lu) { c.save(); c.translate(-lu * .2, lu); traccia(c); c.strokeStyle = P.alfa(t.luce, .3); c.lineWidth = lu * 2; c.stroke(); c.lineWidth = lu * 1.1; c.stroke(); c.restore(); }
-  if (om) { c.translate(om * .3, -om); traccia(c); c.strokeStyle = t.velo; c.lineWidth = om * 2; c.stroke(); c.lineWidth = om * 1.05; c.stroke(); }
+  if (om) {
+    if (L) {
+      if (o.dentro || o.colore) {                                   // il velo d'ombra che modella anche i motivi dipinti dentro
+        const r = L[2], x = L[0] + LX * r * .7, y = L[1], g = c.createRadialGradient(x, y, r * .34, x, y, r);
+        g.addColorStop(0, 'rgba(' + FREDDA + ',0)'); g.addColorStop(.5, 'rgba(' + FREDDA + ',.2)'); g.addColorStop(.8, 'rgba(' + FREDDA + ',.36)'); g.addColorStop(1, 'rgba(' + FREDDA + ',.24)');
+        c.fillStyle = g; c.fillRect(x - r * 1.5, y - r * 1.5, r * 3, r * 3);
+      }
+    } else {                                                        // tinta piatta: falce d'ombra morbida
+      c.translate(-LX * om, -LY * om); traccia(c); c.strokeStyle = t.velo; c.lineWidth = om * 2; c.stroke(); c.lineWidth = om * 1.3; c.stroke(); c.lineWidth = om * .65; c.stroke(); c.translate(LX * om, LY * om);
+    }
+    const w = om * .5;                                              // controluce: un filo chiaro lungo il bordo opposto alla luce
+    c.translate(LX * w / 2, LY * w / 2); traccia(c); c.strokeStyle = P.alfa(ACQUA, .32); c.lineWidth = w; c.stroke();
+    if (L) { c.translate(-LX * w * .92, -LY * w * .92); traccia(c); c.strokeStyle = 'rgba(255,255,255,.22)'; c.lineWidth = w * .84; c.stroke(); c.translate(LX * w * .42, LY * w * .42); }   // filo di luce sul bordo illuminato
+    else c.translate(-LX * w / 2, -LY * w / 2);
+  }
+  if (lu) { c.translate(-LX * lu, -LY * lu); traccia(c); c.strokeStyle = P.alfa(t.luce, .28); c.lineWidth = lu * 2; c.stroke(); c.lineWidth = lu * 1.1; c.stroke(); }
   c.restore();
 };
 /* L'orlo di una spina come anello di punti, con la normale che guarda in fuori e lo spazio disponibile verso l'interno. */
@@ -212,20 +253,20 @@ const orloSpina = s => {
   return e;
 };
 /* Traccia una fascia lungo l'orlo, fra le profondità da e a, larga in proporzione a quanto l'orlo guarda la luce
-   (segno = 1) o le volta le spalle (segno = -1). La luce viene dall'alto, un po' dal muso. Con da = 0 la fascia parte
-   un po' fuori dall'orlo (di `fuori`), così non resta un filo scoperto. */
+   (segno = 1) o le volta le spalle (segno = -1). La luce viene dall'alto, un po' da sinistra. */
 const fascia = (c, e, da, a, segno, fuori) => {
   const m = e.x.length;
   c.beginPath();
-  for (let i = 0; i < m; i++) { const f = max(0, segno * (e.nx[i] * .3 - e.ny[i] * .954)), d = da ? min(da * f, e.sp[i]) : -min(fuori, f * .4); if (i) c.lineTo(e.x[i] - e.nx[i] * d, e.y[i] - e.ny[i] * d); else c.moveTo(e.x[i] - e.nx[i] * d, e.y[i] - e.ny[i] * d); }
-  for (let i = m - 1; i >= 0; i--) { const f = max(0, segno * (e.nx[i] * .3 - e.ny[i] * .954)), d = min(a * f, e.sp[i]); c.lineTo(e.x[i] - e.nx[i] * d, e.y[i] - e.ny[i] * d); }
+  for (let i = 0; i < m; i++) { const f = max(0, segno * (e.nx[i] * LX + e.ny[i] * LY)), d = da ? min(da * f, e.sp[i]) : -min(fuori, f * .4); if (i) c.lineTo(e.x[i] - e.nx[i] * d, e.y[i] - e.ny[i] * d); else c.moveTo(e.x[i] - e.nx[i] * d, e.y[i] - e.ny[i] * d); }
+  for (let i = m - 1; i >= 0; i--) { const f = max(0, segno * (e.nx[i] * LX + e.ny[i] * LY)), d = min(a * f, e.sp[i]); c.lineTo(e.x[i] - e.nx[i] * d, e.y[i] - e.ny[i] * d); }
   c.closePath();
 };
-/* P.sfumatura(c, t, luce) → la sfumatura radiale di un volume, da usare come fillStyle (o come `colore`) anche per le zone
-   dipinte dentro un corpo (ventre, maschere, bande) perché restino tonde. luce = [x, y, r] come in P.volume. */
+/* P.sfumatura(c, t, luce) → la sfumatura di un volume, da usare come fillStyle (o come `colore`) anche per le zone
+   dipinte dentro un corpo (ventre, maschere, bande) perché restino tonde. luce = [x, y, r] come in P.volume: il centro
+   viene spostato da sé dalla parte della luce principale; l'ultimo tratto è la luce di rimbalzo. */
 P.sfumatura = (c, t, luce) => {
-  const x = luce[0], y = luce[1], r = luce[2], g = c.createRadialGradient(x, y, r * .04, x, y, r);
-  g.addColorStop(0, t.luce); g.addColorStop(.32, t.base); g.addColorStop(.74, t.ombra); g.addColorStop(.92, t.scura); g.addColorStop(1, t.ombra);   // l'ultimo tratto è la luce di rimbalzo
+  const r = luce[2], x = luce[0] + LX * r * .7, y = luce[1], g = c.createRadialGradient(x, y, r * .03, x, y, r);
+  g.addColorStop(0, t.luce); g.addColorStop(.1, t.chiara); g.addColorStop(.3, t.base); g.addColorStop(.54, t.ombra); g.addColorStop(.78, t.scura); g.addColorStop(.96, t.rimbalzo || t.ombra);
   return g;
 };
 /* P.palla(c, x, y, rx, ry, ang, t, o): un volume a ellisse (centro, due raggi, inclinazione): bulbi, esche, giunture,
@@ -235,15 +276,16 @@ P.palla = (c, x, y, rx, ry, ang, t, o = {}) => {
   P.volume(c, cc => { cc.beginPath(); cc.ellipse(x, y, rx, ry, ang, 0, TAU); }, t, { luce: o.luce || [x + R * .3, y - R * .4, R * 1.7], colore: o.colore,
     bordo: o.bordo, ombra: o.ombra === undefined ? min(rx, ry) * .22 : o.ombra, lume: o.lume, dentro: o.dentro });
 };
-/* P.riflesso(c, x, y, lung, ang = -.4, curva = .25, forza = .92): il riflesso speculare netto, firma dello stile: una virgola
-   bianca più un puntino. (x, y) centro, lung lunghezza, ang inclinazione, curva = quanto si incurva (segue la rotondità
-   del pezzo). UNO per pezzo importante, in alto verso il muso, DOPO il volume. */
+/* P.riflesso(c, x, y, lung, ang = -.4, curva = .25, forza = .92): il riflesso della pelle umida: un alone largo e morbido
+   più un puntino speculare piccolo e netto. (x, y) centro, lung lunghezza, ang inclinazione, curva = quanto è gonfio.
+   UNO per pezzo importante, in alto verso il muso, DOPO il volume (la cassetta lo sposta un po' dalla parte della luce). */
 P.riflesso = (c, x, y, lung, ang = -.4, curva = .25, forza = .92) => {
-  const sp = lung * .34, f = lung * curva * 2;
-  c.save(); c.translate(x, y); c.rotate(ang);
-  c.lineJoin = 'round'; c.strokeStyle = c.fillStyle = 'rgba(255,255,255,' + forza + ')'; c.lineWidth = sp * .3;
-  c.beginPath(); c.moveTo(-lung / 2, 0); c.quadraticCurveTo(0, -f - sp * .55, lung / 2, 0); c.quadraticCurveTo(0, -f + sp * .75, -lung / 2, 0); c.closePath(); c.fill(); c.stroke();
-  c.beginPath(); c.arc(-lung / 2 - sp * .95, f * .42 + sp * .5, sp * .36, 0, TAU); c.fill();
+  const sp = lung * .34;
+  c.save(); c.translate(x + LX * lung * .7, y); c.rotate(ang);
+  c.save(); c.scale(lung * .95, sp * 1.05 + lung * curva * .6);
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, 1); g.addColorStop(0, 'rgba(255,255,255,' + forza * .82 + ')'); g.addColorStop(.45, 'rgba(255,255,255,' + forza * .38 + ')'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, 1, 0, TAU); c.fill(); c.restore();
+  c.fillStyle = 'rgba(255,255,255,' + forza + ')'; c.beginPath(); c.ellipse(-lung * .16, -sp * .08, sp * .46, sp * .27, -.15, 0, TAU); c.fill();
   c.restore();
 };
 /* P.ombra(c, x, y, rx, ry, ang = 0, forza = .35, col): ombra di contatto, una macchia scura e sfumata da mettere nelle
@@ -276,12 +318,12 @@ P.guancia = (c, x, y, r, col = '#ff5f8f', forza = .55) => {
   const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, P.alfa(col, forza)); g.addColorStop(.5, P.alfa(col, forza * .6)); g.addColorStop(1, P.alfa(col, 0));
   c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
 };
-/* P.solco(c, p, t, spess = .035): solco inciso lungo la curva per i punti p = [x0,y0, …]: opercolo, cicatrici, pieghe,
-   giunture delle corazze. Una riga scura e, appena sotto, una riga chiara. t = tinta del pezzo su cui sta. */
+/* P.solco(c, p, t, spess = .035): solco morbido lungo la curva per i punti p = [x0,y0, …]: opercolo, cicatrici, pieghe,
+   giunture delle corazze. Una riga in ombra e, appena sotto, un filo di luce. t = tinta del pezzo su cui sta. */
 P.solco = (c, p, t, spess = .035) => {
   c.lineCap = 'round';
-  P.profilo(c, p, false); c.strokeStyle = P.alfa(t.scura, .7); c.lineWidth = spess; c.stroke();
-  c.save(); c.translate(spess * .7, spess * .5); P.profilo(c, p, false); c.strokeStyle = P.alfa(t.luce, .55); c.lineWidth = spess * .6; c.stroke(); c.restore();
+  P.profilo(c, p, false); c.strokeStyle = P.alfa(t.scura, .5); c.lineWidth = spess * 1.2; c.stroke();
+  c.save(); c.translate(spess * .7, spess * .5); P.profilo(c, p, false); c.strokeStyle = P.alfa(t.luce, .4); c.lineWidth = spess * .6; c.stroke(); c.restore();
 };
 /* P.bozzi(c, p, r, t): bozzi in rilievo nei punti p = [x0,y0, …]: verruche, tubercoli, borchie, nei. Sotto ognuno una
    mezzaluna scura, sopra una gobba chiara. r = raggio (numero o funzione dell'indice), t = tinta del pezzo. */
@@ -297,10 +339,10 @@ P.bozzi = (c, p, r, t) => {
 P.tubo = (c, p, spess, t, bordo = P.BORDO * .8) => {
   c.lineCap = 'round'; c.lineJoin = 'round';
   P.profilo(c, p, false);
-  c.strokeStyle = t.bordo; c.lineWidth = spess + bordo * 2; c.stroke();
+  c.strokeStyle = t.linea || t.bordo; c.lineWidth = spess + bordo * 1.3; c.stroke();
   c.strokeStyle = t.ombra; c.lineWidth = spess; c.stroke();
-  c.save(); c.translate(spess * .05, -spess * .14); P.profilo(c, p, false); c.strokeStyle = t.base; c.lineWidth = spess * .7; c.stroke();
-  c.translate(0, -spess * .12); P.profilo(c, p, false); c.strokeStyle = P.alfa(t.luce, .9); c.lineWidth = spess * .2; c.stroke(); c.restore();
+  c.save(); c.translate(-spess * .04, -spess * .14); P.profilo(c, p, false); c.strokeStyle = t.base; c.lineWidth = spess * .7; c.stroke();
+  c.translate(-spess * .02, -spess * .1); P.profilo(c, p, false); c.strokeStyle = P.alfa(t.luce, .7); c.lineWidth = spess * .22; c.stroke(); c.restore();
 };
 /* P.filo(c, p, spess0, spess1, t, bordo): filo che si assottiglia da spess0 a spess1 lungo la curva per i punti
    p = [x0,y0, …]: antenne, barbigli, baffi, filamenti delle pinne, code a frusta, lenze. t = tinta oppure un colore;
@@ -315,7 +357,7 @@ P.filo = (c, p, spess0, spess1, t, bordo = P.BORDO * .6) => {
   for (let i = 1; i <= m; i++) c.lineTo(ax[i], ay[i]);
   for (let i = m; i >= 0; i--) c.lineTo(bx[i], by[i]);
   c.closePath(); c.lineJoin = 'round';
-  if (bordo) { c.strokeStyle = col ? P.scurisci(t, .7) : t.bordo; c.lineWidth = bordo * 2; c.stroke(); }
+  if (bordo) { c.strokeStyle = col ? P.scurisci(t, .5) : (t.linea || t.bordo); c.lineWidth = bordo * 1.3; c.stroke(); }
   c.fillStyle = col ? t : t.base; c.fill();
 };
 /* P.corno(c, x, y, ang, lung, larg, t, o): cono lucido che si assottiglia: aculei, spine, corna, zanne, rostri, becchi,
@@ -328,13 +370,13 @@ P.corno = (c, x, y, ang, lung, larg, t, o = {}) => {
   c.lineJoin = 'round'; c.lineCap = 'round';
   c.beginPath(); c.moveTo(x + hx, y + hy); c.quadraticCurveTo(mx + hx * g, my + hy * g, px, py); c.quadraticCurveTo(mx - hx * g, my - hy * g, x - hx, y - hy); c.closePath();
   const b = o.bordo === undefined ? P.BORDO * .8 : o.bordo;
-  if (b) { c.strokeStyle = t.bordo; c.lineWidth = b * 2; c.stroke(); }
-  const gr = c.createLinearGradient(x, y, px, py); gr.addColorStop(0, t.ombra); gr.addColorStop(.45, t.base); gr.addColorStop(1, o.punta || t.luce);
+  if (b) { c.strokeStyle = t.linea || t.bordo; c.lineWidth = b * 1.4; c.stroke(); }
+  const gr = c.createLinearGradient(x, y, px, py); gr.addColorStop(0, t.scura); gr.addColorStop(.3, t.ombra); gr.addColorStop(.62, t.base); gr.addColorStop(1, o.punta || t.luce);
   c.fillStyle = gr; c.fill();
   if (o.lume === false) return;
   const s = hy > 0 ? -.42 : .42;                                    // il filo di luce corre sul fianco rivolto in alto
   c.beginPath(); c.moveTo(lerp(x, mx, .3) + hx * s, lerp(y, my, .3) + hy * s); c.quadraticCurveTo(mx + hx * s * g, my + hy * s * g, lerp(mx, px, .6), lerp(my, py, .6));
-  c.strokeStyle = P.alfa(t.luce, .85); c.lineWidth = larg * .13; c.stroke();
+  c.strokeStyle = P.alfa(t.luce, .6); c.lineWidth = larg * .16; c.stroke();
 };
 
 // =========================================================================== 4. PINNE E CODE
@@ -353,14 +395,16 @@ P.raggi = o => {
   }
   return g;
 };
-/* P.pinna(c, o) → geometria (vedi P.raggi). Pinna carnosa a raggi: dorsali, anali, pettorali, ventrali, ventagli. o: {
+/* P.pinna(c, o) → geometria (vedi P.raggi). Pinna a raggi: una membrana semitrasparente che si accende in controluce,
+   più piena e scura all'attaccatura, con i raggi appena accennati: dorsali, anali, pettorali, ventrali, ventagli. o: {
      x0,y0, x1,y1  attaccatura sul corpo (primo e ultimo raggio);   a0, a1  direzione del primo e dell'ultimo raggio;
      lung          lunghezza;   profilo  moltiplicatori di lunghezza lungo l'attaccatura, es. [.5, 1, .7] (interpolati);
      n             numero di raggi (6);
      onda, fase, passo  ondeggiamento: ogni raggio ruota di onda·sin(fase − i·passo); fase in RADIANTI (o.fase·TAU·intero);
      piega         curvatura dei raggi (radianti);   smerlo  0..1 orlo a festoni fra un raggio e l'altro;
      tinta;  orlo  colore di una fascia lungo il bordo esterno;  punta  colore verso cui sfuma l'estremità;
-     righe         false = senza raggi in rilievo;   primo  true = disegna anche il primo e l'ultimo raggio;   bordo }
+     righe         false = senza raggi;   primo  true = disegna anche il primo e l'ultimo raggio;   bordo;
+     velo          0..1 quanto è piena la membrana in punta (.8; 1 = opaca) }
    Se nasce dietro il corpo (dorsale, anale, coda) si disegna PRIMA del corpo; se sta sul fianco (pettorale) DOPO. */
 P.pinna = (c, o) => {
   const g = P.raggi(o), n = g.n, t = o.tinta, sm = o.smerlo || 0, { bx, by, mx, my, ex, ey } = g, orlo = [o.x0, o.y0];
@@ -370,27 +414,24 @@ P.pinna = (c, o) => {
     orlo.push(ex[i], ey[i]); lmax = max(lmax, hypot(ex[i] - cx, ey[i] - cy));
   }
   orlo.push(o.x1, o.y1);
-  const m = orlo.length / 2;
+  const m = orlo.length / 2, ve = o.velo === undefined ? .8 : o.velo;
   c.lineJoin = 'round'; c.lineCap = 'round';
   c.beginPath(); c.moveTo(orlo[0], orlo[1]);
   for (let i = 1; i < m - 1; i++) c.quadraticCurveTo(orlo[i * 2], orlo[i * 2 + 1], (orlo[i * 2] + orlo[i * 2 + 2]) / 2, (orlo[i * 2 + 1] + orlo[i * 2 + 3]) / 2);
   c.lineTo(orlo[m * 2 - 2], orlo[m * 2 - 1]); c.closePath();
-  const b = o.bordo === undefined ? P.BORDO : o.bordo;
-  if (b) { c.strokeStyle = t.bordo; c.lineWidth = b * 2; c.stroke(); }
   const gr = c.createRadialGradient(cx, cy, 0, cx, cy, lmax || 1);
-  gr.addColorStop(0, t.scura); gr.addColorStop(.2, t.ombra); gr.addColorStop(.42, t.base); gr.addColorStop(o.orlo ? .78 : 1, o.punta || t.chiara);
-  if (o.orlo) { gr.addColorStop(.82, o.orlo); gr.addColorStop(1, o.orlo); }
+  gr.addColorStop(0, t.scura); gr.addColorStop(.2, t.ombra); gr.addColorStop(.46, P.alfa(t.base, .5 + ve * .5)); gr.addColorStop(o.orlo ? .76 : 1, P.alfa(o.punta || t.chiara, ve));
+  if (o.orlo) { gr.addColorStop(.84, P.alfa(o.orlo, .1 + ve * .9)); gr.addColorStop(1, P.alfa(P.schiarisci(o.orlo, .3), .1 + ve * .9)); }
   c.fillStyle = gr; c.fill();
+  const b = o.bordo === undefined ? P.BORDO : o.bordo;
+  if (b) { c.strokeStyle = t.linea || t.bordo; c.lineWidth = b; c.stroke(); }
   if (o.righe === false) return g;
-  for (let passata = 0; passata < 2; passata++) {                  // raggi in rilievo: riga scura e, accanto, riga chiara
-    const d = passata ? .017 : 0;
-    c.beginPath();
-    for (let i = (o.primo ? 0 : 1); i < n + (o.primo ? 1 : 0); i++) {
-      c.moveTo(lerp(bx[i], mx[i], .34) + d, lerp(by[i], my[i], .34) - d);
-      c.quadraticCurveTo(mx[i] + d, my[i] - d, lerp(mx[i], ex[i], .72) + d, lerp(my[i], ey[i], .72) - d);
-    }
-    c.lineCap = 'butt'; c.strokeStyle = passata ? P.alfa(t.luce, .6) : P.alfa(t.scura, .5); c.lineWidth = passata ? .016 : .03; c.stroke();
+  c.beginPath();                                                   // i raggi: appena accennati
+  for (let i = (o.primo ? 0 : 1); i < n + (o.primo ? 1 : 0); i++) {
+    c.moveTo(lerp(bx[i], mx[i], .34), lerp(by[i], my[i], .34));
+    c.quadraticCurveTo(mx[i], my[i], lerp(mx[i], ex[i], .8), lerp(my[i], ey[i], .8));
   }
+  c.lineCap = 'butt'; c.strokeStyle = P.alfa(t.scura, .3); c.lineWidth = .024; c.stroke();
   return g;
 };
 const CODE = {                         // profili (lunghezza dei raggi dall'alto al basso) e apertura dei tipi di coda
@@ -428,11 +469,12 @@ P.cresta = (c, s, o) => {
   for (let i = 0; i < m; i++) c.quadraticCurveTo(ox[i], oy[i], (ox[i] + ox[i + 1]) / 2, (oy[i] + oy[i + 1]) / 2);
   c.lineTo(ix[m], iy[m]); for (let i = m - 1; i >= 0; i--) c.lineTo(ix[i], iy[i]); c.closePath();
   const b = o.bordo === undefined ? P.BORDO : o.bordo;
-  if (b) { c.strokeStyle = t.bordo; c.lineWidth = b * 2; c.stroke(); }
-  c.fillStyle = o.colore || t.base; c.fill();
+  const pieno = c.globalAlpha;                                      // membrana semitrasparente
+  c.globalAlpha = pieno * .86; c.fillStyle = o.colore || t.base; c.fill(); c.globalAlpha = pieno;
+  if (b) { c.strokeStyle = P.alfa(t.linea || t.bordo, .8); c.lineWidth = b * .8; c.stroke(); }
   if (o.righe === false) return;
   c.beginPath(); for (let i = 1; i < m; i++) { c.moveTo(lerp(ix[i], ox[i], .3), lerp(iy[i], oy[i], .3)); c.lineTo(lerp(ix[i], ox[i], .82), lerp(iy[i], oy[i], .82)); }
-  c.lineCap = 'butt'; c.strokeStyle = P.alfa(t.scura, .5); c.lineWidth = .028; c.stroke();
+  c.lineCap = 'butt'; c.strokeStyle = P.alfa(t.scura, .3); c.lineWidth = .024; c.stroke();
   c.beginPath(); c.moveTo(lerp(ix[0], ox[0], .9), lerp(iy[0], oy[0], .9));                 // filo di luce sull'orlo
   for (let i = 0; i < m; i++) c.quadraticCurveTo(lerp(ix[i], ox[i], .86), lerp(iy[i], oy[i], .86), (lerp(ix[i], ox[i], .86) + lerp(ix[i + 1], ox[i + 1], .86)) / 2, (lerp(iy[i], oy[i], .86) + lerp(iy[i + 1], oy[i + 1], .86)) / 2);
   c.strokeStyle = P.alfa(o.orlo || t.luce, .75); c.lineWidth = .035; c.stroke();
@@ -479,12 +521,19 @@ P.bande = (c, s, lista, colore, passi = 6) => {
   c.fillStyle = colore; c.fill();
 };
 /* P.fianco(c, s, v0, v1, colore, u0 = 0, u1 = 1, passi = 12): fascia per il lungo fra le quote v0 e v1 (numeri o funzioni
-   di u), da u0 a u1: ventre chiaro (v0 = .2, v1 = 1.4), dorso scuro (v0 = -1.4, v1 = -.3), striscia sul fianco. */
+   di u), da u0 a u1: ventre chiaro (v0 = .2, v1 = 1.4), dorso scuro (v0 = -1.4, v1 = -.3), striscia sul fianco.
+   Quando la fascia arriva fino al filo del ventre o del dorso, il lato che resta dentro il corpo sfuma (come aerografato). */
 P.fianco = (c, s, v0, v1, colore, u0 = 0, u1 = 1, passi = 12) => {
-  const q = {}; c.beginPath();
-  for (let i = 0; i <= passi; i++) { const u = lerp(u0, u1, i / passi); P.suSpina(s, u, val(v0, u), q); c.lineTo(q.x, q.y); }
-  for (let i = passi; i >= 0; i--) { const u = lerp(u0, u1, i / passi); P.suSpina(s, u, val(v1, u), q); c.lineTo(q.x, q.y); }
-  c.closePath(); c.fillStyle = colore; c.fill();
+  const q = {}, pieno = c.globalAlpha, a0 = val(v0, .5), a1 = val(v1, .5), giri = a1 > 1 || a0 < -1 ? 3 : 1;
+  c.fillStyle = colore;
+  for (let g = giri - 1; g >= 0; g--) {
+    const d0 = a1 > 1 ? g * .055 : 0, d1 = a0 < -1 ? g * .055 : 0;
+    c.beginPath();
+    for (let i = 0; i <= passi; i++) { const u = lerp(u0, u1, i / passi); P.suSpina(s, u, val(v0, u) - d0, q); c.lineTo(q.x, q.y); }
+    for (let i = passi; i >= 0; i--) { const u = lerp(u0, u1, i / passi); P.suSpina(s, u, val(v1, u) + d1, q); c.lineTo(q.x, q.y); }
+    c.closePath(); c.globalAlpha = pieno * (g ? .34 : 1); c.fill();
+  }
+  c.globalAlpha = pieno;
 };
 /* P.macchie(c, s, o): macchie sparse in una zona del corpo, sempre uguali. o: { n, seme (cambia la disposizione),
    u0, u1, v0, v1 (zona), r0, r1 (raggio minimo e massimo), colore, cuore (colore di un centro più piccolo: macchie ad
@@ -542,7 +591,7 @@ P.anelli = (c, s, u0, u1, n, t, o = {}) => {
    lingua. normale, calmo (palpebra un po' calata), felice (arco chiuso), contento, spaventato, colpito, cattivo (palpebra
    tagliata in diagonale, pupilla stretta), stordito (spirale), sconfitto (croce), addormentato. */
 P.SGUARDI = {
-  normale: { palpebra: .08 }, calmo: { palpebra: .2 }, felice: { tipo: 'chiuso' }, contento: { sotto: .34, brillio: 1.25 },
+  normale: { palpebra: .1 }, calmo: { palpebra: .2 }, felice: { tipo: 'chiuso' }, contento: { sotto: .34, brillio: 1.25 },
   spaventato: { pupilla: .6, grande: 1.12, brillio: .8 }, colpito: { tipo: 'stretto' }, cattivo: { palpebra: .34, taglio: .46, pupilla: .72, sotto: .1 },
   stordito: { tipo: 'spirale' }, sconfitto: { tipo: 'croce' }, addormentato: { palpebra: .62 },
 };
@@ -553,8 +602,10 @@ P.sguardo = (sg, x, y) => {
   const dx = sg.x - x, dy = sg.y - y, d = hypot(dx, dy) || 1, k = min(1, d / .7) / d;
   return { x: dx * k, y: dy * k };
 };
-/* P.occhio(c, x, y, r, o): l'occhio da giocattolo: orbita scura, bulbo lucido, iride colorata, pupilla, due riflessi fissi,
-   palpebre della tinta del corpo. (x, y) centro, r raggio (mai sotto .14: deve leggersi da piccolo). o: {
+/* P.occhio(c, x, y, r, o): l'occhio «da film»: orbita morbida, sclera ombreggiata in alto dalla palpebra, iride profonda
+   (anello scuro, raggi, zona chiara in basso), pupilla morbida, due riflessi (grande in alto dal lato della luce, piccolo
+   dalla parte opposta), filo umido sul bordo di sotto, palpebre della tinta del corpo con il loro spessore.
+   (x, y) centro, r raggio (mai sotto .14: deve leggersi da piccolo). o: {
      iride (colore), pelle (tinta delle palpebre e dell'orbita: quella della testa), bianco (colore del bulbo, se non bianco),
      guarda {x, y} fra -1 e 1 (vedi P.sguardo), pupilla (1 = normale), raggioIride (quota del raggio, .7),
      tipo: 'tondo' | 'fessura' (pupilla verticale: predatori, murene) | 'barra' (pupilla orizzontale: polpi) | 'w' (seppie) |
@@ -562,71 +613,90 @@ P.sguardo = (sg, x, y) => {
            'croce' (sconfitto) | 'spirale' (stordito),
      palpebra 0..1 (quanto scende quella di sopra), taglio (radianti: la inclina; >0 scende verso il muso = cattivo),
      sotto 0..1 (palpebra di sotto che sale: sorriso), grande (ingrandisce), brillio (grandezza dei riflessi),
-     ry (schiaccia in altezza, es. .8) }. Si disegna per ultimo, sopra il corpo. */
+     ry (schiaccia in altezza, es. .8), battito (0..1: se manca vale P.battito) }. Si disegna per ultimo, sopra il corpo.
+   Il battito di ciglia (P.battito) abbassa la palpebra di sopra fino a chiudere l'occhio; non tocca gli occhi già chiusi,
+   a croce, a spirale e a perla. */
+const toniIride = ir => memo.get('i' + ir) || ricorda('i' + ir, { chiaro: P.schiarisci(ir, .52), scuro: P.scurisci(ir, .5), anello: P.scurisci(ir, .82), raggi: P.alfa(P.schiarisci(ir, .62), .42) });
 P.occhio = (c, x, y, r, o = {}) => {
   const pelle = o.pelle || P.tinta('#8090a0'), tipo = o.tipo || 'tondo', ir = o.iride || '#2a2350', gu = o.guarda || { x: .5, y: 0 };
+  const ba = max(0, min(1, o.battito === undefined ? P.battito : o.battito));
   r *= o.grande || 1;
   c.save(); c.translate(x, y); if (o.ry) c.scale(1, o.ry);
   c.lineCap = 'round'; c.lineJoin = 'round';
-  c.beginPath(); c.arc(0, 0, r * 1.1, 0, TAU); c.fillStyle = pelle.bordo; c.fill();                // orbita scura
+  const go = c.createRadialGradient(0, r * .05, r * .82, 0, r * .05, r * 1.34);                       // orbita: occlusione morbida attorno al bulbo
+  go.addColorStop(0, P.alfa(pelle.bordo, .92)); go.addColorStop(.4, P.alfa(pelle.bordo, .55)); go.addColorStop(1, P.alfa(pelle.bordo, 0));
+  c.beginPath(); c.arc(0, r * .05, r * 1.34, 0, TAU); c.fillStyle = go; c.fill();
   if (tipo === 'chiuso' || tipo === 'stretto' || tipo === 'croce') {
     c.beginPath(); c.arc(0, 0, r, 0, TAU); c.fillStyle = tipo === 'croce' ? '#e9edf7' : pelle.chiara; c.fill();
+    c.beginPath(); c.ellipse(-r * .28, -r * .5, r * .42, r * .2, -.45, 0, TAU); c.fillStyle = 'rgba(255,255,255,.28)'; c.fill();
     c.beginPath();
     if (tipo === 'chiuso') { c.moveTo(-r * .62, r * .2); c.quadraticCurveTo(0, -r * .85, r * .62, r * .2); }
     else if (tipo === 'stretto') { c.moveTo(-r * .5, -r * .5); c.lineTo(r * .42, 0); c.lineTo(-r * .5, r * .5); }
     else { c.moveTo(-r * .46, -r * .46); c.lineTo(r * .46, r * .46); c.moveTo(r * .46, -r * .46); c.lineTo(-r * .46, r * .46); }
-    c.strokeStyle = pelle.bordo; c.lineWidth = r * .3; c.stroke();
+    c.strokeStyle = pelle.bordo; c.lineWidth = r * .26; c.stroke();
     c.restore(); return;
   }
   if (tipo === 'perla') {
-    const g = c.createRadialGradient(r * .3, -r * .35, r * .05, 0, 0, r); g.addColorStop(0, P.schiarisci(ir, .35)); g.addColorStop(.5, ir); g.addColorStop(1, '#0b0618');
+    const g = c.createRadialGradient(-r * .3, -r * .35, r * .05, 0, 0, r); g.addColorStop(0, P.schiarisci(ir, .4)); g.addColorStop(.5, ir); g.addColorStop(.86, '#0b0618'); g.addColorStop(1, P.mescola('#0b0618', ACQUA, .3));
     c.beginPath(); c.arc(0, 0, r, 0, TAU); c.fillStyle = g; c.fill();
-    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(r * .32, -r * .36, r * .3, 0, TAU); c.fill(); c.beginPath(); c.arc(-r * .34, r * .36, r * .13, 0, TAU); c.fill();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(-r * .32, -r * .36, r * .28, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,.8)'; c.beginPath(); c.arc(r * .36, r * .38, r * .12, 0, TAU); c.fill();
     c.restore(); return;
   }
-  const bi = o.bianco || '#ffffff', g = c.createRadialGradient(r * .25, -r * .3, r * .1, 0, 0, r);
-  g.addColorStop(0, bi); g.addColorStop(.72, o.bianco ? bi : '#f2f6ff'); g.addColorStop(1, o.bianco ? P.scurisci(bi, .35) : '#b4c3e6');
+  const bi = o.bianco || '#ffffff', g = c.createRadialGradient(-r * .12, r * .32, r * .15, -r * .05, r * .2, r * 1.25);   // sclera: più scura in alto, sotto la palpebra
+  g.addColorStop(0, bi); g.addColorStop(.52, o.bianco ? bi : '#f3f6ff'); g.addColorStop(.8, o.bianco ? P.scurisci(bi, .2) : '#cdd7f5'); g.addColorStop(1, o.bianco ? P.scurisci(bi, .42) : '#9eabe0');
   c.beginPath(); c.arc(0, 0, r, 0, TAU); c.fillStyle = g; c.fill();
   c.save(); c.clip();
   if (tipo === 'spirale') {
     c.beginPath(); for (let i = 0; i <= 26; i++) { const a = i * .52, d = r * .82 * i / 26; c.lineTo(cos(a) * d, sin(a) * d); }
     c.strokeStyle = pelle.bordo; c.lineWidth = r * .17; c.stroke();
   } else {
-    const ri = r * (o.raggioIride || .7), ix = gu.x * (r - ri) * .9, iy = gu.y * (r - ri) * .8, pu = (o.pupilla === undefined ? 1 : o.pupilla) * ri * .62;
-    const gi = c.createRadialGradient(ix, iy + ri * .45, ri * .05, ix, iy, ri); gi.addColorStop(0, P.schiarisci(ir, .45)); gi.addColorStop(.55, ir); gi.addColorStop(1, P.scurisci(ir, .6));
+    const ri = r * (o.raggioIride || .7), ix = gu.x * (r - ri) * .9, iy = gu.y * (r - ri) * .8, pu = (o.pupilla === undefined ? 1 : o.pupilla) * ri * .6, ti = toniIride(ir);
+    const gi = c.createRadialGradient(ix + ri * .2, iy + ri * .44, ri * .04, ix, iy, ri);            // iride: chiara in basso, anello scuro fuori
+    gi.addColorStop(0, ti.chiaro); gi.addColorStop(.44, ir); gi.addColorStop(.8, ti.scuro); gi.addColorStop(1, ti.anello);
     c.beginPath(); c.arc(ix, iy, ri, 0, TAU); c.fillStyle = gi; c.fill();
-    c.fillStyle = '#120a22'; c.beginPath();
     const px = ix + gu.x * ri * .1, py = iy + gu.y * ri * .1;
+    c.beginPath(); for (let i = 0; i < 12; i++) { const a = i * .5236 + .2, ca = cos(a), sa = sin(a); c.moveTo(px + ca * pu * 1.12, py + sa * pu * 1.12); c.lineTo(ix + ca * ri * .88, iy + sa * ri * .88); }
+    c.strokeStyle = ti.raggi; c.lineWidth = ri * .05; c.stroke();
+    if (tipo === 'tondo') { c.fillStyle = 'rgba(21,11,40,.4)'; c.beginPath(); c.arc(px, py, pu * 1.17, 0, TAU); c.fill(); }   // pupilla morbida
+    c.fillStyle = '#150b28'; c.beginPath();
     if (tipo === 'fessura') c.ellipse(px, py, pu * .36, pu * 1.35, 0, 0, TAU);
     else if (tipo === 'barra') c.ellipse(px, py, pu * 1.4, pu * .38, 0, 0, TAU);
     else if (tipo === 'w') { c.moveTo(px - pu * 1.2, py - pu * .5); c.quadraticCurveTo(px - pu * .6, py + pu * 1.5, px - pu * .25, py + pu * .1); c.quadraticCurveTo(px, py - pu * .35, px + pu * .25, py + pu * .1); c.quadraticCurveTo(px + pu * .6, py + pu * 1.5, px + pu * 1.2, py - pu * .5); c.quadraticCurveTo(px, py + pu * .25, px - pu * 1.2, py - pu * .5); }
     else c.arc(px, py, pu, 0, TAU);
     c.fill();
-    const br = o.brillio === undefined ? 1 : o.brillio;                                            // riflessi fissi sulla cornea
-    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(ix + ri * .3, iy - ri * .42, ri * .3 * br, 0, TAU); c.fill();
-    c.beginPath(); c.arc(ix - ri * .4, iy + ri * .42, ri * .13 * br, 0, TAU); c.fill();
+    const br = o.brillio === undefined ? 1 : o.brillio;                                            // due riflessi fissi sulla cornea
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(ix - ri * .32, iy - ri * .4, ri * .3 * br, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.82)'; c.beginPath(); c.arc(ix + ri * .42, iy + ri * .44, ri * .13 * br, 0, TAU); c.fill();
   }
-  c.beginPath(); c.arc(-r * .1, r * .3, r * 1.12, 0, TAU); c.rect(r * 2, -r * 2, -r * 4, r * 4); c.fillStyle = 'rgba(40,24,90,.22)'; c.fill();   // ombra della palpebra
-  const pa = o.palpebra || 0, ta = o.taglio || 0, so = o.sotto || 0;
-  c.strokeStyle = pelle.bordo; c.lineWidth = r * .16;
-  if (pa > 0 || ta) {
-    const yl = -r * 1.2 + r * 2.2 * pa;
-    c.save(); c.rotate(ta); c.beginPath(); c.moveTo(-r * 1.7, yl); c.quadraticCurveTo(0, yl + r * .34, r * 1.7, yl); c.lineTo(r * 1.7, -r * 2.5); c.lineTo(-r * 1.7, -r * 2.5); c.closePath();
-    c.fillStyle = pelle.base; c.fill(); c.stroke(); c.restore();
-  }
+  c.beginPath(); c.arc(r * .08, r * .3, r * 1.12, 0, TAU); c.rect(r * 2, -r * 2, -r * 4, r * 4); c.fillStyle = 'rgba(40,24,100,.2)'; c.fill();   // ombra della palpebra
+  const pa0 = o.palpebra || 0, ta = (o.taglio || 0) * (1 - ba), so = o.sotto || 0, pa = pa0 + (1.05 - pa0) * ba;
   if (so > 0) {
     const yl = r * 1.25 - r * 1.9 * so;
     c.beginPath(); c.moveTo(-r * 1.6, yl + r * .3); c.quadraticCurveTo(0, yl - r * .5, r * 1.6, yl + r * .3); c.lineTo(r * 1.6, r * 2.4); c.lineTo(-r * 1.6, r * 2.4); c.closePath();
-    c.fillStyle = pelle.chiara; c.fill(); c.stroke();
+    c.fillStyle = pelle.chiara; c.fill(); c.strokeStyle = pelle.bordo; c.lineWidth = r * .12; c.stroke();
+    c.beginPath(); c.moveTo(-r * 1.6, yl + r * .2); c.quadraticCurveTo(0, yl - r * .6, r * 1.6, yl + r * .2); c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = r * .06; c.stroke();
+  } else { c.beginPath(); c.arc(0, 0, r * .93, .5, PI - .5); c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = r * .07; c.stroke(); }   // filo umido
+  if (pa > 0 || ta) {                                               // palpebra di sopra, col suo spessore: orlo scuro e filo di luce
+    const yl = -r * 1.2 + r * 2.2 * pa;
+    c.save(); c.rotate(ta); c.beginPath(); c.moveTo(-r * 1.7, yl); c.quadraticCurveTo(0, yl + r * .34, r * 1.7, yl); c.lineTo(r * 1.7, -r * 2.5); c.lineTo(-r * 1.7, -r * 2.5); c.closePath();
+    c.fillStyle = pelle.base; c.fill(); c.strokeStyle = pelle.bordo; c.lineWidth = r * .16; c.stroke();
+    c.beginPath(); c.moveTo(-r * 1.7, yl - r * .15); c.quadraticCurveTo(0, yl + r * .19, r * 1.7, yl - r * .15); c.strokeStyle = P.alfa(pelle.luce, .5); c.lineWidth = r * .08; c.stroke();
+    c.restore();
   }
+  if (ba > .82) { c.beginPath(); c.moveTo(-r * .74, r * .2); c.quadraticCurveTo(0, r * .76, r * .74, r * .2); c.strokeStyle = pelle.bordo; c.lineWidth = r * .15; c.stroke(); }   // occhio chiuso dal battito
   c.restore(); c.restore();
 };
-/* P.sopracciglio(c, x, y, lung, ang, col, spess): virgola spessa sopra l'occhio. (x, y) centro, lung lunghezza,
-   ang inclinazione (>0 scende verso il muso: cattivo; <0 sale: spaventato o triste), col colore (il bordo della tinta
-   della testa), spess spessore (lung·.26). È il segno che più fa leggere «a caccia» da piccolo: fallo grosso. */
+/* P.sopracciglio(c, x, y, lung, ang, col, spess): sopracciglio morbido sopra l'occhio: una virgola piena, più grossa verso
+   il muso, con un filo di luce. (x, y) centro, lung lunghezza, ang inclinazione (>0 scende verso il muso: cattivo;
+   <0 sale: spaventato o triste), col colore (il bordo della tinta della testa), spess spessore (lung·.26).
+   È il segno che più fa leggere «a caccia» da piccolo: fallo grosso. */
 P.sopracciglio = (c, x, y, lung, ang, col, spess = lung * .26) => {
-  c.save(); c.translate(x, y); c.rotate(ang); c.lineCap = 'round'; c.strokeStyle = col; c.lineWidth = spess;
-  c.beginPath(); c.moveTo(-lung / 2, 0); c.quadraticCurveTo(0, -lung * .16, lung / 2, 0); c.stroke(); c.restore();
+  const h = lung / 2, s = spess * .5, f = lung * .16;
+  c.save(); c.translate(x, y); c.rotate(ang); c.lineJoin = 'round'; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(-h, 0); c.quadraticCurveTo(-h * .1, -f - s * 1.5, h, -s); c.quadraticCurveTo(h + s * 1.1, 0, h, s); c.quadraticCurveTo(-h * .1, -f + s * .9, -h, 0); c.closePath();
+  c.fillStyle = c.strokeStyle = col; c.lineWidth = spess * .42; c.fill(); c.stroke();
+  c.beginPath(); c.moveTo(-h * .5, -f * .62 - s * .5); c.quadraticCurveTo(h * .1, -f * .75 - s * .9, h * .8, -s * .7); c.strokeStyle = 'rgba(255,255,255,.22)'; c.lineWidth = spess * .22; c.stroke();
+  c.restore();
 };
 
 // =========================================================================== 7. BOCCHE E DENTI
@@ -641,7 +711,7 @@ P.denti = (c, x0, y0, x1, y1, n, lung, verso = 1, o = {}) => {
   const dx = x1 - x0, dy = y1 - y0, d = hypot(dx, dy) || 1, tx = dx / d, ty = dy / d, nx = ty * verso, ny = -tx * verso;
   const tipo = o.tipo || 'punta', la = (o.largo || (tipo === 'ago' ? .62 : .96)) * d / n / 2, cu = o.curva || 0, va = o.varia || 0, se = o.seme || 3;
   const col = o.colore || '#fffdf0', g = c.createLinearGradient(x0, y0, x0 + nx * lung, y0 + ny * lung);
-  g.addColorStop(0, P.mescola(col, '#e8b9a8', .55)); g.addColorStop(.4, col); g.addColorStop(1, '#ffffff');
+  g.addColorStop(0, P.mescola(col, '#d99a92', .7)); g.addColorStop(.42, col); g.addColorStop(1, '#ffffff');
   c.beginPath();
   for (let i = 0; i < n; i++) {
     const k = (i + .5) / n, sag = cu * 4 * k * (1 - k), cx = x0 + dx * k + nx * sag, cy = y0 + dy * k + ny * sag;
@@ -651,7 +721,7 @@ P.denti = (c, x0, y0, x1, y1, n, lung, verso = 1, o = {}) => {
     else { const go = tipo === 'ago' ? .28 : .55; c.moveTo(cx - tx * la, cy - ty * la); c.quadraticCurveTo(cx - tx * la * go + ux * L * .6, cy - ty * la * go + uy * L * .6, px, py); c.quadraticCurveTo(cx + tx * la * go + ux * L * .6, cy + ty * la * go + uy * L * .6, cx + tx * la, cy + ty * la); }
     c.closePath();
   }
-  c.lineJoin = 'round'; c.strokeStyle = o.bordo || 'rgba(70,30,70,.6)'; c.lineWidth = (o.spess || .022) * 2; c.stroke(); c.fillStyle = g; c.fill();
+  c.lineJoin = 'round'; c.strokeStyle = o.bordo || 'rgba(96,44,84,.5)'; c.lineWidth = (o.spess || .022) * 1.3; c.stroke(); c.fillStyle = g; c.fill();
 };
 /* P.fauci(c, o) → { x0, y0, x1, y1, ang }: la linea delle gengive di sotto (da passare a P.denti con verso = 1) e la
    direzione della mandibola. Bocca grande a mandibola incernierata: cavità, lingua, mandibola lucida.
@@ -699,8 +769,9 @@ P.labbra = (c, x, y, ang, r, apri, t, o = {}) => {
   for (const v of [-1, 1]) {
     c.save(); c.rotate(v * apri * (v < 0 ? .5 : .85));
     c.beginPath(); c.ellipse(r * .12, v * r * .36, r * .6, r * .4, v * .28, 0, TAU);
-    c.strokeStyle = t.bordo; c.lineWidth = P.BORDO * 1.6; c.stroke(); c.fillStyle = v < 0 ? t.base : t.ombra; c.fill();
-    c.beginPath(); c.ellipse(r * .22, v * r * .36 - r * .14, r * .26, r * .1, v * .28, 0, TAU); c.fillStyle = P.alfa(t.luce, .9); c.fill();
+    c.strokeStyle = t.linea || t.bordo; c.lineWidth = .05; c.stroke(); c.fillStyle = v < 0 ? t.base : t.ombra; c.fill();
+    c.beginPath(); c.ellipse(r * .14, v * r * .36 - r * .15, r * .3, r * .12, v * .28, 0, TAU); c.fillStyle = P.alfa(t.luce, .62); c.fill();
+    c.beginPath(); c.arc(r * .02, v * r * .36 - r * .17, r * .07, 0, TAU); c.fillStyle = 'rgba(255,255,255,.9)'; c.fill();
     c.restore();
   }
   c.restore();
@@ -713,7 +784,9 @@ P.sorriso = (c, x, y, w, o = {}) => {
   const a = o.apri || 0, h = (o.alt || w) * a, k = (o.curva === undefined ? .6 : o.curva) * w * .55, t = o.tinta || P.tinta('#803050');
   const traccia = () => { c.beginPath(); c.moveTo(-w, -k); c.quadraticCurveTo(0, k * 1.5 - h * .5, w, -k); c.quadraticCurveTo(0, k * 1.5 + h * 1.9, -w, -k); c.closePath(); };
   c.save(); c.translate(x, y); c.rotate(o.ang || 0); c.lineJoin = 'round'; c.lineCap = 'round';
-  traccia(); c.strokeStyle = t.bordo; c.lineWidth = o.spess || .075; c.stroke();
+  const sp = o.spess || .075;
+  if (h < w * .5) { c.beginPath(); c.moveTo(-w * .62, -k * .45 + sp * .9); c.quadraticCurveTo(0, k * 1.5 + h * 1.9 + sp * .9, w * .62, -k * .45 + sp * .9); c.strokeStyle = 'rgba(255,255,255,.26)'; c.lineWidth = sp * .8; c.stroke(); }   // il labbro di sotto prende luce
+  traccia(); c.strokeStyle = t.bordo; c.lineWidth = sp * .86; c.stroke();
   if (h > .01) {
     const g = c.createLinearGradient(0, -h * .3, 0, h); g.addColorStop(0, P.scurisci(o.interno || '#8a1240', .55)); g.addColorStop(1, o.interno || '#8a1240');
     c.fillStyle = g; c.fill(); c.save(); c.clip();
@@ -765,7 +838,7 @@ P.zampa = (c, x, y, pezzi, t, o = {}) => {
   for (let i = n; i >= 0; i--) c.lineTo(bx[i], by[i]);
   c.closePath();
   const b = o.bordo === undefined ? P.BORDO * .8 : o.bordo;
-  if (b) { c.strokeStyle = t.bordo; c.lineWidth = b * 2; c.stroke(); }
+  if (b) { c.strokeStyle = t.linea || t.bordo; c.lineWidth = b * 1.4; c.stroke(); }
   c.fillStyle = t.ombra; c.fill();
   for (let passata = 0; passata < 2; passata++) {                  // il dorso della zampa: fascia di colore pieno e filo di luce
     const su = passata ? .46 : .26;
@@ -802,7 +875,7 @@ P.corona = (c, x, y, m, ang = 0, gemma = '#ff3d6e') => {
     oro, { luce: [.3, -.6, 1.7], bordo: .09, ombra: .12 });
   c.beginPath(); c.moveTo(-.98, -.12); c.quadraticCurveTo(0, .1, .98, -.12); c.strokeStyle = P.alfa(oro.scura, .6); c.lineWidth = .08; c.stroke();
   const pietre = [[[0, -.36, .2]], [[-.6, -.24, .11], [.6, -.24, .11]], [[-1.18, -1.05, .13], [0, -1.35, .15], [1.18, -1.05, .13]]], colori = [gemma, '#5ad1ff', '#fff3b0'];
-  c.strokeStyle = oro.bordo; c.lineWidth = .1;
+  c.strokeStyle = oro.linea; c.lineWidth = .06;
   for (let k = 0; k < 3; k++) {                                     // gemma, pietre azzurre, perle sulle punte: ogni gruppo in un colpo
     c.beginPath(); for (const g of pietre[k]) { c.moveTo(g[0] + g[2], g[1]); c.arc(g[0], g[1], g[2], 0, TAU); }
     c.stroke(); c.fillStyle = colori[k]; c.fill();
@@ -821,14 +894,14 @@ P.stelle = (c, x, y, giro, t, n = 3, r = .11) => {
     for (let k = 0; k < 10; k++) { const q = k * PI / 5 + a, d = k % 2 ? r * .45 : r; if (k) c.lineTo(sx + cos(q) * d, sy + sin(q) * d); else c.moveTo(sx + cos(q) * d, sy + sin(q) * d); }
     c.closePath();
   }
-  c.lineJoin = 'round'; c.strokeStyle = '#b86a00'; c.lineWidth = r * .36; c.stroke(); c.fillStyle = '#ffe14a'; c.fill();
+  c.lineJoin = 'round'; c.strokeStyle = '#d98a12'; c.lineWidth = r * .24; c.stroke(); c.fillStyle = '#ffe45c'; c.fill();
 };
 /* P.goccia(c, x, y, r, ang = 0): goccia di sudore di chi è «spaventato». (x, y) centro della parte tonda, r raggio,
    ang inclinazione (la punta sta in alto). */
 P.goccia = (c, x, y, r, ang = 0) => {
   c.save(); c.translate(x, y); c.rotate(ang); c.lineJoin = 'round';
   c.beginPath(); c.moveTo(0, -r * 1.9); c.bezierCurveTo(r * .35, -r * 1.1, r, -r * .5, r, 0); c.arc(0, 0, r, 0, PI); c.bezierCurveTo(-r, -r * .5, -r * .35, -r * 1.1, 0, -r * 1.9); c.closePath();
-  c.strokeStyle = '#2f6fb8'; c.lineWidth = r * .36; c.stroke(); c.fillStyle = '#d2f2ff'; c.fill();
+  c.strokeStyle = '#4f8fd2'; c.lineWidth = r * .22; c.stroke(); c.fillStyle = '#d8f4ff'; c.fill();
   c.beginPath(); c.ellipse(r * .3, -r * .25, r * .2, r * .34, .3, 0, TAU); c.fillStyle = '#ffffff'; c.fill();
   c.restore();
 };

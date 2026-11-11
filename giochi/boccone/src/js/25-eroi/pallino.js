@@ -1,4 +1,6 @@
 /* Boccone — eroe: PALLINO, il pesce palla. ESEMPIO DI RIFERIMENTO per gli eroi (vedi GUIDA-STILE.md).
+   VERSIONE RITOCCATA PER LO STILE «FILM D'ANIMAZIONE» (anteprime/film/modelli): pancia e sella sfumate come aerografate,
+   luce d'acqua sotto la pancia, spine e spinette con la linea sottile, guance più larghe e morbide. Il battito di ciglia non è più deciso dal modello (o.t): lo guida P.battito da chi lo disegna dal vivo.
    Tre stadi (cucciolo tondo e tenero, adulto con le prime spine, colosso dall'aria da duro), quattro espressioni,
    bocca che si apre, pupilla che segue lo sguardo. */
 (() => {
@@ -25,6 +27,15 @@ const raggio = (K, ang) => {
   for (const g of K.gobbe) { const d = U.differenzaAngolo(g[0] * GRADI, ang) / (g[1] * GRADI); r += g[2] * Math.exp(-d * d); }
   return r;
 };
+
+/* Una zona di colore ovale dai bordi sfumati (come aerografata): centro (x, y), raggi rx e ry, inclinazione, colore pieno
+   fino alla quota `pieno` del raggio e poi trasparente; `cuore` (facoltativo) è il colore al centro. */
+function sfumata(cc, x, y, rx, ry, ang, colore, pieno, cuore) {
+  cc.save(); cc.translate(x, y); cc.rotate(ang); cc.scale(rx, ry);
+  const g = cc.createRadialGradient(0, 0, 0, 0, 0, 1);
+  g.addColorStop(0, cuore || colore); g.addColorStop(pieno, colore); g.addColorStop(1, P.alfa(colore, 0));
+  cc.fillStyle = g; cc.beginPath(); cc.arc(0, 0, 1, 0, TAU); cc.fill(); cc.restore();
+}
 
 B.eroi.registra({
   id: 'pallino',
@@ -53,7 +64,7 @@ B.eroi.registra({
         c.moveTo(cos(a - d) * r, sin(a - d) * r); c.quadraticCurveTo(cos(a - d * .2) * (r + L * .55), sin(a - d * .2) * (r + L * .55), cos(p) * (r + L + .06), sin(p) * (r + L + .06));
         c.quadraticCurveTo(cos(a + d * .5) * (r + L * .5), sin(a + d * .5) * (r + L * .5), cos(a + d) * r, sin(a + d) * r);
       }
-      if (!passata) { c.strokeStyle = AVORIO.bordo; c.lineWidth = .075; c.lineJoin = 'round'; c.stroke(); }
+      if (!passata) { c.strokeStyle = AVORIO.linea; c.lineWidth = .04; c.lineJoin = 'round'; c.stroke(); }
       else { const g = c.createRadialGradient(0, 0, .92, 0, 0, 1.04 + lsp); g.addColorStop(0, st === 2 ? '#ff8a2a' : '#ffb85a'); g.addColorStop(.6, AVORIO.base); g.addColorStop(1, '#ffffff'); c.fillStyle = g; c.fill(); }
     }
     const rs = raggio(K, -118 * GRADI) - .1, ra = raggio(K, 122 * GRADI) - .1;
@@ -65,12 +76,13 @@ B.eroi.registra({
     // ---- 2. il corpo: un solo volume, con sella scura sul dorso, macchie e pancia crema dipinte dentro
     P.volume(c, cc => P.profilo(cc, sag), K.corpo, { luce, ombra: .13, dentro(cc) {
       if (st) {
-        cc.fillStyle = P.alfa(K.sella, .8); cc.beginPath(); cc.ellipse(-.42, -.95, 1.0, .52, -.12, 0, TAU); cc.fill();
+        sfumata(cc, -.42, -.98, 1.12, .66, -.12, P.alfa(K.sella, .86), .5);                                   // la sella: scura sul dorso, sfuma sul fianco
         cc.fillStyle = P.alfa(K.sella, .9); cc.beginPath();
         for (let i = 0; i < (st === 2 ? 7 : 5); i++) { const x = -.78 + i * .2 + U.rumore(i, 2) * .08, y = -.32 + U.rumore(i, 3) * .16 - abs(i - 3) * .03, r = .055 + U.rumore(i, 5) * .04 + st * .012; cc.moveTo(x + r * 1.3, y); cc.ellipse(x, y, r * 1.3, r, -.2, 0, TAU); }
         cc.fill();
       }
-      cc.fillStyle = P.sfumatura(cc, K.ventre, [.3, .1, 1.5]); cc.beginPath(); cc.ellipse(.16, 1.02, 1.12, .8, -.1, 0, TAU); cc.fill();
+      sfumata(cc, .14, 1.08, 1.22, .96, -.1, K.ventre.base, .72, K.ventre.luce);                             // la pancia: crema che sfuma nel fianco
+      P.guancia(cc, .24, 1.0, .5, '#7fe3ff', .24);                                                             // e prende il colore dell'acqua da sotto
       cc.strokeStyle = P.alfa(K.ventre.scura, .35); cc.lineWidth = .028; cc.lineCap = 'round'; cc.beginPath();          // pieghe della pancia
       for (let i = 0; i < 4; i++) { cc.moveTo(-.5 + i * .27, .62 + abs(i - 1.5) * .05); cc.quadraticCurveTo(-.46 + i * .27, .8, -.52 + i * .28, .96); }
       cc.stroke();
@@ -79,10 +91,10 @@ B.eroi.registra({
     if (st) for (let i = 0; i < 8; i++) {
       const x = NEI[i][0], y = NEI[i][1], r = .04 + st * .012;
       c.beginPath(); c.moveTo(x + r, y + r * .9); c.quadraticCurveTo(x - r, y + r * .3, x - r * (1.8 + st), y - r * .8); c.quadraticCurveTo(x - r * .2, y - r * 1.1, x + r * .9, y - r * .7); c.closePath();
-      c.strokeStyle = P.alfa(K.corpo.bordo, .75); c.lineWidth = .04; c.lineJoin = 'round'; c.stroke(); c.fillStyle = AVORIO.base; c.fill();
+      c.strokeStyle = P.alfa(K.corpo.scura, .8); c.lineWidth = .026; c.lineJoin = 'round'; c.stroke(); c.fillStyle = AVORIO.base; c.fill();
     } else P.bozzi(c, [-.5, -.38, -.2, -.6, -.72, -.06, -.42, -.1, -.14, -.34], .042, K.corpo);
     P.riflesso(c, .12, -.73, .5, -.1, .15);
-    P.guancia(c, K.ox - .16, K.oy + K.occhio + .16, .19, '#ff5f93', felice ? .8 : .55);
+    P.guancia(c, K.ox - .16, K.oy + K.occhio + .17, .24, '#ff5f93', felice ? .7 : .46);
 
     // ---- 3. sul fianco: la pinna pettorale che rema, con la sua ombra di contatto
     const px = -.14, py = .26, ap = PI * .88 + rema * .45;
@@ -91,8 +103,7 @@ B.eroi.registra({
       onda: .12, fase: F * 2, passo: .7, tinta: K.pinna, orlo: K.orlo, primo: true });
 
     // ---- 4. la faccia: occhio, sopracciglio, bocca
-    const ammicca = (t % 4.2) > 4.05;
-    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? P.SGUARDI.spaventato : ammicca ? P.SGUARDI.felice : st === 2 ? { palpebra: .26, taglio: .2 } : P.SGUARDI.normale;
+    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? P.SGUARDI.spaventato : st === 2 ? { palpebra: .26, taglio: .2 } : P.SGUARDI.normale;
     P.occhio(c, K.ox, K.oy, K.occhio, Object.assign({ iride: IRIDE, pelle: K.corpo, guarda: P.sguardo(o.sguardo, K.ox, K.oy) }, sg));
     if (paura) P.sopracciglio(c, K.ox + .02, K.oy - K.occhio * 1.42, K.occhio * 1.1, -.32, K.corpo.bordo, .06);
     if (st === 2 && !paura && !colpito) {                              // da colosso: sopracciglio da duro e cicatrice

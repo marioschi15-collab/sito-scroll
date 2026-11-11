@@ -1,11 +1,13 @@
 /* Boccone — il disegno (B.disegno): a ogni fotogramma legge lo stato del mondo (B.partita.mondo) e lo dipinge sulla
    tela. Non modifica mai lo stato. Imposta B.vista = { vw, vh, dpr, qualita }, che il mondo legge per lo zoom.
    Ordine: ambiente.sfondo (schermo) → ambiente.dietro (mondo) → conchiglie, bolle, pesciolini, pericoli, pesci,
-   colpi dei giganti, eroe, nuvole, particelle → ambiente.davanti (mondo) → ambiente.velo (schermo) → buio, bordo
-   rosso, etichette, freccia, scritte, leva. Le trasformazioni sono quelle di strumenti/ambiente-pagina.js. */
+   colpi dei giganti, eroe, bollicine, nuvole, particelle → ambiente.davanti (mondo) → ambiente.velo (schermo) → buio,
+   bordo rosso, etichette, freccia, scritte, leva. Le trasformazioni sono quelle di strumenti/ambiente-pagina.js.
+   Il movimento "da film" (schiaccia e allunga, anticipazione, contraccolpo, sguardo, battito di ciglia, bollicine) sta
+   nella sezione "l'animazione": è stato del disegno, non del mondo (vedi ARCHITETTURA.md §8.7). */
 (() => {
 'use strict';
-const B = window.B, U = B.util, F = B.figurine, TAU = Math.PI * 2;
+const B = window.B, U = B.util, F = B.figurine, TAU = Math.PI * 2, PI = Math.PI;
 const { limita } = U;
 const CARATTERE = 'ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 const DPR_MAX = [1.25, 1.5, 2];          // per qualità bassa, media, alta
@@ -19,8 +21,7 @@ let mw = 0, mh = 0, sx = 0, sy = 0;      // mezza visuale in unità di mondo, tr
 let auto = true, lento = 0, media = 1 / 60, prima = 0, tPrima = 0, faseEroe = 0, correnteX = 0, correnteY = 0;
 const rotte = new Set();                 // passate degli ambienti andate in errore (si saltano, con un solo avviso)
 const o = { x: 0, y: 0, r: 0, ang: 0, fase: 0, bocca: 0, minaccia: false, alfa: 1, stato: 'calmo', t: 0, attivo: 0, carica: 0, furia: 0,
-  vivo: false, stira: 0, dettaglio: undefined, stadio: 0, espressione: 'normale', sguardo: { x: 1, y: 0 } };
-const avanti = { x: 1, y: 0 };
+  vivo: false, stira: 0, inclina: 0, battito: 0, dettaglio: undefined, stadio: 0, espressione: 'normale', sguardo: { x: 1, y: 0 } };
 
 function visibile(x, y, margine = 0) { const c = v.cam; return x > c.x - mw - margine && x < c.x + mw + margine && y > c.y - mh - margine && y < c.y + mh + margine; }
 function schermo() { ctx.setTransform(vista.dpr, 0, 0, vista.dpr, 0, 0); }
@@ -191,27 +192,99 @@ function disegnaPericoli(M, t) {
       ctx.globalAlpha = p.alfa * .1 * p.attivo; ctx.fillStyle = '#ff5040'; ctx.fill(); ctx.globalAlpha = 1;
     }
     o.x = p.x; o.y = p.y; o.r = p.r; o.ang = p.ang || 0; o.fase = p.fase; o.attivo = p.attivo; o.alfa = p.alfa; o.t = t;
-    o.bocca = 0; o.minaccia = false; o.stato = 'calmo'; o.vivo = false; o.stira = 0; o.dettaglio = undefined;
+    o.bocca = 0; o.minaccia = false; o.stato = 'calmo'; o.vivo = false; o.stira = 0; o.inclina = 0; o.battito = 0; o.dettaglio = undefined;
     F.disegna(ctx, p.def, o);
   }
 }
 
-/* Lo sguardo verso un punto del mondo, nelle coordinate del modello (che può essere girato e specchiato). */
-function sguardoVerso(da, x, y, uscita) {
-  const dx = x - da.x, dy = y - da.y, d = Math.hypot(dx, dy) || 1, co = Math.cos(da.ang), si = Math.sin(da.ang), k = Math.min(1, d / (da.r * 3)) / d;
-  uscita.x = (dx * co + dy * si) * k; uscita.y = (-dx * si + dy * co) * k * (co < 0 ? -1 : 1);
-  return uscita;
-}
+// ---------------------------------------------------------------- l'animazione
+/* Il movimento "da film". Il mondo dice dove sono le creature e che cosa fanno; qui si decide COME si muovono:
+   schiaccia e allunga (a volume costante), anticipazione e contraccolpo, inclinazione nelle virate, respiro da fermi,
+   sguardo morbido, battito di ciglia, bollicine. Lo stato dell'animazione è del disegno e non tocca mai il mondo: una
+   scheda per creatura in una WeakMap (se ne va insieme alla creatura), creata la prima volta che la si vede.
+   I movimenti sono molle smorzate risolte in forma esatta: il passo è una matrice 2 × 2 calcolata una volta per
+   fotogramma dal dt di gioco. Restano quindi stabili con qualunque dt (telefono lento) e ferme in pausa. */
+const anime = new WeakMap();
+const nuovaMolla = (omega, smorza) => ({ omega, smorza, a: 1, b: 0, c: 0, d: 1 });
+const M_CORPO = nuovaMolla(19, .42);     // schiaccia e allunga: svelta, con un rimbalzo
+const M_BOING = nuovaMolla(23, .34);     // grandezza (crescita, boccone, colpo): la più elastica
+const M_PIEGA = nuovaMolla(13, .6);      // inclinazione nelle virate: morbida
+const M_SPINTA = nuovaMolla(17, .5);     // spostamenti: rincorsa, slancio, contraccolpo
+const MOLLE = [M_CORPO, M_BOING, M_PIEGA, M_SPINTA];
+const BATTITO = .15;                     // secondi che dura un battito di ciglia
+const scosse = { boccone: 0, morso: 0, colpito: 0, cresciuto: 0, scatto: 0 };      // ciò che è appena successo all'eroe (dagli eventi del mondo)
+let nFoto = 0, calma = 1, kSguardo = 1, kBocca = 1, mondoVisto = null, miraEroe = null;
 
-let vicinoEroe = null, vicinoD = 0;
-function disegnaPredatori(M, t) {
-  const h = M.eroe;
-  vicinoEroe = M.inseguitore; vicinoD = vicinoEroe ? 0 : 1e9;
+function preparaMolle(dt) {
+  for (let i = 0; i < MOLLE.length; i++) {
+    const m = MOLLE[i], w = m.omega * Math.sqrt(1 - m.smorza * m.smorza), e = Math.exp(-m.smorza * m.omega * dt), co = Math.cos(w * dt), si = Math.sin(w * dt), q = m.smorza * m.omega / w;
+    m.a = e * (co + q * si); m.b = e * si / w; m.c = -e * m.omega * m.omega / w * si; m.d = e * (co - q * si);
+  }
+  kSguardo = 1 - Math.exp(-dt * 9); kBocca = 1 - Math.exp(-dt * 30);
+}
+/* La scheda di una creatura. s = allungamento lungo il corpo (0 = a riposo), g = grandezza in più, i = inclinazione,
+   k = spostamento lungo il muso e u = contraccolpo lungo (ux, uy), in raggi; ognuno con la sua velocità (v…).
+   gx, gy = sguardo ammorbidito (nel mondo); b = bocca ammorbidita; il resto sono ricordi del fotogramma prima. */
+function animaDi(e) {
+  let a = anime.get(e);
+  if (!a) {
+    a = { foto: -9, ang: 0, vel: 0, s: 0, vs: 0, g: 0, vg: 0, i: 0, vi: 0, k: 0, vk: 0, u: 0, vu: 0, ux: 0, uy: 0, gx: 0, gy: 0, b: 0,
+      occhiT: -1, occhiDa: -9, seme: Math.random() * TAU, morsi: 0, bordo: 1, esp: 'normale', espT: -9, morsoT: -9, ruttoT: 0, rutto: 0, sciaT: 0 };
+    anime.set(e, a);
+  }
+  return a;
+}
+/* Il battito di ciglia: 0 = occhi aperti, 1 = chiusi. Ogni creatura ha il suo ritmo: un battito ogni 2,5–5 secondi. */
+function batte(a, t) {
+  if (a.occhiT < 0 || t < a.occhiDa) { a.occhiT = t + .5 + Math.random() * 4; a.occhiDa = -9; }
+  if (t >= a.occhiT) { a.occhiDa = t; a.occhiT = t + 2.5 + Math.random() * 2.5; }
+  const u = (t - a.occhiDa) / BATTITO;
+  return u >= 1 ? 0 : u < .4 ? U.dolce(u / .4) : U.dolce((1 - u) / .6);
+}
+function chiudiOcchi(a, t) { a.occhiDa = t; a.occhiT = t + 2.5 + Math.random() * 2.5; }
+
+/* Le bollicine sono del disegno (il mondo non le conosce): un mazzetto fisso, riusato in tondo. */
+const N_BOLLICINE = 28, bollicine = [];
+for (let i = 0; i < N_BOLLICINE; i++) bollicine.push({ x: 0, y: 0, vx: 0, vy: 0, r: 0, eta: 1, vita: 0, f: 0 });
+let prossimaBollicina = 0, bollicineFino = -1;
+function bollicina(t, x, y, vx, vy, r, vita) {
+  const b = bollicine[prossimaBollicina];
+  prossimaBollicina = (prossimaBollicina + 1) % N_BOLLICINE;
+  b.x = x; b.y = y; b.vx = vx; b.vy = vy; b.r = r; b.eta = 0; b.vita = vita; b.f = Math.random() * TAU;
+  if (t + vita > bollicineFino) bollicineFino = t + vita;
+}
+function disegnaBollicine(t, dt) {
+  if (t > bollicineFino) return;
+  const frena = Math.max(0, 1 - 3 * dt), sale = Math.min(1, 2.5 * dt);
+  for (let i = 0; i < N_BOLLICINE; i++) {
+    const b = bollicine[i];
+    if (b.eta >= b.vita) continue;
+    b.eta += dt; b.vx *= frena; b.vy += (-75 - b.vy) * sale;                // rallentano e poi salgono, dondolando
+    b.x += (b.vx + Math.sin(t * 6 + b.f) * 14) * dt; b.y += b.vy * dt;
+    if (!visibile(b.x, b.y, 12)) continue;
+    const u = b.eta / b.vita, r = b.r * (1 + .3 * u);
+    ctx.globalAlpha = Math.min(1, b.eta / .06) * (1 - u * u * u) * .9;
+    ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, TAU);
+    ctx.fillStyle = 'rgba(190,235,255,.25)'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(.8, r * .24); ctx.stroke();
+    ctx.beginPath(); ctx.arc(b.x - r * .3, b.y - r * .34, r * .24, 0, TAU); ctx.fillStyle = '#fff'; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+function spegniBollicine() { for (let i = 0; i < N_BOLLICINE; i++) bollicine[i].eta = bollicine[i].vita; bollicineFino = -1; }
+
+let mira = null, miraD = 0;
+function disegnaPredatori(M, t, dt) {
+  const h = M.eroe, leggera = vista.qualita === 0;
+  mira = M.inseguitore; miraD = mira ? -1e9 : 1e9;
   for (const e of M.predatori) {
     if (!visibile(e.x, e.y, e.r * (e.gigante ? 3.6 : 2.9))) continue;
-    if (h && !M.inseguitore && (e.minaccia || e.mangiabile) && e.mangiato <= 0) {
-      const d = Math.abs(e.x - h.x) + Math.abs(e.y - h.y) - e.r;
-      if (d < vicinoD && d < 420) { vicinoD = d; vicinoEroe = e; }
+    /* Chi guarda l'eroe: il pericolo che lo insegue; se no la preda (o il prepotente) più vicino. Chi stava già
+       guardando conta un po' di più, così lo sguardo non salta da un pesce all'altro. */
+    if (h && !M.inseguitore && (e.minaccia || e.mangiabile) && e.mangiato <= 0 && e.nasce < .5) {
+      let d = Math.abs(e.x - h.x) + Math.abs(e.y - h.y) - e.r;
+      if (!e.mangiabile) d *= 1.3;
+      if (e === miraEroe) d *= .7;
+      if (d < miraD && d < 460) { miraD = d; mira = e; }
     }
     if (e.alone > 0.01 && e.aloneR > 0) {                                    // l'alone elettrico
       ctx.globalAlpha = Math.min(1, e.alone) * .8; ctx.strokeStyle = '#fff27a'; ctx.lineWidth = 2 + e.alone * 5;
@@ -221,18 +294,89 @@ function disegnaPredatori(M, t) {
       ctx.globalAlpha = Math.min(1, e.alone) * .14; ctx.fillStyle = '#fff27a'; ctx.fill(); ctx.globalAlpha = 1;
     }
     const caccia = e.minaccia && (e.stato === 'caccia' || e.stato === 'carica' || e.stato === 'avviso');
-    const trema = e.avviso > 0 ? 3 : 0;
-    o.x = e.x + (trema ? (Math.random() * 2 - 1) * trema : 0); o.y = e.y + (trema ? (Math.random() * 2 - 1) * trema : 0);
-    o.r = e.r * (e.mangiato > 0 ? limita(e.mangiato / .18, .05, 1) : 1);
-    o.ang = e.ang; o.fase = e.fase; o.bocca = e.bocca; o.minaccia = caccia; o.alfa = e.nasce > 0 ? 1 - e.nasce : 1;
-    o.stato = e.stato; o.t = t; o.attivo = 0; o.carica = e.carica; o.furia = e.furia; o.vivo = e.gigante || e.capo; o.stira = 0; o.dettaglio = undefined;
-    if (o.vivo && h) sguardoVerso(e, h.x, h.y, o.sguardo); else { o.sguardo.x = 1; o.sguardo.y = 0; }
+    const vivo = e.gigante || e.capo, st = e.stato;
+    let px = e.x, py = e.y, rr = e.r, stira = 1, incl = 0, alfa = 1, occhi = 0;
+    o.sguardo.x = 1; o.sguardo.y = 0;
+
+    if (e.mangiato > 0) {
+      /* Uscita: risucchiato verso la bocca (il mondo ce lo porta): si assottiglia e rimpicciolisce accelerando. */
+      const u = limita(e.mangiato / .18, 0, 1);
+      rr *= Math.max(.05, u * Math.sqrt(u)); stira = 1 + .5 * (1 - u) * calma; alfa = Math.min(1, u * 3.2);
+    } else {
+      if (e.nasce > 0) {
+        /* Entrata: non compare di colpo ma con un piccolo ingresso elastico (arriva un filo più grande, poi si assesta). */
+        const u = 1 - e.nasce, q = u - 1;
+        rr *= .45 + .55 * (1 + 2.6 * q * q * q + 1.6 * q * q); alfa = Math.min(1, u * 2.4);
+      }
+      if (e.avviso > 0) {                                                    // prende la mira: un fremito che cresce
+        const tr = (.8 + 2.4 * e.carica) * calma, f = t * 58 + e.r;
+        px += Math.sin(f) * tr; py += Math.cos(f * .83) * tr * .7;
+      }
+      if (vivo || !leggera) {
+        const a = animaDi(e);
+        if (a.foto !== nFoto - 1) { a.ang = e.ang; a.vel = e.vAtt; a.morsi = e.morsi; a.gx = Math.cos(e.ang); a.gy = Math.sin(e.ang); }   // la prima volta, o dopo un'assenza
+        a.foto = nFoto;
+        if (dt > 0) {
+          let giro = (e.ang - a.ang) % TAU;
+          if (giro > PI) giro -= TAU; else if (giro < -PI) giro += TAU;
+          giro = limita(giro / dt, -8, 8);
+          const acc = (e.vAtt - a.vel) / dt;
+          a.ang = e.ang; a.vel = e.vAtt;
+          /* Schiaccia e allunga: guizzo allungato quando accelera, scatta o fugge; si raccoglie mentre prende la mira;
+             si schiaccia quando frena e quando inverte la rotta. */
+          let sT = limita(acc * .00006, -.09, .09);
+          if (e.def.assetto === 'dritto') sT *= .5; else sT -= Math.min(.12, Math.max(0, Math.abs(giro) - 1.2) * .035);
+          if (st === 'carica') sT += .13; else if (st === 'avviso') sT -= .1 * U.dolce(e.carica); else if (st === 'fuga') sT += .05;
+          let y = a.s - sT, w = a.vs;
+          a.s = sT + M_CORPO.a * y + M_CORPO.b * w; a.vs = M_CORPO.c * y + M_CORPO.d * w;
+          if (vivo) {
+            /* Giganti e capobranco: durante l'avviso si raccolgono e si gonfiano arretrando, nella carica si lanciano
+               in avanti, a ogni morso dell'eroe incassano (si strizzano, sbandano, rinculano). */
+            let gT = 0, kT = 0;
+            if (st === 'avviso') { const q = U.dolce(e.carica); gT = .07 * q; kT = -.12 * q; }
+            else if (st === 'carica') kT = .07;
+            else if (st === 'sconfitto') gT = -.05;
+            if (e.morsi !== a.morsi) {
+              if (e.morsi > a.morsi && h) {
+                const dx = e.x - h.x, dy = e.y - h.y, d = Math.hypot(dx, dy) || 1;
+                a.ux = dx / d; a.uy = dy / d; a.vu += 9; a.vs -= 8; a.vg -= 3;
+                a.vi += (Math.cos(e.ang) * -dy + Math.sin(e.ang) * dx) > 0 ? -5 : 5;
+                chiudiOcchi(a, t);
+              }
+              a.morsi = e.morsi;
+            }
+            const iT = limita(giro * .03, -.16, .16);
+            y = a.g - gT; w = a.vg; a.g = gT + M_BOING.a * y + M_BOING.b * w; a.vg = M_BOING.c * y + M_BOING.d * w;
+            y = a.i - iT; w = a.vi; a.i = iT + M_PIEGA.a * y + M_PIEGA.b * w; a.vi = M_PIEGA.c * y + M_PIEGA.d * w;
+            y = a.k - kT; w = a.vk; a.k = kT + M_SPINTA.a * y + M_SPINTA.b * w; a.vk = M_SPINTA.c * y + M_SPINTA.d * w;
+            y = a.u; w = a.vu; a.u = M_SPINTA.a * y + M_SPINTA.b * w; a.vu = M_SPINTA.c * y + M_SPINTA.d * w;
+          }
+        }
+        stira = 1 + limita(a.s, -.26, .3) * calma;
+        if (vivo) {
+          const co = Math.cos(e.ang), si = Math.sin(e.ang);
+          rr *= 1 + limita(a.g, -.2, .25) * calma; incl = a.i * calma;
+          px += (co * a.k + a.ux * a.u) * e.r * calma; py += (si * a.k + a.uy * a.u) * e.r * calma;
+          occhi = batte(a, t);
+          /* Lo sguardo: fissa l'eroe. Si ammorbidisce nel mondo e poi si porta nelle coordinate del modello (che può
+             essere girato e specchiato): così non scatta quando il gigante si volta. */
+          let mx = co, my = si;
+          if (h) { const dx = h.x - e.x, dy = h.y - e.y, d = Math.hypot(dx, dy) || 1, q = Math.min(1, d / (e.r * 3)) / d; mx = dx * q; my = dy * q; }
+          a.gx += (mx - a.gx) * kSguardo; a.gy += (my - a.gy) * kSguardo;
+          o.sguardo.x = a.gx * co + a.gy * si; o.sguardo.y = (-a.gx * si + a.gy * co) * (co < 0 ? -1 : 1);
+        }
+      }
+    }
+    o.x = px; o.y = py; o.r = rr; o.stira = stira; o.inclina = incl; o.battito = occhi;
+    o.ang = e.ang; o.fase = e.fase; o.bocca = e.bocca; o.minaccia = caccia; o.alfa = alfa;
+    o.stato = st; o.t = t; o.attivo = 0; o.carica = e.carica; o.furia = e.furia; o.vivo = vivo; o.dettaglio = undefined;
     F.disegna(ctx, e.def, o);
-    if (e.capo && e.mangiato <= 0) {                                         // la corona del capobranco
+    if (e.capo && e.mangiato <= 0) {                                         // la corona del capobranco (segue il corpo)
       const f = e.def.forma, sin = Math.cos(e.ang) < 0;
-      ctx.save(); ctx.translate(e.x, e.y); ctx.globalAlpha = o.alfa;
-      if (e.def.assetto === 'dritto') { if (sin) ctx.scale(-1, 1); } else { ctx.rotate(e.ang); if (sin) ctx.scale(1, -1); }
-      corona(ctx, f.lx * .25 * e.r, -f.ly * .95 * e.r, e.r * .36);
+      ctx.save(); ctx.translate(px, py); ctx.globalAlpha = alfa;
+      if (e.def.assetto === 'dritto') { if (incl) ctx.rotate(incl); if (sin) ctx.scale(-1, 1); } else { ctx.rotate(e.ang + incl); if (sin) ctx.scale(1, -1); }
+      if (stira !== 1) ctx.scale(stira, 1 / stira);
+      corona(ctx, f.lx * .25 * rr, -f.ly * .95 * rr, rr * .36);
       ctx.restore();
     }
     if (e.stordito > 0 && e.mangiato <= 0) {                                 // stelline di chi è stordito
@@ -240,6 +384,7 @@ function disegnaPredatori(M, t) {
       for (let i = 0; i < 3; i++) { const a = t * 5 + i * TAU / 3; ctx.beginPath(); ctx.arc(e.x + Math.cos(a) * e.r * .7, e.y - e.r * e.def.forma.ly - 8 + Math.sin(a) * e.r * .18, Math.max(3, e.r * .09), 0, TAU); ctx.fill(); }
     }
   }
+  miraEroe = mira;
 }
 
 function disegnaColpi(M, t) {
@@ -273,21 +418,105 @@ function disegnaColpi(M, t) {
 }
 
 function disegnaEroe(M, t, dt) {
-  const h = M.eroe, a = M.aiuti;
-  if (!h || !h.vivo || !h.def) return;
-  faseEroe = (faseEroe + dt * (1.1 + Math.hypot(h.vx, h.vy) * .006)) % 1;
-  if (a.calamitaT > 0) {
+  const h = M.eroe, ai = M.aiuti;
+  if (!h || !h.vivo || !h.def) { scosse.boccone = scosse.morso = scosse.colpito = scosse.cresciuto = scosse.scatto = 0; return; }
+  const vel = Math.hypot(h.vx, h.vy), co = Math.cos(h.ang), si = Math.sin(h.ang), a = animaDi(h);
+  faseEroe = (faseEroe + dt * (1.1 + vel * .006)) % 1;
+  if (a.foto !== nFoto - 1) { a.ang = h.ang; a.vel = vel; a.gx = co; a.gy = si; a.bordo = 1; a.esp = h.espressione; a.b = h.bocca; }   // la prima volta, o dopo un'assenza
+  a.foto = nFoto;
+  const quiete = 1 - U.dolce(vel / 70);                                      // 1 = fermo: allora respira e dondola
+  if (dt > 0) {
+    let giro = (h.ang - a.ang) % TAU;
+    if (giro > PI) giro -= TAU; else if (giro < -PI) giro += TAU;
+    giro = vel > 40 ? limita(giro / dt, -9, 9) : 0;                          // da quasi fermo l'angolo non dice nulla
+    const acc = (vel - a.vel) / dt, scatto = M.scatto.attivo > 0;
+    a.ang = h.ang; a.vel = vel;
+    /* Schiaccia e allunga: si allunga un filo quando accelera e nello scatto, si schiaccia quando frena, quando vira
+       stretto e mentre prende la rincorsa per il morso; fermo, respira. */
+    let sT = limita(acc * .00005, -.1, .08) + (scatto ? .1 : 0) - Math.min(.06, Math.abs(giro) * .01) - h.attesa * .05 + Math.sin(t * 2.2 + 1) * .012 * quiete;
+    const contro = h.x <= h.r + .5 ? -h.vx : h.x >= M.largo - h.r - .5 ? h.vx : h.y <= h.r + .5 ? -h.vy : h.y >= M.alto - h.r - .5 ? h.vy : -1e9;   // quanto spinge contro il bordo del mondo
+    if (contro > -1e8) {
+      if (!a.bordo && contro > 60) a.vs -= 2 + Math.min(4.5, contro / 100);  // ci sbatte: si schiaccia e rimbalza
+      if (contro > 0) sT -= Math.min(.08, contro * .0003);                   // e finché spinge resta un po' schiacciato
+      a.bordo = 1;
+    } else a.bordo = 0;
+    /* Ciò che è appena successo (dagli eventi del mondo): un colpo lo strizza, la crescita fa «boing», il boccone è
+       uno slancio in avanti seguito da un sussulto di soddisfazione (più forte per il morso a un gigante). */
+    if (scosse.colpito) { a.vs -= 7; a.vg -= 2.2; a.vi += a.seme > PI ? 3.2 : -3.2; chiudiOcchi(a, t); }
+    if (scosse.cresciuto) { a.vg += 5.5; a.vs -= 2.5; }
+    if (scosse.morso) { a.vg += 3.6; a.vs += 4.5; a.vk += 7; a.morsoT = t; a.rutto = 6; a.ruttoT = t + .16; }
+    else if (scosse.boccone) { a.vg += 2.8; a.vs += 3; a.vk += 5; a.morsoT = t; a.rutto = 4; a.ruttoT = t + .16; }
+    if (scosse.scatto) a.vs += 2;
+    const gT = Math.min(h.pulsa, .5) * .07;                                  // i pesciolini: un palpito
+    const iT = limita(giro * .04, -.24, .24) + Math.sin(t * 1.25) * .035 * quiete;   // nelle virate il muso anticipa; fermo, dondola
+    const kT = -.1 * h.attesa;                                               // anticipazione: arretra appena prima del morso
+    let y = a.s - sT, w = a.vs;
+    a.s = sT + M_CORPO.a * y + M_CORPO.b * w; a.vs = M_CORPO.c * y + M_CORPO.d * w;
+    y = a.g - gT; w = a.vg; a.g = gT + M_BOING.a * y + M_BOING.b * w; a.vg = M_BOING.c * y + M_BOING.d * w;
+    y = a.i - iT; w = a.vi; a.i = iT + M_PIEGA.a * y + M_PIEGA.b * w; a.vi = M_PIEGA.c * y + M_PIEGA.d * w;
+    y = a.k - kT; w = a.vk; a.k = kT + M_SPINTA.a * y + M_SPINTA.b * w; a.vk = M_SPINTA.c * y + M_SPINTA.d * w;
+    /* La bocca: si socchiude in anticipo quando c'è una preda a tiro, si spalanca al morso, poi mastica due volte. */
+    let bT = Math.max(h.bocca, h.attesa * .62);
+    const dopo = t - a.morsoT;
+    if (dopo > .2 && dopo < .68) { const q = (dopo - .2) / .48, m = Math.sin(q * TAU); bT = Math.max(bT, .3 * m * m * (1 - q * .5)); }
+    a.b += (bT - a.b) * kBocca;
+    if (vista.qualita > 0) {
+      const rb = h.r * (calma < 1 ? .6 : 1);
+      if (a.rutto > 0 && t >= a.ruttoT) {                                    // dopo un boccone grosso, bollicine dalla bocca
+        for (let i = 0; i < a.rutto; i++) {
+          const av = h.ang + (Math.random() - .5) * 1.1, v0 = 50 + Math.random() * 90;
+          bollicina(t, h.x + co * h.r * .85, h.y + si * h.r * .85 + h.r * .15, Math.cos(av) * v0, Math.sin(av) * v0 - 30, rb * (.07 + Math.random() * .1), .7 + Math.random() * .6);
+        }
+        a.rutto = 0;
+      }
+      if (scatto) {                                                          // nello scatto, bollicine dietro la coda
+        a.sciaT += dt;
+        while (a.sciaT > .05) {
+          a.sciaT -= .05;
+          const lato = (Math.random() - .5) * h.r * .9;
+          bollicina(t, h.x - co * h.r * 1.05 - si * lato, h.y - si * h.r * 1.05 + co * lato, -co * 40, -si * 40, rb * (.06 + Math.random() * .08), .45 + Math.random() * .4);
+        }
+      } else a.sciaT = 0;
+    } else a.rutto = 0;
+  }
+  scosse.boccone = scosse.morso = scosse.colpito = scosse.cresciuto = scosse.scatto = 0;
+
+  /* L'espressione è quella del mondo, ma senza sfarfallii: la paura entra e esce a due soglie diverse, la felicità del
+     boccone vince per un attimo anche sulla paura, e ogni faccia resta almeno un terzo di secondo. */
+  let esp = h.espressione;
+  if (esp !== 'colpito') {
+    const paura = a.esp === 'spaventato' ? M.pericolo > .26 : M.pericolo > .46, felice = h.felice > 0 || esp === 'felice';
+    esp = felice && (!paura || h.felice > .45) ? 'felice' : paura ? 'spaventato' : 'normale';
+    if (esp !== a.esp && esp !== 'felice' && t - a.espT < .35) esp = a.esp;
+  }
+  if (esp !== a.esp) { a.esp = esp; a.espT = t; }
+
+  /* Lo sguardo: verso chi lo insegue o verso la preda più vicina (lo ha scelto disegnaPredatori), se no verso il banco
+     di pesciolini più vicino, se no avanti. Ammorbidito nel mondo, poi portato nelle coordinate del modello. */
+  let mx = co, my = si, bx = 0, by = 0, c = false;
+  if (miraEroe && miraEroe.mangiato <= 0) { bx = miraEroe.x; by = miraEroe.y; c = true; }
+  else {
+    let vicino = 330 + h.r;
+    for (const b of M.banchi) { if (!b.vicino) continue; const d = Math.abs(b.x - h.x) + Math.abs(b.y - h.y) - b.raggio * .5; if (d < vicino) { vicino = d; bx = b.x; by = b.y; c = true; } }
+  }
+  if (c) { const dx = bx - h.x, dy = by - h.y, d = Math.hypot(dx, dy) || 1, q = Math.min(1, d / (h.r * 3)) / d; mx = dx * q; my = dy * q; }
+  a.gx += (mx - a.gx) * kSguardo; a.gy += (my - a.gy) * kSguardo;
+
+  if (ai.calamitaT > 0) {
     ctx.strokeStyle = '#ff9ecb'; ctx.lineWidth = 3;
     for (let i = 0; i < 2; i++) { const u = (t * .9 + i * .5) % 1; ctx.globalAlpha = (1 - u) * .5; ctx.beginPath(); ctx.arc(h.x, h.y, h.r + 20 + (1 - u) * 130, 0, TAU); ctx.stroke(); }
     ctx.globalAlpha = 1;
   }
-  if (a.frenesiaT > 0) macchia(h.x, h.y, h.r * (1.75 + .1 * Math.sin(t * 12)), sfumatura('frenesia', [0, 'rgba(255,170,60,.55)', .6, 'rgba(255,120,40,.28)', 1, 'rgba(255,120,40,0)']), 1);
-  o.x = h.x; o.y = h.y; o.r = h.r * (1 + h.pulsa * .12); o.ang = h.ang; o.fase = faseEroe; o.bocca = Math.max(h.bocca, h.attesa * .65);
+  if (ai.frenesiaT > 0) macchia(h.x, h.y, h.r * (1.75 + .1 * Math.sin(t * 12)), sfumatura('frenesia', [0, 'rgba(255,170,60,.55)', .6, 'rgba(255,120,40,.28)', 1, 'rgba(255,120,40,0)']), 1);
+  const k = a.k * h.r * calma;
+  o.x = h.x + co * k; o.y = h.y + si * k + Math.sin(t * 2.2) * h.r * .045 * quiete * calma;
+  o.r = h.r * (1 + limita(a.g, -.2, .3) * calma); o.stira = 1 + limita(a.s, -.28, .3) * calma; o.inclina = a.i * calma;
+  o.ang = h.ang; o.fase = faseEroe; o.bocca = limita(a.b, 0, 1); o.battito = batte(a, t);
   o.minaccia = false; o.alfa = h.invul > 0 && Math.floor(t * 10) % 2 === 0 ? .5 : 1; o.stato = 'calmo'; o.t = t; o.attivo = 0; o.carica = 0; o.furia = 0;
-  o.vivo = true; o.stira = M.scatto.attivo > 0 ? 1.12 : 0; o.dettaglio = 1; o.stadio = h.stadio; o.espressione = h.espressione;
-  if (vicinoEroe && vicinoEroe.mangiato <= 0) sguardoVerso(h, vicinoEroe.x, vicinoEroe.y, o.sguardo); else { o.sguardo.x = avanti.x; o.sguardo.y = avanti.y; }
+  o.vivo = true; o.dettaglio = 1; o.stadio = h.stadio; o.espressione = esp;
+  o.sguardo.x = a.gx * co + a.gy * si; o.sguardo.y = (-a.gx * si + a.gy * co) * (co < 0 ? -1 : 1);
   F.disegna(ctx, h.def, o);
-  if (a.scudo) {
+  if (ai.scudo) {
     ctx.beginPath(); ctx.arc(h.x, h.y, h.r * (1.45 + Math.sin(t * 5) * .04), 0, TAU);
     ctx.fillStyle = 'rgba(155,231,255,.14)'; ctx.fill(); ctx.strokeStyle = 'rgba(155,231,255,.9)'; ctx.lineWidth = Math.max(2, h.r * .07); ctx.stroke();
   }
@@ -532,7 +761,9 @@ function fotogramma() {
   schermo(); pulito();
   if (!M) { ctx.fillStyle = '#0a1f44'; ctx.fillRect(0, 0, vw, vh); return; }
   const t = M.t, cam = M.cam, z = cam.z, dt = limita(t - tPrima, 0, .05), stato = B.partita.stato;
-  tPrima = t;
+  tPrima = t; nFoto++;
+  if (M !== mondoVisto) { mondoVisto = M; miraEroe = null; spegniBollicine(); }   // un mondo nuovo: l'animazione riparte
+  preparaMolle(dt);
   v.t = t; v.dt = dt || 1 / 60; v.vw = vw; v.vh = vh; v.dpr = vista.dpr; v.qualita = vista.qualita;
   v.cam.x = cam.x; v.cam.y = cam.y; v.cam.z = z; v.mondo.w = M.largo; v.mondo.h = M.alto;
   mw = vw / 2 / z; mh = vh / 2 / z;
@@ -547,9 +778,10 @@ function fotogramma() {
   disegnaBolle(M, t);
   disegnaPesciolini(M);
   disegnaPericoli(M, t);
-  disegnaPredatori(M, t);
+  disegnaPredatori(M, t, dt);
   disegnaColpi(M, t);
   disegnaEroe(M, t, dt);
+  disegnaBollicine(t, dt);
   disegnaNuvole(M);
   disegnaParticelle(M);
   pulito();
@@ -574,6 +806,24 @@ leggiQualita(); ridimensiona();
 window.addEventListener('resize', ridimensiona);
 window.addEventListener('orientationchange', ridimensiona);
 B.eventi.su('impostazioni', d => { if (d && d.chiave === 'qualita') { leggiQualita(); ridimensiona(); } });
+// Ciò che succede all'eroe arriva dagli eventi del mondo: il disegno lo ricorda fino al prossimo fotogramma.
+B.eventi.su('mangiato', () => { scosse.boccone = 1; });
+B.eventi.su('gigante:morso', () => { scosse.morso = 1; });
+B.eventi.su('colpito', () => { scosse.colpito = 1; });
+B.eventi.su('cresciuto', () => { scosse.cresciuto = 1; });
+B.eventi.su('scatto', () => { scosse.scatto = 1; });
+B.eventi.su('partita:inizio', () => { scosse.boccone = scosse.morso = scosse.colpito = scosse.cresciuto = scosse.scatto = 0; });
+// Chi soffre il movimento (prefers-reduced-motion): le stesse animazioni, ma con ampiezze molto ridotte.
+try {
+  const meno = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (meno) {
+    const leggi = () => { calma = meno.matches ? .35 : 1; };
+    leggi();
+    if (meno.addEventListener) meno.addEventListener('change', leggi); else if (meno.addListener) meno.addListener(leggi);
+  }
+} catch (e) {}
 
-B.disegno = { fotogramma, ridimensiona, compatto, corona, iconaBolla, tela, CARATTERE };
+B.disegno = { fotogramma, ridimensiona, compatto, corona, iconaBolla, tela, CARATTERE,
+  /* Per le prove: la scheda di animazione di una creatura (sola lettura) e le bollicine vive in questo momento. */
+  animazione: { di: e => anime.get(e) || null, bollicine: () => bollicine.filter(b => b.eta < b.vita).length, get calma() { return calma; } } };
 })();

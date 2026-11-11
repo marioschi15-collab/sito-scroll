@@ -1,4 +1,8 @@
-/* Boccone — eroe: SAETTA, il pesce volante. Un siluro azzurro dalla pancia d'argento con una saetta gialla sul fianco e
+/* Boccone — eroe: SAETTA, il pesce volante. VERSIONE RITOCCATA PER LO STILE «FILM D'ANIMAZIONE» (anteprime/film/modelli):
+   il corpo azzurro ha ora l'ombra indaco (dichiarata nelle tinte), così senza contorno scuro stacca dall'acqua blu;
+   la pancia d'argento prende un'ombra più fredda. Il battito di ciglia non è più deciso dal modello (o.t): lo guida
+   P.battito da chi lo disegna dal vivo. Il resto del disegno è lo stesso.
+   SAETTA, il pesce volante. Un siluro azzurro dalla pancia d'argento con una saetta gialla sul fianco e
    due grandi pinne ad ala: quella lontana si alza dietro la schiena, quella vicina si apre verso il basso, e battono insieme.
    Tre stadi: cucciolo paffuto con le alucce tonde, adulto affusolato dalle ali lunghe, colosso con ali larghe e affilate
    dalle punte dorate, alucce ventrali e coda a falce. Quattro espressioni: le ali si spalancano di gioia, si chiudono
@@ -9,21 +13,21 @@ const B = window.B, P = B.pittura, TAU = Math.PI * 2, PI = Math.PI;
 const { sin, cos, max, min } = Math;
 
 // ---- tinte e misure dei tre stadi: tutto ciò che cambia crescendo sta qui, il disegno è uno solo
-const ALA = c => P.tinta(c, '#2b55e8'), ARGENTO = P.tinta('#eef8ff', '#6c9cf2'), LABBRO = P.tinta('#2747b8'), GIALLO = '#ffd93a', ARANCIO = '#ff8a1e', IRIDE = '#ff8a1e';
+const ALA = c => P.tinta(c, '#2b55e8'), ARGENTO = P.tinta('#eef8ff', '#5a7ef0'), LABBRO = P.tinta('#2747b8'), GIALLO = '#ffd93a', ARANCIO = '#ff8a1e', IRIDE = '#ff8a1e';
 const STADI = [
-  { x0: -.72, x1: .64, testa: .36, onda: { amp: .08, onde: .45, testa: .15 }, corpo: P.tinta('#3aa4ff'), ala: ALA('#86e6ff'), orlo: '#ffffff',
+  { x0: -.72, x1: .64, testa: .36, onda: { amp: .08, onde: .45, testa: .15 }, corpo: P.tinta('#3aa4ff', '#2a2fc4'), ala: ALA('#86e6ff'), orlo: '#ffffff',
     su: P.sagoma([[0, .13], [.3, .45], [.6, .64], [.85, .63], [1, .47]]), giu: P.sagoma([[0, .12], [.3, .42], [.6, .6], [.85, .56], [1, .42]]),
     pancia: u => .5 - .42 * u, occhio: .33, eu: .76, ev: -.22, bx: .7, by: .27, bocca: .16, au: .5, av: .4, ru: .5,
     lungAla: .86, profAla: [.9, 1, .88, .68, .46], apreAla: 1.05, smerlo: 0, nAla: 5,
     coda: .5, forca: .62, profCoda: [1, .8, .58, .7, .84], pin: .2, ventrale: 0,
     fulmine: [[.58, -.4], [.58, .02], [.44, -.26], [.44, -.06], [.2, -.42], [.37, -.33], [.37, -.52]] },
-  { x0: -1.02, x1: .72, testa: .34, onda: { amp: .1, onde: .5, testa: .12 }, corpo: P.tinta('#2a8cff'), ala: ALA('#6fdcff'), orlo: '#ffffff',
+  { x0: -1.02, x1: .72, testa: .34, onda: { amp: .1, onde: .5, testa: .12 }, corpo: P.tinta('#2a8cff', '#2622b4'), ala: ALA('#6fdcff'), orlo: '#ffffff',
     su: P.sagoma([[0, .09], [.25, .36], [.55, .54], [.8, .56], [1, .44]]), giu: P.sagoma([[0, .08], [.25, .32], [.55, .49], [.8, .48], [1, .38]]),
     pancia: u => .46 - .42 * u, occhio: .28, eu: .8, ev: -.2, bx: .82, by: .17, bocca: .17, au: .62, av: .42, ru: .54,
     lungAla: 1.3, profAla: [1, .93, .78, .6, .44, .32], apreAla: 1, smerlo: .35, nAla: 6,
     coda: .62, forca: .66, profCoda: [1.2, .82, .46, .6, .88], pin: .3, ventrale: .34,
     fulmine: [[.66, -.36], [.66, .1], [.48, -.22], [.48, 0], [.14, -.44], [.38, -.32], [.38, -.54]] },
-  { x0: -1.06, x1: .76, testa: .32, onda: { amp: .1, onde: .5, testa: .12 }, corpo: P.tinta('#1c70f2'), ala: ALA('#57cbff'), orlo: '#ffe45a',
+  { x0: -1.06, x1: .76, testa: .32, onda: { amp: .1, onde: .5, testa: .12 }, corpo: P.tinta('#1c70f2', '#201c9c'), ala: ALA('#57cbff'), orlo: '#ffe45a',
     su: P.sagoma([[0, .1], [.25, .38], [.5, .56], [.72, .65], [.88, .59], [1, .45]]), giu: P.sagoma([[0, .09], [.25, .34], [.55, .52], [.8, .5], [1, .38]]),
     pancia: u => .46 - .42 * u, occhio: .26, eu: .81, ev: -.2, bx: .86, by: .17, bocca: .19, au: .62, av: .42, ru: .52,
     lungAla: 1.52, profAla: [1, .86, .7, .55, .43, .33, .26], apreAla: 1.1, smerlo: .75, nAla: 7,
@@ -86,8 +90,7 @@ B.eroi.registra({
     P.bozzi(c, [a0.x - .03, a0.y - .02], .06, K.ala);                 // la spalla dell'ala
 
     // ---- 4. la faccia: occhio, sopracciglio, bocca
-    const ammicca = (t % 3.6) > 3.46;
-    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? P.SGUARDI.spaventato : ammicca ? P.SGUARDI.felice : st === 2 ? { palpebra: .24, taglio: .22 } : P.SGUARDI.normale;
+    const sg = colpito ? P.SGUARDI.colpito : felice ? P.SGUARDI.felice : paura ? P.SGUARDI.spaventato : st === 2 ? { palpebra: .24, taglio: .22 } : P.SGUARDI.normale;
     P.occhio(c, e.x, e.y, r, Object.assign({ iride: IRIDE, pelle: K.corpo, guarda: P.sguardo(o.sguardo, e.x, e.y) }, sg));
     if (paura) P.sopracciglio(c, e.x + .02, e.y - r * 1.42, r * 1.1, -.32, K.corpo.bordo, .06);
     else if (st === 2 && !colpito) P.sopracciglio(c, e.x + .05, e.y - r * 1.04, r * 1.9, .3, K.corpo.bordo, .1);
