@@ -64,6 +64,8 @@ export class Pezzi {
   /** Per ogni pezzo, dove comincia e dove finisce il suo luogo: il fuoco si propaga solo lì dentro. */
   private readonly inizio: Int32Array;
   private readonly fine: Int32Array;
+  /** Quanto ogni pezzo è incandescente (0 spento): lo legge la scheda grafica per farlo brillare. */
+  private ardore!: THREE.InstancedBufferAttribute;
   private elencoArdenti: number[] = [];
   private fiammeDaFare = 0;
   private attesaTremito = 0;
@@ -98,10 +100,12 @@ export class Pezzi {
     // Ogni blocco è un po' più scuro in basso e lungo gli spigoli: dà volume e stacca un blocco dall'altro.
     materiale.onBeforeCompile = (shader) => {
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vLocale;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLocale = position;');
+        .replace('#include <common>', '#include <common>\nattribute float aArdore; varying vec3 vLocale; varying float vArdore;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLocale = position; vArdore = aArdore;');
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vLocale;')
+        .replace('#include <common>', '#include <common>\nvarying vec3 vLocale; varying float vArdore;')
+        // I pezzi di brace e quelli in fiamme emettono luce propria, abbastanza forte da far scattare il bagliore.
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(4.0, 1.1, 0.14) * vArdore;')
         .replace(
           '#include <color_fragment>',
           `#include <color_fragment>
@@ -117,6 +121,8 @@ export class Pezzi {
     this.mesh.frustumCulled = false;
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.mesh.setColorAt(0, new THREE.Color(1, 1, 1));
+    this.ardore = new THREE.InstancedBufferAttribute(new Float32Array(capienza), 1).setUsage(THREE.DynamicDrawUsage);
+    this.mesh.geometry.setAttribute('aArdore', this.ardore);
   }
 
   /** Aggiunge i pezzi di un luogo (per ora solo disegnati). Restituisce null se non c'è più posto. */
@@ -143,7 +149,9 @@ export class Pezzi {
       this.scala[i] = 1;
       this.disegna(i, b.x, b.y, b.z, b.q);
       this.mesh.setColorAt(i, b.colore);
+      this.ardore.setX(i, b.materiale === BRACE ? 0.7 : 0);
     });
+    this.ardore.needsUpdate = true;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceColor!.needsUpdate = true;
     this.inizio.fill(da, da, da + quanti);
@@ -169,6 +177,7 @@ export class Pezzi {
       this.ardenti.delete(i);
       this.gelati.delete(i);
       this.pos[i * 3 + 1] = -1e6;
+      this.ardore.setX(i, 0);
       this.mesh.setMatrixAt(i, this.m);
     }
     for (const r of this.rammendi) r.pezzi = r.pezzi.filter((p) => p.i < g.da || p.i >= g.a);
@@ -412,14 +421,12 @@ export class Pezzi {
   }
 
   private tingi(i: number, brace = 0): void {
-    const c = this.c.copy(this.mattoni[i]!.colore).lerp(CARBONE, this.carbone[i]!);
-    if (brace > 0) {
-      c.r += 0.9 * brace;
-      c.g += 0.22 * brace;
-      c.b += 0.05 * brace;
-    }
+    const b = this.mattoni[i]!;
+    const c = this.c.copy(b.colore).lerp(CARBONE, this.carbone[i]!);
     c.lerp(GHIACCIO, this.ghiaccio[i]! * 0.75);
     this.mesh.setColorAt(i, c);
+    this.ardore.setX(i, b.materiale === BRACE ? 0.7 : brace * 0.6);
+    this.ardore.needsUpdate = true;
   }
 
   aggiorna(dt: number, campo: Campo, scintille: Particelle, fumo: Particelle): void {
@@ -590,8 +597,10 @@ export class Pezzi {
         corpo.setAngularDamping(0);
         this.collisori[i]!.setCollisionGroups(0xffffffff);
         this.mesh.setColorAt(i, b.colore);
+        this.ardore.setX(i, b.materiale === BRACE ? 0.7 : 0);
       }
       if (!finito) continue;
+      this.ardore.needsUpdate = true;
       this.mesh.instanceColor!.needsUpdate = true;
       this.rammendi.splice(k, 1);
     }
@@ -630,7 +639,9 @@ export class Pezzi {
       corpo.setAngularDamping(0);
       this.disegna(i, b.x, b.y, b.z, b.q);
       this.mesh.setColorAt(i, b.colore);
+      this.ardore.setX(i, b.materiale === BRACE ? 0.7 : 0);
     });
+    this.ardore.needsUpdate = true;
     this.fermo = false;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceColor!.needsUpdate = true;

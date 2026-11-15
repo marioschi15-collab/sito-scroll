@@ -71,6 +71,13 @@ export class Bastone {
     this.alone.position.copy(this.cristallo.position);
     this.alone.scale.setScalar(0.3);
     this.gruppo.add(this.alone);
+    // Il bastone si disegna in una fetta di profondità tutta sua, davanti al mondo: così non sparisce dentro
+    // i muri quando ci si avvicina a una parete.
+    this.gruppo.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      o.onBeforeRender = (r: THREE.WebGLRenderer) => r.getContext().depthRange(0, 0.03);
+      o.onAfterRender = (r: THREE.WebGLRenderer) => r.getContext().depthRange(0, 1);
+    });
     this.gruppo.position.set(0.4, -0.56, -0.7);
     this.gruppo.rotation.set(0.12, -0.1, -0.18);
   }

@@ -4,7 +4,7 @@ import type { Effetto, Gioco, Incantesimo } from '../gioco.js';
 import { altezza } from '../mondo/terreno.js';
 
 const SASSO = new THREE.IcosahedronGeometry(0.9, 1);
-const MATERIALE = new THREE.MeshLambertMaterial({ color: 0x2a1c18, emissive: new THREE.Color(1.2, 0.35, 0.08), flatShading: true });
+const MATERIALE = new THREE.MeshLambertMaterial({ color: 0x2a1c18, emissive: new THREE.Color(4.0, 1.2, 0.2), flatShading: true });
 
 class Meteora implements Effetto {
   private readonly mesh = new THREE.Mesh(SASSO, MATERIALE);

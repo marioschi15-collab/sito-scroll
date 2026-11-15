@@ -68,7 +68,7 @@ export interface Terreno {
   segui(x: number, z: number, quante: number): number;
 }
 
-export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo, ombre: boolean): Terreno {
+export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo, ombre: boolean, latoErba: number): Terreno {
   const mezzi = new Uint16Array(LATO_IMMAGINE * LATO_IMMAGINE);
   const punti = new Uint8Array(LATO_IMMAGINE * LATO_IMMAGINE * 4);
   const altezze = new THREE.DataTexture(mezzi, LATO_IMMAGINE, LATO_IMMAGINE, THREE.RedFormat, THREE.HalfFloatType);
@@ -85,6 +85,8 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
     shader.uniforms.uStato = { value: campo.immagine };
     shader.uniforms.uLatoCampo = { value: campo.lato };
     shader.uniforms.uTempo = atmosfera.tempo;
+    shader.uniforms.uBiomi = { value: biomi };
+    shader.uniforms.uRaggioErba = { value: latoErba / 2 };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float aLava; varying vec3 vMondo; varying float vLava;')
       .replace(
@@ -96,8 +98,10 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
         '#include <common>',
         `#include <common>
          uniform sampler2D uStato; uniform float uLatoCampo; uniform float uTempo;
+         uniform sampler2D uBiomi; uniform float uRaggioErba;
          varying vec3 vMondo; varying float vLava;
-         ${NUBI_GLSL}`,
+         ${NUBI_GLSL}
+         ${UV_ALTEZZE_GLSL}`,
       )
       .replace(
         '#include <color_fragment>',
@@ -105,6 +109,15 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
          vec4 stato = texture2D(uStato, vMondo.xz / uLatoCampo);
          float chiazza = sin(vMondo.x * 0.07) * sin(vMondo.z * 0.09 + 1.7) * 0.5 + 0.5;
          diffuseColor.rgb *= mix(0.84, 1.1, chiazza) * ombraNubi(vMondo.xz, uTempo);
+         // Dove i fili d'erba finiscono, il terreno prende il loro colore medio: senza, il prato sembrava un
+         // tappeto rotondo e chiaro che seguiva chi cammina sopra un suolo più scuro.
+         vec4 bio = texture2D(uBiomi, uvAltezze(vMondo.xz));
+         vec3 erbaMedia = vec3(0.20, 0.40, 0.07);
+         erbaMedia = mix(erbaMedia, vec3(0.6, 0.5, 0.2), bio.g);
+         erbaMedia = mix(erbaMedia, erbaMedia * vec3(0.3, 0.5, 0.46), bio.a);
+         erbaMedia = mix(erbaMedia, vec3(0.88, 0.94, 1.0), bio.b * 0.6);
+         float lontano = smoothstep(uRaggioErba * 0.6, uRaggioErba * 0.95, distance(vMondo.xz, cameraPosition.xz));
+         diffuseColor.rgb = mix(diffuseColor.rgb, erbaMedia / 1.1 * mix(0.84, 1.1, chiazza) * ombraNubi(vMondo.xz, uTempo), bio.r * lontano);
          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.36, 0.07), stato.b * 0.6);
          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.035, 0.03, 0.025), stato.r * 0.92);
          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.72, 0.86, 0.95), stato.g * 0.8);
@@ -116,7 +129,10 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
          float bolle = 0.75 + 0.25 * sin(vMondo.x * 0.9 + uTempo * 1.3) * sin(vMondo.z * 0.8 - uTempo * 0.9);
-         totalEmissiveRadiance += vec3(1.5, 0.36, 0.04) * colata * bolle;`,
+         // Crepe incandescenti tra croste più scure, abbastanza luminose da far scattare il bagliore.
+         float crepe = abs(sin(vMondo.x * 0.55 + 1.7 * sin(vMondo.z * 0.37 + uTempo * 0.12)) * sin(vMondo.z * 0.6 + 1.3 * sin(vMondo.x * 0.41 - uTempo * 0.09)));
+         vec3 fuso = mix(vec3(4.2, 1.4, 0.2), vec3(1.0, 0.13, 0.015), smoothstep(0.03, 0.4, crepe));
+         totalEmissiveRadiance += fuso * colata * bolle;`,
       );
   };
 
@@ -247,6 +263,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
       uniforms: {
         uTempo: atmosfera.tempo, uOrizzonte: atmosfera.nebbiaColore, uAlto: atmosfera.cieloAlto, uLuce: atmosfera.luce,
         uTinta: atmosfera.tinta, uNebbiaDensita: atmosfera.nebbiaDensita, uSole: { value: DIREZIONE_SOLE },
+        uAltezze: { value: altezze },
       },
       vertexShader: /* glsl */ `
         varying vec3 vMondo; varying float vDistanza;
@@ -259,26 +276,36 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
       `,
       fragmentShader: /* glsl */ `
         uniform float uTempo; uniform vec3 uOrizzonte; uniform vec3 uAlto; uniform float uLuce; uniform vec3 uTinta;
-        uniform float uNebbiaDensita; uniform vec3 uSole;
+        uniform float uNebbiaDensita; uniform vec3 uSole; uniform sampler2D uAltezze;
         varying vec3 vMondo; varying float vDistanza;
         ${NEBBIA_GLSL}
+        ${UV_ALTEZZE_GLSL}
         void main() {
           vec3 vista = normalize(cameraPosition - vMondo);
           float a = sin(vMondo.x * 0.9 + uTempo * 1.2) * sin(vMondo.z * 1.1 - uTempo * 0.9);
           float b = sin((vMondo.x + vMondo.z) * 2.3 + uTempo * 2.0) + sin((vMondo.x - vMondo.z) * 3.1 - uTempo * 1.6);
           vec3 n = normalize(vec3(a * 0.07 + b * 0.025, 1.0, a * 0.05 - b * 0.03));
           float striscio = pow(1.0 - max(dot(n, vista), 0.0), 3.0);
-          vec3 c = mix(vec3(0.05, 0.22, 0.27), mix(uOrizzonte, uAlto, 0.45), clamp(striscio * 1.3 + 0.12, 0.0, 1.0));
-          c *= uTinta * mix(0.3, 1.0, min(uLuce, 1.0));
+          vec3 lume = uTinta * mix(0.3, 1.0, min(uLuce, 1.0));
+          // Quanta acqua c'è sopra il fondo: bassa e chiara a riva, scura al largo.
+          float prof = max(${QUOTA_ACQUA.toFixed(2)} - texture2D(uAltezze, uvAltezze(vMondo.xz)).r, 0.0);
+          vec3 corpo = mix(vec3(0.10, 0.34, 0.32), vec3(0.03, 0.15, 0.22), smoothstep(0.0, 0.8, prof)) * lume;
+          vec3 c = mix(corpo, mix(uOrizzonte, uAlto * lume, 0.45), clamp(striscio * 1.3 + 0.12, 0.0, 1.0));
           c += vec3(1.0, 0.94, 0.8) * pow(max(dot(reflect(-uSole, n), vista), 0.0), 140.0) * 1.6 * uLuce;
-          gl_FragColor = vec4(conNebbia(c, vDistanza, uOrizzonte, uNebbiaDensita), mix(0.55, 0.93, striscio));
+          // Una fascia di schiuma che va e viene lungo la riva.
+          float riva = smoothstep(0.18, 0.0, prof);
+          float schiuma = clamp(riva * smoothstep(0.35, 0.75, 0.5 + 0.5 * sin(prof * 26.0 - uTempo * 1.4 + a * 3.0)) + smoothstep(0.06, 0.0, prof), 0.0, 1.0);
+          c = mix(c, vec3(0.92, 0.96, 1.0) * lume, schiuma * 0.8);
+          float alfa = max(mix(mix(0.25, 0.55, smoothstep(0.0, 0.5, prof)), 0.93, striscio), schiuma * 0.8);
+          gl_FragColor = vec4(conNebbia(c, vDistanza, uOrizzonte, uNebbiaDensita), alfa);
           #include <colorspace_fragment>
         }
       `,
     }),
   );
   acqua.position.y = QUOTA_ACQUA;
-  acqua.renderOrder = 2;
+  // Dopo le cose opache ma prima di anelli, bolle, saette, fumo e scintille: altrimenti l'acqua li copriva.
+  acqua.renderOrder = -1;
   acqua.frustumCulled = false;
 
   const daFare: { zolla: Zolla; cx: number; cz: number; d: number }[] = [];

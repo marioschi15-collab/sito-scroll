@@ -212,6 +212,7 @@ export function creaBosco(ombre: boolean): Bosco {
     const m = new THREE.InstancedMesh(g, materialeAlberi, CAPIENZA);
     m.count = 0;
     m.castShadow = ombre;
+    m.receiveShadow = ombre;
     m.frustumCulled = false;
     m.setColorAt(0, BIANCO);
     return m;

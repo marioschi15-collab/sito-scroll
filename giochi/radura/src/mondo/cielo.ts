@@ -42,18 +42,20 @@ export function creaCielo(): THREE.Mesh {
       void main() {
         vec3 d = normalize(vDir);
         float su = max(d.y, 0.0);
-        vec3 colore = mix(uOrizzonte, uAlto, pow(su, 0.55));
+        // Il colore dell'orizzonte è quello della nebbia, già tinto e scurito: tingerlo di nuovo lo faceva più scuro
+        // del terreno lontano, che spiccava chiaro contro il cielo.
+        vec3 lume = uTinta * mix(0.25, 1.0, min(uLuce, 1.0));
+        vec3 colore = mix(uOrizzonte, uAlto * lume, pow(su, 0.55));
         float sole = max(dot(d, uSole), 0.0);
-        colore += vec3(1.0, 0.85, 0.6) * (pow(sole, 900.0) * 3.0 + pow(sole, 12.0) * 0.28);
+        colore += vec3(1.0, 0.85, 0.6) * lume * (pow(sole, 900.0) * 3.0 + pow(sole, 12.0) * 0.28);
         if (d.y > 0.01) {
           vec2 uv = d.xz / (d.y + 0.12) * 0.9 + vec2(uTempo * 0.006, uTempo * 0.002);
           float n = strati(uv);
           float nube = smoothstep(0.48, 0.78, n) * smoothstep(0.01, 0.16, d.y);
-          vec3 chiaro = mix(vec3(0.82, 0.86, 0.93), vec3(1.0, 0.98, 0.95), smoothstep(0.5, 0.9, n + sole * 0.3));
+          vec3 chiaro = mix(vec3(0.82, 0.86, 0.93), vec3(1.0, 0.98, 0.95), smoothstep(0.5, 0.9, n + sole * 0.3)) * lume;
           chiaro = mix(chiaro, uOrizzonte * 1.15, 0.45);
           colore = mix(colore, chiaro, nube * 0.9);
         }
-        colore *= uTinta * mix(0.25, 1.0, min(uLuce, 1.0));
         gl_FragColor = vec4(colore, 1.0);
         #include <colorspace_fragment>
       }

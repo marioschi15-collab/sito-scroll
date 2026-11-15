@@ -19,6 +19,10 @@ export interface Zona {
   readonly densitaNebbia: number;
   /** Quanta luce c'è (1 = pieno giorno). */
   readonly luce: number;
+  /** I colori della luce: quella che scende dal cielo, quella che rimbalza dal suolo, e il sole. */
+  readonly luceAlta: number;
+  readonly luceBassa: number;
+  readonly sole: number;
   /** Per l'erba: quanta ce n'è, quanto è secca, innevata, scura (da 0 a 1). */
   readonly erba: readonly [number, number, number, number];
   /** Che cosa ci si può trovare costruito. */
@@ -26,11 +30,11 @@ export interface Zona {
 }
 
 export const ZONE: readonly Zona[] = [
-  { nome: 'La Radura', caldo: 0, umido: 0, terra: 0x4f8f2c, nebbia: 0xbcd7ea, cielo: 0x2a6bdb, densitaNebbia: 0.0062, luce: 1, erba: [1, 0, 0, 0], luoghi: ['borgo', 'fattoria', 'vedetta', 'borgo'] },
-  { nome: 'Dune d’Ambra', caldo: 0.85, umido: -0.55, terra: 0xd7b56d, nebbia: 0xecd9b0, cielo: 0x3a86e0, densitaNebbia: 0.005, luce: 1.05, erba: [0.1, 1, 0, 0], luoghi: ['piramide', 'tempio', 'casbah'] },
-  { nome: 'Terre Gelate', caldo: -0.9, umido: -0.1, terra: 0xe6eef5, nebbia: 0xdde8f2, cielo: 0x7a9fd8, densitaNebbia: 0.0095, luce: 0.95, erba: [0.28, 0, 1, 0], luoghi: ['castello', 'igloo', 'guglia'] },
-  { nome: 'Palude dei Lumi', caldo: -0.1, umido: 0.95, terra: 0x34482b, nebbia: 0x5e7669, cielo: 0x3a5257, densitaNebbia: 0.014, luce: 0.75, erba: [1, 0, 0, 1], luoghi: ['palafitte', 'strega'] },
-  { nome: 'Monte Brace', caldo: 0.9, umido: 0.6, terra: 0x2b2523, nebbia: 0x80564a, cielo: 0x55281f, densitaNebbia: 0.0098, luce: 0.9, erba: [0.03, 0.5, 0, 0.9], luoghi: ['fortezza', 'altare'] },
+  { nome: 'La Radura', luceAlta: 0xd6e8ff, luceBassa: 0x70804e, sole: 0xfff1dc, caldo: 0, umido: 0, terra: 0x4f8f2c, nebbia: 0xbcd7ea, cielo: 0x2a6bdb, densitaNebbia: 0.0062, luce: 1, erba: [1, 0, 0, 0], luoghi: ['borgo', 'fattoria', 'vedetta', 'borgo'] },
+  { nome: 'Dune d’Ambra', luceAlta: 0xfff0d2, luceBassa: 0xd0a868, sole: 0xffe9c0, caldo: 0.85, umido: -0.55, terra: 0xd7b56d, nebbia: 0xecd9b0, cielo: 0x3a86e0, densitaNebbia: 0.005, luce: 1.05, erba: [0.1, 1, 0, 0], luoghi: ['piramide', 'tempio', 'casbah'] },
+  { nome: 'Terre Gelate', luceAlta: 0xdcebff, luceBassa: 0xc8d8ea, sole: 0xf4f8ff, caldo: -0.9, umido: -0.1, terra: 0xe6eef5, nebbia: 0xdde8f2, cielo: 0x7a9fd8, densitaNebbia: 0.0095, luce: 0.95, erba: [0.28, 0, 1, 0], luoghi: ['castello', 'igloo', 'guglia'] },
+  { nome: 'Palude dei Lumi', luceAlta: 0x9fc0ae, luceBassa: 0x3c5038, sole: 0xe2ecc8, caldo: -0.1, umido: 0.95, terra: 0x34482b, nebbia: 0x5e7669, cielo: 0x3a5257, densitaNebbia: 0.014, luce: 0.75, erba: [1, 0, 0, 1], luoghi: ['palafitte', 'strega'] },
+  { nome: 'Monte Brace', luceAlta: 0xd29a84, luceBassa: 0x7a2c14, sole: 0xffb890, caldo: 0.9, umido: 0.6, terra: 0x2b2523, nebbia: 0x80564a, cielo: 0x55281f, densitaNebbia: 0.0098, luce: 0.9, erba: [0.03, 0.5, 0, 0.9], luoghi: ['fortezza', 'altare'] },
 ];
 
 export const QUOTA_ACQUA = -0.55;

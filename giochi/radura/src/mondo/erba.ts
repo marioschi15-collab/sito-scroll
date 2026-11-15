@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Qualita } from '../base/qualita.js';
 import { generatore } from '../base/matematica.js';
 import { atmosfera, NEBBIA_GLSL, NUBI_GLSL } from './atmosfera.js';
+import { DIREZIONE_SOLE } from './cielo.js';
 import type { Campo } from './campo.js';
 import { UV_ALTEZZE_GLSL } from './terreno.js';
 
@@ -21,6 +22,25 @@ const COMUNE_VERTICE = /* glsl */ `
   uniform sampler2D uAltezze; uniform sampler2D uStato; uniform sampler2D uBiomi;
   ${UV_ALTEZZE_GLSL}
   ${NUBI_GLSL}
+  uniform vec3 uSole;
+  #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
+    precision highp sampler2DShadow;
+    uniform sampler2DShadow directionalShadowMap[ NUM_DIR_LIGHT_SHADOWS ];
+    uniform mat4 directionalShadowMatrix[ NUM_DIR_LIGHT_SHADOWS ];
+  #endif
+  // Quanto sole arriva in un punto (1 = pieno sole, 0 = in ombra), letto una volta sola al piede di ogni filo:
+  // è ciò che fa cadere sull'erba le ombre di case e alberi.
+  float soleQui(vec3 piede) {
+    #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
+      vec4 s = directionalShadowMatrix[0] * vec4(piede, 1.0);
+      s.xyz /= s.w;
+      vec2 bordo = smoothstep(vec2(0.5), vec2(0.40), abs(s.xy - 0.5));
+      float buio = 1.0 - texture(directionalShadowMap[0], vec3(s.xy, s.z - 0.0015));
+      return 1.0 - buio * bordo.x * bordo.y * step(s.z, 1.0);
+    #else
+      return 1.0;
+    #endif
+  }
 `;
 
 export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, biomi: THREE.DataTexture): Prato {
@@ -36,7 +56,11 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
     uNebbiaDensita: atmosfera.nebbiaDensita,
     uLuce: atmosfera.luce,
     uTinta: atmosfera.tinta,
+    uAmbiente: atmosfera.ambiente,
+    uSole: { value: DIREZIONE_SOLE },
   };
+  // Le voci delle luci della scena (serve la mappa delle ombre) più le nostre, che restano condivise.
+  const uniformiConLuci = { ...THREE.UniformsUtils.clone(THREE.UniformsLib.lights), ...uniformi };
   const rnd = generatore(77);
 
   // --- fili d'erba ---
@@ -62,7 +86,8 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
 
   const materialeErba = new THREE.ShaderMaterial({
     side: THREE.DoubleSide,
-    uniforms: uniformi,
+    lights: true,
+    uniforms: uniformiConLuci,
     vertexShader: /* glsl */ `
       ${COMUNE_VERTICE}
       attribute vec2 aBase; attribute vec4 aCaso;
@@ -104,6 +129,11 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         c = mix(c, vec3(0.02, 0.016, 0.012), stato.r * 0.96);
         c = mix(c, vec3(0.78, 0.92, 1.0), stato.g * (0.45 + 0.5 * t));
         c *= ombraNubi(w, uTempo);
+        c *= mix(vec3(0.42, 0.48, 0.56), vec3(1.0), soleQui(vec3(w.x, terra + 0.3, w.y)));
+        // Guardando verso il sole le punte si accendono in controluce; il vento fa correre onde di luce sul prato.
+        float controluce = pow(max(dot(normalize(rel + 1e-4), normalize(uSole.xz)), 0.0), 2.0);
+        c += vec3(0.20, 0.19, 0.03) * controluce * t * (1.0 - stato.r) * presente;
+        c *= 1.0 + 0.12 * onda * t;
         // Un filo di luce in più sulle punte rivolte al sole: dà lucentezza al prato.
         c += vec3(0.10, 0.11, 0.03) * t * t * (0.5 + 0.5 * sin(aCaso.x * 40.0)) * (1.0 - stato.r) * presente;
         c += vec3(1.3, 0.38, 0.05) * stato.a * (1.0 - t) * (1.0 - t);
@@ -114,11 +144,11 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform vec3 uNebbiaColore; uniform float uNebbiaDensita; uniform float uLuce; uniform vec3 uTinta;
+      uniform vec3 uNebbiaColore; uniform float uNebbiaDensita; uniform float uLuce; uniform vec3 uTinta; uniform vec3 uAmbiente;
       varying vec3 vColore; varying float vDistanza;
       ${NEBBIA_GLSL}
       void main() {
-        vec3 c = vColore * uTinta * mix(0.3, 1.0, uLuce);
+        vec3 c = vColore * uTinta * uAmbiente * mix(0.3, 1.0, uLuce);
         gl_FragColor = vec4(conNebbia(c, vDistanza, uNebbiaColore, uNebbiaDensita), 1.0);
         #include <colorspace_fragment>
       }
@@ -126,6 +156,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
   });
   const erba = new THREE.Mesh(filo, materialeErba);
   erba.frustumCulled = false;
+  erba.receiveShadow = true;
 
   // --- fiori ---
   const fiore = new THREE.InstancedBufferGeometry();
@@ -160,7 +191,8 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
 
   const materialeFiori = new THREE.ShaderMaterial({
     side: THREE.DoubleSide,
-    uniforms: uniformi,
+    lights: true,
+    uniforms: uniformiConLuci,
     vertexShader: /* glsl */ `
       ${COMUNE_VERTICE}
       attribute vec2 aBase; attribute vec4 aCaso; attribute vec3 aColore;
@@ -191,7 +223,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         float cuore = 1.0 - step(0.5, length(position.xz));
         vec3 c = mix(aColore, vec3(1.0, 0.78, 0.1), cuore);
         c = mix(c, vec3(0.85, 0.95, 1.0), stato.g * 0.6);
-        vColore = c * ombraNubi(w, uTempo);
+        vColore = c * ombraNubi(w, uTempo) * mix(vec3(0.42, 0.48, 0.56), vec3(1.0), soleQui(centro));
         vec4 mv = viewMatrix * vec4(p, 1.0);
         vDistanza = -mv.z;
         gl_Position = projectionMatrix * mv;
@@ -201,6 +233,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
   });
   const fiori = new THREE.Mesh(fiore, materialeFiori);
   fiori.frustumCulled = false;
+  fiori.receiveShadow = true;
 
   return {
     oggetti: [erba, fiori],

@@ -7,6 +7,8 @@ import * as THREE from 'three';
 export const atmosfera = {
   nebbiaColore: { value: new THREE.Color(0xbcd7ea) },
   cieloAlto: { value: new THREE.Color(0x2a6bdb) },
+  /** Il colore della luce della terra in cui si è, rispetto a quella della Radura: serve all'erba, che non usa le luci vere. */
+  ambiente: { value: new THREE.Color(1, 1, 1) },
   nebbiaDensita: { value: 0.0075 },
   luce: { value: 1 },
   tinta: { value: new THREE.Color(1, 1, 1) },

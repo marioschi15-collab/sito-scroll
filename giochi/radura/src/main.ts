@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { graficaScelta, gradiniRicordati, ricordaGradini, scegliQualita } from './base/qualita.js';
@@ -30,6 +30,15 @@ import { Suoni } from './suoni.js';
 
 const NEBBIE = ZONE.map((z) => new THREE.Color(z.nebbia));
 const CIELI = ZONE.map((z) => new THREE.Color(z.cielo));
+const ALTE = ZONE.map((z) => new THREE.Color(z.luceAlta));
+const BASSE = ZONE.map((z) => new THREE.Color(z.luceBassa));
+const SOLI = ZONE.map((z) => new THREE.Color(z.sole));
+
+// Le ombre sfumano verso il bordo della zona che coprono, invece di finire con una linea netta che cammina con chi gioca.
+THREE.ShaderChunk.shadowmap_pars_fragment = THREE.ShaderChunk.shadowmap_pars_fragment.replace(
+  'return mix( 1.0, shadow, shadowIntensity );',
+  'vec2 dalBordo = smoothstep( vec2( 0.5 ), vec2( 0.40 ), abs( shadowCoord.xy - 0.5 ) ); return mix( 1.0, shadow, shadowIntensity * dalBordo.x * dalBordo.y );',
+);
 const PASSO_FISICA = 1 / 60;
 
 async function avvia(): Promise<void> {
@@ -74,7 +83,7 @@ async function avvia(): Promise<void> {
   const fisica = new RAPIER.World({ x: 0, y: -16, z: 0 });
   fisica.timestep = PASSO_FISICA;
   const campo = new Campo();
-  const terreno = creaTerreno(RAPIER, fisica, campo, q.ombre);
+  const terreno = creaTerreno(RAPIER, fisica, campo, q.ombre, q.latoErba);
   const prato = creaPrato(q, campo, terreno.altezze, terreno.biomi);
   const bosco = creaBosco(q.ombre);
   const pezzi = new Pezzi(RAPIER, fisica, q.ombre);
@@ -153,7 +162,32 @@ async function avvia(): Promise<void> {
   const bagliore = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.3, 0.45, 1.05);
   bagliore.enabled = q.bagliore;
   compositore.addPass(bagliore);
-  compositore.addPass(new OutputPass());
+  // L'ultima passata: ombre un filo più fredde e luci più calde, colori un po' più pieni, angoli più scuri che
+  // raccolgono lo sguardo, i toni "da pellicola", e una grana finissima che cancella le righe nelle sfumature lunghe.
+  compositore.addPass(
+    new ShaderPass(
+      new THREE.ShaderMaterial({
+        uniforms: { tDiffuse: { value: null }, uTempo: atmosfera.tempo },
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: /* glsl */ `
+          uniform sampler2D tDiffuse; uniform float uTempo; varying vec2 vUv;
+          void main() {
+            vec3 c = texture2D(tDiffuse, vUv).rgb;
+            float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+            c *= mix(vec3(0.95, 0.99, 1.06), vec3(1.04, 1.0, 0.94), smoothstep(0.05, 0.9, l));
+            c = mix(vec3(l), c, 1.1);
+            vec2 q = vUv - 0.5;
+            c *= 1.0 - 0.32 * smoothstep(0.25, 0.85, dot(q, q) * 2.0);
+            gl_FragColor = vec4(max(c, 0.0), 1.0);
+            #include <tonemapping_fragment>
+            #include <colorspace_fragment>
+            float g = fract(52.9829189 * fract(dot(gl_FragCoord.xy + uTempo * 60.0, vec2(0.06711056, 0.00583715))));
+            gl_FragColor.rgb += (g - 0.5) * 1.5 / 255.0;
+          }
+        `,
+      }),
+    ),
+  );
   let densitaPixel = q.densitaPixel;
 
   let stretto = false;
@@ -333,6 +367,15 @@ async function avvia(): Promise<void> {
   const pesi = new Float32Array(5);
   const nebbiaZona = new THREE.Color();
   const cieloZona = new THREE.Color();
+  const altaZona = new THREE.Color();
+  const bassaZona = new THREE.Color();
+  const soleZona = new THREE.Color();
+  // La mappa delle ombre si sposta a scatti grandi quanto un suo punto, misurati nel piano del sole: così i bordi
+  // delle ombre non "nuotano" mentre si cammina, e in altura la zona in ombra resta centrata su chi gioca.
+  const ombraX = new THREE.Vector3(DIREZIONE_SOLE.z, 0, -DIREZIONE_SOLE.x).normalize();
+  const ombraY = new THREE.Vector3().crossVectors(DIREZIONE_SOLE, ombraX);
+  const centroOmbra = new THREE.Vector3();
+  const puntoOmbra = 96 / q.latoOmbre;
 
   // --- esplorazione: in che zona si è, quali luoghi si sono trovati ---
   let zonaAttuale = 0;
@@ -508,12 +551,18 @@ async function avvia(): Promise<void> {
     pesiZone(giocatore.posizione.x, giocatore.posizione.z, pesi);
     nebbiaZona.setScalar(0);
     cieloZona.setScalar(0);
+    altaZona.setScalar(0);
+    bassaZona.setScalar(0);
+    soleZona.setScalar(0);
     let densita = 0;
     let luceZona = 0;
     for (let i = 0; i < ZONE.length; i++) {
       const w = pesi[i]!;
       nebbiaZona.r += NEBBIE[i]!.r * w; nebbiaZona.g += NEBBIE[i]!.g * w; nebbiaZona.b += NEBBIE[i]!.b * w;
       cieloZona.r += CIELI[i]!.r * w; cieloZona.g += CIELI[i]!.g * w; cieloZona.b += CIELI[i]!.b * w;
+      altaZona.r += ALTE[i]!.r * w; altaZona.g += ALTE[i]!.g * w; altaZona.b += ALTE[i]!.b * w;
+      bassaZona.r += BASSE[i]!.r * w; bassaZona.g += BASSE[i]!.g * w; bassaZona.b += BASSE[i]!.b * w;
+      soleZona.r += SOLI[i]!.r * w; soleZona.g += SOLI[i]!.g * w; soleZona.b += SOLI[i]!.b * w;
       densita += ZONE[i]!.densitaNebbia * w;
       luceZona += ZONE[i]!.luce * w;
     }
@@ -528,14 +577,26 @@ async function avvia(): Promise<void> {
     nebbia.density = densita;
     luceCielo.intensity = 2.1 * (0.3 + 0.7 * chiaro);
     sole.intensity = 3.1 * (0.25 + 0.75 * chiaro);
-    sole.color.setRGB(1, 0.945, 0.86).multiply(umoreVero.tinta);
+    // Ogni terra ha la sua luce: quella che scende dal cielo, quella che rimbalza dal suolo, quella del sole.
+    luceCielo.color.copy(altaZona);
+    luceCielo.groundColor.copy(bassaZona);
+    sole.color.copy(soleZona).multiply(umoreVero.tinta);
+    // L'erba non usa le luci vere: le si passa il colore della luce di qui rispetto a quello della Radura.
+    atmosfera.ambiente.value.setRGB(
+      (altaZona.r * 0.67 + soleZona.r * 0.61) / (ALTE[0]!.r * 0.67 + SOLI[0]!.r * 0.61),
+      (altaZona.g * 0.67 + soleZona.g * 0.61) / (ALTE[0]!.g * 0.67 + SOLI[0]!.g * 0.61),
+      (altaZona.b * 0.67 + soleZona.b * 0.61) / (ALTE[0]!.b * 0.67 + SOLI[0]!.b * 0.61),
+    );
 
     // Il sole segue chi gioca, così le ombre restano nitide dove serve.
-    const passoOmbra = 96 / 2048;
-    const sx = Math.round(giocatore.posizione.x / passoOmbra) * passoOmbra;
-    const sz = Math.round(giocatore.posizione.z / passoOmbra) * passoOmbra;
-    sole.target.position.set(sx, 0, sz);
-    sole.position.set(sx, 0, sz).addScaledVector(DIREZIONE_SOLE, 110);
+    const dove = giocatore.posizione;
+    centroOmbra
+      .copy(ombraX)
+      .multiplyScalar(Math.round(dove.dot(ombraX) / puntoOmbra) * puntoOmbra)
+      .addScaledVector(ombraY, Math.round(dove.dot(ombraY) / puntoOmbra) * puntoOmbra)
+      .addScaledVector(DIREZIONE_SOLE, dove.dot(DIREZIONE_SOLE));
+    sole.target.position.copy(centroOmbra);
+    sole.position.copy(centroOmbra).addScaledVector(DIREZIONE_SOLE, 110);
 
     prato.aggiorna(camera.position);
 
