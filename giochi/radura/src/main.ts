@@ -11,11 +11,14 @@ import { Lampi } from './effetti/lampi.js';
 import { massimoPunti, Particelle, scalaPunti } from './effetti/particelle.js';
 import { Pezzi } from './fisica/pezzi.js';
 import { Giocatore } from './giocatore.js';
-import type { Effetto, Gioco } from './gioco.js';
+import type { Effetto, Gioco, Incantesimo } from './gioco.js';
 import { INCANTESIMI } from './incantesimi/elenco.js';
 import { Interfaccia } from './interfaccia.js';
 import { creaDaRicetta, leggiRicette, salvaRicette, type Ricetta } from './incantesimi/officina.js';
 import { OfficinaUi } from './officinaUi.js';
+import { leggiTrovati, PERDUTI, salvaTrovati } from './incantesimi/perduti.js';
+import { Mete, type Fatti } from './mete.js';
+import { Sigilli } from './mondo/sigilli.js';
 import { creaBosco } from './mondo/alberi.js';
 import { AlberiMagici } from './mondo/alberiMagici.js';
 import { atmosfera } from './mondo/atmosfera.js';
@@ -44,7 +47,10 @@ const PASSO_FISICA = 1 / 60;
 async function avvia(): Promise<void> {
   const q = scegliQualita();
   let ricette: Ricetta[] = leggiRicette();
-  let magie = [...INCANTESIMI, ...ricette.map(creaDaRicetta)];
+  // Nella barra: gli incantesimi di sempre, poi quelli perduti trovati nel mondo, poi quelli inventati.
+  const trovati = leggiTrovati();
+  const componi = (): Incantesimo[] => [...INCANTESIMI, ...trovati.map((t) => PERDUTI[t]!), ...ricette.map(creaDaRicetta)];
+  let magie = componi();
   const ui = new Interfaccia(magie, q.telefono);
   const officina = new OfficinaUi();
   await RAPIER.init();
@@ -235,10 +241,11 @@ async function avvia(): Promise<void> {
   officina.onCambio = (nuove, daUsare) => {
     ricette = nuove.map((r) => ({ ...r, effetti: [...r.effetti] }));
     salvaRicette(ricette);
-    magie = [...INCANTESIMI, ...ricette.map(creaDaRicetta)];
+    magie = componi();
+    if (daUsare >= 0) fatti.inventati++;
     attese = magie.map(() => 0);
     ui.impostaMagie(magie);
-    scegli(daUsare >= 0 ? INCANTESIMI.length + daUsare : Math.min(scelto, magie.length - 1));
+    scegli(daUsare >= 0 ? INCANTESIMI.length + trovati.length + daUsare : Math.min(scelto, magie.length - 1));
   };
   officina.onChiudi = () => {
     comandi.attivi = true;
@@ -270,10 +277,16 @@ async function avvia(): Promise<void> {
     magia.lancia(g, { origine: origine.clone(), bersaglio: bersaglio.clone(), direzione: direzione.clone(), aTerra });
     attese[indice] = magia.ricarica;
     bastone.colpo();
+    fatti.lanci[magia.nome] = (fatti.lanci[magia.nome] ?? 0) + 1;
+    if (magia.nome === 'Gelo' && campo.celleAccese + pezzi.inFiamme > 0) fatti.spenti++;
+    ultimoLancio = atmosfera.tempo.value;
   };
 
   const ricostruisci = (): void => {
     pezzi.ricostruisci();
+    // Il pulsante non deve valere come una riparazione fatta a mano: si riparte da capo con i conti.
+    demolizione.clear();
+    contoAlResoconto = -1;
     campo.azzera();
     alberi.azzera();
     suoni.ricostruzione();
@@ -343,6 +356,8 @@ async function avvia(): Promise<void> {
     ui.annuncia('Trascina per guardarti intorno', 'Tieni premuto il mouse e muovilo · un clic lancia · F per tenere premuto');
 
   ui.onEntra = () => {
+    // Subito il nome e la descrizione dell'incantesimo scelto: è la prima cosa da sapere.
+    scegli(scelto);
     suoni.avvia();
     comandi.attivi = true;
     ui.mostraIngresso(false);
@@ -377,6 +392,84 @@ async function avvia(): Promise<void> {
   const centroOmbra = new THREE.Vector3();
   const puntoOmbra = 96 / q.latoOmbre;
 
+  // --- le mete e ciò che chi gioca ha fatto finora ---
+  const fatti: Fatti = { lanci: {}, spenti: 0, inventati: 0, luoghi: 0, terre: 1, perduti: trovati.length };
+  const mete = new Mete(q.telefono);
+  ui.scriviMeta(mete.attuale());
+  const terreViste = new Set<number>([0]);
+  const sigilli = new Sigilli(scena, scintille);
+  let memoriaFunziona = true;
+  try {
+    localStorage.setItem('radura-prova', '1');
+    localStorage.removeItem('radura-prova');
+  } catch {
+    memoriaFunziona = false;
+  }
+  ui.avvisaMemoria(memoriaFunziona);
+
+  // --- quanto è stato demolito (o rimesso a posto) il luogo in cui ci si trova ---
+  const rasi = new Set<string>();
+  try {
+    for (const chiave of JSON.parse(localStorage.getItem('radura-rasi') ?? '[]') as string[]) rasi.add(chiave);
+  } catch {
+    // Pazienza.
+  }
+  /** Per ogni luogo: la quota più alta di demolizione già annunciata (0, 0.5 oppure 0.9). */
+  const demolizione = new Map<string, number>();
+  let luogoQui: Luogo | null = null;
+  let quotaQui = 0;
+  let ultimoLancio = -100;
+  let contoAlResoconto = -1;
+  const misuraDemolizione = (): void => {
+    const p = giocatore.posizione;
+    luogoQui = null;
+    let vicino = Infinity;
+    for (const l of luoghiInVista) {
+      const d = Math.hypot(l.x - p.x, l.z - p.z) - l.raggio;
+      if (d < 45 && d < vicino && costruiti.get(l.chiave)) {
+        vicino = d;
+        luogoQui = l;
+      }
+    }
+    if (!luogoQui) {
+      contoAlResoconto = -1;
+      return;
+    }
+    const qui: Luogo = luogoQui;
+    const gruppo = costruiti.get(qui.chiave)!;
+    const fuori = pezzi.fuoriPosto(gruppo);
+    quotaQui = fuori / (gruppo.a - gruppo.da);
+    if (contoAlResoconto < 0) contoAlResoconto = fuori;
+    // Due secondi e mezzo dopo l'ultimo lancio, quando la polvere si è posata: quanti pezzi ha spostato.
+    if (atmosfera.tempo.value - ultimoLancio > 2.5 && pezzi.svegli < 30) {
+      const delta = fuori - contoAlResoconto;
+      if (delta >= 8) ui.colpo(`+${formato.format(delta)} pezzi`, '#ffd24a');
+      else if (delta <= -8) ui.colpo(`↺ ${formato.format(-delta)} tornati a posto`, '#8dff9a');
+      if (Math.abs(delta) >= 8) contoAlResoconto = fuori;
+    }
+    const gia = demolizione.get(qui.chiave) ?? 0;
+    const percento = Math.round(quotaQui * 100);
+    if (quotaQui >= 0.9 && gia < 0.9) {
+      demolizione.set(qui.chiave, 0.9);
+      ui.annuncia('In macerie', `${qui.nome} · ${percento}%`);
+      suoni.tesoro();
+      rasi.add(qui.chiave);
+      try {
+        localStorage.setItem('radura-rasi', JSON.stringify([...rasi].slice(-300)));
+      } catch {
+        // Pazienza.
+      }
+    } else if (quotaQui >= 0.5 && gia < 0.5) {
+      demolizione.set(qui.chiave, 0.5);
+      ui.annuncia('Metà in macerie', `${qui.nome} · ${percento}%`);
+      suoni.scoperta();
+    } else if (quotaQui < 0.02 && gia >= 0.5) {
+      demolizione.delete(qui.chiave);
+      ui.annuncia('Di nuovo in piedi', qui.nome);
+      suoni.fioritura();
+    }
+  };
+
   // --- esplorazione: in che zona si è, quali luoghi si sono trovati ---
   let zonaAttuale = 0;
   const scoperti = new Set<string>();
@@ -391,19 +484,24 @@ async function avvia(): Promise<void> {
     for (let i = 1; i < ZONE.length; i++) if (pesi[i]! > pesi[zona]!) zona = i;
     if (zona !== zonaAttuale && pesi[zona]! > 0.6) {
       zonaAttuale = zona;
+      terreViste.add(zona);
       ui.annuncia(ZONE[zona]!.nome, 'Sei entrato in una nuova zona');
+      suoni.scoperta();
     }
     for (const l of luoghiInVista) {
       if (scoperti.has(l.chiave) || Math.hypot(p.x - l.x, p.z - l.z) > l.raggio + 14) continue;
       scoperti.add(l.chiave);
-      if (l.tipo !== 'villaggio') ui.annuncia(l.nome, `Luogo scoperto · sono ${scoperti.size}`);
+      if (l.tipo !== 'villaggio') {
+        ui.annuncia(l.nome, `Luogo scoperto · sono ${scoperti.size}`);
+        suoni.scoperta();
+      }
       try {
         localStorage.setItem('radura-scoperti', JSON.stringify([...scoperti]));
       } catch {
         // Pazienza.
       }
     }
-    ui.disegnaMappa(p.x, p.z, giocatore.imbardata, luoghiInVista, scoperti);
+    ui.disegnaMappa(p.x, p.z, giocatore.imbardata, luoghiInVista, scoperti, rasi);
   };
 
   /** Quel che vola nell'aria di ogni zona: neve, faville, lucciole, sabbia. */
@@ -534,12 +632,34 @@ async function avvia(): Promise<void> {
       campo.segui(giocatore.posizione.x, giocatore.posizione.z);
       curaLuoghi(giocatore.posizione.x, giocatore.posizione.z);
       esplora();
+      misuraDemolizione();
     }
     polvereDelPosto(dt);
     luceFuoco.position.lerp(metaLuce, Math.min(1, dt * 4));
     const ardore = Math.min(1, accese / 25);
     luceFuoco.intensity += (ardore * (11 + Math.random() * 5) - luceFuoco.intensity) * Math.min(1, dt * 10);
     suoni.volumeFuoco((accese + pezzi.inFiamme * 2) / 300);
+    // Il rombo dei crolli: tanto più forte quanti più metri al secondo stanno cadendo i pezzi, con qualche tonfo sopra.
+    const ritmo = pezzi.caduta / Math.max(dt, 1 / 120);
+    suoni.volumeCrollo(ritmo / 2500);
+    if (ritmo > 150 && Math.random() < dt * 14) suoni.tonfo(Math.min(1, ritmo / 1500));
+
+    // Gli incantesimi perduti: entrare nella colonna di luce di un luogo fa proprio il suo.
+    const preso = sigilli.aggiorna(dt, luoghiInVista, (l) => l.tipo in PERDUTI && !trovati.includes(l.tipo), giocatore.posizione);
+    if (preso) {
+      trovati.push(preso.tipo);
+      salvaTrovati(trovati);
+      const personali = magie.length - INCANTESIMI.length - (trovati.length - 1);
+      magie = componi();
+      // Le attese degli incantesimi inventati scalano di un posto: si riparte da zero per tutti, è più semplice.
+      attese = magie.map(() => 0);
+      ui.impostaMagie(magie);
+      scegli(magie.length - personali - 1);
+      ui.annuncia(PERDUTI[preso.tipo]!.nome, `Incantesimo perduto trovato · ${trovati.length} di ${Object.keys(PERDUTI).length}`, true);
+      suoni.tesoro();
+      lampi.lampo(giocatore.posizione, 0xffd86a, 40, 1.2);
+    }
+    ui.pronto(attese[scelto]! <= 0);
 
     // Umore del cielo: gli incantesimi grossi lo oscurano e lo tingono.
     const k = Math.min(1, dt * 5);
@@ -604,10 +724,21 @@ async function avvia(): Promise<void> {
     if (attesaStato <= 0) {
       attesaStato = 0.25;
       ui.scriviStato(
-        `${ZONE[zonaAttuale]!.nome} · luoghi scoperti ${scoperti.size}` +
+        (luogoQui && quotaQui >= 0.01
+          ? `${(luogoQui as Luogo).nome} · in macerie al ${Math.round(quotaQui * 100)}%`
+          : `${ZONE[zonaAttuale]!.nome} · luoghi scoperti ${scoperti.size}`) +
           (pezzi.svegli > 0 ? ` · ${formato.format(pezzi.svegli)} pezzi in movimento` : ''),
       );
       ui.ricariche(attese.map((a, i) => a / magie[i]!.ricarica));
+      fatti.luoghi = scoperti.size;
+      fatti.terre = terreViste.size;
+      fatti.perduti = trovati.length;
+      const fatta = mete.controlla(fatti);
+      if (fatta) {
+        ui.annuncia('Fatto!', fatta);
+        suoni.scoperta();
+        ui.scriviMeta(mete.attuale());
+      }
     }
 
   };
@@ -615,6 +746,8 @@ async function avvia(): Promise<void> {
   // Maniglia per le prove automatiche: lanciare incantesimi senza mouse, fermare il tempo o mandarlo avanti.
   const prova = {
     g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti,
+    luoghi: () => luoghiInVista,
+    magie: () => magie.map((m) => m.nome),
     fermo: false,
     /** Sposta chi gioca in un punto del mondo, girato in una direzione. */
     vai(x: number, z: number, imbardata = 0, beccheggio = 0) {
@@ -738,7 +871,7 @@ async function avvia(): Promise<void> {
     regola((adesso - prima) / 1000, lavoro);
   };
   renderer.setAnimationLoop(fotogramma);
-  ui.pronto();
+  ui.caricato();
 }
 
 avvia().catch((errore: unknown) => {

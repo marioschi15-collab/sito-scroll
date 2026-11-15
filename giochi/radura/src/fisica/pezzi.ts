@@ -74,6 +74,8 @@ export class Pezzi {
   private attesa = 0;
   private fermo = true;
   svegli = 0;
+  /** Di quanti metri, sommati, sono scesi i pezzi nell'ultimo fotogramma: è ciò che fa rombare i crolli. */
+  caduta = 0;
 
   private readonly m = new THREE.Matrix4();
   private readonly p = new THREE.Vector3();
@@ -291,6 +293,9 @@ export class Pezzi {
   /** Copia sullo schermo la posizione dei pezzi che si stanno muovendo. */
   sincronizza(): void {
     let svegli = 0;
+    let caduta = 0;
+    // Mentre un rammendo riporta i pezzi a posto (scendono lungo un arco) non si conta: non è un crollo.
+    const conta = this.rammendi.length === 0;
     for (const g of this.vivi) for (let i = g.da; i < g.fin; i++) {
       const corpo = this.corpi[i]!;
       if (corpo.isSleeping()) continue;
@@ -301,8 +306,11 @@ export class Pezzi {
         corpo.sleep();
         continue;
       }
+      const y0 = this.pos[i * 3 + 1]!;
+      if (conta && t.y < y0) caduta += y0 - t.y;
       this.disegna(i, t.x, t.y, t.z, corpo.rotation());
     }
+    this.caduta = caduta;
     if (svegli > 0 || !this.fermo) {
       // Si manda alla scheda grafica solo la parte usata dell'elenco, non tutti i ventimila posti.
       this.mesh.instanceMatrix.clearUpdateRanges();
@@ -645,6 +653,20 @@ export class Pezzi {
     this.fermo = false;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceColor!.needsUpdate = true;
+  }
+
+  /** Quanti pezzi di un luogo non sono più al loro posto (spostati di oltre mezzo metro, o consumati dal fuoco). */
+  fuoriPosto(g: Gruppo): number {
+    let n = 0;
+    for (let i = g.da; i < g.a; i++) {
+      const b = this.mattoni[i];
+      if (!b) continue;
+      const dx = this.pos[i * 3]! - b.x;
+      const dy = this.pos[i * 3 + 1]! - b.y;
+      const dz = this.pos[i * 3 + 2]! - b.z;
+      if (dx * dx + dy * dy + dz * dz > 0.25 || this.scala[i] !== 1) n++;
+    }
+    return n;
   }
 
   /** Vero se il pezzo si sta ancora muovendo (serve alle prove). */

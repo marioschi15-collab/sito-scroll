@@ -4,6 +4,7 @@ export class Suoni {
   private uscita: GainNode | null = null;
   private rumore: AudioBuffer | null = null;
   private fuocoGuadagno: GainNode | null = null;
+  private crolloGuadagno: GainNode | null = null;
 
   /** Va chiamato dopo un tocco o un clic: i browser non fanno partire l'audio prima. */
   avvia(): void {
@@ -34,6 +35,17 @@ export class Suoni {
       this.fuocoGuadagno.gain.value = 0;
       sorgente.connect(filtro).connect(this.fuocoGuadagno).connect(this.uscita);
       sorgente.start();
+      // Il rombo dei crolli: lo stesso rumore, ma cupo. Sale mentre i pezzi cadono e tace quando si fermano.
+      const rombo = ctx.createBufferSource();
+      rombo.buffer = buf;
+      rombo.loop = true;
+      const cupo = ctx.createBiquadFilter();
+      cupo.type = 'lowpass';
+      cupo.frequency.value = 140;
+      this.crolloGuadagno = ctx.createGain();
+      this.crolloGuadagno.gain.value = 0;
+      rombo.connect(cupo).connect(this.crolloGuadagno).connect(this.uscita);
+      rombo.start(0, 0.7);
     } catch {
       this.ctx = null;
     }
@@ -47,6 +59,27 @@ export class Suoni {
   volumeFuoco(quanto: number): void {
     if (!this.ctx || !this.fuocoGuadagno) return;
     this.fuocoGuadagno.gain.setTargetAtTime(Math.min(0.35, quanto), this.ctx.currentTime, 0.3);
+  }
+
+  volumeCrollo(quanto: number): void {
+    if (!this.ctx || !this.crolloGuadagno) return;
+    this.crolloGuadagno.gain.setTargetAtTime(Math.min(0.5, quanto), this.ctx.currentTime, 0.12);
+  }
+
+  /** Un pezzo che batte a terra. */
+  tonfo(forza: number): void {
+    this.nota(0.18, 90 + Math.random() * 40, 40, 0.25 * forza);
+    this.fruscio(0.12, 600, 120, 0.2 * forza, 'lowpass');
+  }
+
+  /** Un luogo scoperto, una meta raggiunta. */
+  scoperta(): void {
+    [392, 523, 659, 784].forEach((hz, i) => this.nota(0.6, hz, hz, 0.1, 'sine', i * 0.08));
+  }
+
+  /** Un incantesimo trovato: più solenne. */
+  tesoro(): void {
+    [262, 392, 523, 659, 784, 1047].forEach((hz, i) => this.nota(1.1, hz, hz, 0.12, 'triangle', i * 0.11));
   }
 
   private fruscio(durata: number, daHz: number, aHz: number, volume: number, tipo: BiquadFilterType = 'bandpass'): void {

@@ -29,6 +29,11 @@
       #annuncio { left: 50%; top: 17%; transform: translateX(-50%); text-align: center; opacity: 0; transition: opacity .6s; text-shadow: 0 2px 14px rgba(0,0,0,.75); width: min(92vw, 560px); }
       #annuncio b { display: block; font: italic 600 clamp(30px, 6vw, 46px)/1.1 Georgia, 'Times New Roman', serif; }
       #annuncio span { display: block; margin-top: 6px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
+      /* La meta del momento, sotto la mappa; il conto dei pezzi, sotto il mirino. */
+      #meta { left: 14px; top: 150px; max-width: min(62vw, 340px); font: 600 13.5px/1.35 system-ui, sans-serif; color: var(--oro); text-shadow: 0 1px 6px rgba(0,0,0,.85); }
+      #colpo { left: 50%; top: calc(50% + 30px); transform: translateX(-50%); font: 700 17px system-ui, sans-serif; text-shadow: 0 1px 8px rgba(0,0,0,.8); opacity: 0; transition: opacity .5s; white-space: nowrap; }
+      #mirino { transition: opacity .15s; }
+      .magia.raro { border-color: var(--oro); background: rgba(233,196,106,.14); }
       #stato { left: 14px; top: 12px; font-size: 12px; opacity: .8; text-shadow: 0 1px 4px rgba(0,0,0,.7); font-variant-numeric: tabular-nums; }
       #ricostruisci { position: fixed; z-index: 3; right: 12px; top: 10px; padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(14,16,22,.5); color: var(--carta); font: 600 13px system-ui, sans-serif; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
       #casa { position: fixed; z-index: 3; right: 12px; top: 52px; padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(14,16,22,.5); color: var(--carta); font: 600 13px system-ui, sans-serif; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
@@ -67,6 +72,7 @@
       /* Salva e Chiudi restano sempre in vista in fondo al foglio, insieme agli avvisi. */
       .piede { position: sticky; bottom: -14px; margin: 12px -18px -14px; padding: 2px 18px 14px; background: #171b24; border-top: 1px solid rgba(255,255,255,.1); }
       body.dita #mappa { width: 80px; height: 80px; }
+      body.dita #meta { top: 124px; font-size: 12.5px; }
       body.dita #stato { max-width: calc(100vw - 150px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       body.dita #annuncio { top: 21%; }
       body.dita .magia { width: 40px; height: 40px; font-size: 19px; }
@@ -75,7 +81,7 @@
       body.dita #nome b { font-size: 21px; }
       body.dita #nome span { font-size: 12px; }
       /* In verticale il nome dell'incantesimo scende sotto i due pulsanti in alto a destra, e l'annuncio gli fa posto. */
-      @media (orientation: portrait) { body.dita #nome { top: 98px; left: 50%; width: min(92vw, 360px); } body.dita #annuncio { top: max(24%, 180px); } }
+      @media (orientation: portrait) { body.dita #nome { top: 98px; left: 50%; width: min(92vw, 360px); } body.dita #meta { top: 172px; max-width: 86vw; } body.dita #annuncio { top: max(30%, 232px); } }
       #inizio { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: radial-gradient(ellipse at center, rgba(10,14,20,.35), rgba(10,14,20,.8)); transition: opacity .4s; }
       #inizio.via { opacity: 0; pointer-events: none; }
       .scheda { max-width: 460px; text-align: center; }
@@ -95,6 +101,8 @@
     <div id="stato" class="hud"></div>
     <canvas id="mappa" class="hud" width="208" height="208"></canvas>
     <div id="annuncio" class="hud"><b></b><span></span></div>
+    <div id="meta" class="hud"></div>
+    <div id="colpo" class="hud"></div>
     <div id="nome" class="hud"><b></b><span></span></div>
     <div id="barra" class="hud"><div id="magie"></div></div>
     <button id="ricostruisci" type="button">↺ Ricostruisci</button>
@@ -147,6 +155,7 @@
         <p class="come" id="come"></p>
         <button id="entra" type="button" disabled>Sto preparando il mondo…</button>
         <p><button id="grafica" type="button"></button></p>
+        <p class="come" id="memoria"></p>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

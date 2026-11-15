@@ -124,8 +124,9 @@ export function salvaRicette(ricette: readonly Ricetta[]): void {
 
 // ---------------------------------------------------------------------------------------------------------------
 
-const FORZE = [0, 0.7, 1.1, 1.6];
-const RAGGI = [0, 4.2, 7, 10.5];
+// Il quarto livello non si può scegliere nell'officina né arrivare da un codice: è solo degli incantesimi perduti.
+const FORZE = [0, 0.7, 1.1, 1.6, 2.1];
+const RAGGI = [0, 4.2, 7, 10.5, 13.5];
 
 /** Quello che succede in un punto: i bagliori del colore scelto e, uno dopo l'altro, gli effetti della ricetta. */
 function impatto(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {

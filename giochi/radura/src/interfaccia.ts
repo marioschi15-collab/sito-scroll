@@ -76,6 +76,7 @@ export class Interfaccia {
       b.className = 'magia';
       b.title = `${m.nome}: ${m.cosaFa}`;
       b.setAttribute('aria-label', m.nome);
+      if (m.raro) b.classList.add('raro');
       b.style.setProperty('--tinta', `#${m.colore.toString(16).padStart(6, '0')}`);
       b.innerHTML = `${m.simbolo}<i></i><small>${i < 10 ? (i + 1) % 10 : ''}</small>`;
       b.addEventListener('click', () => {
@@ -142,7 +143,9 @@ export class Interfaccia {
    * Ridisegna la mappa. Chi gioca sta sempre al centro e il nord è in alto; attorno si vedono le terre vicine
    * e i luoghi (pieni se già scoperti).
    */
-  disegnaMappa(x: number, z: number, imbardata: number, luoghi: readonly Luogo[], scoperti: ReadonlySet<string>): void {
+  disegnaMappa(
+    x: number, z: number, imbardata: number, luoghi: readonly Luogo[], scoperti: ReadonlySet<string>, rasi: ReadonlySet<string>,
+  ): void {
     const c = this.mappa.getContext('2d');
     if (!c) return;
     // Lo sfondo copre più del visibile: lo si ridipinge solo quando ci si è spostati di un bel po'.
@@ -160,7 +163,8 @@ export class Interfaccia {
       c.beginPath();
       c.arc(lato / 2 + (l.x - x) * scala, lato / 2 + (l.z - z) * scala, 5, 0, Math.PI * 2);
       if (scoperti.has(l.chiave)) {
-        c.fillStyle = '#fff';
+        // I luoghi rasi al suolo almeno una volta restano d'oro sulla mappa.
+        c.fillStyle = rasi.has(l.chiave) ? '#e9c46a' : '#fff';
         c.fill();
       } else {
         c.strokeStyle = 'rgba(255,255,255,.6)';
@@ -186,7 +190,11 @@ export class Interfaccia {
   }
 
   /** Una scritta grande in mezzo allo schermo, che svanisce da sola: una zona nuova, un luogo trovato. */
-  annuncia(titolo: string, sotto: string): void {
+  annuncia(titolo: string, sotto: string, importante = false): void {
+    // Un annuncio importante (un incantesimo trovato) non si lascia coprire da uno qualunque arrivato subito dopo.
+    const adesso = performance.now();
+    if (!importante && adesso < this.importanteFino) return;
+    if (importante) this.importanteFino = adesso + 3000;
     this.annuncio.querySelector('b')!.textContent = titolo;
     this.annuncio.querySelector('span')!.textContent = sotto;
     this.annuncio.style.opacity = '1';
@@ -194,7 +202,7 @@ export class Interfaccia {
     this.spegniAnnuncio = window.setTimeout(() => (this.annuncio.style.opacity = '0'), 3500);
   }
 
-  pronto(): void {
+  caricato(): void {
     this.entra.disabled = false;
     this.entra.textContent = 'Entra nella radura';
   }
@@ -219,6 +227,38 @@ export class Interfaccia {
   /** Mostra quanto manca prima di poter rilanciare ogni incantesimo (0 = pronto, 1 = appena lanciato). */
   ricariche(quote: readonly number[]): void {
     quote.forEach((q, i) => this.veli[i] && (this.veli[i].style.transform = `scaleY(${q.toFixed(3)})`));
+  }
+
+  private eraPronto = true;
+
+  /** Fa vedere dove guardano gli occhi (mirino) e dove sta il pollice (✦) se l'incantesimo scelto è pronto o si sta ricaricando. */
+  pronto(siPuoLanciare: boolean): void {
+    if (siPuoLanciare === this.eraPronto) return;
+    this.eraPronto = siPuoLanciare;
+    this.pulsanteLancia.style.opacity = siPuoLanciare ? '1' : '0.45';
+    el('mirino').style.opacity = siPuoLanciare ? '1' : '0.35';
+  }
+
+  scriviMeta(testo: string): void {
+    el('meta').textContent = `➤ ${testo}`;
+  }
+
+  private spegniColpo = 0;
+  private importanteFino = 0;
+
+  /** Un numero che compare sotto il mirino e svanisce: quanti pezzi ha spostato (o rimesso a posto) l'ultimo lancio. */
+  colpo(testo: string, colore: string): void {
+    const c = el('colpo');
+    c.textContent = testo;
+    c.style.color = colore;
+    c.style.opacity = '1';
+    window.clearTimeout(this.spegniColpo);
+    this.spegniColpo = window.setTimeout(() => (c.style.opacity = '0'), 2200);
+  }
+
+  /** Dice, nella schermata d'ingresso, se su questo dispositivo il gioco non riesce a ricordare i progressi. */
+  avvisaMemoria(funziona: boolean): void {
+    el('memoria').textContent = funziona ? '' : 'Su questo dispositivo il gioco non riesce a ricordare i progressi tra una visita e l’altra.';
   }
 
   scriviStato(testo: string): void {

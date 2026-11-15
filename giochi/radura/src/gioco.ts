@@ -55,5 +55,7 @@ export interface Incantesimo {
   readonly colore: number;
   /** Secondi di attesa tra un lancio e il successivo. */
   readonly ricarica: number;
+  /** Vero per gli incantesimi perduti, trovati nel mondo: nella barra hanno il bordo d'oro. */
+  readonly raro?: boolean;
   lancia(g: Gioco, l: Lancio): void;
 }

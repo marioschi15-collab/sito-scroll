@@ -22,6 +22,18 @@ arrivati; il pulsante "Al villaggio" riporta alla partenza.
 - **Telefono**: pollice sinistro per camminare, destro per guardarsi intorno; si tocca un incantesimo in basso
   e si tiene premuto ✦ per lanciarlo.
 
+## Che cosa c'è da fare
+
+- **Una meta sempre sullo schermo** (sotto la mappa): le prime insegnano il gioco in un paio di minuti (bruciare,
+  spegnere, afferrare, riparare, inventare, esplorare), poi diventano traguardi di esplorazione senza fine.
+- **Incantesimi perduti**: in ogni tipo di luogo ce n'è uno nascosto, segnalato da una colonna di luce dorata che si
+  vede da lontano. Chi ci entra lo tiene per sempre (bordo d'oro nella barra). Sono tredici, e alcuni sono più forti
+  di quanto l'officina permetta.
+- **Demolizione**: accanto al nome del luogo si legge quanto è «in macerie»; dopo ogni lancio compare quanti pezzi
+  ha spostato; a metà e al 90% arriva un annuncio, e i luoghi rasi al suolo restano d'oro sulla mappa. Riparare con
+  il Rammendo un luogo mezzo distrutto vale quanto abbatterlo.
+- I crolli rombano, le scoperte suonano.
+
 Con il pulsante **＋** in fondo alla barra (tasto `C` al computer) si apre l'**officina**: lì ognuno inventa i suoi
 incantesimi scegliendo come partono (palla, tocco, dal cielo, pioggia, onda), che cosa fanno (fino a tre effetti tra
 undici), potenza, ampiezza, nome, simbolo e colore. Ogni incantesimo inventato ha un codice (`RAD1…`) da passare a un
@@ -39,7 +51,7 @@ fuoco diventa di fiamme, la crescita fa nascere l'erba anche nel deserto.
 pnpm install
 pnpm dev          # il gioco in sviluppo, si aggiorna a ogni modifica
 pnpm typecheck    # controllo dei tipi
-pnpm test         # prove senza grafica: le costruzioni stanno in piedi da sole, e una casa rammendata regge
+pnpm test         # prove senza grafica: costruzioni in piedi da sole, rammendo, gelo, muri, cambio di luogo
 pnpm build        # crea dist/index.html: un solo file, si apre con un doppio clic
 ```
 
@@ -56,6 +68,7 @@ pnpm build        # crea dist/index.html: un solo file, si apre con un doppio cl
 - `src/base/qualita.ts`: quanto dettaglio mostrare. Si parte alti anche sul telefono; se i fotogrammi scendono, il gioco
   alleggerisce da solo un gradino alla volta (vedi `alleggerimenti` in `main.ts`).
 - `src/effetti/`: scintille, fumo, anelli, saette, cerchi magici, bagliori.
+- `src/mete.ts` (le mete), `src/incantesimi/perduti.ts` e `src/mondo/sigilli.ts` (gli incantesimi perduti e le loro colonne di luce).
 - `src/giocatore.ts`, `src/bastone.ts`, `src/comandi.ts`, `src/interfaccia.ts`, `src/suoni.ts`: chi gioca e ciò che vede e sente.
 - `prove/`: le prove automatiche.
 
