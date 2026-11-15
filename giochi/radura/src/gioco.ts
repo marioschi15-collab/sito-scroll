@@ -26,6 +26,10 @@ export interface Gioco {
   /** Chiede di oscurare e tingere il cielo per questo fotogramma (vince la richiesta più forte). */
   umore(buio: number, r: number, g: number, b: number): void;
   aggiungi(effetto: Effetto): void;
+  /** Vero finché chi gioca tiene premuto il lancio. */
+  premuto(): boolean;
+  /** Un incantesimo "a presa" lo mette a vero mentre è in corso: finché lo è, non se ne lanciano altri. */
+  impegnato: boolean;
 }
 
 /** Qualcosa che dura nel tempo (una palla di fuoco in volo, un tornado...). Restituisce false quando ha finito. */

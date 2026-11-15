@@ -29,6 +29,8 @@ function materialePunti(luminoso: boolean, scala: { value: number }): THREE.Shad
         vColore = colore;
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         gl_PointSize = min(dim * uScala / max(-mv.z, 0.1), 600.0);
+        // Da vicinissimo i puntini grandi si attenuano: altrimenti una fiammata accanto a chi gioca lo acceca.
+        vColore.a *= mix(1.0, smoothstep(0.8, 7.0, -mv.z), smoothstep(0.4, 1.2, dim));
         gl_Position = projectionMatrix * mv;
       }
     `,

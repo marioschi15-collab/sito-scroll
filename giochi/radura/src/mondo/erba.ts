@@ -16,17 +16,18 @@ export interface Prato {
 
 const COMUNE_VERTICE = /* glsl */ `
   uniform vec3 uCam; uniform float uLato; uniform float uTempo; uniform float uLatoCampo;
-  uniform sampler2D uAltezze; uniform sampler2D uStato;
+  uniform sampler2D uAltezze; uniform sampler2D uStato; uniform sampler2D uBiomi;
   ${UV_ALTEZZE_GLSL}
 `;
 
-export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture): Prato {
+export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, biomi: THREE.DataTexture): Prato {
   const uniformi = {
     uCam: { value: new THREE.Vector3() },
     uLato: { value: q.latoErba },
     uTempo: atmosfera.tempo,
     uLatoCampo: { value: campo.lato },
     uAltezze: { value: altezze },
+    uBiomi: { value: biomi },
     uStato: { value: campo.immagine },
     uNebbiaColore: atmosfera.nebbiaColore,
     uNebbiaDensita: atmosfera.nebbiaDensita,
@@ -70,8 +71,12 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture):
         float bordo = 1.0 - smoothstep(uLato * 0.36, uLato * 0.5, dist);
         float terra = texture2D(uAltezze, uvAltezze(w)).r;
         vec4 stato = texture2D(uStato, w / uLatoCampo + 0.5);
+        vec4 bio = texture2D(uBiomi, uvAltezze(w));
+        // Dove c'è poca erba (sabbia, cenere) ne spunta solo qualche ciuffo; la magia della crescita la fa nascere ovunque.
+        float quanta = max(bio.r, stato.b);
+        float presente = step(aCaso.z * 0.98 + 0.01, quanta) * smoothstep(-0.5, -0.15, terra);
         float t = position.y;
-        float alto = aCaso.y * (1.0 + 1.4 * stato.b) * (1.0 - 0.82 * stato.r) * bordo;
+        float alto = aCaso.y * (1.0 + 1.4 * stato.b + 0.5 * bio.a) * (1.0 - 0.82 * stato.r) * bordo * presente;
         float ang = aCaso.x * 6.2832;
         vec2 lato = vec2(cos(ang), sin(ang));
         float larghezza = mix(0.075, 0.13, aCaso.z) * (1.0 + 0.5 * stato.b);
@@ -89,6 +94,10 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture):
         vec3 punta = mix(vec3(0.30, 0.62, 0.10), vec3(0.55, 0.72, 0.16), chiazza * aCaso.z);
         punta = mix(punta, vec3(0.22, 0.78, 0.16), stato.b * 0.7);
         vec3 c = mix(base, punta, t);
+        float naturale = 1.0 - stato.b;
+        c = mix(c, mix(vec3(0.42, 0.33, 0.12), vec3(0.8, 0.68, 0.3), t), bio.g * naturale);
+        c = mix(c, c * vec3(0.3, 0.5, 0.46), bio.a * naturale);
+        c = mix(c, vec3(0.88, 0.94, 1.0), bio.b * naturale * (0.35 + 0.6 * t));
         c = mix(c, vec3(0.02, 0.016, 0.012), stato.r * 0.96);
         c = mix(c, vec3(0.78, 0.92, 1.0), stato.g * (0.45 + 0.5 * t));
         c += vec3(1.6, 0.5, 0.06) * stato.a * (1.0 - t) * 1.2;
@@ -157,7 +166,9 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture):
         float terra = texture2D(uAltezze, uvAltezze(w)).r;
         vec4 stato = texture2D(uStato, w / uLatoCampo + 0.5);
         float aiuola = sin(w.x * 0.11 + 1.3) * sin(w.y * 0.13 + 0.7) + 0.45 * sin(w.x * 0.31 + w.y * 0.27);
-        float spontaneo = smoothstep(0.5, 0.85, aiuola) * step(aCaso.z, 0.3);
+        vec4 bio = texture2D(uBiomi, uvAltezze(w));
+        float prato = bio.r * (1.0 - bio.g) * (1.0 - bio.b) * (1.0 - bio.a);
+        float spontaneo = smoothstep(0.5, 0.85, aiuola) * step(aCaso.z, 0.3) * smoothstep(0.6, 0.9, prato) * smoothstep(-0.5, -0.15, terra);
         float magico = smoothstep(aCaso.w * 0.7, aCaso.w * 0.7 + 0.25, stato.b);
         float mostra = max(spontaneo, magico) * (1.0 - smoothstep(0.1, 0.5, stato.r)) * bordo;
         float raggio = mix(0.05, 0.09, aCaso.x) * mostra * (1.0 + 0.4 * stato.b);

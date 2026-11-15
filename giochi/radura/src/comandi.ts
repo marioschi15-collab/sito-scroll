@@ -99,7 +99,7 @@ export class Comandi {
     if (giu) this.tasti.add(e.code);
     else this.tasti.delete(e.code);
     if (giu && !e.repeat) {
-      if (e.code.startsWith('Digit')) this.onScelta(Number(e.code.slice(5)) - 1);
+      if (e.code.startsWith('Digit')) this.onScelta((Number(e.code.slice(5)) + 9) % 10);
       if (e.code === 'KeyQ') this.onScorri(-1);
       if (e.code === 'KeyE') this.onScorri(1);
       if (e.code === 'KeyR') this.onRicostruisci();

@@ -6,6 +6,7 @@ import * as THREE from 'three';
  */
 export const atmosfera = {
   nebbiaColore: { value: new THREE.Color(0xbcd7ea) },
+  cieloAlto: { value: new THREE.Color(0x2a6bdb) },
   nebbiaDensita: { value: 0.0075 },
   luce: { value: 1 },
   tinta: { value: new THREE.Color(1, 1, 1) },

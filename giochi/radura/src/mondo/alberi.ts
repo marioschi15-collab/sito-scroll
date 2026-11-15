@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { generatore, rumore } from '../base/matematica.js';
 import type { Campo } from './campo.js';
 import { altezza } from './terreno.js';
+import { DESERTO, GHIACCIO, lava, LUOGHI, PALUDE, pesiZone, PRATO, QUOTA_ACQUA, RAGGIO_GIOCO, VULCANO } from './zone.js';
 
 function colora(g: THREE.BufferGeometry, colore: number, variazione = 0): THREE.BufferGeometry {
   const c = new THREE.Color(colore);
@@ -58,46 +59,156 @@ export function geometriaQuercia(): THREE.BufferGeometry {
   return unisci(parti);
 }
 
+/** Un pino carico di neve. */
+function geometriaPinoInnevato(): THREE.BufferGeometry {
+  const parti = [colora(new THREE.CylinderGeometry(0.22, 0.34, 2.4, 6).translate(0, 1.2, 0), 0x4a3424)];
+  for (let i = 0; i < 3; i++) {
+    const cono = new THREE.ConeGeometry(2.3 - i * 0.55, 3.4 - i * 0.4, 7);
+    parti.push(colora(cono.translate(0, 3.4 + i * 2.1, 0), i === 0 ? 0x9fb8b4 : 0xe9f1f6, 0.25));
+  }
+  return unisci(parti);
+}
+
+/** Un cactus a candelabro. */
+function geometriaCactus(): THREE.BufferGeometry {
+  const verde = 0x4f8a45;
+  return unisci([
+    colora(new THREE.CylinderGeometry(0.34, 0.4, 3.6, 7).translate(0, 1.8, 0), verde, 0.3),
+    colora(new THREE.SphereGeometry(0.34, 7, 4).translate(0, 3.6, 0), verde),
+    colora(new THREE.CylinderGeometry(0.2, 0.2, 0.9, 6).rotateZ(Math.PI / 2).translate(0.6, 1.7, 0), verde),
+    colora(new THREE.CylinderGeometry(0.2, 0.22, 1.3, 6).translate(1.0, 2.3, 0), verde, 0.3),
+    colora(new THREE.CylinderGeometry(0.18, 0.18, 0.8, 6).rotateZ(Math.PI / 2).translate(-0.55, 2.3, 0), verde),
+    colora(new THREE.CylinderGeometry(0.18, 0.2, 1.0, 6).translate(-0.9, 2.8, 0), verde, 0.3),
+  ]);
+}
+
+/** Un masso: prende il colore del posto in cui sta. */
+function geometriaRoccia(): THREE.BufferGeometry {
+  return unisci([colora(new THREE.IcosahedronGeometry(1, 1).scale(1.5, 0.95, 1.2).translate(0, 0.5, 0), 0xb4b0aa, 0.35)]);
+}
+
+/** Un albero spoglio, con tre rami storti. */
+function geometriaAlberoMorto(): THREE.BufferGeometry {
+  const grigio = 0x5a4e44;
+  return unisci([
+    colora(new THREE.CylinderGeometry(0.13, 0.4, 5.2, 6).translate(0, 2.6, 0), grigio, 0.2),
+    colora(new THREE.CylinderGeometry(0.05, 0.13, 2.4, 5).translate(0, 1.2, 0).rotateZ(0.9).translate(0, 3.0, 0), grigio),
+    colora(new THREE.CylinderGeometry(0.05, 0.12, 2.0, 5).translate(0, 1.0, 0).rotateZ(-0.8).rotateY(1.2).translate(0, 3.8, 0), grigio),
+    colora(new THREE.CylinderGeometry(0.04, 0.1, 1.7, 5).translate(0, 0.85, 0).rotateX(0.9).translate(0, 4.3, 0), grigio),
+  ]);
+}
+
+/** Un fungo gigante dal cappello luminoso. */
+function geometriaFungo(): THREE.BufferGeometry {
+  return unisci([
+    colora(new THREE.CylinderGeometry(0.26, 0.4, 2.4, 7).translate(0, 1.2, 0), 0xd9d2bd, 0.2),
+    colora(new THREE.SphereGeometry(1.6, 9, 5, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.62, 1).translate(0, 2.3, 0), 0xffffff, 0.5),
+    colora(new THREE.CircleGeometry(1.6, 9).rotateX(Math.PI / 2).translate(0, 2.3, 0), 0x6a6a72),
+  ]);
+}
+
+/** Una guglia di roccia nera. */
+function geometriaGuglia(): THREE.BufferGeometry {
+  return unisci([
+    colora(new THREE.ConeGeometry(1.5, 8, 5).translate(0, 3.6, 0), 0x2c2628, 0.5),
+    colora(new THREE.ConeGeometry(0.8, 4, 5).translate(1.1, 1.8, 0.4), 0x241f21, 0.5),
+  ]);
+}
+
 export const materialeAlberi = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
 
 export interface Bosco {
   readonly oggetti: THREE.Object3D[];
-  /** Annerisce gli alberi dove il prato è bruciato e li fa rinverdire dove è rifiorito. */
+  /** Annerisce le piante dove il prato è bruciato e le fa tornare com'erano dove è rifiorito. */
   aggiorna(campo: Campo): void;
 }
 
+interface Pianta {
+  x: number;
+  z: number;
+  scala: number;
+  tinta: THREE.Color;
+}
+
+const BIANCO = new THREE.Color(1, 1, 1);
+const CARBONE = new THREE.Color(0.09, 0.07, 0.06);
+
+/** Tutta la vegetazione e le rocce del mondo: ogni zona ha le sue. */
 export function creaBosco(ombre: boolean): Bosco {
   const rnd = generatore(2024);
-  const posti: { x: number; z: number; pino: boolean; scala: number }[] = [];
-  let tentativi = 0;
-  while (posti.length < 320 && tentativi++ < 6000) {
+  const tipi = {
+    pino: [] as Pianta[], quercia: [] as Pianta[], pinoInnevato: [] as Pianta[], cactus: [] as Pianta[],
+    roccia: [] as Pianta[], alberoMorto: [] as Pianta[], fungo: [] as Pianta[], guglia: [] as Pianta[],
+  };
+  const pesi = new Float32Array(5);
+  const tinte = {
+    sabbia: new THREE.Color(0xd9b98a), ghiaccio: new THREE.Color(0xc4e2f4), lavica: new THREE.Color(0x4a3f3d),
+    viola: new THREE.Color(0xa56bff).multiplyScalar(1.25), acqua: new THREE.Color(0x4fe0c8).multiplyScalar(1.2),
+    ombra: new THREE.Color(0x6f8f78), bruciato: new THREE.Color(0x3a3230),
+  };
+  let totale = 0;
+  for (let tentativo = 0; tentativo < 26000 && totale < 2100; tentativo++) {
     const a = rnd() * Math.PI * 2;
-    const r = 52 + rnd() * rnd() * 220;
+    const r = Math.sqrt(rnd()) * (RAGGIO_GIOCO + 70);
     const x = Math.cos(a) * r;
     const z = Math.sin(a) * r;
-    if (rumore(x * 0.03 + 5, z * 0.03) < 0.42) continue;
-    posti.push({ x, z, pino: rumore(x * 0.02, z * 0.02 + 40) > 0.48, scala: 0.7 + rnd() * 0.8 });
+    if (LUOGHI.some((l) => Math.hypot(x - l.x, z - l.z) < l.raggio + 5)) continue;
+    pesiZone(x, z, pesi);
+    let zona = 0;
+    for (let k = 1; k < 5; k++) if (pesi[k]! > pesi[zona]!) zona = k;
+    const h = altezza(x, z);
+    const inAcqua = h < QUOTA_ACQUA + 0.15;
+    const bosco = rumore(x * 0.03 + 5, z * 0.03);
+    const dado = rnd();
+    const metti = (lista: Pianta[], scala: number, tinta = BIANCO): void => {
+      lista.push({ x, z, scala, tinta });
+      totale++;
+    };
+    if (zona === PRATO) {
+      if (inAcqua || bosco < 0.44 || dado > 0.75) continue;
+      metti(rumore(x * 0.02, z * 0.02 + 40) > 0.48 ? tipi.pino : tipi.quercia, 0.7 + rnd() * 0.8);
+    } else if (zona === DESERTO) {
+      if (inAcqua) continue;
+      if (dado < 0.1) metti(tipi.cactus, 0.7 + rnd() * 0.7);
+      else if (dado < 0.16) metti(tipi.roccia, 0.6 + rnd() * 1.6, tinte.sabbia);
+    } else if (zona === GHIACCIO) {
+      if (inAcqua) continue;
+      if (bosco > 0.42 && dado < 0.55) metti(tipi.pinoInnevato, 0.7 + rnd() * 0.9);
+      else if (dado > 0.94) metti(tipi.roccia, 0.8 + rnd() * 2, tinte.ghiaccio);
+    } else if (zona === PALUDE) {
+      if (dado < 0.24) metti(tipi.alberoMorto, 0.8 + rnd() * 0.9);
+      else if (inAcqua) continue;
+      else if (dado < 0.34 && bosco > 0.5) metti(tipi.fungo, 0.5 + rnd() * 1.1, rnd() < 0.5 ? tinte.viola : tinte.acqua);
+      else if (dado < 0.5 && bosco > 0.4) metti(tipi.quercia, 0.8 + rnd() * 0.7, tinte.ombra);
+    } else if (zona === VULCANO) {
+      if (inAcqua || lava(x, z, pesi[VULCANO]!) > 0.05) continue;
+      if (dado < 0.11) metti(tipi.guglia, 0.6 + rnd() * 1.3);
+      else if (dado < 0.19) metti(tipi.alberoMorto, 0.7 + rnd() * 0.6, tinte.bruciato);
+      else if (dado < 0.27) metti(tipi.roccia, 0.7 + rnd() * 1.8, tinte.lavica);
+    }
   }
-  const crea = (geometria: THREE.BufferGeometry, lista: typeof posti): THREE.InstancedMesh => {
-    const m = new THREE.InstancedMesh(geometria, materialeAlberi, lista.length);
+  const crea = (geometria: THREE.BufferGeometry, lista: Pianta[]) => {
+    const m = new THREE.InstancedMesh(geometria, materialeAlberi, Math.max(1, lista.length));
+    m.count = lista.length;
     const o = new THREE.Object3D();
     lista.forEach((p, i) => {
-      o.position.set(p.x, altezza(p.x, p.z) - 0.2, p.z);
-      o.rotation.y = rnd() * 6.28;
+      o.position.set(p.x, altezza(p.x, p.z) - 0.25, p.z);
+      o.rotation.set((rnd() - 0.5) * 0.12, rnd() * 6.28, (rnd() - 0.5) * 0.12);
       o.scale.setScalar(p.scala);
       o.updateMatrix();
       m.setMatrixAt(i, o.matrix);
-      m.setColorAt(i, BIANCO);
+      m.setColorAt(i, p.tinta);
     });
     m.castShadow = ombre;
-    m.instanceColor!.needsUpdate = true;
-    return m;
+    m.frustumCulled = false;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    return { mesh: m, lista, neri: new Uint8Array(lista.length) };
   };
-  const pini = posti.filter((p) => p.pino);
-  const querce = posti.filter((p) => !p.pino);
   const gruppi = [
-    { mesh: crea(geometriaPino(), pini), lista: pini, neri: new Uint8Array(pini.length) },
-    { mesh: crea(geometriaQuercia(), querce), lista: querce, neri: new Uint8Array(querce.length) },
+    crea(geometriaPino(), tipi.pino), crea(geometriaQuercia(), tipi.quercia),
+    crea(geometriaPinoInnevato(), tipi.pinoInnevato), crea(geometriaCactus(), tipi.cactus),
+    crea(geometriaRoccia(), tipi.roccia), crea(geometriaAlberoMorto(), tipi.alberoMorto),
+    crea(geometriaFungo(), tipi.fungo), crea(geometriaGuglia(), tipi.guglia),
   ];
   return {
     oggetti: gruppi.map((g) => g.mesh),
@@ -110,7 +221,7 @@ export function creaBosco(ombre: boolean): Bosco {
           const nero = campo.bruciato[c]! > 0.6 ? 1 : 0;
           if (nero !== g.neri[i]) {
             g.neri[i] = nero;
-            g.mesh.setColorAt(i, nero ? CARBONE : BIANCO);
+            g.mesh.setColorAt(i, nero ? CARBONE : p.tinta);
             cambiato = true;
           }
         });
@@ -119,6 +230,3 @@ export function creaBosco(ombre: boolean): Bosco {
     },
   };
 }
-
-const BIANCO = new THREE.Color(1, 1, 1);
-const CARBONE = new THREE.Color(0.09, 0.07, 0.06);

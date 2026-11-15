@@ -6,7 +6,7 @@ export class Lampi {
 
   constructor(scena: THREE.Scene, quante: number) {
     for (let i = 0; i < quante; i++) {
-      const luce = new THREE.PointLight(0xffffff, 0, 70, 1.2);
+      const luce = new THREE.PointLight(0xffffff, 0, 60, 1.7);
       scena.add(luce);
       this.luci.push({ luce, forza: 0, durata: 1, resta: 0 });
     }

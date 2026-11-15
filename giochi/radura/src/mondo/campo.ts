@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 
-const N = 128;
-const LATO = 192;
+const N = 256;
+const LATO = 512;
 const PASSO = LATO / N;
 const TIC = 0.12;
 
 /**
- * Lo stato del prato, a quadretti di un metro e mezzo: quanto è bruciato, gelato, rigoglioso, e dove c'è fuoco.
+ * Lo stato del prato, a quadretti di due metri: quanto è bruciato, gelato, rigoglioso, e dove c'è fuoco.
  * L'erba e il terreno lo leggono da un'immagine, così cambiano aspetto senza ricostruire nulla.
  */
 export class Campo {
@@ -98,6 +98,15 @@ export class Campo {
 
   spegni(x: number, z: number, raggio: number): void {
     this.cerchio(x, z, raggio, (i) => this.spegniCella(i));
+  }
+
+  /** Toglie bruciature, gelo e fiamme senza far crescere nulla: il prato torna com'era. */
+  risana(x: number, z: number, raggio: number): void {
+    this.cerchio(x, z, raggio, (i) => {
+      this.spegniCella(i);
+      this.bruciato[i] = 0;
+      this.gelo[i] = 0;
+    });
   }
 
   fiorisci(x: number, z: number, raggio: number, forza: number): void {

@@ -19,12 +19,14 @@ import { AlberiMagici } from './mondo/alberiMagici.js';
 import { atmosfera } from './mondo/atmosfera.js';
 import { Campo } from './mondo/campo.js';
 import { creaCielo, DIREZIONE_SOLE } from './mondo/cielo.js';
-import { costruisciVillaggio } from './mondo/costruzioni.js';
+import { costruisciMondo } from './mondo/costruzioni.js';
 import { creaPrato } from './mondo/erba.js';
 import { altezza, creaTerreno } from './mondo/terreno.js';
+import { LUOGHI, pesiZone, ZONE } from './mondo/zone.js';
 import { Suoni } from './suoni.js';
 
-const NEBBIA = new THREE.Color(0xbcd7ea);
+const NEBBIE = ZONE.map((z) => new THREE.Color(z.nebbia));
+const CIELI = ZONE.map((z) => new THREE.Color(z.cielo));
 const PASSO_FISICA = 1 / 60;
 
 async function avvia(): Promise<void> {
@@ -38,7 +40,7 @@ async function avvia(): Promise<void> {
   renderer.shadowMap.enabled = q.ombre;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const scena = new THREE.Scene();
-  scena.fog = new THREE.FogExp2(NEBBIA.getHex(), atmosfera.nebbiaDensita.value);
+  scena.fog = new THREE.FogExp2(ZONE[0]!.nebbia, atmosfera.nebbiaDensita.value);
   const camera = new THREE.PerspectiveCamera(72, 1, 0.05, 900);
   scena.add(camera);
 
@@ -64,13 +66,15 @@ async function avvia(): Promise<void> {
   fisica.timestep = PASSO_FISICA;
   const campo = new Campo();
   const terreno = creaTerreno(RAPIER, fisica, campo, q.ombre);
-  const prato = creaPrato(q, campo, terreno.altezze);
+  const prato = creaPrato(q, campo, terreno.altezze, terreno.biomi);
   const bosco = creaBosco(q.ombre);
-  const pezzi = new Pezzi(costruisciVillaggio(), RAPIER, fisica, q.ombre);
+  const mondo = costruisciMondo();
+  const pezzi = new Pezzi(mondo.mattoni, mondo.gruppi, RAPIER, fisica, q.ombre);
+  pezzi.avvicina(0, 41);
   const scintille = new Particelle(q.scintille, true);
   const fumo = new Particelle(q.fumo, false);
   const alberi = new AlberiMagici(scena, RAPIER, fisica, q.ombre);
-  scena.add(creaCielo(), terreno.mesh, ...prato.oggetti, ...bosco.oggetti, pezzi.mesh, fumo.punti, scintille.punti);
+  scena.add(creaCielo(), terreno.mesh, terreno.acqua, ...prato.oggetti, ...bosco.oggetti, pezzi.mesh, fumo.punti, scintille.punti);
 
   const giocatore = new Giocatore(RAPIER, fisica);
   const bastone = new Bastone();
@@ -99,6 +103,8 @@ async function avvia(): Promise<void> {
     aggiungi(e) {
       effetti.push(e);
     },
+    premuto: () => comandi.lancia && comandi.attivi,
+    impegnato: false,
   };
 
   // --- bagliore attorno alle cose luminose (solo al computer) ---
@@ -203,6 +209,62 @@ async function avvia(): Promise<void> {
   const v = new THREE.Vector3();
   const metaLuce = new THREE.Vector3();
   const metaTinta = new THREE.Color();
+  const pesi = new Float32Array(5);
+  const nebbiaZona = new THREE.Color();
+  const cieloZona = new THREE.Color();
+
+  // --- esplorazione: in che zona si è, quali luoghi si sono trovati ---
+  let zonaAttuale = 0;
+  const scoperti = new Set<number>();
+  const esplora = (): void => {
+    const p = giocatore.posizione;
+    let zona = 0;
+    for (let i = 1; i < ZONE.length; i++) if (pesi[i]! > pesi[zona]!) zona = i;
+    if (zona !== zonaAttuale && pesi[zona]! > 0.6) {
+      zonaAttuale = zona;
+      ui.annuncia(ZONE[zona]!.nome, 'Sei entrato in una nuova zona');
+    }
+    LUOGHI.forEach((l, i) => {
+      if (scoperti.has(i) || Math.hypot(p.x - l.x, p.z - l.z) > l.raggio + 14) return;
+      scoperti.add(i);
+      if (i > 0) ui.annuncia(l.nome, `Luogo scoperto · ${scoperti.size} di ${LUOGHI.length}`);
+    });
+    ui.disegnaMappa(p.x, p.z, giocatore.imbardata, scoperti);
+  };
+
+  /** Quel che vola nell'aria di ogni zona: neve, faville, lucciole, sabbia. */
+  const polvereDelPosto = (dt: number): void => {
+    const p = giocatore.posizione;
+    const a = Math.random() * Math.PI * 2;
+    const r = 2 + Math.random() * 20;
+    const x = p.x + Math.cos(a) * r;
+    const z = p.z + Math.sin(a) * r;
+    const quante = dt * 60;
+    if (pesi[2]! > 0.5 && Math.random() < 2.5 * quante) {
+      scintille.emetti({
+        x, y: p.y + 2 + Math.random() * 9, z, vx: 1.2, vy: -1.6 - Math.random(), vz: 0.4,
+        vita: 3.5, dim: 0.1, dimFine: 0.08, r: 0.95, g: 1, b: 1.1, alfa: 0.9,
+      });
+    }
+    if (pesi[4]! > 0.5 && Math.random() < 0.8 * quante) {
+      scintille.emetti({
+        x, y: altezza(x, z) + 0.2, z, vx: (Math.random() - 0.5) * 1.5, vy: 1.5 + Math.random() * 3, vz: (Math.random() - 0.5) * 1.5,
+        vita: 2 + Math.random() * 2, dim: 0.11, dimFine: 0.04, r: 2, g: 0.8, b: 0.2, alfa: 1, attrito: 0.3,
+      });
+    }
+    if (pesi[3]! > 0.5 && Math.random() < 0.35 * quante) {
+      scintille.emetti({
+        x, y: altezza(x, z) + 0.6 + Math.random() * 2.5, z, vx: (Math.random() - 0.5) * 0.8, vy: (Math.random() - 0.5) * 0.4, vz: (Math.random() - 0.5) * 0.8,
+        vita: 3 + Math.random() * 2, dim: 0.16, dimFine: 0.12, r: 1.2, g: 1.7, b: 0.5, alfa: 1,
+      });
+    }
+    if (pesi[1]! > 0.5 && Math.random() < 0.25 * quante) {
+      fumo.emetti({
+        x, y: altezza(x, z) + 0.4, z, vx: 5 + Math.random() * 3, vy: 0.3, vz: 2,
+        vita: 2.5, dim: 1.5, dimFine: 4, r: 0.85, g: 0.74, b: 0.5, alfa: 0.12,
+      });
+    }
+  };
   const formato = new Intl.NumberFormat('it-IT');
 
   /** Fa avanzare il mondo di un istante: tutto tranne il disegno sullo schermo. */
@@ -215,7 +277,7 @@ async function avvia(): Promise<void> {
     comandi.guardaX = comandi.guardaY = 0;
 
     for (let i = 0; i < attese.length; i++) attese[i] = Math.max(0, attese[i]! - dt);
-    if ((comandi.lancia || comandi.colpoSingolo) && comandi.attivi && attese[scelto]! <= 0) lancia(scelto);
+    if ((comandi.lancia || comandi.colpoSingolo) && comandi.attivi && !g.impegnato && attese[scelto]! <= 0) lancia(scelto);
     comandi.colpoSingolo = false;
 
     umore.buio = 0;
@@ -286,7 +348,10 @@ async function avvia(): Promise<void> {
         }
       }
       bosco.aggiorna(campo);
+      pezzi.avvicina(giocatore.posizione.x, giocatore.posizione.z);
+      esplora();
     }
+    polvereDelPosto(dt);
     luceFuoco.position.lerp(metaLuce, Math.min(1, dt * 4));
     const ardore = Math.min(1, accese / 25);
     luceFuoco.intensity += (ardore * (11 + Math.random() * 5) - luceFuoco.intensity) * Math.min(1, dt * 10);
@@ -298,11 +363,28 @@ async function avvia(): Promise<void> {
     if (umore.buio > 0) metaTinta.setRGB(umore.r, umore.g, umore.b);
     else metaTinta.setRGB(1, 1, 1);
     umoreVero.tinta.lerp(metaTinta, k);
-    const chiaro = 1 - umoreVero.buio;
+    // Ogni zona ha la sua aria: nebbia, cielo e luce si mescolano secondo quanto si è dentro ciascuna.
+    pesiZone(giocatore.posizione.x, giocatore.posizione.z, pesi);
+    nebbiaZona.setScalar(0);
+    cieloZona.setScalar(0);
+    let densita = 0;
+    let luceZona = 0;
+    for (let i = 0; i < ZONE.length; i++) {
+      const w = pesi[i]!;
+      nebbiaZona.r += NEBBIE[i]!.r * w; nebbiaZona.g += NEBBIE[i]!.g * w; nebbiaZona.b += NEBBIE[i]!.b * w;
+      cieloZona.r += CIELI[i]!.r * w; cieloZona.g += CIELI[i]!.g * w; cieloZona.b += CIELI[i]!.b * w;
+      densita += ZONE[i]!.densitaNebbia * w;
+      luceZona += ZONE[i]!.luce * w;
+    }
+    const chiaro = (1 - umoreVero.buio) * luceZona;
     atmosfera.luce.value = chiaro;
     atmosfera.tinta.value.copy(umoreVero.tinta);
-    atmosfera.nebbiaColore.value.copy(NEBBIA).multiply(umoreVero.tinta).multiplyScalar(0.25 + 0.75 * chiaro);
-    (scena.fog as THREE.FogExp2).color.copy(atmosfera.nebbiaColore.value);
+    atmosfera.cieloAlto.value.copy(cieloZona);
+    atmosfera.nebbiaDensita.value = densita;
+    atmosfera.nebbiaColore.value.copy(nebbiaZona).multiply(umoreVero.tinta).multiplyScalar(0.25 + 0.75 * (1 - umoreVero.buio));
+    const nebbia = scena.fog as THREE.FogExp2;
+    nebbia.color.copy(atmosfera.nebbiaColore.value);
+    nebbia.density = densita;
     luceCielo.intensity = 2.1 * (0.3 + 0.7 * chiaro);
     sole.intensity = 3.1 * (0.25 + 0.75 * chiaro);
     sole.color.setRGB(1, 0.945, 0.86).multiply(umoreVero.tinta);
@@ -320,7 +402,8 @@ async function avvia(): Promise<void> {
     if (attesaStato <= 0) {
       attesaStato = 0.25;
       ui.scriviStato(
-        `${formato.format(pezzi.n)} pezzi` + (pezzi.svegli > 0 ? ` · ${formato.format(pezzi.svegli)} in movimento` : ''),
+        `${ZONE[zonaAttuale]!.nome} · luoghi ${scoperti.size}/${LUOGHI.length}` +
+          (pezzi.svegli > 0 ? ` · ${formato.format(pezzi.svegli)} pezzi in movimento` : ''),
       );
       ui.ricariche(attese.map((a, i) => a / INCANTESIMI[i]!.ricarica));
     }
@@ -329,8 +412,15 @@ async function avvia(): Promise<void> {
 
   // Maniglia per le prove automatiche: lanciare incantesimi senza mouse, fermare il tempo o mandarlo avanti.
   const prova = {
-    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti,
+    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, mattoni: mondo.mattoni,
     fermo: false,
+    /** Sposta chi gioca in un punto del mondo, girato in una direzione. */
+    vai(x: number, z: number, imbardata = 0, beccheggio = 0) {
+      giocatore.posizione.set(x, altezza(x, z) + 0.95, z);
+      giocatore.imbardata = imbardata;
+      giocatore.beccheggio = beccheggio;
+      pezzi.avvicina(x, z);
+    },
     scorri(secondi: number) {
       for (let i = 0; i < secondi * 60; i++) avanza(1 / 60);
     },
