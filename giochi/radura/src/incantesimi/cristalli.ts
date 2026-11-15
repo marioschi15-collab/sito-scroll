@@ -5,6 +5,10 @@ import { altezza } from '../mondo/terreno.js';
 
 const SPUNTONE = new THREE.ConeGeometry(0.6, 1, 5).translate(0, 0.5, 0);
 const VITA = 11;
+// I due materiali sono di tutti i cristalli e non si buttano mai: così la scheda grafica li prepara una volta sola.
+const MATERIALI = [0x6ff0ff, 0xc77dff].map(
+  (c) => new THREE.MeshLambertMaterial({ color: 0x223040, emissive: new THREE.Color(c).multiplyScalar(0.75), flatShading: true }),
+);
 
 interface Spuntone {
   mesh: THREE.Mesh;
@@ -16,9 +20,6 @@ interface Spuntone {
 export class Cristalli implements Effetto {
   private eta = 0;
   private readonly spuntoni: Spuntone[] = [];
-  private readonly materiali = [0x6ff0ff, 0xc77dff].map(
-    (c) => new THREE.MeshLambertMaterial({ color: 0x223040, emissive: new THREE.Color(c).multiplyScalar(0.75), flatShading: true }),
-  );
 
   /** Una fila di spuntoni da un punto verso un altro. */
   static inFila(g: Gioco, da: THREE.Vector3, verso: THREE.Vector3): Cristalli {
@@ -37,7 +38,7 @@ export class Cristalli implements Effetto {
   constructor(g: Gioco, punti: { x: number; z: number }[]) {
     for (let k = 0; k < punti.length; k++) {
       const { x, z } = punti[k]!;
-      const mesh = new THREE.Mesh(SPUNTONE, this.materiali[k % 2]!);
+      const mesh = new THREE.Mesh(SPUNTONE, MATERIALI[k % 2]!);
       mesh.position.set(x, altezza(x, z) - 0.3, z);
       mesh.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * 6.28, (Math.random() - 0.5) * 0.5);
       mesh.scale.set(1, 0.01, 1);
@@ -81,7 +82,6 @@ export class Cristalli implements Effetto {
     }
     if (this.eta < VITA + this.spuntoni.length * 0.06) return true;
     for (const s of this.spuntoni) s.mesh.removeFromParent();
-    for (const m of this.materiali) m.dispose();
     return false;
   }
 }

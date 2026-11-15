@@ -13,7 +13,7 @@
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vite build --ssr prove/stabilita.ts --outDir dist-prove --logLevel warn && node dist-prove/stabilita.js && vite build --ssr prove/rammendo.ts --outDir dist-prove --logLevel warn && node dist-prove/rammendo.js"
+    "test": "vite build --ssr prove/stabilita.ts --outDir dist-prove --logLevel warn && node dist-prove/stabilita.js && vite build --ssr prove/rammendo.ts --outDir dist-prove --logLevel warn && node dist-prove/rammendo.js && vite build --ssr prove/regole.ts --outDir dist-prove --logLevel warn && node dist-prove/regole.js"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",

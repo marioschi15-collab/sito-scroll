@@ -20,17 +20,19 @@ function materialePunti(luminoso: boolean, scala: { value: number }): THREE.Shad
     transparent: true,
     depthWrite: false,
     blending: luminoso ? THREE.AdditiveBlending : THREE.NormalBlending,
-    uniforms: { uScala: scala, uLuce: atmosfera.luce, uLuminoso: { value: luminoso ? 1 : 0 } },
+    uniforms: { uScala: scala, uMassimo: massimoPunti, uLuce: atmosfera.luce, uLuminoso: { value: luminoso ? 1 : 0 } },
     vertexShader: /* glsl */ `
       attribute vec4 colore; attribute float dim;
-      uniform float uScala;
+      uniform float uScala; uniform float uMassimo;
       varying vec4 vColore;
       void main() {
         vColore = colore;
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        gl_PointSize = min(dim * uScala / max(-mv.z, 0.1), 600.0);
+        gl_PointSize = min(dim * uScala / max(-mv.z, 0.1), uMassimo);
         // Da vicinissimo i puntini grandi si attenuano: altrimenti una fiammata accanto a chi gioca lo acceca.
         vColore.a *= mix(1.0, smoothstep(0.8, 7.0, -mv.z), smoothstep(0.4, 1.2, dim));
+        // Ciò che non si vede non si disegna nemmeno: lo si manda fuori dallo schermo.
+        if (vColore.a < 0.02) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
         gl_Position = projectionMatrix * mv;
       }
     `,
@@ -52,6 +54,8 @@ function materialePunti(luminoso: boolean, scala: { value: number }): THREE.Shad
 
 /** Quanto è grande in pixel un metro a un metro di distanza: serve a dare ai puntini la misura giusta. */
 export const scalaPunti = { value: 800 };
+/** Quanto può essere grande al massimo un puntino sullo schermo, in pixel: sul telefono meno, perché lì ogni pixel dipinto costa. */
+export const massimoPunti = { value: 600 };
 
 /**
  * Un serbatoio di puntini luminosi (fiamme, scintille, magia) oppure opachi (fumo, polvere).
@@ -61,6 +65,9 @@ export class Particelle {
   readonly punti: THREE.Points;
   private readonly n: number;
   private prossima = 0;
+  /** Se vero, dei puntini grandi se ne emette uno sì e uno no (più luminosi): metà del lavoro per la scheda grafica. */
+  rado = false;
+  private pari = false;
   private readonly pos: Float32Array;
   private readonly col: Float32Array;
   private readonly dim: Float32Array;
@@ -90,6 +97,12 @@ export class Particelle {
   }
 
   emetti(s: Scintilla): void {
+    let alfa = s.alfa ?? 1;
+    if (this.rado && s.dim > 2) {
+      this.pari = !this.pari;
+      if (this.pari) return;
+      alfa = Math.min(1, alfa * 1.4);
+    }
     const i = this.prossima;
     this.prossima = (i + 1) % this.n;
     this.pos[i * 3] = s.x;
@@ -111,7 +124,7 @@ export class Particelle {
     this.colori[c + 3] = s.r1 ?? s.r;
     this.colori[c + 4] = s.g1 ?? s.g;
     this.colori[c + 5] = s.b1 ?? s.b;
-    this.colori[c + 6] = s.alfa ?? 1;
+    this.colori[c + 6] = alfa;
   }
 
   aggiorna(dt: number): void {

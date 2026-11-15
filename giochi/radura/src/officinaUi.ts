@@ -29,6 +29,15 @@ export class OfficinaUi {
     el('of-copia').addEventListener('click', () => this.copia());
     el('of-aggiungi').addEventListener('click', () => this.aggiungiDaCodice());
     this.nome.addEventListener('input', () => (this.bozza.nome = this.nome.value));
+    // "Fine" sulla tastiera del telefono la chiude (e, nella casella del codice, aggiunge l'incantesimo).
+    this.nome.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') this.nome.blur();
+    });
+    this.codice.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      this.codice.blur();
+      this.aggiungiDaCodice();
+    });
   }
 
   get aperta(): boolean {
@@ -39,6 +48,8 @@ export class OfficinaUi {
     this.ricette = ricette.map((r) => ({ ...r, effetti: [...r.effetti] }));
     this.carica(-1);
     this.pannello.classList.add('aperta');
+    // Si riparte sempre dall'inizio del foglio, non da dove lo si era lasciato.
+    this.pannello.querySelector('.foglio')!.scrollTop = 0;
   }
 
   chiudi(): void {

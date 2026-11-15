@@ -4,11 +4,11 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { scegliQualita } from './base/qualita.js';
+import { graficaScelta, gradiniRicordati, ricordaGradini, scegliQualita } from './base/qualita.js';
 import { Bastone } from './bastone.js';
 import { Comandi } from './comandi.js';
 import { Lampi } from './effetti/lampi.js';
-import { Particelle, scalaPunti } from './effetti/particelle.js';
+import { massimoPunti, Particelle, scalaPunti } from './effetti/particelle.js';
 import { Pezzi } from './fisica/pezzi.js';
 import { Giocatore } from './giocatore.js';
 import type { Effetto, Gioco } from './gioco.js';
@@ -83,6 +83,16 @@ async function avvia(): Promise<void> {
   let luoghiInVista: Luogo[] = [];
   const curaLuoghi = (x: number, z: number): void => {
     luoghiInVista = luoghiVicini(x, z, 440);
+    // Un luogo "vivo" non deve restare senza terreno sotto: le zolle coprono 364 metri attorno a chi gioca.
+    // Prima che la sua zolla venga riusata lo si toglie; il giro qui sotto lo rimette subito, intero e solo
+    // disegnato. Senza, allontanandosi di 400 metri il villaggio sprofondava nel vuoto.
+    for (const l of luoghiInVista) {
+      const gruppo = costruiti.get(l.chiave);
+      if (gruppo?.vivo && Math.max(Math.abs(l.x - x), Math.abs(l.z - z)) + l.raggio > 320) {
+        pezzi.togli(gruppo);
+        costruiti.delete(l.chiave);
+      }
+    }
     for (const l of luoghiInVista) {
       if (costruiti.has(l.chiave) || Math.hypot(l.x - x, l.z - z) - l.raggio > 345) continue;
       costruiti.set(l.chiave, pezzi.aggiungi(costruisciLuogo(l), l.x, l.z, l.raggio));
@@ -92,10 +102,10 @@ async function avvia(): Promise<void> {
       if (gruppo) pezzi.togli(gruppo);
       costruiti.delete(chiave);
     }
-    pezzi.avvicina(x, z);
   };
   terreno.segui(0, 41, Infinity);
   curaLuoghi(0, 41);
+  pezzi.avvicina(0, 41, Infinity);
   const scintille = new Particelle(q.scintille, true);
   const fumo = new Particelle(q.fumo, false);
   const alberi = new AlberiMagici(scena, RAPIER, fisica, q.ombre);
@@ -136,7 +146,8 @@ async function avvia(): Promise<void> {
   // L'immagine passa sempre da qui: bordi lisci, bagliore (se il dispositivo lo regge) e toni finali.
   const compositore = new EffectComposer(
     renderer,
-    new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 }),
+    // La profondità serve solo mentre si disegna la scena: non la si ricopia a ogni passata.
+    new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4, resolveDepthBuffer: false }),
   );
   compositore.addPass(new RenderPass(scena, camera));
   const bagliore = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.3, 0.45, 1.05);
@@ -158,6 +169,7 @@ async function avvia(): Promise<void> {
     compositore.setPixelRatio(densitaPixel);
     compositore.setSize(w, h);
     scalaPunti.value = (h * densitaPixel) / (2 * Math.tan((camera.fov * Math.PI) / 360));
+    massimoPunti.value = q.telefono ? 0.2 * h * densitaPixel : 600;
   };
   misura();
   window.addEventListener('resize', misura);
@@ -180,8 +192,7 @@ async function avvia(): Promise<void> {
   const apriOfficina = (): void => {
     if (officina.aperta || !comandi.attivi) return;
     comandi.attivi = false;
-    comandi.lancia = false;
-    comandi.avanti = comandi.lato = 0;
+    comandi.rilascia();
     comandi.sgancia();
     officina.apri(ricette);
   };
@@ -242,6 +253,7 @@ async function avvia(): Promise<void> {
     terreno.segui(x, z, Infinity);
     campo.segui(x, z);
     curaLuoghi(x, z);
+    pezzi.avvicina(x, z, Infinity);
     bosco.aggiorna(campo, x, z);
   };
   try {
@@ -259,16 +271,42 @@ async function avvia(): Promise<void> {
     }
   }, 4000);
   const pulsanteCasa = document.getElementById('casa')!;
+  let confermaCasa = 0;
   pulsanteCasa.addEventListener('click', () => {
-    spostati(0, 41, 0);
     pulsanteCasa.blur();
+    // Due tocchi: uno solo, per sbaglio, butterebbe via una lunga camminata.
+    if (!confermaCasa) {
+      pulsanteCasa.textContent = 'Tocca ancora per tornare';
+      confermaCasa = window.setTimeout(() => {
+        confermaCasa = 0;
+        pulsanteCasa.textContent = '⌂ Al villaggio';
+      }, 3000);
+      return;
+    }
+    window.clearTimeout(confermaCasa);
+    confermaCasa = 0;
+    pulsanteCasa.textContent = '⌂ Al villaggio';
+    spostati(0, 41, 0);
   });
   ui.pulsanteRicostruisci.addEventListener('click', () => {
     ricostruisci();
     ui.pulsanteRicostruisci.blur();
   });
-  comandi.pulsante(ui.pulsanteLancia, (giu) => (comandi.lancia = giu));
-  comandi.pulsante(ui.pulsanteSalta, (giu) => (comandi.salta = giu));
+  comandi.pulsante(ui.pulsanteLancia, (giu) => {
+    comandi.lancia = giu;
+    if (giu) comandi.colpoSingolo = true;
+  });
+  comandi.pulsante(ui.pulsanteSalta, (giu) => {
+    comandi.salta = giu;
+    if (giu) comandi.saltoSingolo = true;
+  });
+  // L'audio del telefono si addormenta dopo una chiamata o un cambio di app: ogni tocco lo riaccende.
+  window.addEventListener('pointerup', () => suoni.sveglia(), { passive: true });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) suoni.sveglia();
+  });
+  comandi.onTrascina = () =>
+    ui.annuncia('Trascina per guardarti intorno', 'Tieni premuto il mouse e muovilo · un clic lancia · F per tenere premuto');
 
   ui.onEntra = () => {
     suoni.avvia();
@@ -278,14 +316,15 @@ async function avvia(): Promise<void> {
   };
   comandi.onPausa = () => {
     comandi.attivi = false;
-    comandi.lancia = false;
-    comandi.avanti = comandi.lato = 0;
+    comandi.rilascia();
     ui.mostraIngresso(true);
   };
 
   // --- il giro che si ripete a ogni fotogramma ---
   let ultimoIstante = performance.now();
   let accumulo = 0;
+  let costoPasso = 0;
+  let fiammeDaFare = 0;
   let attesaStato = 0;
   let attesaLuce = 0;
   const v = new THREE.Vector3();
@@ -379,12 +418,18 @@ async function avvia(): Promise<void> {
 
     accumulo += dt;
     let passi = 0;
-    while (accumulo >= PASSO_FISICA && passi < 2) {
+    // Il secondo passo di recupero si fa solo se i passi costano poco: durante un grande crollo raddoppiarli
+    // dimezzerebbe i fotogrammi proprio quando la fisica è già il collo di bottiglia (meglio un filo di rallentatore).
+    const massimi = costoPasso > 6 ? 1 : 2;
+    while (accumulo >= PASSO_FISICA && passi < massimi) {
+      const t0 = performance.now();
       fisica.step();
+      costoPasso += (performance.now() - t0 - costoPasso) * 0.3;
       accumulo -= PASSO_FISICA;
       passi++;
     }
     if (accumulo > PASSO_FISICA) accumulo = 0;
+    pezzi.avvicina(giocatore.posizione.x, giocatore.posizione.z);
     pezzi.sincronizza();
     pezzi.aggiorna(dt, campo, scintille, fumo);
     campo.aggiorna(dt);
@@ -395,8 +440,9 @@ async function avvia(): Promise<void> {
     // Fiamme sul prato che brucia.
     const accese = campo.celleAccese;
     if (accese > 0) {
-      const quante = Math.min(q.telefono ? 8 : 14, Math.ceil(accese * 0.2));
-      for (let k = 0; k < quante; k++) {
+      // Tante fiamme al secondo, non per fotogramma: il fuoco è uguale su ogni dispositivo.
+      fiammeDaFare += Math.min(q.telefono ? 8 : 14, accese * 0.2) * dt * 60;
+      for (; fiammeDaFare >= 1; fiammeDaFare--) {
         const cella = campo.accesaACaso();
         if (cella < 0) continue;
         campo.centro(cella, v);
@@ -517,6 +563,7 @@ async function avvia(): Promise<void> {
       terreno.segui(x, z, Infinity);
       campo.segui(x, z);
       curaLuoghi(x, z);
+      pezzi.avvicina(x, z, Infinity);
       bosco.aggiorna(campo, x, z);
     },
     scorri(secondi: number) {
@@ -525,43 +572,109 @@ async function avvia(): Promise<void> {
   };
   (window as unknown as { radura: unknown }).radura = prova;
 
-  // --- se il dispositivo fatica, si toglie un po' di dettaglio alla volta (mai il contrario, per non ballare) ---
-  const alleggerimenti: (() => void)[] = [
-    () => (bagliore.enabled = false),
-    () => {
-      densitaPixel = Math.min(densitaPixel, 1.5);
-      misura();
-    },
-    () => prato.densita(0.6),
-    () => {
-      renderer.shadowMap.enabled = false;
-      sole.castShadow = false;
-    },
-    () => {
-      densitaPixel = Math.min(densitaPixel, 1.15);
-      misura();
-    },
-    () => prato.densita(0.35),
-  ];
-  let tempoMedio = 1 / 60;
-  let daUltimaRegolata = 0;
-  const regola = (dt: number): void => {
-    if (!q.siAdatta || !comandi.attivi || dt > 0.5) return;
-    tempoMedio += (dt - tempoMedio) * 0.05;
-    daUltimaRegolata += dt;
-    // Sotto i 34 fotogrammi al secondo per tre secondi di fila: si alleggerisce di un gradino.
-    if (daUltimaRegolata < 3) return;
-    if (tempoMedio > 1 / 34) alleggerimenti.shift()?.();
-    daUltimaRegolata = 0;
+  // --- quanto dettaglio mostrare: otto livelli, dal pieno (0) al più leggero (7) ---
+  const LIVELLO_MASSIMO = 7;
+  const LIVELLO_LEGGERO = 5;
+  let livello = 0;
+  const mostra = (nuovo: number): void => {
+    livello = Math.max(0, Math.min(LIVELLO_MASSIMO, nuovo));
+    bagliore.enabled = q.bagliore && livello < 1;
+    densitaPixel = livello >= 6 ? Math.min(q.densitaPixel, 1.15) : livello >= 2 ? Math.min(q.densitaPixel, 1.5) : q.densitaPixel;
+    prato.densita(livello >= 7 ? 0.35 : livello >= 3 ? 0.6 : 1);
+    scintille.rado = fumo.rado = livello >= 4;
+    const ombre = q.ombre && livello < 5;
+    if (renderer.shadowMap.enabled !== ombre) {
+      renderer.shadowMap.enabled = ombre;
+      sole.castShadow = ombre;
+      renderer.shadowMap.needsUpdate = true;
+    }
+    misura();
   };
+
+  /**
+   * Il regolatore: se il dispositivo fatica a disegnare, si scende di livello; se regge largo, si prova a risalire.
+   * Guarda solo i fotogrammi lenti per colpa della grafica (non quelli in cui è la fisica di un crollo a pesare),
+   * e si accorge quando scendere non serve: è il caso del risparmio energetico dell'iPhone, che ferma tutto a 30
+   * fotogrammi al secondo qualunque cosa si tolga. Allora rimette ciò che aveva tolto e da lì scende solo sotto i 27.
+   */
+  let regolatoreAcceso = false;
+  let somma = 0;
+  let campioni = 0;
+  let finestra = 1.5;
+  let soglia = 1 / 34;
+  let discesa: { da: number; medio: number } | null = null;
+  let tempoBuono = 0;
+  let inProva = false;
+  let risalitaPermessa = true;
+  const regola = (dt: number, lavoro: number): void => {
+    if (!regolatoreAcceso || !q.siAdatta || !comandi.attivi || dt > 0.25) return;
+    // Più di un terzo del fotogramma è andato in fisica e mondo: questo campione non dice nulla sulla grafica.
+    if (lavoro > dt * 350) return;
+    somma += dt;
+    campioni++;
+    if (somma < finestra) return;
+    const medio = somma / campioni;
+    somma = 0;
+    campioni = 0;
+    finestra = 3;
+    if (inProva) {
+      // Si era provato a risalire di un livello: se non regge si torna giù e non si riprova più.
+      inProva = false;
+      if (medio > 1 / 40) {
+        risalitaPermessa = false;
+        mostra(livello + 1);
+      }
+      ricordaGradini(livello);
+      return;
+    }
+    if (medio <= soglia) {
+      discesa = null;
+      tempoBuono = medio < 1 / 55 ? tempoBuono + 3 : 0;
+      if (tempoBuono >= 60 && livello > 0 && risalitaPermessa) {
+        tempoBuono = 0;
+        inProva = true;
+        mostra(livello - 1);
+      }
+      return;
+    }
+    tempoBuono = 0;
+    if (!discesa) discesa = { da: livello, medio };
+    const scesi = livello - discesa.da;
+    const fermoATrenta = medio < 1 / 27;
+    if (scesi >= (fermoATrenta ? 2 : 3) && medio > discesa.medio * 0.9) {
+      // Togliere dettaglio non ha cambiato niente: la lentezza non viene dalla grafica. Si rimette tutto.
+      mostra(discesa.da);
+      discesa = null;
+      if (fermoATrenta) soglia = 1 / 27;
+      else regolatoreAcceso = false;
+      return;
+    }
+    if (livello >= LIVELLO_MASSIMO) return;
+    mostra(livello + (medio > 1 / 20 ? 3 : medio > 1 / 27 ? 2 : 1));
+    ricordaGradini(livello);
+  };
+
+  /** Applica la scelta di chi gioca: automatica (parte da dove si era arrivati l'ultima volta), massima o leggera. */
+  const applicaGrafica = (): void => {
+    const scelta = graficaScelta();
+    regolatoreAcceso = scelta === 'automatica';
+    somma = campioni = 0;
+    discesa = null;
+    inProva = false;
+    finestra = 1.5;
+    mostra(scelta === 'alta' || !q.siAdatta ? 0 : scelta === 'leggera' ? LIVELLO_LEGGERO : gradiniRicordati());
+  };
+  applicaGrafica();
+  ui.onGrafica = applicaGrafica;
 
   const fotogramma = (): void => {
     const adesso = performance.now();
     const prima = ultimoIstante;
     if (!prova.fermo) avanza(Math.min(0.05, (adesso - ultimoIstante) / 1000));
+    const lavoro = performance.now() - adesso;
     ultimoIstante = adesso;
     compositore.render();
-    regola((adesso - prima) / 1000);
+    regola((adesso - prima) / 1000, lavoro);
   };
   renderer.setAnimationLoop(fotogramma);
   ui.pronto();

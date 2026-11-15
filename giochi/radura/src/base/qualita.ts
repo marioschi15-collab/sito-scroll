@@ -1,4 +1,7 @@
-/** Quanto dettaglio mostrare. Si parte alti: se il dispositivo fatica, il gioco alleggerisce da solo (vedi main). */
+/**
+ * Quanto dettaglio preparare. Si prepara sempre il massimo che ha senso per il dispositivo; poi, al volo,
+ * il gioco ne mostra di meno se il dispositivo fatica o se chi gioca sceglie la grafica leggera (vedi main).
+ */
 export interface Qualita {
   readonly telefono: boolean;
   readonly filiErba: number;
@@ -10,14 +13,17 @@ export interface Qualita {
   readonly densitaPixel: number;
   readonly scintille: number;
   readonly fumo: number;
-  /** Se vero, il gioco abbassa da solo il dettaglio quando i fotogrammi al secondo scendono troppo. */
+  /** Se falso (lo usano le prove), il gioco non tocca mai il dettaglio da solo. */
   readonly siAdatta: boolean;
 }
 
 export type Grafica = 'automatica' | 'alta' | 'leggera';
 const CHIAVE = 'radura-grafica';
 
+let sceltaAdesso: Grafica | null = null;
+
 export function graficaScelta(): Grafica {
+  if (sceltaAdesso) return sceltaAdesso;
   try {
     const v = localStorage.getItem(CHIAVE);
     if (v === 'alta' || v === 'leggera') return v;
@@ -27,11 +33,31 @@ export function graficaScelta(): Grafica {
   return 'automatica';
 }
 
+/** Ricorda la scelta: per questa partita di sicuro, per le prossime solo se il browser lascia salvare. */
 export function ricordaGrafica(g: Grafica): void {
+  sceltaAdesso = g;
   try {
     localStorage.setItem(CHIAVE, g);
   } catch {
     // Pazienza: varrà solo per questa partita.
+  }
+}
+
+/** Quanti gradini di alleggerimento servivano l'ultima volta su questo dispositivo (0 se non si sa). */
+export function gradiniRicordati(): number {
+  try {
+    const n = Number(localStorage.getItem('radura-gradini'));
+    return Number.isFinite(n) ? Math.max(0, Math.min(7, Math.round(n))) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function ricordaGradini(n: number): void {
+  try {
+    localStorage.setItem('radura-gradini', String(n));
+  } catch {
+    // Pazienza.
   }
 }
 
@@ -44,21 +70,14 @@ export function scegliQualita(): Qualita {
 function qualitaDelDispositivo(): Qualita {
   const telefono =
     window.matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const grafica = graficaScelta();
-  if (grafica === 'leggera') {
-    return {
-      telefono, filiErba: 42000, latoErba: 46, fiori: 3500, ombre: false, latoOmbre: 1024, bagliore: false,
-      densitaPixel: Math.min(window.devicePixelRatio, 1.5), scintille: 3500, fumo: 900, siAdatta: false,
-    };
-  }
   if (telefono) {
     return {
       telefono, filiErba: 90000, latoErba: 58, fiori: 6500, ombre: true, latoOmbre: 1536, bagliore: true,
-      densitaPixel: Math.min(window.devicePixelRatio, 2), scintille: 6000, fumo: 1500, siAdatta: grafica === 'automatica',
+      densitaPixel: Math.min(window.devicePixelRatio, 2), scintille: 6000, fumo: 1500, siAdatta: true,
     };
   }
   return {
     telefono, filiErba: 190000, latoErba: 80, fiori: 12000, ombre: true, latoOmbre: 2048, bagliore: true,
-    densitaPixel: Math.min(window.devicePixelRatio, 2), scintille: 9000, fumo: 2200, siAdatta: grafica === 'automatica',
+    densitaPixel: Math.min(window.devicePixelRatio, 2), scintille: 9000, fumo: 2200, siAdatta: true,
   };
 }

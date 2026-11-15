@@ -43,7 +43,7 @@ export function geometriaPino(): THREE.BufferGeometry {
 }
 
 /** Un albero a chioma tonda: tronco e ciuffi di foglie. Alto circa 7 metri. */
-export function geometriaQuercia(): THREE.BufferGeometry {
+export function geometriaQuercia(dettaglio = 1): THREE.BufferGeometry {
   const parti = [colora(new THREE.CylinderGeometry(0.28, 0.5, 3.4, 7).translate(0, 1.7, 0), 0x6a4526)];
   const ciuffi: [number, number, number, number][] = [
     [0, 5.0, 0, 2.3],
@@ -54,7 +54,7 @@ export function geometriaQuercia(): THREE.BufferGeometry {
     [0.6, 4.3, -1.5, 1.4],
   ];
   for (const [x, y, z, r] of ciuffi) {
-    parti.push(colora(new THREE.IcosahedronGeometry(r, 1).translate(x, y, z), 0x4f9a2e, 0.45));
+    parti.push(colora(new THREE.IcosahedronGeometry(r, dettaglio).translate(x, y, z), 0x4f9a2e, 0.45));
   }
   return unisci(parti);
 }
@@ -139,6 +139,10 @@ interface Pianta {
 const BIANCO = new THREE.Color(1, 1, 1);
 const CARBONE = new THREE.Color(0.09, 0.07, 0.06);
 const PINO = 0, QUERCIA = 1, PINO_INNEVATO = 2, CACTUS = 3, ROCCIA = 4, ALBERO_MORTO = 5, FUNGO = 6, GUGLIA = 7;
+/** La quercia vista da lontano: stessa forma, un quarto dei triangoli. */
+const QUERCIA_LONTANA = 8;
+/** Entro quante zolle da chi gioca una pianta fa ombra e si disegna per intero. */
+const VICINO = 2;
 /** Fin dove (in zolle) si vedono piante attorno a chi gioca. */
 const VISTA = 6;
 const CAPIENZA = 1800;
@@ -202,7 +206,7 @@ export function creaBosco(ombre: boolean): Bosco {
 
   const geometrie = [
     geometriaPino(), geometriaQuercia(), geometriaPinoInnevato(), geometriaCactus(),
-    geometriaRoccia(), geometriaAlberoMorto(), geometriaFungo(), geometriaGuglia(),
+    geometriaRoccia(), geometriaAlberoMorto(), geometriaFungo(), geometriaGuglia(), geometriaQuercia(0),
   ];
   const mesh = geometrie.map((g) => {
     const m = new THREE.InstancedMesh(g, materialeAlberi, CAPIENZA);
@@ -212,6 +216,19 @@ export function creaBosco(ombre: boolean): Bosco {
     m.setColorAt(0, BIANCO);
     return m;
   });
+  // La mappa delle ombre copre meno di cento metri: per quella passata bastano le piante vicine, che stanno
+  // in testa all'elenco di ogni tipo. Prima si elaboravano tutte quante, fino a 340 metri, per niente.
+  const vicine = mesh.map(() => 0);
+  const quante = mesh.map(() => 0);
+  mesh.forEach((m, i) => {
+    m.onBeforeShadow = () => {
+      m.count = vicine[i]!;
+    };
+    m.onAfterShadow = () => {
+      m.count = quante[i]!;
+    };
+  });
+  mesh[QUERCIA_LONTANA]!.castShadow = false;
   const o = new THREE.Object3D();
   let ultimoCx = NaN;
   let ultimoCz = NaN;
@@ -238,23 +255,33 @@ export function creaBosco(ombre: boolean): Bosco {
         cambiato = true;
       }
       // Si riscrivono posizioni e colori di tutte le piante in vista: sono poche migliaia, costa poco.
-      const quante = mesh.map(() => 0);
-      for (const piante of zolle.values()) {
-        for (const p of piante) {
-          const n = quante[p.tipo]!;
-          if (n >= CAPIENZA) continue;
-          quante[p.tipo] = n + 1;
-          const m = mesh[p.tipo]!;
-          if (cambiato) {
-            o.position.set(p.x, p.y, p.z);
-            o.rotation.set(0, p.giro, 0);
-            o.scale.setScalar(p.scala);
-            o.updateMatrix();
-            m.setMatrixAt(n, o.matrix);
+      // Due giri: prima le zolle vicine (finiscono in testa agli elenchi), poi le lontane.
+      quante.fill(0);
+      for (let giro = 0; giro < 2; giro++) {
+        for (const [chiave, piante] of zolle) {
+          const virgola = chiave.indexOf(',');
+          const dx = Math.abs(Number(chiave.slice(0, virgola)) - ccx);
+          const dz = Math.abs(Number(chiave.slice(virgola + 1)) - ccz);
+          const vicina = dx <= VICINO && dz <= VICINO;
+          if (vicina !== (giro === 0)) continue;
+          for (const p of piante) {
+            const tipo = p.tipo === QUERCIA && !vicina ? QUERCIA_LONTANA : p.tipo;
+            const n = quante[tipo]!;
+            if (n >= CAPIENZA) continue;
+            quante[tipo] = n + 1;
+            const m = mesh[tipo]!;
+            if (cambiato) {
+              o.position.set(p.x, p.y, p.z);
+              o.rotation.set(0, p.giro, 0);
+              o.scale.setScalar(p.scala);
+              o.updateMatrix();
+              m.setMatrixAt(n, o.matrix);
+            }
+            const c = campo.cella(p.x, p.z);
+            m.setColorAt(n, c >= 0 && campo.bruciato[c]! > 0.6 ? CARBONE : p.tinta);
           }
-          const c = campo.cella(p.x, p.z);
-          m.setColorAt(n, c >= 0 && campo.bruciato[c]! > 0.6 ? CARBONE : p.tinta);
         }
+        if (giro === 0) for (let i = 0; i < quante.length; i++) vicine[i] = quante[i]!;
       }
       mesh.forEach((m, i) => {
         m.count = quante[i]!;

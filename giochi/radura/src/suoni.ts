@@ -13,6 +13,7 @@ export class Suoni {
     }
     try {
       const ctx = new AudioContext();
+      void ctx.resume().catch(() => undefined);
       this.ctx = ctx;
       this.uscita = ctx.createGain();
       this.uscita.gain.value = 0.5;
@@ -36,6 +37,11 @@ export class Suoni {
     } catch {
       this.ctx = null;
     }
+  }
+
+  /** Riaccende l'audio se il telefono lo ha sospeso (va chiamato dentro un tocco). */
+  sveglia(): void {
+    if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume().catch(() => undefined);
   }
 
   volumeFuoco(quanto: number): void {

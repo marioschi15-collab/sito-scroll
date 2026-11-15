@@ -3,6 +3,8 @@ import type { Effetto, Gioco, Incantesimo } from '../gioco.js';
 import { altezza } from '../mondo/terreno.js';
 
 const SFERA = new THREE.IcosahedronGeometry(1, 3);
+/** I materiali delle bolle finite, da riusare per le prossime. */
+const bolle: THREE.MeshBasicMaterial[] = [];
 
 export class Levitazione implements Effetto {
   private eta = 0;
@@ -13,10 +15,11 @@ export class Levitazione implements Effetto {
     this.c = new THREE.Vector3(p.x, altezza(p.x, p.z) + 3, p.z);
     this.bolla = new THREE.Mesh(
       SFERA,
-      new THREE.MeshBasicMaterial({
-        color: 0x9fd4ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false,
-        side: THREE.DoubleSide, fog: false,
-      }),
+      bolle.pop() ??
+        new THREE.MeshBasicMaterial({
+          color: 0x9fd4ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false,
+          side: THREE.DoubleSide, fog: false,
+        }),
     );
     this.bolla.position.copy(this.c);
     g.scena.add(this.bolla);
@@ -54,7 +57,7 @@ export class Levitazione implements Effetto {
     }
     if (this.eta < this.DURATA) return true;
     this.bolla.removeFromParent();
-    this.bolla.material.dispose();
+    bolle.push(this.bolla.material);
     return false;
   }
 }

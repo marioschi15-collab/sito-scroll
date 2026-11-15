@@ -29,8 +29,9 @@ export class Giocatore {
     this.controllo.enableAutostep(0.65, 0.15, true);
     this.controllo.enableSnapToGround(0.4);
     this.controllo.setMaxSlopeClimbAngle((55 * Math.PI) / 180);
-    this.controllo.setApplyImpulsesToDynamicBodies(true);
-    this.controllo.setCharacterMass(70);
+    // I muri fermano chi gioca. Con le spinte accese, camminando a passo normale si buttava giù una casa
+    // senza lanciare niente (i blocchi sono leggeri): le macerie si scavalcano o si saltano.
+    this.controllo.setApplyImpulsesToDynamicBodies(false);
   }
 
   aggiorna(dt: number, comandi: Comandi, camera: THREE.PerspectiveCamera, scossa: number): void {
@@ -49,7 +50,8 @@ export class Giocatore {
     const sn = Math.sin(this.imbardata);
     const cs = Math.cos(this.imbardata);
     if (this.aTerra && this.velY < 0) this.velY = -2;
-    if (this.aTerra && comandi.salta) this.velY = 8.5;
+    if (this.aTerra && (comandi.salta || comandi.saltoSingolo)) this.velY = 8.5;
+    comandi.saltoSingolo = false;
     this.velY = Math.max(-40, this.velY - 24 * dt);
 
     this.controllo.computeColliderMovement(this.collisore, {

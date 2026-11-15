@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { anello, bolla, creaCerchioMagico } from '../effetti/forme.js';
+import { anello, bolla, creaCerchioMagico, rendi } from '../effetti/forme.js';
 import type { Effetto, Gioco, Incantesimo } from '../gioco.js';
 import { altezza } from '../mondo/terreno.js';
 
@@ -46,7 +46,7 @@ class Esplosione implements Effetto {
     this.scoppia(g);
     for (const c of this.cerchi) {
       c.removeFromParent();
-      c.material.dispose();
+      rendi(c.material);
     }
     return false;
   }

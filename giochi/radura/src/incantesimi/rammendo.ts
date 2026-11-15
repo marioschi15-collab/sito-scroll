@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { anello, creaCerchioMagico, scia } from '../effetti/forme.js';
+import { anello, creaCerchioMagico, rendi, scia } from '../effetti/forme.js';
 import type { Effetto, Gioco, Incantesimo } from '../gioco.js';
 import { altezza } from '../mondo/terreno.js';
 
@@ -36,7 +36,7 @@ class Rammendo implements Effetto {
     }
     if (this.eta < 1.7) return true;
     this.cerchio.removeFromParent();
-    this.cerchio.material.dispose();
+    rendi(this.cerchio.material);
     return false;
   }
 }

@@ -12,7 +12,7 @@ const COME_TASTIERA =
   '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> per camminare · mouse per guardare · clic per lanciare<br />' +
   '<kbd>1</kbd>–<kbd>0</kbd>, <kbd>Q</kbd>/<kbd>E</kbd> o rotella per cambiare incantesimo · <kbd>C</kbd> inventane uno · <kbd>Spazio</kbd> salta · <kbd>Maiusc</kbd> corri · <kbd>R</kbd> ricostruisci';
 const COME_DITA =
-  'Pollice sinistro per camminare, destro per guardarti intorno.<br />Scorri la barra in basso, tocca un incantesimo e tieni premuto ✦ per lanciarlo. Con ＋ ne inventi uno tuo.';
+  'Pollice sinistro per camminare, destro per guardarti intorno.<br />Spingi il pollice più lontano per correre. Scorri la barra in basso, tocca un incantesimo e tieni premuto ✦ per lanciarlo. Con ＋ ne inventi uno tuo.<br />Se non senti i suoni, togli il silenzioso.';
 
 /** Tutto ciò che sta sopra l'immagine del gioco: barra degli incantesimi, scritte, pulsanti, schermata d'ingresso. */
 export class Interfaccia {
@@ -30,6 +30,7 @@ export class Interfaccia {
   private veli: HTMLElement[] = [];
   private magie: readonly Incantesimo[] = [];
   onOfficina: () => void = () => undefined;
+  onGrafica: (scelta: Grafica) => void = () => undefined;
   private spegniNome = 0;
   private spegniAnnuncio = 0;
   private readonly annuncio = el('annuncio');
@@ -41,9 +42,11 @@ export class Interfaccia {
   constructor(magie: readonly Incantesimo[], telefono: boolean) {
     document.body.classList.toggle('dita', telefono);
     el('come').innerHTML = telefono ? COME_DITA : COME_TASTIERA;
+    el('magie').addEventListener('scroll', () => this.segnaFine(), { passive: true });
+    window.addEventListener('resize', () => this.segnaFine());
     this.impostaMagie(magie);
     this.entra.addEventListener('click', () => this.onEntra());
-    // La scelta della grafica: cambiarla ricarica la pagina, perché il mondo va preparato da capo.
+    // La scelta della grafica vale subito, senza ricaricare (dove il browser non lascia salvare, ricaricando si perderebbe).
     const nomi: Record<Grafica, string> = {
       automatica: 'Grafica: automatica (si adatta al dispositivo)',
       alta: 'Grafica: sempre al massimo',
@@ -55,8 +58,8 @@ export class Interfaccia {
     pulsante.addEventListener('click', () => {
       const prossima = ordine[(ordine.indexOf(graficaScelta()) + 1) % ordine.length]!;
       ricordaGrafica(prossima);
-      pulsante.textContent = nomi[prossima] + ' — ricarico…';
-      window.setTimeout(() => window.location.reload(), 250);
+      pulsante.textContent = nomi[prossima];
+      this.onGrafica(prossima);
     });
   }
 
@@ -65,7 +68,7 @@ export class Interfaccia {
     this.magie = magie;
     this.bottoni = [];
     this.veli = [];
-    const barra = el('barra');
+    const barra = el('magie');
     barra.replaceChildren();
     magie.forEach((m, i) => {
       const b = document.createElement('button');
@@ -93,7 +96,18 @@ export class Interfaccia {
       this.onOfficina();
       crea.blur();
     });
-    barra.append(crea);
+    this.crea?.remove();
+    this.crea = crea;
+    el('barra').append(crea);
+    this.segnaFine();
+  }
+
+  private crea: HTMLElement | null = null;
+
+  /** Toglie la sfumatura a destra della barra quando si è arrivati in fondo (o quando non c'è niente da scorrere). */
+  private segnaFine(): void {
+    const m = el('magie');
+    m.classList.toggle('fine', m.scrollLeft + m.clientWidth >= m.scrollWidth - 2);
   }
 
   private centroMappaX = NaN;

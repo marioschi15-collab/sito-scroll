@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { anello, bolla, creaCerchioMagico, Saetta, scia } from '../effetti/forme.js';
+import { anello, bolla, creaCerchioMagico, rendi, Saetta, scia } from '../effetti/forme.js';
 import type { Effetto, Gioco, Incantesimo, Lancio } from '../gioco.js';
 import { altezza } from '../mondo/terreno.js';
 import { Cristalli } from './cristalli.js';
@@ -299,7 +299,7 @@ export function creaDaRicetta(r: Ricetta): Incantesimo {
             cerchio.scale.setScalar(Math.max(0.1, raggio * 0.7 * (1 - eta / 0.9)));
             if (eta < 0.75) return true;
             cerchio.removeFromParent();
-            cerchio.material.dispose();
+            rendi(cerchio.material);
             impatto(g, r, p, 1.15);
             return false;
           },

@@ -7,6 +7,8 @@ import { altezza } from '../mondo/terreno.js';
 const DURATA = 6.5;
 const RAGGIO = 20;
 const PUNTI = 300;
+const BUCO = new THREE.IcosahedronGeometry(1, 3);
+const NERO = new THREE.MeshBasicMaterial({ color: 0x000000, fog: false });
 
 class Singolarita implements Effetto {
   private readonly c: THREE.Vector3;
@@ -17,10 +19,7 @@ class Singolarita implements Effetto {
 
   constructor(g: Gioco, bersaglio: THREE.Vector3) {
     this.c = new THREE.Vector3(bersaglio.x, Math.max(bersaglio.y, altezza(bersaglio.x, bersaglio.z)) + 7.5, bersaglio.z);
-    this.buco = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(1, 3),
-      new THREE.MeshBasicMaterial({ color: 0x000000, fog: false }),
-    );
+    this.buco = new THREE.Mesh(BUCO, NERO);
     this.buco.position.copy(this.c);
     g.scena.add(this.buco, this.disco.punti);
     for (let i = 0; i < PUNTI; i++) {

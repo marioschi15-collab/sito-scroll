@@ -1,11 +1,13 @@
 /**
  * Prova senza grafica: ogni tipo di costruzione del mondo deve restare in piedi da solo.
  * Se ne costruisce una per tipo, ognuna su una piastra piana; lasciate a se stesse per nove secondi,
- * quasi nessun pezzo si deve spostare (niente crolli spontanei) e quasi tutti devono essersi fermati
- * (da fermi non costano più calcoli).
+ * quasi nessun pezzo si deve spostare (niente crolli spontanei) e tutti devono dormire
+ * (da fermi non costano più calcoli; chi trema soltanto viene messo a dormire).
  */
 import RAPIER from '@dimforge/rapier3d-compat';
+import { Particelle } from '../src/effetti/particelle.js';
 import { Pezzi } from '../src/fisica/pezzi.js';
+import { Campo } from '../src/mondo/campo.js';
 import { costruisciLuogo } from '../src/mondo/costruzioni.js';
 import { TIPI } from '../src/mondo/zone.js';
 
@@ -26,10 +28,16 @@ tipi.forEach((tipo, k) => {
   for (let i = 0; i < mattoni.length; i++) diChi.push(tipo);
 });
 pezzi.daiVitaATutto();
+const campo = new Campo();
+const scintille = new Particelle(10, true);
+const fumo = new Particelle(10, false);
 const inizio = performance.now();
-for (let i = 0; i < 540; i++) fisica.step();
+for (let i = 0; i < 540; i++) {
+  fisica.step();
+  pezzi.sincronizza();
+  pezzi.aggiorna(1 / 60, campo, scintille, fumo);
+}
 const millisecondiPerPasso = (performance.now() - inizio) / 540;
-pezzi.sincronizza();
 const spostamenti = pezzi.spostamenti();
 const perTipo: Record<string, number> = {};
 let mossi = 0;
@@ -50,7 +58,7 @@ console.log(`ancora svegli dopo 9 secondi: ${pezzi.svegli} · ${millisecondiPerP
 
 const errori: string[] = [];
 if (mossi > pezzi.n * 0.005) errori.push(`${mossi} pezzi crollano da soli: le costruzioni non stanno in piedi`);
-if (pezzi.svegli > pezzi.n * 0.03) errori.push(`dopo 9 secondi ${pezzi.svegli} pezzi si muovono ancora: dovrebbero essersi fermati`);
+if (pezzi.svegli > 0) errori.push(`dopo 9 secondi ${pezzi.svegli} pezzi sono ancora svegli: dovrebbero dormire tutti`);
 if (errori.length > 0) {
   console.error('\nPROVA FALLITA:\n- ' + errori.join('\n- '));
   process.exit(1);

@@ -21,7 +21,12 @@ export interface Gruppo {
   readonly raggio: number;
   readonly da: number;
   readonly a: number;
+  /** Vero da quando il luogo ha cominciato a prendere vita. */
   vivo: boolean;
+  /** I pezzi da `da` a `fin` (escluso) hanno già peso e attrito: un luogo prende vita un po' per fotogramma. */
+  fin: number;
+  /** Quanti controlli di fila hanno trovato pezzi svegli ma fermi (vedi `fermaChiTrema`). */
+  tremito: number;
 }
 const CARBONE = new THREE.Color(0.05, 0.04, 0.035);
 const GHIACCIO = new THREE.Color(0.62, 0.86, 1.0);
@@ -54,6 +59,14 @@ export class Pezzi {
   private readonly carbone: Float32Array;
   private readonly ghiaccio: Float32Array;
   private readonly scala: Float32Array;
+  /** Dove stava ogni pezzo all'ultimo controllo dei tremiti. */
+  private readonly rif: Float32Array;
+  /** Per ogni pezzo, dove comincia e dove finisce il suo luogo: il fuoco si propaga solo lì dentro. */
+  private readonly inizio: Int32Array;
+  private readonly fine: Int32Array;
+  private elencoArdenti: number[] = [];
+  private fiammeDaFare = 0;
+  private attesaTremito = 0;
   private readonly ardenti = new Set<number>();
   private readonly gelati = new Set<number>();
   private attesa = 0;
@@ -78,6 +91,9 @@ export class Pezzi {
     this.carbone = new Float32Array(capienza);
     this.ghiaccio = new Float32Array(capienza);
     this.scala = new Float32Array(capienza).fill(1);
+    this.rif = new Float32Array(capienza * 3);
+    this.inizio = new Int32Array(capienza);
+    this.fine = new Int32Array(capienza);
     const materiale = new THREE.MeshLambertMaterial({ color: 0xffffff });
     // Ogni blocco è un po' più scuro in basso e lungo gli spigoli: dà volume e stacca un blocco dall'altro.
     materiale.onBeforeCompile = (shader) => {
@@ -130,7 +146,10 @@ export class Pezzi {
     });
     this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceColor!.needsUpdate = true;
-    const g: Gruppo = { x, z, raggio, da, a: da + quanti, vivo: false };
+    this.inizio.fill(da, da, da + quanti);
+    this.fine.fill(da + quanti, da, da + quanti);
+    this.mesh.instanceMatrix.clearUpdateRanges();
+    const g: Gruppo = { x, z, raggio, da, a: da + quanti, vivo: false, fin: da, tremito: 0 };
     this.gruppi.push(g);
     return g;
   }
@@ -153,6 +172,7 @@ export class Pezzi {
       this.mesh.setMatrixAt(i, this.m);
     }
     for (const r of this.rammendi) r.pezzi = r.pezzi.filter((p) => p.i < g.da || p.i >= g.a);
+    this.mesh.instanceMatrix.clearUpdateRanges();
     this.mesh.instanceMatrix.needsUpdate = true;
     // I posti liberati si ricuciono con quelli liberi accanto; se in fondo all'elenco non c'è più niente, lo si accorcia.
     this.liberi.push({ da: g.da, a: g.a });
@@ -173,21 +193,29 @@ export class Pezzi {
     if (k >= 0) this.vivi.splice(k, 1);
   }
 
-  /** Dà vita ai luoghi vicini a un punto (di solito: dove sta chi gioca). */
-  avvicina(x: number, z: number): void {
+  /**
+   * Dà vita ai luoghi vicini a un punto (di solito: dove sta chi gioca), pochi pezzi per volta:
+   * creare duemila corpi in un fotogramma solo farebbe scattare il gioco. I pezzi sono elencati dal basso
+   * verso l'alto, quindi ognuno trova già vivo ciò su cui poggia.
+   */
+  avvicina(x: number, z: number, quanti = 260): void {
     for (const g of this.gruppi) {
-      if (!g.vivo && Math.hypot(g.x - x, g.z - z) - g.raggio < DISTANZA_VIVA) this.daiVita(g);
+      if (g.fin >= g.a || Math.hypot(g.x - x, g.z - z) - g.raggio > DISTANZA_VIVA) continue;
+      quanti -= this.daiVita(g, quanti);
+      if (quanti <= 0) return;
     }
   }
 
   /** Dà vita a tutti i luoghi presenti in una volta (serve alle prove). */
   daiVitaATutto(): void {
-    for (const g of this.gruppi) if (!g.vivo) this.daiVita(g);
+    for (const g of this.gruppi) this.daiVita(g, Infinity);
   }
 
-  private daiVita(g: Gruppo): void {
+  private daiVita(g: Gruppo, quanti: number): number {
     const R = this.R;
-    for (let i = g.da; i < g.a; i++) {
+    const fino = Math.min(g.a, g.fin + quanti);
+    const fatti = fino - g.fin;
+    for (let i = g.fin; i < fino; i++) {
       const b = this.mattoni[i]!;
       const corpo = this.fisica.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(b.x, b.y, b.z).setRotation(b.q));
       const collisore = this.fisica.createCollider(
@@ -202,8 +230,38 @@ export class Pezzi {
       this.perManiglia.set(collisore.handle, i);
       this.massa[i] = corpo.mass();
     }
-    g.vivo = true;
-    this.vivi.push(g);
+    g.fin = fino;
+    if (!g.vivo && fatti > 0) {
+      g.vivo = true;
+      this.vivi.push(g);
+    }
+    return fatti;
+  }
+
+  /**
+   * Addormenta i pezzi svegli che non vanno da nessuna parte. Certe pile continuano a tremare di un millimetro
+   * senza mai fermarsi, e un pezzo sveglio costa calcoli a ogni fotogramma: se per due secondi nessun pezzo
+   * sveglio di un luogo si è mosso di più di mezzo centimetro, li si mette a dormire.
+   */
+  private fermaChiTrema(): void {
+    for (const g of this.vivi) {
+      let svegli = 0;
+      let mosso = false;
+      for (let i = g.da; i < g.fin; i++) {
+        if (this.corpi[i]!.isSleeping()) continue;
+        svegli++;
+        const k = i * 3;
+        const d = Math.abs(this.pos[k]! - this.rif[k]!) + Math.abs(this.pos[k + 1]! - this.rif[k + 1]!) + Math.abs(this.pos[k + 2]! - this.rif[k + 2]!);
+        if (d > 0.005) mosso = true;
+        this.rif[k] = this.pos[k]!;
+        this.rif[k + 1] = this.pos[k + 1]!;
+        this.rif[k + 2] = this.pos[k + 2]!;
+      }
+      g.tremito = svegli > 0 && !mosso && g.fin >= g.a ? g.tremito + 1 : 0;
+      if (g.tremito < 4) continue;
+      g.tremito = 0;
+      for (let i = g.da; i < g.fin; i++) if (!this.corpi[i]!.isSleeping()) this.corpi[i]!.sleep();
+    }
   }
 
   private disegna(i: number, x: number, y: number, z: number, q: { x: number; y: number; z: number; w: number }): void {
@@ -224,7 +282,7 @@ export class Pezzi {
   /** Copia sullo schermo la posizione dei pezzi che si stanno muovendo. */
   sincronizza(): void {
     let svegli = 0;
-    for (const g of this.vivi) for (let i = g.da; i < g.a; i++) {
+    for (const g of this.vivi) for (let i = g.da; i < g.fin; i++) {
       const corpo = this.corpi[i]!;
       if (corpo.isSleeping()) continue;
       svegli++;
@@ -236,7 +294,12 @@ export class Pezzi {
       }
       this.disegna(i, t.x, t.y, t.z, corpo.rotation());
     }
-    if (svegli > 0 || !this.fermo) this.mesh.instanceMatrix.needsUpdate = true;
+    if (svegli > 0 || !this.fermo) {
+      // Si manda alla scheda grafica solo la parte usata dell'elenco, non tutti i ventimila posti.
+      this.mesh.instanceMatrix.clearUpdateRanges();
+      this.mesh.instanceMatrix.addUpdateRange(0, this.n * 16);
+      this.mesh.instanceMatrix.needsUpdate = true;
+    }
     this.fermo = svegli === 0;
     this.svegli = svegli;
   }
@@ -282,7 +345,7 @@ export class Pezzi {
   vicini(x: number, y: number, z: number, raggio: number, quanti: number): number[] {
     const trovati: { i: number; d: number }[] = [];
     const r2 = raggio * raggio;
-    for (const g of this.vivi) for (let i = g.da; i < g.a; i++) {
+    for (const g of this.vivi) for (let i = g.da; i < g.fin; i++) {
       const dx = this.pos[i * 3]! - x;
       const dy = this.pos[i * 3 + 1]! - y;
       const dz = this.pos[i * 3 + 2]! - z;
@@ -363,10 +426,12 @@ export class Pezzi {
     if (this.rammendi.length > 0) this.avanzaRammendi(dt);
     // Fiamme sui pezzi che bruciano (poche per fotogramma, a caso).
     if (this.ardenti.size > 0) {
-      const quante = Math.min(10, Math.ceil(this.ardenti.size * 0.3));
-      const lista = [...this.ardenti];
-      for (let k = 0; k < quante; k++) {
+      // Tante fiamme al secondo, non per fotogramma: così il fuoco è uguale a 30 e a 120 fotogrammi al secondo.
+      this.fiammeDaFare += Math.min(10, this.ardenti.size * 0.3) * dt * 60;
+      const lista = this.elencoArdenti;
+      for (; this.fiammeDaFare >= 1 && lista.length > 0; this.fiammeDaFare--) {
         const i = lista[Math.floor(Math.random() * lista.length)]!;
+        if (!(this.fiamma[i]! > 0) || !this.mattoni[i]) continue;
         const b = this.mattoni[i]!;
         const x = this.pos[i * 3]! + (Math.random() - 0.5) * b.sx;
         const y = this.pos[i * 3 + 1]! + b.sy * 0.4;
@@ -385,10 +450,16 @@ export class Pezzi {
       }
     }
 
+    this.attesaTremito += dt;
+    if (this.attesaTremito > 0.5) {
+      this.attesaTremito = 0;
+      this.fermaChiTrema();
+    }
     this.attesa += dt;
     if (this.attesa < TIC) return;
     const passato = this.attesa;
     this.attesa = 0;
+    this.elencoArdenti = Array.from(this.ardenti);
     let ritinto = false;
 
     for (const i of this.ardenti) {
@@ -416,7 +487,8 @@ export class Pezzi {
         if (y - this.mattoni[i]!.quota < 1.4) campo.accendi(x, z, 0.9, 5);
         if (Math.random() < 0.45) {
           let accesi = 0;
-          for (let j = 0; j < this.n && accesi < 2; j++) {
+          // Il fuoco passa solo ai pezzi a un metro e mezzo: stanno per forza nello stesso luogo.
+          for (let j = this.inizio[i]!; j < this.fine[i]! && accesi < 2; j++) {
             const dx = this.pos[j * 3]! - x;
             const dy = this.pos[j * 3 + 1]! - y;
             const dz = this.pos[j * 3 + 2]! - z;
@@ -466,7 +538,7 @@ export class Pezzi {
     const r2 = raggio * raggio;
     const inVolo = new Set(this.rammendi.flatMap((r) => r.pezzi.map((p) => p.i)));
     const pezzi: { i: number; ritardo: number; da: THREE.Vector3; qDa: THREE.Quaternion }[] = [];
-    for (const g of this.vivi) for (let i = g.da; i < g.a; i++) {
+    for (const g of this.vivi) for (let i = g.da; i < g.fin; i++) {
       const b = this.mattoni[i]!;
       // Si guarda solo la pianta, non l'altezza: così tornano su colonne intere, ognuna con il suo appoggio sotto.
       const dx = b.x - x;
@@ -540,6 +612,10 @@ export class Pezzi {
     this.mattoni.forEach((b, i) => {
       const corpo = this.corpi[i];
       if (!b || !corpo) return;
+      // Un pezzo già al suo posto, fermo e intatto non si tocca: svegliarli tutti farebbe scattare il gioco per niente.
+      const t = corpo.translation();
+      const intatto = this.carbone[i] === 0 && this.scala[i] === 1 && this.ghiaccio[i] === 0 && this.fiamma[i] === 0;
+      if (intatto && corpo.isSleeping() && Math.hypot(t.x - b.x, t.y - b.y, t.z - b.z) < 0.03) return;
       this.collisori[i]!.setCollisionGroups(0xffffffff);
       if (this.scala[i] !== 1) {
         this.scala[i] = 1;

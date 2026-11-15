@@ -4,15 +4,33 @@ import type { Effetto, Gioco } from '../gioco.js';
 const ANELLO = new THREE.RingGeometry(0.82, 1, 48).rotateX(-Math.PI / 2);
 const SFERA = new THREE.IcosahedronGeometry(1, 2);
 
-function materialeLuce(colore: number, forza: number): THREE.MeshBasicMaterial {
-  return new THREE.MeshBasicMaterial({
-    color: new THREE.Color(colore).multiplyScalar(forza),
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-    fog: false,
-  });
+/**
+ * I materiali luminosi si riusano: crearne uno nuovo a ogni incantesimo e buttarlo alla fine costringeva la scheda
+ * grafica a ricompilare il suo programma quasi a ogni lancio, con uno scatto proprio nel momento più bello.
+ */
+const riserva: THREE.MeshBasicMaterial[] = [];
+const riservaConDisegno: THREE.MeshBasicMaterial[] = [];
+
+function materialeLuce(colore: number, forza: number, disegno?: THREE.Texture): THREE.MeshBasicMaterial {
+  const m =
+    (disegno ? riservaConDisegno : riserva).pop() ??
+    new THREE.MeshBasicMaterial({
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      fog: false,
+      forceSinglePass: true,
+      map: disegno ?? null,
+    });
+  m.color.set(colore).multiplyScalar(forza);
+  m.opacity = 1;
+  return m;
+}
+
+/** Restituisce un materiale luminoso alla riserva, pronto per il prossimo effetto. */
+export function rendi(m: THREE.MeshBasicMaterial): void {
+  (m.map ? riservaConDisegno : riserva).push(m);
 }
 
 /** Un'onda ad anello che si allarga sul terreno e svanisce. */
@@ -30,7 +48,7 @@ export function anello(g: Gioco, dove: THREE.Vector3, colore: number, raggio: nu
       mesh.material.opacity = Math.max(0, 1 - t);
       if (t < 1) return true;
       mesh.removeFromParent();
-      mesh.material.dispose();
+      rendi(mesh.material);
       return false;
     },
   });
@@ -49,7 +67,7 @@ export function bolla(g: Gioco, dove: THREE.Vector3, colore: number, raggio: num
       mesh.material.opacity = Math.max(0, 1 - t) * 0.8;
       if (t < 1) return true;
       mesh.removeFromParent();
-      mesh.material.dispose();
+      rendi(mesh.material);
       return false;
     },
   });
@@ -129,9 +147,7 @@ const PIANO = new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2);
 
 /** Un cerchio magico orizzontale, luminoso, da far girare e ingrandire a piacere. */
 export function creaCerchioMagico(colore: number, forza = 1.8): THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> {
-  const m = materialeLuce(colore, forza);
-  m.map = cerchioMagico();
-  return new THREE.Mesh(PIANO, m);
+  return new THREE.Mesh(PIANO, materialeLuce(colore, forza, cerchioMagico()));
 }
 
 const CILINDRO = new THREE.CylinderGeometry(1, 1, 1, 5, 1, true);
@@ -209,7 +225,7 @@ export class Saetta implements Effetto {
     if (this.eta < this.durata) return true;
     this.mesh.removeFromParent();
     this.mesh.dispose();
-    m.dispose();
+    rendi(m);
     return false;
   }
 }

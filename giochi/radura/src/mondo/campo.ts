@@ -187,7 +187,10 @@ export class Campo {
       if (this.accese.size > 0) this.avanzaFuoco();
       this.elenco = Array.from(this.accese);
     }
-    this.attesaGelo += dt;
+    // Il tempo di scioglimento si conta solo mentre c'è qualcosa di gelato: altrimenti il primo gelo dopo
+    // una lunga pausa si scioglierebbe tutto in un colpo, prima ancora di essere visto.
+    if (this.gelate > 0) this.attesaGelo += dt;
+    else this.attesaGelo = 0;
     if (this.attesaGelo > 0.5 && this.gelate > 0) {
       // Il gelo si scioglie piano piano.
       this.gelate = 0;
