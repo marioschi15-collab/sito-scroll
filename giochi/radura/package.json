@@ -1,0 +1,29 @@
+{
+  "name": "radura",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Radura: un prato, un bastone, sette incantesimi e un villaggio da fare a pezzi. Tutto codice, gira nel browser.",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vite build --ssr prove/stabilita.ts --outDir dist-prove --logLevel warn && node dist-prove/stabilita.js"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "0.21.0",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/three": "0.187.0",
+    "typescript": "5.9.3",
+    "vite": "8.3.5",
+    "vite-plugin-singlefile": "2.3.4"
+  }
+}

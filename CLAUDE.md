@@ -20,6 +20,8 @@ decisioni di prodotto. Le decisioni tecniche le prendi tu, seguendo i documenti.
   (CLAUDE.md dell'assistente, ruoli, skill, rituale `onboarding/PRIMO-AVVIO.md`, banca domande).
 - `packages/it-copy`: TUTTE le frasi mostrate all'utente. `packages/schema`: schemi zod condivisi.
 - `services/manager-bot`: Worker Cloudflare per creare il bot Telegram in due tocchi.
+- `siti/` e `giochi/`: progetti a sé, fuori dal workspace di Spalla (ognuno con il suo `pnpm install`). `giochi/radura` è un
+  gioco per browser fatto tutto di codice (three.js + Rapier): vedi il suo `README.md`.
 
 ## Comandi
 

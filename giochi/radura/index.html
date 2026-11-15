@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Radura — il prato del mago</title>
+    <style>
+      :root { color-scheme: dark; --carta: #f4ecd8; --inchiostro: #1d1a14; --oro: #e9c46a; }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1117; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--carta); }
+      body { touch-action: none; user-select: none; -webkit-user-select: none; overscroll-behavior: none; }
+      #tela { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+      .hud { position: fixed; pointer-events: none; z-index: 2; }
+      #mirino { left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 2px solid rgba(255,255,255,.75); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+      #mirino::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #fff; }
+      #barra { left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px; border-radius: 999px; background: rgba(14,16,22,.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: auto; }
+      .magia { position: relative; width: 46px; height: 46px; border-radius: 50%; border: 2px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); font-size: 22px; line-height: 1; display: grid; place-items: center; cursor: pointer; padding: 0; color: inherit; transition: transform .15s, border-color .15s, box-shadow .15s; overflow: hidden; }
+      .magia.scelta { transform: scale(1.16); border-color: var(--tinta); box-shadow: 0 0 16px var(--tinta), inset 0 0 12px color-mix(in srgb, var(--tinta) 45%, transparent); }
+      .magia small { position: absolute; right: 5px; bottom: 2px; font-size: 9px; opacity: .6; font-weight: 600; }
+      .magia i { position: absolute; inset: 0; background: rgba(0,0,0,.55); transform-origin: bottom; transform: scaleY(0); }
+      #nome { left: 50%; bottom: 92px; transform: translateX(-50%); text-align: center; text-shadow: 0 1px 6px rgba(0,0,0,.7); transition: opacity .5s; width: min(92vw, 520px); }
+      #nome b { display: block; font: italic 600 26px Georgia, 'Times New Roman', serif; letter-spacing: .02em; }
+      #nome span { font-size: 13px; opacity: .85; }
+      #stato { left: 14px; top: 12px; font-size: 12px; opacity: .8; text-shadow: 0 1px 4px rgba(0,0,0,.7); font-variant-numeric: tabular-nums; }
+      #ricostruisci { position: fixed; z-index: 3; right: 12px; top: 10px; padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(14,16,22,.5); color: var(--carta); font: 600 13px system-ui, sans-serif; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+      #leva { position: fixed; z-index: 2; display: none; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: rgba(255,255,255,.07); pointer-events: none; }
+      #pomello { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; background: rgba(255,255,255,.45); transform: translate(-50%, -50%); }
+      .tocco { position: fixed; z-index: 3; display: none; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); background: rgba(14,16,22,.45); color: #fff; font: 600 13px system-ui, sans-serif; touch-action: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+      #lancia { right: 22px; bottom: 96px; width: 92px; height: 92px; font-size: 34px; border-color: var(--tinta, #fff); box-shadow: 0 0 18px var(--tinta, transparent); }
+      #salta { right: 126px; bottom: 84px; width: 58px; height: 58px; }
+      body.dita .tocco { display: block; }
+      body.dita #barra { bottom: 14px; gap: 5px; padding: 6px; }
+      body.dita .magia { width: 40px; height: 40px; font-size: 19px; }
+      body.dita .magia small { display: none; }
+      body.dita #nome { bottom: auto; top: 54px; }
+      #inizio { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: radial-gradient(ellipse at center, rgba(10,14,20,.35), rgba(10,14,20,.8)); transition: opacity .4s; }
+      #inizio.via { opacity: 0; pointer-events: none; }
+      .scheda { max-width: 460px; text-align: center; }
+      .scheda h1 { margin: 0; font: italic 600 clamp(52px, 13vw, 88px)/1 Georgia, 'Times New Roman', serif; letter-spacing: .01em; text-shadow: 0 4px 30px rgba(0,0,0,.6); }
+      .scheda p { margin: 12px 0 0; font-size: 16px; line-height: 1.5; text-wrap: balance; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+      .scheda .come { margin-top: 18px; font-size: 13.5px; opacity: .9; }
+      .scheda kbd { display: inline-block; padding: 1px 6px; border-radius: 5px; border: 1px solid rgba(255,255,255,.35); font: 600 12px system-ui, sans-serif; background: rgba(255,255,255,.08); }
+      #entra { margin-top: 26px; padding: 15px 34px; border: 0; border-radius: 999px; background: var(--oro); color: var(--inchiostro); font: 700 17px system-ui, sans-serif; cursor: pointer; box-shadow: 0 8px 30px rgba(233,196,106,.35); }
+      #entra:disabled { opacity: .6; cursor: progress; }
+      #entra:focus-visible, .magia:focus-visible, #ricostruisci:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="tela"></canvas>
+    <div id="mirino" class="hud"></div>
+    <div id="stato" class="hud"></div>
+    <div id="nome" class="hud"><b></b><span></span></div>
+    <div id="barra" class="hud"></div>
+    <button id="ricostruisci" type="button">↺ Ricostruisci</button>
+    <div id="leva"><div id="pomello"></div></div>
+    <button id="salta" class="tocco" type="button">Salta</button>
+    <button id="lancia" class="tocco" type="button" aria-label="Lancia l'incantesimo">✦</button>
+    <div id="inizio">
+      <div class="scheda">
+        <h1>Radura</h1>
+        <p>Un prato, un bastone, sette incantesimi<br />e un villaggio da fare a pezzi.</p>
+        <p class="come" id="come"></p>
+        <button id="entra" type="button" disabled>Sto preparando il prato…</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
