@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Qualita } from '../base/qualita.js';
 import { generatore } from '../base/matematica.js';
-import { atmosfera, NEBBIA_GLSL } from './atmosfera.js';
+import { atmosfera, NEBBIA_GLSL, NUBI_GLSL } from './atmosfera.js';
 import type { Campo } from './campo.js';
 import { UV_ALTEZZE_GLSL } from './terreno.js';
 
@@ -12,12 +12,15 @@ import { UV_ALTEZZE_GLSL } from './terreno.js';
 export interface Prato {
   readonly oggetti: THREE.Object3D[];
   aggiorna(camera: THREE.Vector3): void;
+  /** Mostra solo una parte dei fili (1 = tutti): serve ad alleggerire quando il dispositivo fatica. */
+  densita(quota: number): void;
 }
 
 const COMUNE_VERTICE = /* glsl */ `
   uniform vec3 uCam; uniform float uLato; uniform float uTempo; uniform float uLatoCampo;
   uniform sampler2D uAltezze; uniform sampler2D uStato; uniform sampler2D uBiomi;
   ${UV_ALTEZZE_GLSL}
+  ${NUBI_GLSL}
 `;
 
 export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, biomi: THREE.DataTexture): Prato {
@@ -100,7 +103,10 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         c = mix(c, vec3(0.88, 0.94, 1.0), bio.b * naturale * (0.35 + 0.6 * t));
         c = mix(c, vec3(0.02, 0.016, 0.012), stato.r * 0.96);
         c = mix(c, vec3(0.78, 0.92, 1.0), stato.g * (0.45 + 0.5 * t));
-        c += vec3(1.6, 0.5, 0.06) * stato.a * (1.0 - t) * 1.2;
+        c *= ombraNubi(w, uTempo);
+        // Un filo di luce in più sulle punte rivolte al sole: dà lucentezza al prato.
+        c += vec3(0.10, 0.11, 0.03) * t * t * (0.5 + 0.5 * sin(aCaso.x * 40.0)) * (1.0 - stato.r) * presente;
+        c += vec3(1.3, 0.38, 0.05) * stato.a * (1.0 - t) * (1.0 - t);
         vColore = c;
         vec4 mv = viewMatrix * vec4(p, 1.0);
         vDistanza = -mv.z;
@@ -185,7 +191,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         float cuore = 1.0 - step(0.5, length(position.xz));
         vec3 c = mix(aColore, vec3(1.0, 0.78, 0.1), cuore);
         c = mix(c, vec3(0.85, 0.95, 1.0), stato.g * 0.6);
-        vColore = c;
+        vColore = c * ombraNubi(w, uTempo);
         vec4 mv = viewMatrix * vec4(p, 1.0);
         vDistanza = -mv.z;
         gl_Position = projectionMatrix * mv;
@@ -200,6 +206,10 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
     oggetti: [erba, fiori],
     aggiorna(camera) {
       uniformi.uCam.value.copy(camera);
+    },
+    densita(quota) {
+      filo.instanceCount = Math.floor(q.filiErba * quota);
+      fiore.instanceCount = Math.floor(q.fiori * quota);
     },
   };
 }

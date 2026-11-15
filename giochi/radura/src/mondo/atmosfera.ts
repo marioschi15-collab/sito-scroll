@@ -13,6 +13,15 @@ export const atmosfera = {
   tempo: { value: 0 },
 };
 
+/** Le ombre delle nuvole che scorrono sul terreno: un numero tra 0,7 (ombra) e 1 (sole). */
+export const NUBI_GLSL = /* glsl */ `
+  float ombraNubi(vec2 w, float t) {
+    vec2 p = w * 0.011 + vec2(t * 0.012, t * 0.004);
+    float n = sin(p.x * 1.7 + sin(p.y * 1.3)) * sin(p.y * 1.9 + sin(p.x * 0.7)) * 0.5 + 0.5;
+    return mix(0.68, 1.0, smoothstep(0.25, 0.6, n));
+  }
+`;
+
 /** Pezzetto di codice per le schede grafiche: sfuma il colore verso la nebbia con la distanza. */
 export const NEBBIA_GLSL = /* glsl */ `
   vec3 conNebbia(vec3 colore, float distanza, vec3 nebbiaColore, float densita) {

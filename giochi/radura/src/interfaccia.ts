@@ -1,3 +1,4 @@
+import { graficaScelta, ricordaGrafica, type Grafica } from './base/qualita.js';
 import type { Incantesimo } from './gioco.js';
 import { LUOGHI, pesiZone, RAGGIO_GIOCO, ZONE } from './mondo/zone.js';
 
@@ -5,9 +6,9 @@ const el = <T extends HTMLElement>(id: string): T => document.getElementById(id)
 
 const COME_TASTIERA =
   '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> per camminare · mouse per guardare · clic per lanciare<br />' +
-  '<kbd>1</kbd>–<kbd>0</kbd>, <kbd>Q</kbd>/<kbd>E</kbd> o rotella per cambiare incantesimo · <kbd>Spazio</kbd> salta · <kbd>Maiusc</kbd> corri · <kbd>R</kbd> ricostruisci';
+  '<kbd>1</kbd>–<kbd>0</kbd>, <kbd>Q</kbd>/<kbd>E</kbd> o rotella per cambiare incantesimo · <kbd>C</kbd> inventane uno · <kbd>Spazio</kbd> salta · <kbd>Maiusc</kbd> corri · <kbd>R</kbd> ricostruisci';
 const COME_DITA =
-  'Pollice sinistro per camminare, destro per guardarti intorno.<br />Tocca un incantesimo in basso e tieni premuto ✦ per lanciarlo.';
+  'Pollice sinistro per camminare, destro per guardarti intorno.<br />Scorri la barra in basso, tocca un incantesimo e tieni premuto ✦ per lanciarlo. Con ＋ ne inventi uno tuo.';
 
 /** Tutto ciò che sta sopra l'immagine del gioco: barra degli incantesimi, scritte, pulsanti, schermata d'ingresso. */
 export class Interfaccia {
@@ -21,8 +22,10 @@ export class Interfaccia {
   private readonly entra = el<HTMLButtonElement>('entra');
   private readonly nome = el('nome');
   private readonly stato = el('stato');
-  private readonly bottoni: HTMLButtonElement[] = [];
-  private readonly veli: HTMLElement[] = [];
+  private bottoni: HTMLButtonElement[] = [];
+  private veli: HTMLElement[] = [];
+  private magie: readonly Incantesimo[] = [];
+  onOfficina: () => void = () => undefined;
   private spegniNome = 0;
   private spegniAnnuncio = 0;
   private readonly annuncio = el('annuncio');
@@ -31,10 +34,36 @@ export class Interfaccia {
   onScelta: (indice: number) => void = () => undefined;
   onEntra: () => void = () => undefined;
 
-  constructor(private readonly magie: readonly Incantesimo[], telefono: boolean) {
+  constructor(magie: readonly Incantesimo[], telefono: boolean) {
     document.body.classList.toggle('dita', telefono);
     el('come').innerHTML = telefono ? COME_DITA : COME_TASTIERA;
+    this.impostaMagie(magie);
+    this.entra.addEventListener('click', () => this.onEntra());
+    // La scelta della grafica: cambiarla ricarica la pagina, perché il mondo va preparato da capo.
+    const nomi: Record<Grafica, string> = {
+      automatica: 'Grafica: automatica (si adatta al dispositivo)',
+      alta: 'Grafica: sempre al massimo',
+      leggera: 'Grafica: leggera (per dispositivi lenti)',
+    };
+    const ordine: Grafica[] = ['automatica', 'alta', 'leggera'];
+    const pulsante = el<HTMLButtonElement>('grafica');
+    pulsante.textContent = nomi[graficaScelta()];
+    pulsante.addEventListener('click', () => {
+      const prossima = ordine[(ordine.indexOf(graficaScelta()) + 1) % ordine.length]!;
+      ricordaGrafica(prossima);
+      pulsante.textContent = nomi[prossima] + ' — ricarico…';
+      window.setTimeout(() => window.location.reload(), 250);
+    });
+    this.preparaMappa();
+  }
+
+  /** Ridisegna la barra: gli incantesimi di sempre, quelli inventati, e in fondo il pulsante dell'officina. */
+  impostaMagie(magie: readonly Incantesimo[]): void {
+    this.magie = magie;
+    this.bottoni = [];
+    this.veli = [];
     const barra = el('barra');
+    barra.replaceChildren();
     magie.forEach((m, i) => {
       const b = document.createElement('button');
       b.type = 'button';
@@ -51,8 +80,17 @@ export class Interfaccia {
       this.bottoni.push(b);
       this.veli.push(b.querySelector('i')!);
     });
-    this.entra.addEventListener('click', () => this.onEntra());
-    this.preparaMappa();
+    const crea = document.createElement('button');
+    crea.type = 'button';
+    crea.className = 'magia crea';
+    crea.title = 'Inventa un incantesimo';
+    crea.setAttribute('aria-label', 'Inventa un incantesimo');
+    crea.textContent = '＋';
+    crea.addEventListener('click', () => {
+      this.onOfficina();
+      crea.blur();
+    });
+    barra.append(crea);
   }
 
   /** Dipinge una volta sola lo sfondo della mappa: ogni zona con il colore della sua terra. */
@@ -140,6 +178,7 @@ export class Interfaccia {
   scegli(indice: number): void {
     const m = this.magie[indice]!;
     this.bottoni.forEach((b, i) => b.classList.toggle('scelta', i === indice));
+    this.bottoni[indice]?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     this.nome.querySelector('b')!.textContent = m.nome;
     this.nome.querySelector('span')!.textContent = m.cosaFa;
     this.nome.style.opacity = '1';
@@ -150,7 +189,7 @@ export class Interfaccia {
 
   /** Mostra quanto manca prima di poter rilanciare ogni incantesimo (0 = pronto, 1 = appena lanciato). */
   ricariche(quote: readonly number[]): void {
-    quote.forEach((q, i) => (this.veli[i]!.style.transform = `scaleY(${q.toFixed(3)})`));
+    quote.forEach((q, i) => this.veli[i] && (this.veli[i].style.transform = `scaleY(${q.toFixed(3)})`));
   }
 
   scriviStato(testo: string): void {

@@ -14,6 +14,8 @@ import { Giocatore } from './giocatore.js';
 import type { Effetto, Gioco } from './gioco.js';
 import { INCANTESIMI } from './incantesimi/elenco.js';
 import { Interfaccia } from './interfaccia.js';
+import { creaDaRicetta, leggiRicette, salvaRicette, type Ricetta } from './incantesimi/officina.js';
+import { OfficinaUi } from './officinaUi.js';
 import { creaBosco } from './mondo/alberi.js';
 import { AlberiMagici } from './mondo/alberiMagici.js';
 import { atmosfera } from './mondo/atmosfera.js';
@@ -31,11 +33,17 @@ const PASSO_FISICA = 1 / 60;
 
 async function avvia(): Promise<void> {
   const q = scegliQualita();
-  const ui = new Interfaccia(INCANTESIMI, q.telefono);
+  let ricette: Ricetta[] = leggiRicette();
+  let magie = [...INCANTESIMI, ...ricette.map(creaDaRicetta)];
+  const ui = new Interfaccia(magie, q.telefono);
+  const officina = new OfficinaUi();
   await RAPIER.init();
 
   // --- schermo ---
-  const renderer = new THREE.WebGLRenderer({ canvas: ui.tela, antialias: !q.bagliore, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ canvas: ui.tela, antialias: false, powerPreference: 'high-performance' });
+  // Toni "da pellicola": le luci forti non sbiancano di colpo e i colori restano pieni.
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
   renderer.setPixelRatio(q.densitaPixel);
   renderer.shadowMap.enabled = q.ombre;
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -49,7 +57,7 @@ async function avvia(): Promise<void> {
   scena.add(luceCielo, sole, sole.target);
   if (q.ombre) {
     sole.castShadow = true;
-    sole.shadow.mapSize.set(2048, 2048);
+    sole.shadow.mapSize.set(q.latoOmbre, q.latoOmbre);
     const c = sole.shadow.camera;
     c.left = c.bottom = -48;
     c.right = c.top = 48;
@@ -108,14 +116,17 @@ async function avvia(): Promise<void> {
   };
 
   // --- bagliore attorno alle cose luminose (solo al computer) ---
-  let compositore: EffectComposer | null = null;
-  if (q.bagliore) {
-    const bersaglio = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 });
-    compositore = new EffectComposer(renderer, bersaglio);
-    compositore.addPass(new RenderPass(scena, camera));
-    compositore.addPass(new UnrealBloomPass(new THREE.Vector2(256, 256), 0.28, 0.4, 1.0));
-    compositore.addPass(new OutputPass());
-  }
+  // L'immagine passa sempre da qui: bordi lisci, bagliore (se il dispositivo lo regge) e toni finali.
+  const compositore = new EffectComposer(
+    renderer,
+    new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 }),
+  );
+  compositore.addPass(new RenderPass(scena, camera));
+  const bagliore = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.3, 0.45, 1.05);
+  bagliore.enabled = q.bagliore;
+  compositore.addPass(bagliore);
+  compositore.addPass(new OutputPass());
+  let densitaPixel = q.densitaPixel;
 
   let stretto = false;
   const misura = (): void => {
@@ -126,26 +137,51 @@ async function avvia(): Promise<void> {
     camera.fov = stretto ? 84 : 72;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h, false);
-    compositore?.setPixelRatio(q.densitaPixel);
-    compositore?.setSize(w, h);
-    scalaPunti.value = (h * q.densitaPixel) / (2 * Math.tan((camera.fov * Math.PI) / 360));
+    renderer.setPixelRatio(densitaPixel);
+    compositore.setPixelRatio(densitaPixel);
+    compositore.setSize(w, h);
+    scalaPunti.value = (h * densitaPixel) / (2 * Math.tan((camera.fov * Math.PI) / 360));
   };
   misura();
   window.addEventListener('resize', misura);
 
   // --- incantesimi ---
   let scelto = 0;
-  const attese = INCANTESIMI.map(() => 0);
+  let attese = magie.map(() => 0);
   const scegli = (i: number): void => {
-    if (i < 0 || i >= INCANTESIMI.length) return;
+    if (i < 0 || i >= magie.length) return;
     scelto = i;
     ui.scegli(i);
-    bastone.coloreMagia(INCANTESIMI[i]!.colore);
+    bastone.coloreMagia(magie[i]!.colore);
   };
   scegli(0);
   ui.onScelta = scegli;
   comandi.onScelta = scegli;
-  comandi.onScorri = (verso) => scegli((scelto + verso + INCANTESIMI.length) % INCANTESIMI.length);
+  comandi.onScorri = (verso) => scegli((scelto + verso + magie.length) % magie.length);
+
+  // --- l'officina: mentre è aperta il gioco non riceve comandi ---
+  const apriOfficina = (): void => {
+    if (officina.aperta || !comandi.attivi) return;
+    comandi.attivi = false;
+    comandi.lancia = false;
+    comandi.avanti = comandi.lato = 0;
+    comandi.sgancia();
+    officina.apri(ricette);
+  };
+  ui.onOfficina = apriOfficina;
+  comandi.onOfficina = apriOfficina;
+  officina.onCambio = (nuove, daUsare) => {
+    ricette = nuove.map((r) => ({ ...r, effetti: [...r.effetti] }));
+    salvaRicette(ricette);
+    magie = [...INCANTESIMI, ...ricette.map(creaDaRicetta)];
+    attese = magie.map(() => 0);
+    ui.impostaMagie(magie);
+    scegli(daUsare >= 0 ? INCANTESIMI.length + daUsare : Math.min(scelto, magie.length - 1));
+  };
+  officina.onChiudi = () => {
+    comandi.attivi = true;
+    if (!q.telefono) comandi.aggancia();
+  };
 
   const origine = new THREE.Vector3();
   const direzione = new THREE.Vector3();
@@ -165,7 +201,7 @@ async function avvia(): Promise<void> {
     return true;
   };
   const lancia = (indice: number): void => {
-    const magia = INCANTESIMI[indice]!;
+    const magia = magie[indice]!;
     camera.updateMatrixWorld();
     const aTerra = mira();
     bastone.punta(origine);
@@ -405,14 +441,14 @@ async function avvia(): Promise<void> {
         `${ZONE[zonaAttuale]!.nome} · luoghi ${scoperti.size}/${LUOGHI.length}` +
           (pezzi.svegli > 0 ? ` · ${formato.format(pezzi.svegli)} pezzi in movimento` : ''),
       );
-      ui.ricariche(attese.map((a, i) => a / INCANTESIMI[i]!.ricarica));
+      ui.ricariche(attese.map((a, i) => a / magie[i]!.ricarica));
     }
 
   };
 
   // Maniglia per le prove automatiche: lanciare incantesimi senza mouse, fermare il tempo o mandarlo avanti.
   const prova = {
-    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, mattoni: mondo.mattoni,
+    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, mattoni: mondo.mattoni, officina,
     fermo: false,
     /** Sposta chi gioca in un punto del mondo, girato in una direzione. */
     vai(x: number, z: number, imbardata = 0, beccheggio = 0) {
@@ -427,12 +463,43 @@ async function avvia(): Promise<void> {
   };
   (window as unknown as { radura: unknown }).radura = prova;
 
+  // --- se il dispositivo fatica, si toglie un po' di dettaglio alla volta (mai il contrario, per non ballare) ---
+  const alleggerimenti: (() => void)[] = [
+    () => (bagliore.enabled = false),
+    () => {
+      densitaPixel = Math.min(densitaPixel, 1.5);
+      misura();
+    },
+    () => prato.densita(0.6),
+    () => {
+      renderer.shadowMap.enabled = false;
+      sole.castShadow = false;
+    },
+    () => {
+      densitaPixel = Math.min(densitaPixel, 1.15);
+      misura();
+    },
+    () => prato.densita(0.35),
+  ];
+  let tempoMedio = 1 / 60;
+  let daUltimaRegolata = 0;
+  const regola = (dt: number): void => {
+    if (!q.siAdatta || !comandi.attivi || dt > 0.5) return;
+    tempoMedio += (dt - tempoMedio) * 0.05;
+    daUltimaRegolata += dt;
+    // Sotto i 34 fotogrammi al secondo per tre secondi di fila: si alleggerisce di un gradino.
+    if (daUltimaRegolata < 3) return;
+    if (tempoMedio > 1 / 34) alleggerimenti.shift()?.();
+    daUltimaRegolata = 0;
+  };
+
   const fotogramma = (): void => {
     const adesso = performance.now();
+    const prima = ultimoIstante;
     if (!prova.fermo) avanza(Math.min(0.05, (adesso - ultimoIstante) / 1000));
     ultimoIstante = adesso;
-    if (compositore) compositore.render();
-    else renderer.render(scena, camera);
+    compositore.render();
+    regola((adesso - prima) / 1000);
   };
   renderer.setAnimationLoop(fotogramma);
   ui.pronto();

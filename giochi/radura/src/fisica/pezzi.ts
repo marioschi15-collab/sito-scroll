@@ -64,11 +64,23 @@ export class Pezzi {
     this.carbone = new Float32Array(this.n);
     this.ghiaccio = new Float32Array(this.n);
     this.scala = new Float32Array(this.n).fill(1);
-    this.mesh = new THREE.InstancedMesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshLambertMaterial({ color: 0xffffff }),
-      this.n,
-    );
+    const materiale = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    // Ogni blocco è un po' più scuro in basso e lungo gli spigoli: dà volume e stacca un blocco dall'altro.
+    materiale.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vLocale;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLocale = position;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vLocale;')
+        .replace(
+          '#include <color_fragment>',
+          `#include <color_fragment>
+           vec3 bordo = smoothstep(0.38, 0.5, abs(vLocale));
+           float spigolo = max(bordo.x * bordo.y, max(bordo.y * bordo.z, bordo.x * bordo.z));
+           diffuseColor.rgb *= mix(0.78, 1.05, smoothstep(-0.5, 0.3, vLocale.y)) * (1.0 - 0.3 * spigolo);`,
+        );
+    };
+    this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), materiale, this.n);
     this.mesh.castShadow = ombre;
     this.mesh.receiveShadow = ombre;
     this.mesh.frustumCulled = false;

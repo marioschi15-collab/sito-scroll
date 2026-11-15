@@ -16,6 +16,7 @@ export class Comandi {
   onScorri: (verso: number) => void = () => undefined;
   onRicostruisci: () => void = () => undefined;
   onPausa: () => void = () => undefined;
+  onOfficina: () => void = () => undefined;
 
   private readonly tasti = new Set<string>();
   private agganciato = false;
@@ -103,6 +104,7 @@ export class Comandi {
       if (e.code === 'KeyQ') this.onScorri(-1);
       if (e.code === 'KeyE') this.onScorri(1);
       if (e.code === 'KeyR') this.onRicostruisci();
+      if (e.code === 'KeyC') this.onOfficina();
     }
     if (e.code === 'KeyF') this.lancia = giu;
     if (e.code === 'Space') e.preventDefault();

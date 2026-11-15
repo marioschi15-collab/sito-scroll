@@ -13,22 +13,30 @@ interface Spuntone {
   collisore: RAPIER.Collider | null;
 }
 
-class Cristalli implements Effetto {
+export class Cristalli implements Effetto {
   private eta = 0;
   private readonly spuntoni: Spuntone[] = [];
   private readonly materiali = [0x6ff0ff, 0xc77dff].map(
     (c) => new THREE.MeshLambertMaterial({ color: 0x223040, emissive: new THREE.Color(c).multiplyScalar(0.75), flatShading: true }),
   );
 
-  constructor(g: Gioco, da: THREE.Vector3, verso: THREE.Vector3) {
+  /** Una fila di spuntoni da un punto verso un altro. */
+  static inFila(g: Gioco, da: THREE.Vector3, verso: THREE.Vector3): Cristalli {
     const dir = new THREE.Vector3(verso.x - da.x, 0, verso.z - da.z);
     const distanza = dir.length();
     dir.normalize();
     const quanti = Math.min(15, Math.max(6, Math.round(distanza / 2.3)));
+    const punti: { x: number; z: number }[] = [];
     for (let k = 0; k < quanti; k++) {
       const lato = (Math.random() - 0.5) * 1.6;
-      const x = da.x + dir.x * (5.5 + k * 2.3) - dir.z * lato;
-      const z = da.z + dir.z * (5.5 + k * 2.3) + dir.x * lato;
+      punti.push({ x: da.x + dir.x * (5.5 + k * 2.3) - dir.z * lato, z: da.z + dir.z * (5.5 + k * 2.3) + dir.x * lato });
+    }
+    return new Cristalli(g, punti);
+  }
+
+  constructor(g: Gioco, punti: { x: number; z: number }[]) {
+    for (let k = 0; k < punti.length; k++) {
+      const { x, z } = punti[k]!;
       const mesh = new THREE.Mesh(SPUNTONE, this.materiali[k % 2]!);
       mesh.position.set(x, altezza(x, z) - 0.3, z);
       mesh.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * 6.28, (Math.random() - 0.5) * 0.5);
@@ -85,7 +93,7 @@ export const cristalli: Incantesimo = {
   colore: 0x6ff0ff,
   ricarica: 1.4,
   lancia(g, l) {
-    g.aggiungi(new Cristalli(g, g.camera.position, l.bersaglio));
+    g.aggiungi(Cristalli.inFila(g, g.camera.position, l.bersaglio));
     g.scossa(0.3, g.camera.position);
   },
 };

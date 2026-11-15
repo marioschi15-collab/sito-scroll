@@ -13,7 +13,7 @@
       .hud { position: fixed; pointer-events: none; z-index: 2; }
       #mirino { left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 2px solid rgba(255,255,255,.75); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
       #mirino::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #fff; }
-      #barra { left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 6px; padding: 7px; border-radius: 30px; background: rgba(14,16,22,.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: auto; }
+      #barra { left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 6px; padding: 7px; border-radius: 30px; max-width: calc(100vw - 16px); overflow-x: auto; scrollbar-width: none; touch-action: pan-x; background: rgba(14,16,22,.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: auto; }
       .magia { position: relative; flex: none; width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); font-size: 22px; line-height: 1; display: grid; place-items: center; cursor: pointer; padding: 0; color: inherit; transition: transform .15s, border-color .15s, box-shadow .15s; overflow: hidden; }
       .magia.scelta { transform: scale(1.16); border-color: var(--tinta); box-shadow: 0 0 16px var(--tinta), inset 0 0 12px color-mix(in srgb, var(--tinta) 45%, transparent); }
       .magia small { position: absolute; right: 5px; bottom: 2px; font-size: 9px; opacity: .6; font-weight: 600; }
@@ -30,10 +30,32 @@
       #leva { position: fixed; z-index: 2; display: none; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: rgba(255,255,255,.07); pointer-events: none; }
       #pomello { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; background: rgba(255,255,255,.45); transform: translate(-50%, -50%); }
       .tocco { position: fixed; z-index: 3; display: none; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); background: rgba(14,16,22,.45); color: #fff; font: 600 13px system-ui, sans-serif; touch-action: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-      #lancia { right: 22px; bottom: 132px; width: 92px; height: 92px; font-size: 34px; border-color: var(--tinta, #fff); box-shadow: 0 0 18px var(--tinta, transparent); }
-      #salta { right: 126px; bottom: 122px; width: 58px; height: 58px; }
+      #lancia { right: 22px; bottom: 92px; width: 92px; height: 92px; font-size: 34px; border-color: var(--tinta, #fff); box-shadow: 0 0 18px var(--tinta, transparent); }
+      #salta { right: 126px; bottom: 82px; width: 58px; height: 58px; }
       body.dita .tocco { display: block; }
-      body.dita #barra { bottom: 12px; gap: 5px; padding: 6px; flex-wrap: wrap; justify-content: center; width: min(96vw, 340px); border-radius: 26px; }
+      body.dita #barra { bottom: 12px; gap: 6px; padding: 6px; border-radius: 26px; }
+      #barra::-webkit-scrollbar { display: none; }
+      .magia.crea { border-style: dashed; font-size: 24px; color: var(--oro); }
+      #officina { position: fixed; inset: 0; z-index: 12; display: none; place-items: center; padding: 10px; background: rgba(8,10,16,.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+      #officina.aperta { display: grid; }
+      .foglio { width: min(560px, 100%); max-height: 94vh; max-height: 94dvh; overflow-y: auto; touch-action: pan-y; padding: 18px 18px 14px; border-radius: 20px; background: #171b24; border: 1px solid rgba(255,255,255,.12); box-shadow: 0 20px 60px rgba(0,0,0,.5); user-select: text; -webkit-user-select: text; }
+      .foglio h2 { margin: 0; font: italic 600 28px Georgia, 'Times New Roman', serif; }
+      .foglio > p { margin: 4px 0 10px; font-size: 13.5px; opacity: .8; }
+      .foglio h3 { margin: 14px 0 6px; font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; opacity: .65; font-weight: 600; }
+      .fila { display: flex; flex-wrap: wrap; gap: 6px; }
+      .gettone { padding: 8px 11px; min-height: 38px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,.16); background: rgba(255,255,255,.05); color: var(--carta); font: 500 13.5px system-ui, sans-serif; cursor: pointer; }
+      .gettone.acceso { border-color: var(--tinta, var(--oro)); background: color-mix(in srgb, var(--tinta, var(--oro)) 22%, transparent); }
+      #of-colori .gettone { width: 38px; padding: 0; background: var(--tinta); border-color: transparent; }
+      #of-colori .gettone.acceso { border-color: #fff; box-shadow: 0 0 0 2px #171b24 inset; }
+      #of-simboli .gettone { width: 40px; padding: 0; font-size: 19px; }
+      .foglio input { width: 100%; padding: 11px 12px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,.18); background: rgba(0,0,0,.25); color: var(--carta); font: 16px system-ui, sans-serif; }
+      #of-riassunto { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.05); font-size: 13.5px; line-height: 1.45; }
+      #of-avviso { min-height: 18px; margin: 8px 0 0; font-size: 13px; color: var(--oro); }
+      .azioni { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+      .azioni button, .codice button { padding: 12px 16px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,.2); background: transparent; color: var(--carta); font: 600 14px system-ui, sans-serif; cursor: pointer; }
+      .azioni .primo { background: var(--oro); color: var(--inchiostro); border-color: var(--oro); flex: 1; }
+      .codice { display: flex; gap: 8px; }
+      .codice input { flex: 1; min-width: 0; font-size: 14px; }
       body.dita #mappa { width: 80px; height: 80px; }
       body.dita #stato { max-width: calc(100vw - 150px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       body.dita #annuncio { top: 21%; }
@@ -51,6 +73,7 @@
       .scheda kbd { display: inline-block; padding: 1px 6px; border-radius: 5px; border: 1px solid rgba(255,255,255,.35); font: 600 12px system-ui, sans-serif; background: rgba(255,255,255,.08); }
       #entra { margin-top: 26px; padding: 15px 34px; border: 0; border-radius: 999px; background: var(--oro); color: var(--inchiostro); font: 700 17px system-ui, sans-serif; cursor: pointer; box-shadow: 0 8px 30px rgba(233,196,106,.35); }
       #entra:disabled { opacity: .6; cursor: progress; }
+      #grafica { padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.3); background: rgba(14,16,22,.45); color: var(--carta); font: 500 13px system-ui, sans-serif; cursor: pointer; }
       #entra:focus-visible, .magia:focus-visible, #ricostruisci:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
     </style>
   </head>
@@ -66,12 +89,47 @@
     <div id="leva"><div id="pomello"></div></div>
     <button id="salta" class="tocco" type="button">Salta</button>
     <button id="lancia" class="tocco" type="button" aria-label="Lancia l'incantesimo">✦</button>
+    <div id="officina" role="dialog" aria-modal="true" aria-labelledby="of-titolo">
+      <div class="foglio">
+        <h2 id="of-titolo">Officina degli incantesimi</h2>
+        <p>Inventa il tuo: scegli come parte, che cosa fa e quanto è forte.</p>
+        <h3>I tuoi incantesimi</h3>
+        <div class="fila" id="of-miei"></div>
+        <h3>Nome</h3>
+        <input id="of-nome" type="text" maxlength="18" placeholder="Per esempio: Soffio del drago" autocomplete="off" />
+        <h3>Simbolo e colore</h3>
+        <div class="fila" id="of-simboli"></div>
+        <div class="fila" id="of-colori" style="margin-top: 8px"></div>
+        <h3>Come parte</h3>
+        <div class="fila" id="of-forme"></div>
+        <h3>Che cosa fa (fino a tre)</h3>
+        <div class="fila" id="of-effetti"></div>
+        <h3>Potenza</h3>
+        <div class="fila" id="of-potenza"></div>
+        <h3>Ampiezza</h3>
+        <div class="fila" id="of-ampiezza"></div>
+        <p id="of-riassunto"></p>
+        <p id="of-avviso" role="status"></p>
+        <div class="azioni">
+          <button id="of-salva" class="primo" type="button">Salva e usa</button>
+          <button id="of-copia" type="button">Copia il codice</button>
+          <button id="of-elimina" type="button">Elimina</button>
+          <button id="of-chiudi" type="button">Chiudi</button>
+        </div>
+        <h3>Hai il codice di un amico?</h3>
+        <div class="codice">
+          <input id="of-codice" type="text" placeholder="RAD1…" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <button id="of-aggiungi" type="button">Aggiungi</button>
+        </div>
+      </div>
+    </div>
     <div id="inizio">
       <div class="scheda">
         <h1>Radura</h1>
-        <p>Cinque terre da esplorare, tredici incantesimi<br />e un mondo intero da fare a pezzi.</p>
+        <p>Cinque terre da esplorare, tredici incantesimi<br />e un’officina per inventare i tuoi.</p>
         <p class="come" id="come"></p>
-        <button id="entra" type="button" disabled>Sto preparando il prato…</button>
+        <button id="entra" type="button" disabled>Sto preparando il mondo…</button>
+        <p><button id="grafica" type="button"></button></p>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
