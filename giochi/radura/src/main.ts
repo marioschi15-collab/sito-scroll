@@ -21,10 +21,11 @@ import { AlberiMagici } from './mondo/alberiMagici.js';
 import { atmosfera } from './mondo/atmosfera.js';
 import { Campo } from './mondo/campo.js';
 import { creaCielo, DIREZIONE_SOLE } from './mondo/cielo.js';
-import { costruisciMondo } from './mondo/costruzioni.js';
+import { costruisciLuogo } from './mondo/costruzioni.js';
 import { creaPrato } from './mondo/erba.js';
 import { altezza, creaTerreno } from './mondo/terreno.js';
-import { LUOGHI, pesiZone, ZONE } from './mondo/zone.js';
+import { luoghiVicini, pesiZone, ZONE, type Luogo } from './mondo/zone.js';
+import type { Gruppo } from './fisica/pezzi.js';
 import { Suoni } from './suoni.js';
 
 const NEBBIE = ZONE.map((z) => new THREE.Color(z.nebbia));
@@ -76,13 +77,29 @@ async function avvia(): Promise<void> {
   const terreno = creaTerreno(RAPIER, fisica, campo, q.ombre);
   const prato = creaPrato(q, campo, terreno.altezze, terreno.biomi);
   const bosco = creaBosco(q.ombre);
-  const mondo = costruisciMondo();
-  const pezzi = new Pezzi(mondo.mattoni, mondo.gruppi, RAPIER, fisica, q.ombre);
-  pezzi.avvicina(0, 41);
+  const pezzi = new Pezzi(RAPIER, fisica, q.ombre);
+  // I luoghi costruiti compaiono quando entrano nel raggio di vista e spariscono quando restano lontani.
+  const costruiti = new Map<string, Gruppo | null>();
+  let luoghiInVista: Luogo[] = [];
+  const curaLuoghi = (x: number, z: number): void => {
+    luoghiInVista = luoghiVicini(x, z, 440);
+    for (const l of luoghiInVista) {
+      if (costruiti.has(l.chiave) || Math.hypot(l.x - x, l.z - z) - l.raggio > 345) continue;
+      costruiti.set(l.chiave, pezzi.aggiungi(costruisciLuogo(l), l.x, l.z, l.raggio));
+    }
+    for (const [chiave, gruppo] of costruiti) {
+      if (luoghiInVista.some((l) => l.chiave === chiave)) continue;
+      if (gruppo) pezzi.togli(gruppo);
+      costruiti.delete(chiave);
+    }
+    pezzi.avvicina(x, z);
+  };
+  terreno.segui(0, 41, Infinity);
+  curaLuoghi(0, 41);
   const scintille = new Particelle(q.scintille, true);
   const fumo = new Particelle(q.fumo, false);
   const alberi = new AlberiMagici(scena, RAPIER, fisica, q.ombre);
-  scena.add(creaCielo(), terreno.mesh, terreno.acqua, ...prato.oggetti, ...bosco.oggetti, pezzi.mesh, fumo.punti, scintille.punti);
+  scena.add(creaCielo(), terreno.gruppo, terreno.acqua, ...prato.oggetti, ...bosco.oggetti, pezzi.mesh, fumo.punti, scintille.punti);
 
   const giocatore = new Giocatore(RAPIER, fisica);
   const bastone = new Bastone();
@@ -217,6 +234,35 @@ async function avvia(): Promise<void> {
     suoni.ricostruzione();
   };
   comandi.onRicostruisci = ricostruisci;
+
+  // --- il gioco ricorda dove si è arrivati; un pulsante riporta al villaggio di partenza ---
+  const spostati = (x: number, z: number, imbardata: number): void => {
+    giocatore.posizione.set(x, altezza(x, z) + 0.95, z);
+    giocatore.imbardata = imbardata;
+    terreno.segui(x, z, Infinity);
+    campo.segui(x, z);
+    curaLuoghi(x, z);
+    bosco.aggiorna(campo, x, z);
+  };
+  try {
+    const dove = JSON.parse(localStorage.getItem('radura-posizione') ?? 'null') as { x: number; z: number; a: number } | null;
+    if (dove && Number.isFinite(dove.x) && Number.isFinite(dove.z) && Number.isFinite(dove.a)) spostati(dove.x, dove.z, dove.a);
+  } catch {
+    // Senza memoria del browser si riparte dal villaggio.
+  }
+  window.setInterval(() => {
+    try {
+      const p = giocatore.posizione;
+      localStorage.setItem('radura-posizione', JSON.stringify({ x: Math.round(p.x), z: Math.round(p.z), a: +giocatore.imbardata.toFixed(2) }));
+    } catch {
+      // Pazienza.
+    }
+  }, 4000);
+  const pulsanteCasa = document.getElementById('casa')!;
+  pulsanteCasa.addEventListener('click', () => {
+    spostati(0, 41, 0);
+    pulsanteCasa.blur();
+  });
   ui.pulsanteRicostruisci.addEventListener('click', () => {
     ricostruisci();
     ui.pulsanteRicostruisci.blur();
@@ -251,7 +297,12 @@ async function avvia(): Promise<void> {
 
   // --- esplorazione: in che zona si è, quali luoghi si sono trovati ---
   let zonaAttuale = 0;
-  const scoperti = new Set<number>();
+  const scoperti = new Set<string>();
+  try {
+    for (const chiave of JSON.parse(localStorage.getItem('radura-scoperti') ?? '[]') as string[]) scoperti.add(chiave);
+  } catch {
+    // Senza memoria del browser le scoperte valgono solo per questa partita.
+  }
   const esplora = (): void => {
     const p = giocatore.posizione;
     let zona = 0;
@@ -260,12 +311,17 @@ async function avvia(): Promise<void> {
       zonaAttuale = zona;
       ui.annuncia(ZONE[zona]!.nome, 'Sei entrato in una nuova zona');
     }
-    LUOGHI.forEach((l, i) => {
-      if (scoperti.has(i) || Math.hypot(p.x - l.x, p.z - l.z) > l.raggio + 14) return;
-      scoperti.add(i);
-      if (i > 0) ui.annuncia(l.nome, `Luogo scoperto · ${scoperti.size} di ${LUOGHI.length}`);
-    });
-    ui.disegnaMappa(p.x, p.z, giocatore.imbardata, scoperti);
+    for (const l of luoghiInVista) {
+      if (scoperti.has(l.chiave) || Math.hypot(p.x - l.x, p.z - l.z) > l.raggio + 14) continue;
+      scoperti.add(l.chiave);
+      if (l.tipo !== 'villaggio') ui.annuncia(l.nome, `Luogo scoperto · sono ${scoperti.size}`);
+      try {
+        localStorage.setItem('radura-scoperti', JSON.stringify([...scoperti]));
+      } catch {
+        // Pazienza.
+      }
+    }
+    ui.disegnaMappa(p.x, p.z, giocatore.imbardata, luoghiInVista, scoperti);
   };
 
   /** Quel che vola nell'aria di ogni zona: neve, faville, lucciole, sabbia. */
@@ -332,6 +388,8 @@ async function avvia(): Promise<void> {
     pezzi.sincronizza();
     pezzi.aggiorna(dt, campo, scintille, fumo);
     campo.aggiorna(dt);
+    // Due zolle di terreno nuove per fotogramma: abbastanza per stare davanti a chi corre, poche per non scattare.
+    terreno.segui(giocatore.posizione.x, giocatore.posizione.z, 2);
     alberi.aggiorna(dt, campo);
 
     // Fiamme sul prato che brucia.
@@ -383,8 +441,9 @@ async function avvia(): Promise<void> {
           metaLuce.set(v.x, altezza(v.x, v.z) + 1.5, v.z);
         }
       }
-      bosco.aggiorna(campo);
-      pezzi.avvicina(giocatore.posizione.x, giocatore.posizione.z);
+      bosco.aggiorna(campo, giocatore.posizione.x, giocatore.posizione.z);
+      campo.segui(giocatore.posizione.x, giocatore.posizione.z);
+      curaLuoghi(giocatore.posizione.x, giocatore.posizione.z);
       esplora();
     }
     polvereDelPosto(dt);
@@ -438,7 +497,7 @@ async function avvia(): Promise<void> {
     if (attesaStato <= 0) {
       attesaStato = 0.25;
       ui.scriviStato(
-        `${ZONE[zonaAttuale]!.nome} · luoghi ${scoperti.size}/${LUOGHI.length}` +
+        `${ZONE[zonaAttuale]!.nome} · luoghi scoperti ${scoperti.size}` +
           (pezzi.svegli > 0 ? ` · ${formato.format(pezzi.svegli)} pezzi in movimento` : ''),
       );
       ui.ricariche(attese.map((a, i) => a / magie[i]!.ricarica));
@@ -448,14 +507,17 @@ async function avvia(): Promise<void> {
 
   // Maniglia per le prove automatiche: lanciare incantesimi senza mouse, fermare il tempo o mandarlo avanti.
   const prova = {
-    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, mattoni: mondo.mattoni, officina,
+    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti,
     fermo: false,
     /** Sposta chi gioca in un punto del mondo, girato in una direzione. */
     vai(x: number, z: number, imbardata = 0, beccheggio = 0) {
       giocatore.posizione.set(x, altezza(x, z) + 0.95, z);
       giocatore.imbardata = imbardata;
       giocatore.beccheggio = beccheggio;
-      pezzi.avvicina(x, z);
+      terreno.segui(x, z, Infinity);
+      campo.segui(x, z);
+      curaLuoghi(x, z);
+      bosco.aggiorna(campo, x, z);
     },
     scorri(secondi: number) {
       for (let i = 0; i < secondi * 60; i++) avanza(1 / 60);

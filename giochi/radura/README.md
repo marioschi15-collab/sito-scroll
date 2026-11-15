@@ -1,16 +1,19 @@
 # Radura
 
-Un gioco "sandbox del mago" che gira nel browser: un mondo aperto con cinque terre diverse, un bastone,
-tredici incantesimi e quasi seimila pezzi da far crollare, bruciare, gelare, sollevare e rimettere a posto.
+Un gioco "sandbox del mago" che gira nel browser: un mondo senza confini con cinque tipi di terra, un bastone,
+tredici incantesimi e migliaia di pezzi da far crollare, bruciare, gelare, sollevare e rimettere a posto.
 È tutto codice: nessuna immagine, nessun modello 3D, nessun file audio (anche i suoni sono fabbricati con formule).
 
 ## Il mondo
 
-Si parte dalla **Radura**, con il villaggio. Intorno ci sono le **Dune d'Ambra** (piramide, tempio delle colonne,
-case di sabbia), le **Terre Gelate** (castello di ghiaccio, igloo, guglia di cristallo), la **Palude dei Lumi**
-(palafitte, torre storta, funghi giganti) e il **Monte Brace** (fortezza nera, altare, lava). Nei prati ci sono anche
-una fattoria e una torre di vedetta. In alto a sinistra c'è la mappa: i tredici luoghi sono cerchietti, che diventano
-pieni quando li si scopre. Ogni zona ha il suo terreno, la sua vegetazione, la sua nebbia e il suo cielo.
+Il mondo **non ha confini**: terreno, terre e luoghi nascono attorno a chi gioca mentre cammina, in qualunque
+direzione, e sono sempre gli stessi ogni volta che ci si torna (la "sorte" dipende solo dal punto della mappa).
+Si parte dal villaggio della **Radura**; il clima cambia dolcemente da un posto all'altro e fa nascere le **Dune
+d'Ambra** (piramidi, templi, case di sabbia), le **Terre Gelate** (castelli di ghiaccio, igloo, guglie), la **Palude
+dei Lumi** (palafitte, torri storte, funghi giganti) e il **Monte Brace** (vulcani con lava, fortezze nere, altari).
+Nei prati ci sono borghi, fattorie e torri di vedetta. La mappa in alto a sinistra segue chi gioca: i luoghi vicini
+sono cerchietti, che diventano pieni quando li si scopre. Il gioco ricorda le scoperte e il punto in cui si è
+arrivati; il pulsante "Al villaggio" riporta alla partenza.
 
 ## Come si gioca
 
@@ -42,11 +45,12 @@ pnpm build        # crea dist/index.html: un solo file, si apre con un doppio cl
 
 ## Dove sta cosa
 
-- `src/mondo/`: `zone.ts` (le cinque terre e i tredici luoghi), terreno, cielo, erba e fiori, vegetazione, e
-  `costruzioni.ts` che disegna ogni luogo pezzo per pezzo.
+- `src/mondo/`: `zone.ts` (il clima che decide le terre, e la sorte che decide i luoghi), `terreno.ts` (zolle che
+  nascono attorno a chi gioca e vengono riusate), cielo, erba e fiori, vegetazione, e `costruzioni.ts` che disegna
+  ogni tipo di luogo pezzo per pezzo.
   `campo.ts` tiene lo stato del prato (bruciato, gelato, rigoglioso, in fiamme) a quadretti.
-- `src/fisica/pezzi.ts`: i pezzi delle costruzioni, con peso e attrito (motore fisico Rapier). I luoghi lontani
-  restano solo disegnati e "prendono vita" quando ci si avvicina.
+- `src/fisica/pezzi.ts`: i pezzi delle costruzioni, con peso e attrito (motore fisico Rapier). I luoghi compaiono
+  quando entrano in vista, "prendono vita" quando ci si avvicina e vengono tolti quando restano lontani.
 - `src/incantesimi/`: un file per incantesimo; `elenco.ts` decide l'ordine nella barra; `officina.ts` trasforma una
   ricetta inventata da chi gioca in un incantesimo vero (e in un codice da condividere). `src/officinaUi.ts` è la schermata.
 - `src/base/qualita.ts`: quanto dettaglio mostrare. Si parte alti anche sul telefono; se i fotogrammi scendono, il gioco

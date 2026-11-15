@@ -1,6 +1,6 @@
 import { gradino, rumore, rumoreStrati } from '../base/matematica.js';
 
-/** Le cinque zone del mondo. L'ordine conta: è lo stesso dei "pesi" restituiti da pesiZone. */
+/** I cinque tipi di terra. L'ordine conta: è lo stesso dei "pesi" restituiti da pesiZone. */
 export const PRATO = 0;
 export const DESERTO = 1;
 export const GHIACCIO = 2;
@@ -9,8 +9,9 @@ export const VULCANO = 4;
 
 export interface Zona {
   readonly nome: string;
-  readonly x: number;
-  readonly z: number;
+  /** Dove sta nella "carta del clima": quanto è calda (da -1 a 1) e quanto è umida (da -1 a 1). */
+  readonly caldo: number;
+  readonly umido: number;
   /** Colore del terreno, della nebbia e dell'alto del cielo (esadecimali). */
   readonly terra: number;
   readonly nebbia: number;
@@ -20,76 +21,78 @@ export interface Zona {
   readonly luce: number;
   /** Per l'erba: quanta ce n'è, quanto è secca, innevata, scura (da 0 a 1). */
   readonly erba: readonly [number, number, number, number];
+  /** Che cosa ci si può trovare costruito. */
+  readonly luoghi: readonly string[];
 }
 
 export const ZONE: readonly Zona[] = [
-  { nome: 'La Radura', x: 0, z: 0, terra: 0x4f8f2c, nebbia: 0xbcd7ea, cielo: 0x2a6bdb, densitaNebbia: 0.0068, luce: 1, erba: [1, 0, 0, 0] },
-  { nome: 'Dune d’Ambra', x: 205, z: -30, terra: 0xd7b56d, nebbia: 0xecd9b0, cielo: 0x3a86e0, densitaNebbia: 0.0055, luce: 1.05, erba: [0.1, 1, 0, 0] },
-  { nome: 'Terre Gelate', x: -40, z: -210, terra: 0xe6eef5, nebbia: 0xdde8f2, cielo: 0x7a9fd8, densitaNebbia: 0.0105, luce: 0.95, erba: [0.28, 0, 1, 0] },
-  { nome: 'Palude dei Lumi', x: -210, z: 30, terra: 0x34482b, nebbia: 0x5e7669, cielo: 0x3a5257, densitaNebbia: 0.0155, luce: 0.75, erba: [1, 0, 0, 1] },
-  { nome: 'Monte Brace', x: 40, z: 210, terra: 0x2b2523, nebbia: 0x80564a, cielo: 0x55281f, densitaNebbia: 0.0105, luce: 0.9, erba: [0.03, 0.5, 0, 0.9] },
+  { nome: 'La Radura', caldo: 0, umido: 0, terra: 0x4f8f2c, nebbia: 0xbcd7ea, cielo: 0x2a6bdb, densitaNebbia: 0.0062, luce: 1, erba: [1, 0, 0, 0], luoghi: ['borgo', 'fattoria', 'vedetta', 'borgo'] },
+  { nome: 'Dune d’Ambra', caldo: 0.85, umido: -0.55, terra: 0xd7b56d, nebbia: 0xecd9b0, cielo: 0x3a86e0, densitaNebbia: 0.005, luce: 1.05, erba: [0.1, 1, 0, 0], luoghi: ['piramide', 'tempio', 'casbah'] },
+  { nome: 'Terre Gelate', caldo: -0.9, umido: -0.1, terra: 0xe6eef5, nebbia: 0xdde8f2, cielo: 0x7a9fd8, densitaNebbia: 0.0095, luce: 0.95, erba: [0.28, 0, 1, 0], luoghi: ['castello', 'igloo', 'guglia'] },
+  { nome: 'Palude dei Lumi', caldo: -0.1, umido: 0.95, terra: 0x34482b, nebbia: 0x5e7669, cielo: 0x3a5257, densitaNebbia: 0.014, luce: 0.75, erba: [1, 0, 0, 1], luoghi: ['palafitte', 'strega'] },
+  { nome: 'Monte Brace', caldo: 0.9, umido: 0.6, terra: 0x2b2523, nebbia: 0x80564a, cielo: 0x55281f, densitaNebbia: 0.0098, luce: 0.9, erba: [0.03, 0.5, 0, 0.9], luoghi: ['fortezza', 'altare'] },
 ];
 
-/** I posti dove c'è qualcosa di costruito: lì il terreno viene spianato. */
-export interface Luogo {
-  readonly id: string;
-  readonly nome: string;
-  readonly x: number;
-  readonly z: number;
-  readonly raggio: number;
-}
-
-export const LUOGHI: readonly Luogo[] = [
-  { id: 'villaggio', nome: 'Il villaggio', x: 0, z: 0, raggio: 48 },
-  { id: 'fattoria', nome: 'La fattoria', x: 84, z: 78, raggio: 17 },
-  { id: 'vedetta', nome: 'La torre di vedetta', x: -84, z: -78, raggio: 10 },
-  { id: 'piramide', nome: 'La piramide', x: 180, z: -52, raggio: 17 },
-  { id: 'tempio', nome: 'Il tempio delle colonne', x: 222, z: 8, raggio: 15 },
-  { id: 'casbah', nome: 'Le case di sabbia', x: 152, z: 14, raggio: 15 },
-  { id: 'castello', nome: 'Il castello di ghiaccio', x: -46, z: -186, raggio: 21 },
-  { id: 'igloo', nome: 'Gli igloo', x: -100, z: -158, raggio: 14 },
-  { id: 'guglia', nome: 'La guglia di cristallo', x: 14, z: -236, raggio: 10 },
-  { id: 'palafitte', nome: 'Le palafitte', x: -182, z: 22, raggio: 17 },
-  { id: 'strega', nome: 'La torre storta', x: -228, z: -28, raggio: 10 },
-  { id: 'fortezza', nome: 'La fortezza nera', x: -8, z: 164, raggio: 19 },
-  { id: 'altare', nome: 'L’altare di brace', x: 98, z: 182, raggio: 10 },
-];
-
-export const RAGGIO_GIOCO = 300;
-export const CRATERE = { x: 40, z: 212 };
 export const QUOTA_ACQUA = -0.55;
 
-const SIGMA2 = 2 * 46 * 46;
+/** Un numero "a caso" ma sempre uguale per la stessa casella della mappa: è ciò che rende il mondo ripetibile. */
+export function sorte(cx: number, cz: number, sale: number): number {
+  let h = Math.imul(cx, 374761393) ^ Math.imul(cz, 668265263) ^ Math.imul(sale, 2246822519);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
 
-/** Quanto un punto appartiene a ciascuna zona: cinque numeri che sommati danno 1. I confini sono ondulati. */
+/**
+ * Quanto un punto appartiene a ciascun tipo di terra: cinque numeri che sommati danno 1.
+ * Il mondo non ha confini: caldo e umidità cambiano dolcemente da un posto all'altro, e ogni terra nasce dove
+ * il clima le somiglia. Attorno al punto di partenza c'è sempre prato.
+ */
 export function pesiZone(x: number, z: number, esito: Float32Array | number[]): void {
-  const px = x + (rumore(x * 0.011 + 3, z * 0.011) - 0.5) * 70;
-  const pz = z + (rumore(x * 0.011, z * 0.011 + 8) - 0.5) * 70;
+  const caldo = (rumoreStrati(x * 0.0017 + 11.3, z * 0.0017 + 5.1, 3) - 0.5) * 4.6;
+  const umido = (rumoreStrati(x * 0.0017 + 71.7, z * 0.0017 + 33.9, 3) - 0.5) * 4.6;
+  const casa = gradino(300, 150, Math.hypot(x, z));
   let somma = 0;
   for (let i = 0; i < ZONE.length; i++) {
     const zona = ZONE[i]!;
-    const dx = px - zona.x;
-    const dz = pz - zona.z;
-    // Lontano dal proprio centro ogni zona continua a "tirare": si confronta la distanza, non un bordo fisso.
-    const f = Math.exp(-(dx * dx + dz * dz) / SIGMA2 + 40) + 1e-30;
+    const dc = caldo - zona.caldo;
+    const du = umido - zona.umido;
+    let f = Math.exp(-(dc * dc + du * du) / 0.085) + 1e-9;
+    if (i === PRATO) f = f * 1.25 + casa * 40;
     esito[i] = f;
     somma += f;
   }
   for (let i = 0; i < ZONE.length; i++) esito[i] = esito[i]! / somma;
 }
 
-const p = new Float32Array(5);
+const LATO_CONI = 430;
 
-/** Quanta lava c'è in un punto (0 niente, 1 piena): il cratere e i fiumi che scendono dal vulcano. */
+/** Il vulcano più vicino, se ce n'è uno: dà la distanza dal suo cratere. */
+function distanzaDalCratere(x: number, z: number): number {
+  const cx = Math.floor(x / LATO_CONI);
+  const cz = Math.floor(z / LATO_CONI);
+  let vicino = Infinity;
+  for (let dz = -1; dz <= 1; dz++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const kx = (cx + dx + 0.25 + sorte(cx + dx, cz + dz, 7) * 0.5) * LATO_CONI;
+      const kz = (cz + dz + 0.25 + sorte(cx + dx, cz + dz, 8) * 0.5) * LATO_CONI;
+      vicino = Math.min(vicino, Math.hypot(x - kx, z - kz));
+    }
+  }
+  return vicino;
+}
+
+/** Quanta lava c'è in un punto (0 niente, 1 piena): i crateri e i fiumi che scendono dai vulcani. */
 export function lava(x: number, z: number, pesoVulcano: number): number {
   if (pesoVulcano < 0.35) return 0;
-  const d = Math.hypot(x - CRATERE.x, z - CRATERE.z);
+  const d = distanzaDalCratere(x, z);
   const cratere = gradino(15, 11, d);
   const fiume = gradino(0.045, 0.02, Math.abs(rumore(x * 0.021 + 50, z * 0.021 + 9) - 0.5)) * gradino(22, 34, d);
   return Math.max(cratere, fiume) * gradino(0.35, 0.7, pesoVulcano);
 }
 
-/** L'altezza "naturale" del terreno, prima di spianare i luoghi costruiti. */
+const p = new Float32Array(5);
+
+/** L'altezza "naturale" del terreno, prima di spianare i luoghi costruiti. Lascia i pesi delle zone in `p`. */
 function grezza(x: number, z: number): number {
   pesiZone(x, z, p);
   let h = 0;
@@ -101,32 +104,121 @@ function grezza(x: number, z: number): number {
   if (p[GHIACCIO]! > 0.001) h += p[GHIACCIO]! * (rumoreStrati(x * 0.009 + 21, z * 0.009 + 40) * 34 - 9);
   if (p[PALUDE]! > 0.001) h += p[PALUDE]! * (rumoreStrati(x * 0.024 + 5, z * 0.024 + 60, 3) * 3.4 - 1.9);
   if (p[VULCANO]! > 0.001) {
-    const d = Math.hypot(x - CRATERE.x, z - CRATERE.z);
+    const d = distanzaDalCratere(x, z);
     const cono = 44 * Math.max(0, 1 - d / 78) - 20 * gradino(19, 8, d);
     const l = lava(x, z, p[VULCANO]!);
     h += p[VULCANO]! * (1.5 + rumoreStrati(x * 0.017 + 33, z * 0.017 + 12) * 9 + cono - l * 1.2);
   }
-  // Le montagne che chiudono il mondo.
-  const r = Math.hypot(x, z);
-  h += gradino(RAGGIO_GIOCO + 5, RAGGIO_GIOCO + 90, r) * (30 + 50 * rumoreStrati(x * 0.006 + 3, z * 0.006 + 31, 3));
   // Il fondo dei laghi non scende oltre il ginocchio.
   return h < -1 ? -1 - (1 - Math.exp(h + 1)) * 0.5 : h;
 }
 
-const quote: number[] = LUOGHI.map((l) => (l.id === 'villaggio' ? 0 : Math.max(0.4, grezza(l.x, l.z))));
+// ---------------------------------------------------------------------------------------------------------------
+// I luoghi costruiti: il mondo è diviso in grandi caselle, e in molte di esse la sorte ne mette uno.
 
-/** La quota (altezza del terreno spianato) di un luogo costruito. */
-export function quotaLuogo(id: string): number {
-  return quote[LUOGHI.findIndex((l) => l.id === id)]!;
+export interface Luogo {
+  /** Nome unico della casella: serve a ricordare che lo si è scoperto. */
+  readonly chiave: string;
+  readonly tipo: string;
+  readonly nome: string;
+  readonly x: number;
+  readonly z: number;
+  readonly raggio: number;
+  /** L'altezza a cui il terreno viene spianato. */
+  readonly quota: number;
+  readonly seme: number;
 }
 
-/** L'altezza esatta del terreno in un punto, calcolata da capo (lenta: per l'uso di tutti i giorni c'è `altezza`). */
-export function altezzaEsatta(x: number, z: number): number {
-  let h = grezza(x, z);
-  for (let i = 0; i < LUOGHI.length; i++) {
-    const l = LUOGHI[i]!;
-    const d = Math.hypot(x - l.x, z - l.z);
-    if (d < l.raggio + 20) h += (quote[i]! - h) * gradino(l.raggio + 20, l.raggio + 2, d);
+export const TIPI: Readonly<Record<string, { nome: string; raggio: number }>> = {
+  villaggio: { nome: 'Il villaggio', raggio: 48 },
+  borgo: { nome: 'Un borgo', raggio: 21 },
+  fattoria: { nome: 'Una fattoria', raggio: 17 },
+  vedetta: { nome: 'Una torre di vedetta', raggio: 10 },
+  piramide: { nome: 'Una piramide', raggio: 17 },
+  tempio: { nome: 'Un tempio delle colonne', raggio: 15 },
+  casbah: { nome: 'Case di sabbia', raggio: 15 },
+  castello: { nome: 'Un castello di ghiaccio', raggio: 21 },
+  igloo: { nome: 'Un villaggio di igloo', raggio: 14 },
+  guglia: { nome: 'Una guglia di cristallo', raggio: 10 },
+  palafitte: { nome: 'Palafitte', raggio: 17 },
+  strega: { nome: 'Una torre storta', raggio: 10 },
+  fortezza: { nome: 'Una fortezza nera', raggio: 19 },
+  altare: { nome: 'Un altare di brace', raggio: 10 },
+};
+
+export const LATO_CASELLA = 150;
+const caselle = new Map<string, Luogo | null>();
+
+/** Il luogo (se c'è) nella casella indicata. Chiesto due volte, dà sempre la stessa risposta. */
+export function luogoDiCasella(cx: number, cz: number): Luogo | null {
+  const chiave = `${cx},${cz}`;
+  const gia = caselle.get(chiave);
+  if (gia !== undefined) return gia;
+  let luogo: Luogo | null = null;
+  if (cx === 0 && cz === 0) {
+    luogo = { chiave, tipo: 'villaggio', nome: TIPI.villaggio!.nome, x: 0, z: 0, raggio: 48, quota: 0, seme: 11 };
+  } else if (sorte(cx, cz, 1) < 0.62) {
+    const x = (cx + 0.5 + (sorte(cx, cz, 2) - 0.5) * 0.44) * LATO_CASELLA;
+    const z = (cz + 0.5 + (sorte(cx, cz, 3) - 0.5) * 0.44) * LATO_CASELLA;
+    // Abbastanza lontano dal villaggio di partenza, e ben dentro una terra sola (non a cavallo di un confine).
+    if (Math.hypot(x, z) > 85) {
+      // Dove il terreno è sott'acqua (nella palude capita spesso) il luogo sorge su un isolotto appena sopra il pelo.
+      const quota = Math.max(0.45, grezza(x, z));
+      let zona = 0;
+      for (let i = 1; i < ZONE.length; i++) if (p[i]! > p[zona]!) zona = i;
+      if (p[zona]! > 0.62 && lava(x, z, p[VULCANO]!) < 0.05) {
+        const scelte = ZONE[zona]!.luoghi;
+        const tipo = scelte[Math.floor(sorte(cx, cz, 4) * scelte.length)]!;
+        const dati = TIPI[tipo]!;
+        luogo = { chiave, tipo, nome: dati.nome, x, z, raggio: dati.raggio, quota, seme: Math.floor(sorte(cx, cz, 5) * 1e6) };
+      }
+    }
   }
-  return h;
+  caselle.set(chiave, luogo);
+  return luogo;
+}
+
+/** Tutti i luoghi entro una certa distanza da un punto. */
+export function luoghiVicini(x: number, z: number, distanza: number): Luogo[] {
+  const trovati: Luogo[] = [];
+  const da = Math.floor((x - distanza - LATO_CASELLA) / LATO_CASELLA);
+  const a = Math.floor((x + distanza + LATO_CASELLA) / LATO_CASELLA);
+  const daZ = Math.floor((z - distanza - LATO_CASELLA) / LATO_CASELLA);
+  const aZ = Math.floor((z + distanza + LATO_CASELLA) / LATO_CASELLA);
+  for (let cz = daZ; cz <= aZ; cz++) {
+    for (let cx = da; cx <= a; cx++) {
+      const l = luogoDiCasella(cx, cz);
+      if (l && Math.hypot(l.x - x, l.z - z) - l.raggio < distanza) trovati.push(l);
+    }
+  }
+  return trovati;
+}
+
+export interface Campione {
+  h: number;
+  pesi: Float32Array;
+}
+const campione: Campione = { h: 0, pesi: new Float32Array(5) };
+
+/** Altezza esatta e pesi delle zone in un punto (lento: per l'uso di tutti i giorni c'è `altezza` in terreno.ts). */
+export function campiona(x: number, z: number): Campione {
+  // I luoghi vanno cercati prima: cercarli calcola altre altezze e sporcherebbe i pesi di questo punto.
+  const cx = Math.floor(x / LATO_CASELLA);
+  const cz = Math.floor(z / LATO_CASELLA);
+  const vicini: Luogo[] = [];
+  for (let dz = -1; dz <= 1; dz++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const l = luogoDiCasella(cx + dx, cz + dz);
+      if (l && Math.hypot(x - l.x, z - l.z) < l.raggio + 20) vicini.push(l);
+    }
+  }
+  let h = grezza(x, z);
+  campione.pesi.set(p);
+  for (const l of vicini) h += (l.quota - h) * gradino(l.raggio + 20, l.raggio + 2, Math.hypot(x - l.x, z - l.z));
+  campione.h = h;
+  return campione;
+}
+
+export function altezzaEsatta(x: number, z: number): number {
+  return campiona(x, z).h;
 }

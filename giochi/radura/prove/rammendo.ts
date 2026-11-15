@@ -6,20 +6,16 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { Particelle } from '../src/effetti/particelle.js';
 import { Pezzi } from '../src/fisica/pezzi.js';
 import { Campo } from '../src/mondo/campo.js';
-import { costruisciMondo } from '../src/mondo/costruzioni.js';
-import { LUOGHI, quotaLuogo } from '../src/mondo/zone.js';
+import { costruisciLuogo } from '../src/mondo/costruzioni.js';
 
 await RAPIER.init();
 const fisica = new RAPIER.World({ x: 0, y: -16, z: 0 });
 fisica.timestep = 1 / 60;
-for (const l of LUOGHI) {
-  fisica.createCollider(
-    RAPIER.ColliderDesc.cuboid(l.raggio + 4, 1, l.raggio + 4).setTranslation(l.x, quotaLuogo(l.id) - 1, l.z).setFriction(0.9),
-  );
-}
-const { mattoni, gruppi } = costruisciMondo();
-const pezzi = new Pezzi(mattoni, gruppi, RAPIER, fisica, false);
-pezzi.avvicina(0, 0);
+fisica.createCollider(RAPIER.ColliderDesc.cuboid(52, 1, 52).setTranslation(0, -1, 0).setFriction(0.9));
+const mattoni = costruisciLuogo({ tipo: 'villaggio', x: 0, z: 0, quota: 0, seme: 11 });
+const pezzi = new Pezzi(RAPIER, fisica, false);
+pezzi.aggiungi(mattoni, 0, 0, 48);
+pezzi.daiVitaATutto();
 const campo = new Campo();
 const scintille = new Particelle(10, true);
 const fumo = new Particelle(10, false);

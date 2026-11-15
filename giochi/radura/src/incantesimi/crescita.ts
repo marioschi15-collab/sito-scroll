@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { anello, creaCerchioMagico, scia } from '../effetti/forme.js';
 import type { Effetto, Gioco, Incantesimo } from '../gioco.js';
-import { altezza, RAGGIO_GIOCO } from '../mondo/terreno.js';
+import { altezza } from '../mondo/terreno.js';
 
 const RAGGIO = 9;
 const PETALI: [number, number, number][] = [[1.6, 0.4, 0.7], [1.5, 1.3, 0.4], [1.4, 1.4, 1.4], [0.6, 0.9, 1.7]];
@@ -59,7 +59,7 @@ export const crescita: Incantesimo = {
   lancia(g, l) {
     const p = l.bersaglio;
     scia(g, l.origine, p, 0.5, 1.6, 0.4);
-    const libero = l.aTerra && Math.hypot(p.x, p.z) < RAGGIO_GIOCO - 5 && !g.alberi.vicino(p.x, p.z, 7);
+    const libero = l.aTerra && !g.alberi.vicino(p.x, p.z, 7);
     g.aggiungi(new Crescita(g, p, libero));
   },
 };

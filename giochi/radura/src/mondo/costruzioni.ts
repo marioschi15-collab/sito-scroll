@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { generatore } from '../base/matematica.js';
-import { LUOGHI, quotaLuogo } from './zone.js';
+import type { Luogo } from './zone.js';
 
 export const PIETRA = 0;
 export const LEGNO = 1;
@@ -31,17 +31,8 @@ export interface Mattone {
   sz: number;
   materiale: number;
   colore: THREE.Color;
-  /** A quale luogo appartiene (posizione nell'elenco dei gruppi). */
-  gruppo: number;
-}
-
-/** I pezzi di un luogo stanno tutti di seguito nell'elenco: da `da` (compreso) ad `a` (escluso). */
-export interface Gruppo {
-  x: number;
-  z: number;
-  raggio: number;
-  da: number;
-  a: number;
+  /** L'altezza del terreno su cui poggia la costruzione di cui fa parte. */
+  quota: number;
 }
 
 const TINTE: Record<number, number[]> = {
@@ -56,25 +47,17 @@ const TINTE: Record<number, number[]> = {
   [BRACE]: [0xff7a1e],
 };
 
-export function costruisciMondo(): { mattoni: Mattone[]; gruppi: Gruppo[] } {
-  const rnd = generatore(11);
+/** Costruisce i pezzi di un luogo: quale costruzione dipende dal suo tipo, i dettagli dal suo seme. */
+export function costruisciLuogo(l: Pick<Luogo, 'tipo' | 'x' | 'z' | 'quota' | 'seme'>): Mattone[] {
+  const rnd = generatore(l.seme);
   const pezzi: Mattone[] = [];
-  const gruppi: Gruppo[] = [];
   const euler = new THREE.Euler();
-  // Dove si sta costruendo: ogni luogo ha il suo centro e la sua quota, e i pezzi si misurano da lì.
-  let ox = 0;
-  let oz = 0;
-  let quota = 0;
-
-  /** Costruisce un luogo dell'elenco: dentro `fai` le misure partono dal suo centro. */
-  const luogo = (id: string, fai: () => void): void => {
-    const l = LUOGHI.find((x) => x.id === id)!;
-    ox = l.x;
-    oz = l.z;
-    quota = quotaLuogo(id);
-    const da = pezzi.length;
-    fai();
-    gruppi.push({ x: l.x, z: l.z, raggio: l.raggio, da, a: pezzi.length });
+  // Le misure dei pezzi partono dal centro del luogo e dalla sua quota.
+  const ox = l.x;
+  const oz = l.z;
+  let quota = l.quota;
+  const luogo = (tipo: string, fai: () => void): void => {
+    if (l.tipo === tipo) fai();
   };
 
   const blocco = (
@@ -86,7 +69,7 @@ export function costruisciMondo(): { mattoni: Mattone[]; gruppi: Gruppo[] } {
     colore.multiplyScalar(0.92 + rnd() * 0.16);
     if (materiale === BRACE) colore.multiplyScalar(1.6);
     pezzi.push({
-      x: x + ox, y: y + quota, z: z + oz, sx, sy, sz, materiale, colore, gruppo: gruppi.length,
+      x: x + ox, y: y + quota, z: z + oz, sx, sy, sz, materiale, colore, quota: l.quota,
       q: new THREE.Quaternion().setFromEuler(euler.set(rotX, rotY, 0, 'YXZ')),
     });
   };
@@ -197,7 +180,10 @@ export function costruisciMondo(): { mattoni: Mattone[]; gruppi: Gruppo[] } {
   const casa = (cx: number, cz: number, w: number, d: number, tintaTetto?: number): void => {
     const filari = 6;
     const porta: Apertura = { centro: 0, mezza: 0.5, daY: 0, aY: 2 };
-    const finestre: Apertura[] = [-1, 1].map((lato) => ({ centro: lato * (w / 4 + 0.1), mezza: 0.3, daY: 1, aY: 2 }));
+    // Ogni finestra sta esattamente sopra un blocco dei filari pari: altrimenti, nelle case strette, accanto
+    // alla finestra restava un mezzo blocco senza niente sotto, che cadeva.
+    const centroFinestra = -w / 2 + 0.5 + Math.round(w / 4 + w / 2 - 0.5);
+    const finestre: Apertura[] = [-1, 1].map((lato) => ({ centro: lato * centroFinestra, mezza: 0.3, daY: 1, aY: 2 }));
     muro(cx, cz + d / 2 - 0.2, w, filari, false, INTONACO, 1, 0.5, 0.4, [porta]);
     muro(cx, cz - d / 2 + 0.2, w, filari, false, INTONACO, 1, 0.5, 0.4, finestre);
     muro(cx - w / 2 + 0.2, cz, d - 0.8, filari, true, INTONACO, 1, 0.5, 0.4);
@@ -215,11 +201,14 @@ export function costruisciMondo(): { mattoni: Mattone[]; gruppi: Gruppo[] } {
     const spessore = 0.4;
     const colonne = Math.round((w + 1) / 1.4);
     const largo = (w + 1) / colonne;
-    for (let k = 0; d + 0.9 - k >= 0.8; k++) {
+    // Cinque strati al massimo, e l'ultimo ancora bello largo: una pila più alta di lastre strette non si
+    // fermava mai del tutto (scivolava di un capello al secondo) e teneva sveglia l'intera casa.
+    const rientro = Math.max(1, (d + 0.9 - 1.6) / 4);
+    for (let k = 0; d + 0.9 - k * rientro >= 1.55; k++) {
       for (let i = 0; i < colonne; i++) {
         blocco(
           cx - (w + 1) / 2 + largo * (i + 0.5), base + spessore * (k + 0.5), cz,
-          largo - 0.02, spessore, d + 0.9 - k, TEGOLA, 0, 0, tintaTetto,
+          largo - 0.02, spessore, d + 0.9 - k * rientro, TEGOLA, 0, 0, tintaTetto,
         );
       }
     }
@@ -395,6 +384,15 @@ export function costruisciMondo(): { mattoni: Mattone[]; gruppi: Gruppo[] } {
     staccionata(-30, 14, -30, 2);
   });
 
+  luogo('borgo', () => {
+    casa(-7, -5, 6, 5);
+    casa(7, -4, 5, 5, 0x4c6a8a);
+    casa(0, 9, 6, 5, 0x6d7a45);
+    pozzo(0, 0);
+    catasta(9, 6, 3);
+    staccionata(-12, 14, -4, 14);
+  });
+
   luogo('fattoria', () => {
     casa(-3, -4, 9, 6, 0x8a2f2a);
     casa(8, 6, 5, 5);
@@ -402,7 +400,7 @@ export function costruisciMondo(): { mattoni: Mattone[]; gruppi: Gruppo[] } {
     catasta(-4, 9, 3, 1, PAGLIA);
     catasta(1, 8, 3, 1, PAGLIA);
     staccionata(-13, 12, 5, 12);
-    staccionata(-13, 12, -13, 2);
+    staccionata(-13, 10, -13, 2);
     pozzo(10, -6);
   });
 
@@ -496,5 +494,5 @@ export function costruisciMondo(): { mattoni: Mattone[]; gruppi: Gruppo[] } {
     }
   });
 
-  return { mattoni: pezzi, gruppi };
+  return pezzi;
 }

@@ -1,8 +1,12 @@
 import { graficaScelta, ricordaGrafica, type Grafica } from './base/qualita.js';
 import type { Incantesimo } from './gioco.js';
-import { LUOGHI, pesiZone, RAGGIO_GIOCO, ZONE } from './mondo/zone.js';
+import { pesiZone, ZONE, type Luogo } from './mondo/zone.js';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
+
+/** Quanti metri si vedono sulla mappa, dal centro al bordo, e quanti ne copre lo sfondo dipinto. */
+const VISTA_MAPPA = 420;
+const SFONDO = 700;
 
 const COME_TASTIERA =
   '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> per camminare · mouse per guardare · clic per lanciare<br />' +
@@ -54,7 +58,6 @@ export class Interfaccia {
       pulsante.textContent = nomi[prossima] + ' — ricarico…';
       window.setTimeout(() => window.location.reload(), 250);
     });
-    this.preparaMappa();
   }
 
   /** Ridisegna la barra: gli incantesimi di sempre, quelli inventati, e in fondo il pulsante dell'officina. */
@@ -93,25 +96,27 @@ export class Interfaccia {
     barra.append(crea);
   }
 
-  /** Dipinge una volta sola lo sfondo della mappa: ogni zona con il colore della sua terra. */
-  private preparaMappa(): void {
-    const lato = 104;
+  private centroMappaX = NaN;
+  private centroMappaZ = NaN;
+
+  /** Dipinge lo sfondo della mappa attorno a un punto: ogni terra con il colore del suo suolo. */
+  private dipingiSfondo(x: number, z: number): void {
+    const lato = 48;
+    this.centroMappaX = x;
+    this.centroMappaZ = z;
     this.sfondoMappa.width = this.sfondoMappa.height = lato;
     const c = this.sfondoMappa.getContext('2d')!;
     const punti = c.createImageData(lato, lato);
     const pesi = new Float32Array(5);
-    const terre = ZONE.map((z) => [(z.terra >> 16) & 255, (z.terra >> 8) & 255, z.terra & 255]);
+    const terre = ZONE.map((zona) => [(zona.terra >> 16) & 255, (zona.terra >> 8) & 255, zona.terra & 255]);
     for (let j = 0; j < lato; j++) {
       for (let i = 0; i < lato; i++) {
-        const x = ((i + 0.5) / lato - 0.5) * 2 * (RAGGIO_GIOCO + 12);
-        const z = ((j + 0.5) / lato - 0.5) * 2 * (RAGGIO_GIOCO + 12);
-        pesiZone(x, z, pesi);
+        pesiZone(x + ((i + 0.5) / lato - 0.5) * 2 * SFONDO, z + ((j + 0.5) / lato - 0.5) * 2 * SFONDO, pesi);
         const k = (j * lato + i) * 4;
-        const fuori = Math.hypot(x, z) > RAGGIO_GIOCO;
         for (let canale = 0; canale < 3; canale++) {
           let v = 0;
           for (let n = 0; n < ZONE.length; n++) v += terre[n]![canale]! * pesi[n]!;
-          punti.data[k + canale] = fuori ? v * 0.35 : v;
+          punti.data[k + canale] = v;
         }
         punti.data[k + 3] = 255;
       }
@@ -119,28 +124,38 @@ export class Interfaccia {
     c.putImageData(punti, 0, 0);
   }
 
-  /** Ridisegna la mappa: i luoghi (pieni se già scoperti) e la freccia di chi gioca. Il nord è in alto. */
-  disegnaMappa(x: number, z: number, imbardata: number, scoperti: ReadonlySet<number>): void {
+  /**
+   * Ridisegna la mappa. Chi gioca sta sempre al centro e il nord è in alto; attorno si vedono le terre vicine
+   * e i luoghi (pieni se già scoperti).
+   */
+  disegnaMappa(x: number, z: number, imbardata: number, luoghi: readonly Luogo[], scoperti: ReadonlySet<string>): void {
     const c = this.mappa.getContext('2d');
     if (!c) return;
+    // Lo sfondo copre più del visibile: lo si ridipinge solo quando ci si è spostati di un bel po'.
+    if (!(Math.hypot(x - this.centroMappaX, z - this.centroMappaZ) < SFONDO - VISTA_MAPPA - 20)) this.dipingiSfondo(x, z);
     const lato = this.mappa.width;
-    const scala = lato / (2 * (RAGGIO_GIOCO + 12));
+    const scala = lato / (2 * VISTA_MAPPA);
     c.imageSmoothingEnabled = true;
-    c.drawImage(this.sfondoMappa, 0, 0, lato, lato);
-    LUOGHI.forEach((l, i) => {
+    const latoSfondo = 2 * SFONDO * scala;
+    c.drawImage(
+      this.sfondoMappa,
+      lato / 2 + (this.centroMappaX - SFONDO - x) * scala, lato / 2 + (this.centroMappaZ - SFONDO - z) * scala,
+      latoSfondo, latoSfondo,
+    );
+    for (const l of luoghi) {
       c.beginPath();
-      c.arc(lato / 2 + l.x * scala, lato / 2 + l.z * scala, 4.5, 0, Math.PI * 2);
-      if (scoperti.has(i)) {
+      c.arc(lato / 2 + (l.x - x) * scala, lato / 2 + (l.z - z) * scala, 5, 0, Math.PI * 2);
+      if (scoperti.has(l.chiave)) {
         c.fillStyle = '#fff';
         c.fill();
       } else {
-        c.strokeStyle = 'rgba(255,255,255,.55)';
+        c.strokeStyle = 'rgba(255,255,255,.6)';
         c.lineWidth = 1.5;
         c.stroke();
       }
-    });
+    }
     c.save();
-    c.translate(lato / 2 + x * scala, lato / 2 + z * scala);
+    c.translate(lato / 2, lato / 2);
     c.rotate(-imbardata);
     c.beginPath();
     c.moveTo(0, -11);

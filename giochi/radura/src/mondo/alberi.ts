@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { generatore, rumore } from '../base/matematica.js';
 import type { Campo } from './campo.js';
-import { altezza } from './terreno.js';
-import { DESERTO, GHIACCIO, lava, LUOGHI, PALUDE, pesiZone, PRATO, QUOTA_ACQUA, RAGGIO_GIOCO, VULCANO } from './zone.js';
+import { altezza, LATO_ZOLLA } from './terreno.js';
+import { DESERTO, GHIACCIO, lava, luoghiVicini, PALUDE, pesiZone, PRATO, QUOTA_ACQUA, sorte, VULCANO } from './zone.js';
 
 function colora(g: THREE.BufferGeometry, colore: number, variazione = 0): THREE.BufferGeometry {
   const c = new THREE.Color(colore);
@@ -119,114 +119,148 @@ export const materialeAlberi = new THREE.MeshLambertMaterial({ vertexColors: tru
 
 export interface Bosco {
   readonly oggetti: THREE.Object3D[];
-  /** Annerisce le piante dove il prato è bruciato e le fa tornare com'erano dove è rifiorito. */
-  aggiorna(campo: Campo): void;
+  /**
+   * Fa nascere piante e rocce attorno a un punto e toglie quelle rimaste lontane; annerisce quelle che stanno
+   * dove il prato è bruciato.
+   */
+  aggiorna(campo: Campo, x: number, z: number): void;
 }
 
 interface Pianta {
+  tipo: number;
   x: number;
+  y: number;
   z: number;
   scala: number;
+  giro: number;
   tinta: THREE.Color;
 }
 
 const BIANCO = new THREE.Color(1, 1, 1);
 const CARBONE = new THREE.Color(0.09, 0.07, 0.06);
+const PINO = 0, QUERCIA = 1, PINO_INNEVATO = 2, CACTUS = 3, ROCCIA = 4, ALBERO_MORTO = 5, FUNGO = 6, GUGLIA = 7;
+/** Fin dove (in zolle) si vedono piante attorno a chi gioca. */
+const VISTA = 6;
+const CAPIENZA = 1800;
 
-/** Tutta la vegetazione e le rocce del mondo: ogni zona ha le sue. */
+/** Tutta la vegetazione e le rocce: ogni terra ha le sue, e nascono zolla per zolla mentre si cammina. */
 export function creaBosco(ombre: boolean): Bosco {
-  const rnd = generatore(2024);
-  const tipi = {
-    pino: [] as Pianta[], quercia: [] as Pianta[], pinoInnevato: [] as Pianta[], cactus: [] as Pianta[],
-    roccia: [] as Pianta[], alberoMorto: [] as Pianta[], fungo: [] as Pianta[], guglia: [] as Pianta[],
-  };
-  const pesi = new Float32Array(5);
   const tinte = {
     sabbia: new THREE.Color(0xd9b98a), ghiaccio: new THREE.Color(0xc4e2f4), lavica: new THREE.Color(0x4a3f3d),
     viola: new THREE.Color(0xa56bff).multiplyScalar(1.25), acqua: new THREE.Color(0x4fe0c8).multiplyScalar(1.2),
     ombra: new THREE.Color(0x6f8f78), bruciato: new THREE.Color(0x3a3230),
   };
-  let totale = 0;
-  for (let tentativo = 0; tentativo < 26000 && totale < 2100; tentativo++) {
-    const a = rnd() * Math.PI * 2;
-    const r = Math.sqrt(rnd()) * (RAGGIO_GIOCO + 70);
-    const x = Math.cos(a) * r;
-    const z = Math.sin(a) * r;
-    if (LUOGHI.some((l) => Math.hypot(x - l.x, z - l.z) < l.raggio + 5)) continue;
-    pesiZone(x, z, pesi);
-    let zona = 0;
-    for (let k = 1; k < 5; k++) if (pesi[k]! > pesi[zona]!) zona = k;
-    const h = altezza(x, z);
-    const inAcqua = h < QUOTA_ACQUA + 0.15;
-    const bosco = rumore(x * 0.03 + 5, z * 0.03);
-    const dado = rnd();
-    const metti = (lista: Pianta[], scala: number, tinta = BIANCO): void => {
-      lista.push({ x, z, scala, tinta });
-      totale++;
-    };
-    if (zona === PRATO) {
-      if (inAcqua || bosco < 0.44 || dado > 0.75) continue;
-      metti(rumore(x * 0.02, z * 0.02 + 40) > 0.48 ? tipi.pino : tipi.quercia, 0.7 + rnd() * 0.8);
-    } else if (zona === DESERTO) {
-      if (inAcqua) continue;
-      if (dado < 0.1) metti(tipi.cactus, 0.7 + rnd() * 0.7);
-      else if (dado < 0.16) metti(tipi.roccia, 0.6 + rnd() * 1.6, tinte.sabbia);
-    } else if (zona === GHIACCIO) {
-      if (inAcqua) continue;
-      if (bosco > 0.42 && dado < 0.55) metti(tipi.pinoInnevato, 0.7 + rnd() * 0.9);
-      else if (dado > 0.94) metti(tipi.roccia, 0.8 + rnd() * 2, tinte.ghiaccio);
-    } else if (zona === PALUDE) {
-      if (dado < 0.24) metti(tipi.alberoMorto, 0.8 + rnd() * 0.9);
-      else if (inAcqua) continue;
-      else if (dado < 0.34 && bosco > 0.5) metti(tipi.fungo, 0.5 + rnd() * 1.1, rnd() < 0.5 ? tinte.viola : tinte.acqua);
-      else if (dado < 0.5 && bosco > 0.4) metti(tipi.quercia, 0.8 + rnd() * 0.7, tinte.ombra);
-    } else if (zona === VULCANO) {
-      if (inAcqua || lava(x, z, pesi[VULCANO]!) > 0.05) continue;
-      if (dado < 0.11) metti(tipi.guglia, 0.6 + rnd() * 1.3);
-      else if (dado < 0.19) metti(tipi.alberoMorto, 0.7 + rnd() * 0.6, tinte.bruciato);
-      else if (dado < 0.27) metti(tipi.roccia, 0.7 + rnd() * 1.8, tinte.lavica);
+  const pesi = new Float32Array(5);
+  const zolle = new Map<string, Pianta[]>();
+
+  /** Le piante di una zolla: sempre le stesse, perché la sorte dipende solo da dove sta la zolla. */
+  const semina = (cx: number, cz: number): Pianta[] => {
+    const rnd = generatore(Math.floor(sorte(cx, cz, 9) * 4294967295));
+    const piante: Pianta[] = [];
+    for (let tentativo = 0; tentativo < 22; tentativo++) {
+      const x = (cx + rnd()) * LATO_ZOLLA;
+      const z = (cz + rnd()) * LATO_ZOLLA;
+      const dado = rnd();
+      const scala = rnd();
+      const giro = rnd() * 6.28;
+      const colore = rnd();
+      if (luoghiVicini(x, z, 5).length > 0) continue;
+      pesiZone(x, z, pesi);
+      let zona = 0;
+      for (let k = 1; k < 5; k++) if (pesi[k]! > pesi[zona]!) zona = k;
+      const y = altezza(x, z);
+      const inAcqua = y < QUOTA_ACQUA + 0.15;
+      const bosco = rumore(x * 0.03 + 5, z * 0.03);
+      const metti = (tipo: number, s: number, tinta = BIANCO): void => {
+        piante.push({ tipo, x, y: y - 0.25, z, scala: s, giro, tinta });
+      };
+      if (zona === PRATO) {
+        if (inAcqua || bosco < 0.44 || dado > 0.75) continue;
+        metti(rumore(x * 0.02, z * 0.02 + 40) > 0.48 ? PINO : QUERCIA, 0.7 + scala * 0.8);
+      } else if (zona === DESERTO) {
+        if (inAcqua) continue;
+        if (dado < 0.1) metti(CACTUS, 0.7 + scala * 0.7);
+        else if (dado < 0.16) metti(ROCCIA, 0.6 + scala * 1.6, tinte.sabbia);
+      } else if (zona === GHIACCIO) {
+        if (inAcqua) continue;
+        if (bosco > 0.42 && dado < 0.55) metti(PINO_INNEVATO, 0.7 + scala * 0.9);
+        else if (dado > 0.94) metti(ROCCIA, 0.8 + scala * 2, tinte.ghiaccio);
+      } else if (zona === PALUDE) {
+        if (dado < 0.24) metti(ALBERO_MORTO, 0.8 + scala * 0.9);
+        else if (inAcqua) continue;
+        else if (dado < 0.34 && bosco > 0.5) metti(FUNGO, 0.5 + scala * 1.1, colore < 0.5 ? tinte.viola : tinte.acqua);
+        else if (dado < 0.5 && bosco > 0.4) metti(QUERCIA, 0.8 + scala * 0.7, tinte.ombra);
+      } else if (zona === VULCANO) {
+        if (inAcqua || lava(x, z, pesi[VULCANO]!) > 0.05) continue;
+        if (dado < 0.11) metti(GUGLIA, 0.6 + scala * 1.3);
+        else if (dado < 0.19) metti(ALBERO_MORTO, 0.7 + scala * 0.6, tinte.bruciato);
+        else if (dado < 0.27) metti(ROCCIA, 0.7 + scala * 1.8, tinte.lavica);
+      }
     }
-  }
-  const crea = (geometria: THREE.BufferGeometry, lista: Pianta[]) => {
-    const m = new THREE.InstancedMesh(geometria, materialeAlberi, Math.max(1, lista.length));
-    m.count = lista.length;
-    const o = new THREE.Object3D();
-    lista.forEach((p, i) => {
-      o.position.set(p.x, altezza(p.x, p.z) - 0.25, p.z);
-      o.rotation.set((rnd() - 0.5) * 0.12, rnd() * 6.28, (rnd() - 0.5) * 0.12);
-      o.scale.setScalar(p.scala);
-      o.updateMatrix();
-      m.setMatrixAt(i, o.matrix);
-      m.setColorAt(i, p.tinta);
-    });
+    return piante;
+  };
+
+  const geometrie = [
+    geometriaPino(), geometriaQuercia(), geometriaPinoInnevato(), geometriaCactus(),
+    geometriaRoccia(), geometriaAlberoMorto(), geometriaFungo(), geometriaGuglia(),
+  ];
+  const mesh = geometrie.map((g) => {
+    const m = new THREE.InstancedMesh(g, materialeAlberi, CAPIENZA);
+    m.count = 0;
     m.castShadow = ombre;
     m.frustumCulled = false;
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-    return { mesh: m, lista, neri: new Uint8Array(lista.length) };
-  };
-  const gruppi = [
-    crea(geometriaPino(), tipi.pino), crea(geometriaQuercia(), tipi.quercia),
-    crea(geometriaPinoInnevato(), tipi.pinoInnevato), crea(geometriaCactus(), tipi.cactus),
-    crea(geometriaRoccia(), tipi.roccia), crea(geometriaAlberoMorto(), tipi.alberoMorto),
-    crea(geometriaFungo(), tipi.fungo), crea(geometriaGuglia(), tipi.guglia),
-  ];
+    m.setColorAt(0, BIANCO);
+    return m;
+  });
+  const o = new THREE.Object3D();
+  let ultimoCx = NaN;
+  let ultimoCz = NaN;
+
   return {
-    oggetti: gruppi.map((g) => g.mesh),
-    aggiorna(campo) {
-      for (const g of gruppi) {
-        let cambiato = false;
-        g.lista.forEach((p, i) => {
-          const c = campo.cella(p.x, p.z);
-          if (c < 0) return;
-          const nero = campo.bruciato[c]! > 0.6 ? 1 : 0;
-          if (nero !== g.neri[i]) {
-            g.neri[i] = nero;
-            g.mesh.setColorAt(i, nero ? CARBONE : p.tinta);
-            cambiato = true;
+    oggetti: mesh,
+    aggiorna(campo, x, z) {
+      const ccx = Math.floor(x / LATO_ZOLLA);
+      const ccz = Math.floor(z / LATO_ZOLLA);
+      let cambiato = false;
+      if (ccx !== ultimoCx || ccz !== ultimoCz) {
+        ultimoCx = ccx;
+        ultimoCz = ccz;
+        for (const chiave of zolle.keys()) {
+          const [cx, cz] = chiave.split(',').map(Number) as [number, number];
+          if (Math.abs(cx - ccx) > VISTA + 1 || Math.abs(cz - ccz) > VISTA + 1) zolle.delete(chiave);
+        }
+        for (let dz = -VISTA; dz <= VISTA; dz++) {
+          for (let dx = -VISTA; dx <= VISTA; dx++) {
+            const chiave = `${ccx + dx},${ccz + dz}`;
+            if (!zolle.has(chiave)) zolle.set(chiave, semina(ccx + dx, ccz + dz));
           }
-        });
-        if (cambiato) g.mesh.instanceColor!.needsUpdate = true;
+        }
+        cambiato = true;
       }
+      // Si riscrivono posizioni e colori di tutte le piante in vista: sono poche migliaia, costa poco.
+      const quante = mesh.map(() => 0);
+      for (const piante of zolle.values()) {
+        for (const p of piante) {
+          const n = quante[p.tipo]!;
+          if (n >= CAPIENZA) continue;
+          quante[p.tipo] = n + 1;
+          const m = mesh[p.tipo]!;
+          if (cambiato) {
+            o.position.set(p.x, p.y, p.z);
+            o.rotation.set(0, p.giro, 0);
+            o.scale.setScalar(p.scala);
+            o.updateMatrix();
+            m.setMatrixAt(n, o.matrix);
+          }
+          const c = campo.cella(p.x, p.z);
+          m.setColorAt(n, c >= 0 && campo.bruciato[c]! > 0.6 ? CARBONE : p.tinta);
+        }
+      }
+      mesh.forEach((m, i) => {
+        m.count = quante[i]!;
+        if (cambiato) m.instanceMatrix.needsUpdate = true;
+        m.instanceColor!.needsUpdate = true;
+      });
     },
   };
 }

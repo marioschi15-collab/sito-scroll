@@ -1,109 +1,84 @@
 import * as THREE from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
-import { gradino, limita } from '../base/matematica.js';
+import { gradino } from '../base/matematica.js';
 import type { Campo } from './campo.js';
 import { atmosfera, NEBBIA_GLSL, NUBI_GLSL } from './atmosfera.js';
 import { DIREZIONE_SOLE } from './cielo.js';
-import { altezzaEsatta, lava, pesiZone, QUOTA_ACQUA, ZONE } from './zone.js';
-
-export { RAGGIO_GIOCO } from './zone.js';
-
-export const LATO_TERRENO = 832;
-const CELLE = 256;
-const PASSO = LATO_TERRENO / CELLE;
-const LATO_GRIGLIA = CELLE + 1;
-
-let griglia: Float32Array | null = null;
+import { altezzaEsatta, campiona, lava, QUOTA_ACQUA, VULCANO, ZONE } from './zone.js';
 
 /**
- * Altezza del terreno in un punto. Una volta creato il terreno si legge da una griglia già calcolata
- * (veloce, e identica a ciò che si vede); prima, o fuori dalla griglia, si calcola da capo.
+ * Il terreno di un mondo senza confini. È fatto a "zolle" quadrate che nascono attorno a chi gioca e,
+ * quando restano indietro, vengono riusate per il terreno che compare davanti: in memoria ce n'è sempre
+ * lo stesso numero, qualunque distanza si percorra.
+ */
+const PASSO = 3.25;
+const CELLE = 16;
+export const LATO_ZOLLA = PASSO * CELLE;
+/** Quante zolle per lato si tengono attorno a chi gioca. */
+const ZOLLE = 15;
+const PUNTI = CELLE + 1;
+const LATO_IMMAGINE = ZOLLE * CELLE;
+
+interface Zolla {
+  cx: number;
+  cz: number;
+  pronta: boolean;
+  mesh: THREE.Mesh;
+  quote: Float32Array;
+  collisore: RAPIER.Collider | null;
+}
+
+const zolle: Zolla[] = [];
+const resto = (a: number, n: number): number => ((a % n) + n) % n;
+
+/**
+ * Altezza del terreno in un punto. Dove la zolla è già pronta si legge dalle sue quote (veloce, e identica
+ * a ciò che si vede); altrove si calcola da capo.
  */
 export function altezza(x: number, z: number): number {
-  if (!griglia) return altezzaEsatta(x, z);
-  const gx = limita((x + LATO_TERRENO / 2) / PASSO, 0, CELLE - 0.001);
-  const gz = limita((z + LATO_TERRENO / 2) / PASSO, 0, CELLE - 0.001);
-  const ix = Math.floor(gx);
-  const iz = Math.floor(gz);
-  const fx = gx - ix;
-  const fz = gz - iz;
-  const i = iz * LATO_GRIGLIA + ix;
-  const a = griglia[i]!;
-  const b = griglia[i + 1]!;
-  const c = griglia[i + LATO_GRIGLIA]!;
-  const d = griglia[i + LATO_GRIGLIA + 1]!;
-  return a + (b - a) * fx + (c - a) * fz + (a - b - c + d) * fx * fz;
+  const gx = x / LATO_ZOLLA;
+  const gz = z / LATO_ZOLLA;
+  const cx = Math.floor(gx);
+  const cz = Math.floor(gz);
+  const zolla = zolle[resto(cz, ZOLLE) * ZOLLE + resto(cx, ZOLLE)];
+  if (!zolla || !zolla.pronta || zolla.cx !== cx || zolla.cz !== cz) return altezzaEsatta(x, z);
+  const fx = Math.min(CELLE - 0.001, (gx - cx) * CELLE);
+  const fz = Math.min(CELLE - 0.001, (gz - cz) * CELLE);
+  const ix = Math.floor(fx);
+  const iz = Math.floor(fz);
+  const tx = fx - ix;
+  const tz = fz - iz;
+  const q = zolla.quote;
+  const i = iz * PUNTI + ix;
+  const a = q[i]!;
+  const b = q[i + 1]!;
+  const c = q[i + PUNTI]!;
+  const d = q[i + PUNTI + 1]!;
+  return a + (b - a) * tx + (c - a) * tz + (a - b - c + d) * tx * tz;
 }
 
 export interface Terreno {
-  readonly mesh: THREE.Mesh;
+  readonly gruppo: THREE.Group;
   readonly acqua: THREE.Mesh;
   /** Le altezze in una immagine, per far appoggiare i fili d'erba al terreno. */
   readonly altezze: THREE.DataTexture;
   /** Per ogni punto: quanta erba c'è e com'è (secca, innevata, scura). */
   readonly biomi: THREE.DataTexture;
+  /** Prepara le zolle attorno a un punto. `quante` è il massimo da preparare in questa chiamata. */
+  segui(x: number, z: number, quante: number): number;
 }
 
 export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo, ombre: boolean): Terreno {
-  const geometria = new THREE.PlaneGeometry(LATO_TERRENO, LATO_TERRENO, CELLE, CELLE);
-  geometria.rotateX(-Math.PI / 2);
-  const pos = geometria.attributes.position as THREE.BufferAttribute;
-  const n = pos.count;
-  const quote = new Float32Array(n);
-  const mezzi = new Uint16Array(n);
-  const biomi = new Uint8Array(n * 4);
-  const colori = new Float32Array(n * 3);
-  const lave = new Float32Array(n);
-  const pesi = new Float32Array(5);
-  const terre = ZONE.map((z) => new THREE.Color(z.terra));
-  for (let i = 0; i < n; i++) {
-    const x = pos.getX(i);
-    const z = pos.getZ(i);
-    const h = altezzaEsatta(x, z);
-    quote[i] = h;
-    pos.setY(i, h);
-    mezzi[i] = THREE.DataUtils.toHalfFloat(h);
-    pesiZone(x, z, pesi);
-    let r = 0, g = 0, b = 0;
-    const erba = [0, 0, 0, 0];
-    for (let k = 0; k < ZONE.length; k++) {
-      const w = pesi[k]!;
-      r += terre[k]!.r * w;
-      g += terre[k]!.g * w;
-      b += terre[k]!.b * w;
-      for (let j = 0; j < 4; j++) erba[j] = erba[j]! + ZONE[k]!.erba[j]! * w;
-    }
-    const l = lava(x, z, pesi[4]!);
-    lave[i] = l;
-    colori[i * 3] = r;
-    colori[i * 3 + 1] = g;
-    colori[i * 3 + 2] = b;
-    biomi[i * 4] = erba[0]! * (1 - l) * 255;
-    biomi[i * 4 + 1] = erba[1]! * 255;
-    biomi[i * 4 + 2] = erba[2]! * 255;
-    biomi[i * 4 + 3] = erba[3]! * 255;
+  const mezzi = new Uint16Array(LATO_IMMAGINE * LATO_IMMAGINE);
+  const punti = new Uint8Array(LATO_IMMAGINE * LATO_IMMAGINE * 4);
+  const altezze = new THREE.DataTexture(mezzi, LATO_IMMAGINE, LATO_IMMAGINE, THREE.RedFormat, THREE.HalfFloatType);
+  const biomi = new THREE.DataTexture(punti, LATO_IMMAGINE, LATO_IMMAGINE, THREE.RGBAFormat, THREE.UnsignedByteType);
+  for (const immagine of [altezze, biomi]) {
+    immagine.magFilter = immagine.minFilter = THREE.LinearFilter;
+    // Le immagini "girano su se stesse": il mondo è infinito, loro coprono solo il pezzo attorno a chi gioca.
+    immagine.wrapS = immagine.wrapT = THREE.RepeatWrapping;
+    immagine.needsUpdate = true;
   }
-  griglia = quote;
-  geometria.computeVertexNormals();
-  // Dove il terreno è ripido affiora la roccia; sotto il pelo dell'acqua, il fango.
-  const normali = geometria.attributes.normal as THREE.BufferAttribute;
-  for (let i = 0; i < n; i++) {
-    const roccia = gradino(0.9, 0.7, normali.getY(i)) * 0.85;
-    const fango = gradino(QUOTA_ACQUA + 0.5, QUOTA_ACQUA - 0.2, quote[i]!) * 0.6;
-    colori[i * 3] = colori[i * 3]! * (1 - roccia) * (1 - fango) + 0.34 * roccia + 0.2 * fango;
-    colori[i * 3 + 1] = colori[i * 3 + 1]! * (1 - roccia) * (1 - fango) + 0.32 * roccia + 0.17 * fango;
-    colori[i * 3 + 2] = colori[i * 3 + 2]! * (1 - roccia) * (1 - fango) + 0.3 * roccia + 0.1 * fango;
-    if (roccia > 0.3) biomi[i * 4] = biomi[i * 4]! * (1 - roccia);
-  }
-  geometria.setAttribute('color', new THREE.BufferAttribute(colori, 3));
-  geometria.setAttribute('aLava', new THREE.BufferAttribute(lave, 1));
-
-  const altezze = new THREE.DataTexture(mezzi, LATO_GRIGLIA, LATO_GRIGLIA, THREE.RedFormat, THREE.HalfFloatType);
-  altezze.magFilter = altezze.minFilter = THREE.LinearFilter;
-  altezze.needsUpdate = true;
-  const immagineBiomi = new THREE.DataTexture(biomi, LATO_GRIGLIA, LATO_GRIGLIA, THREE.RGBAFormat, THREE.UnsignedByteType);
-  immagineBiomi.magFilter = immagineBiomi.minFilter = THREE.LinearFilter;
-  immagineBiomi.needsUpdate = true;
 
   const materiale = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
   materiale.onBeforeCompile = (shader) => {
@@ -127,7 +102,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
-         vec4 stato = texture2D(uStato, vMondo.xz / uLatoCampo + 0.5);
+         vec4 stato = texture2D(uStato, vMondo.xz / uLatoCampo);
          float chiazza = sin(vMondo.x * 0.07) * sin(vMondo.z * 0.09 + 1.7) * 0.5 + 0.5;
          diffuseColor.rgb *= mix(0.84, 1.1, chiazza) * ombraNubi(vMondo.xz, uTempo);
          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.36, 0.07), stato.b * 0.6);
@@ -144,12 +119,128 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
          totalEmissiveRadiance += vec3(1.5, 0.36, 0.04) * colata * bolle;`,
       );
   };
-  const mesh = new THREE.Mesh(geometria, materiale);
-  mesh.receiveShadow = ombre;
+
+  // Gli indici dei triangoli sono uguali per tutte le zolle.
+  const indici: number[] = [];
+  for (let j = 0; j < CELLE; j++) {
+    for (let i = 0; i < CELLE; i++) {
+      const a = j * PUNTI + i;
+      indici.push(a, a + PUNTI, a + 1, a + 1, a + PUNTI, a + PUNTI + 1);
+    }
+  }
+  const indiciFisica = new Uint32Array(indici);
+  const gruppo = new THREE.Group();
+  for (let k = 0; k < ZOLLE * ZOLLE; k++) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PUNTI * PUNTI * 3), 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(PUNTI * PUNTI * 3), 3));
+    g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(PUNTI * PUNTI * 3), 3));
+    g.setAttribute('aLava', new THREE.BufferAttribute(new Float32Array(PUNTI * PUNTI), 1));
+    g.setIndex(indici);
+    g.boundingSphere = new THREE.Sphere();
+    const mesh = new THREE.Mesh(g, materiale);
+    mesh.receiveShadow = ombre;
+    mesh.visible = false;
+    gruppo.add(mesh);
+    zolle.push({ cx: NaN, cz: NaN, pronta: false, mesh, quote: new Float32Array(PUNTI * PUNTI), collisore: null });
+  }
+
+  const terre = ZONE.map((z) => new THREE.Color(z.terra));
+  // Altezze di una zolla più un bordo di un punto tutt'intorno: serve a calcolare le pendenze senza scalini ai confini.
+  const BORDO = PUNTI + 2;
+  const blocco = new Float32Array(BORDO * BORDO);
+  const verticiFisica = new Float32Array(PUNTI * PUNTI * 3);
+
+  const prepara = (zolla: Zolla, cx: number, cz: number): void => {
+    if (zolla.collisore) fisica.removeCollider(zolla.collisore, false);
+    zolla.cx = cx;
+    zolla.cz = cz;
+    const x0 = cx * LATO_ZOLLA;
+    const z0 = cz * LATO_ZOLLA;
+    const g = zolla.mesh.geometry;
+    const pos = g.attributes.position!.array as Float32Array;
+    const nor = g.attributes.normal!.array as Float32Array;
+    const col = g.attributes.color!.array as Float32Array;
+    const lav = g.attributes.aLava!.array as Float32Array;
+    let minimo = Infinity;
+    let massimo = -Infinity;
+    for (let j = -1; j <= PUNTI; j++) {
+      for (let i = -1; i <= PUNTI; i++) {
+        const x = x0 + i * PASSO;
+        const z = z0 + j * PASSO;
+        const dentro = i >= 0 && j >= 0 && i < PUNTI && j < PUNTI;
+        const c = campiona(x, z);
+        blocco[(j + 1) * BORDO + i + 1] = c.h;
+        if (!dentro) continue;
+        const k = j * PUNTI + i;
+        zolla.quote[k] = c.h;
+        pos[k * 3] = x;
+        pos[k * 3 + 1] = c.h;
+        pos[k * 3 + 2] = z;
+        minimo = Math.min(minimo, c.h);
+        massimo = Math.max(massimo, c.h);
+        let r = 0, gg = 0, b = 0;
+        const erba = [0, 0, 0, 0];
+        for (let n = 0; n < ZONE.length; n++) {
+          const w = c.pesi[n]!;
+          r += terre[n]!.r * w;
+          gg += terre[n]!.g * w;
+          b += terre[n]!.b * w;
+          for (let e = 0; e < 4; e++) erba[e] = erba[e]! + ZONE[n]!.erba[e]! * w;
+        }
+        const l = lava(x, z, c.pesi[VULCANO]!);
+        lav[k] = l;
+        col[k * 3] = r;
+        col[k * 3 + 1] = gg;
+        col[k * 3 + 2] = b;
+        // Nelle immagini per l'erba ogni zolla scrive i suoi punti tranne l'ultima fila e colonna (sono della vicina).
+        if (i < CELLE && j < CELLE) {
+          const t = resto(cz * CELLE + j, LATO_IMMAGINE) * LATO_IMMAGINE + resto(cx * CELLE + i, LATO_IMMAGINE);
+          mezzi[t] = THREE.DataUtils.toHalfFloat(c.h);
+          punti[t * 4] = erba[0]! * (1 - l) * 255;
+          punti[t * 4 + 1] = erba[1]! * 255;
+          punti[t * 4 + 2] = erba[2]! * 255;
+          punti[t * 4 + 3] = erba[3]! * 255;
+        }
+      }
+    }
+    for (let j = 0; j < PUNTI; j++) {
+      for (let i = 0; i < PUNTI; i++) {
+        const k = j * PUNTI + i;
+        const b = (j + 1) * BORDO + i + 1;
+        const dx = blocco[b - 1]! - blocco[b + 1]!;
+        const dz = blocco[b - BORDO]! - blocco[b + BORDO]!;
+        const lung = Math.hypot(dx, 2 * PASSO, dz);
+        nor[k * 3] = dx / lung;
+        nor[k * 3 + 1] = (2 * PASSO) / lung;
+        nor[k * 3 + 2] = dz / lung;
+        // Dove il terreno è ripido affiora la roccia; sotto il pelo dell'acqua, il fango.
+        const roccia = gradino(0.9, 0.7, nor[k * 3 + 1]!) * 0.85;
+        const fango = gradino(QUOTA_ACQUA + 0.5, QUOTA_ACQUA - 0.2, zolla.quote[k]!) * 0.6;
+        const resta = (1 - roccia) * (1 - fango);
+        col[k * 3] = col[k * 3]! * resta + 0.34 * roccia + 0.2 * fango;
+        col[k * 3 + 1] = col[k * 3 + 1]! * resta + 0.32 * roccia + 0.17 * fango;
+        col[k * 3 + 2] = col[k * 3 + 2]! * resta + 0.3 * roccia + 0.1 * fango;
+        if (roccia > 0.3 && i < CELLE && j < CELLE) {
+          const t = resto(cz * CELLE + j, LATO_IMMAGINE) * LATO_IMMAGINE + resto(cx * CELLE + i, LATO_IMMAGINE);
+          punti[t * 4] = punti[t * 4]! * (1 - roccia);
+        }
+      }
+    }
+    for (const nome of ['position', 'normal', 'color', 'aLava']) g.attributes[nome]!.needsUpdate = true;
+    g.boundingSphere!.center.set(x0 + LATO_ZOLLA / 2, (minimo + massimo) / 2, z0 + LATO_ZOLLA / 2);
+    g.boundingSphere!.radius = Math.hypot(LATO_ZOLLA * 0.71, (massimo - minimo) / 2);
+    verticiFisica.set(pos);
+    zolla.collisore = fisica.createCollider(R.ColliderDesc.trimesh(verticiFisica.slice(), indiciFisica).setFriction(0.9));
+    zolla.mesh.visible = true;
+    zolla.pronta = true;
+    altezze.needsUpdate = true;
+    biomi.needsUpdate = true;
+  };
 
   // L'acqua: riflette il cielo quando la si guarda di striscio, lascia vedere il fondo da sopra, e luccica al sole.
   const acqua = new THREE.Mesh(
-    new THREE.PlaneGeometry(LATO_TERRENO, LATO_TERRENO).rotateX(-Math.PI / 2),
+    new THREE.PlaneGeometry(LATO_ZOLLA * ZOLLE, LATO_ZOLLA * ZOLLE).rotateX(-Math.PI / 2),
     new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
@@ -188,17 +279,41 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
   );
   acqua.position.y = QUOTA_ACQUA;
   acqua.renderOrder = 2;
+  acqua.frustumCulled = false;
 
-  const vertici = new Float32Array(pos.array);
-  const indici = new Uint32Array(geometria.index!.array);
-  fisica.createCollider(R.ColliderDesc.trimesh(vertici, indici).setFriction(0.9));
-
-  return { mesh, acqua, altezze, biomi: immagineBiomi };
+  const daFare: { zolla: Zolla; cx: number; cz: number; d: number }[] = [];
+  return {
+    gruppo, acqua, altezze, biomi,
+    segui(x, z, quante) {
+      const ccx = Math.floor(x / LATO_ZOLLA);
+      const ccz = Math.floor(z / LATO_ZOLLA);
+      acqua.position.x = ccx * LATO_ZOLLA;
+      acqua.position.z = ccz * LATO_ZOLLA;
+      const mezzo = (ZOLLE - 1) / 2;
+      daFare.length = 0;
+      for (let dz = -mezzo; dz <= mezzo; dz++) {
+        for (let dx = -mezzo; dx <= mezzo; dx++) {
+          const cx = ccx + dx;
+          const cz = ccz + dz;
+          const zolla = zolle[resto(cz, ZOLLE) * ZOLLE + resto(cx, ZOLLE)]!;
+          if (zolla.cx === cx && zolla.cz === cz) continue;
+          // La zolla che occupa questo posto è rimasta indietro: non si legge più e non si mostra più.
+          zolla.pronta = false;
+          zolla.mesh.visible = false;
+          daFare.push({ zolla, cx, cz, d: dx * dx + dz * dz });
+        }
+      }
+      daFare.sort((a, b) => a.d - b.d);
+      const fatte = Math.min(quante, daFare.length);
+      for (let i = 0; i < fatte; i++) prepara(daFare[i]!.zolla, daFare[i]!.cx, daFare[i]!.cz);
+      return daFare.length - fatte;
+    },
+  };
 }
 
-/** Dove cade un punto del mondo dentro l'immagine delle altezze (scritto per le schede grafiche). */
+/** Dove cade un punto del mondo dentro le immagini di altezze e biomi (scritto per le schede grafiche). */
 export const UV_ALTEZZE_GLSL = /* glsl */ `
   vec2 uvAltezze(vec2 xz) {
-    return ((xz + ${(LATO_TERRENO / 2).toFixed(1)}) / ${PASSO.toFixed(4)} + 0.5) / ${LATO_GRIGLIA.toFixed(1)};
+    return (xz / ${PASSO.toFixed(4)} + 0.5) / ${LATO_IMMAGINE.toFixed(1)};
   }
 `;

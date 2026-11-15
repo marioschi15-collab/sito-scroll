@@ -4,6 +4,7 @@ const N = 256;
 const LATO = 512;
 const PASSO = LATO / N;
 const TIC = 0.12;
+const resto = (a: number): number => ((a % N) + N) % N;
 
 /**
  * Lo stato del prato, a quadretti di due metri: quanto è bruciato, gelato, rigoglioso, e dove c'è fuoco.
@@ -30,6 +31,8 @@ export class Campo {
     this.immagine = new THREE.DataTexture(this.punti, N, N, THREE.RGBAFormat, THREE.UnsignedByteType);
     this.immagine.magFilter = THREE.LinearFilter;
     this.immagine.minFilter = THREE.LinearFilter;
+    // Il mondo è infinito e l'immagine no: "gira su se stessa" e copre sempre il pezzo attorno a chi gioca.
+    this.immagine.wrapS = this.immagine.wrapT = THREE.RepeatWrapping;
     this.immagine.needsUpdate = true;
   }
 
@@ -37,32 +40,71 @@ export class Campo {
     return this.accese.size;
   }
 
-  /** Numero del quadretto sotto un punto, oppure -1 se è fuori dal prato (o sul bordo, che resta intatto). */
+  /** La colonna e la riga (del mondo) attorno a cui è centrata la finestra che il prato ricorda. */
+  private cx0 = 0;
+  private cz0 = 0;
+
+  /** Numero del quadretto sotto un punto, oppure -1 se è più lontano di quanto il prato ricordi. */
   cella(x: number, z: number): number {
-    const cx = Math.floor((x + LATO / 2) / PASSO);
-    const cz = Math.floor((z + LATO / 2) / PASSO);
-    if (cx < 1 || cz < 1 || cx > N - 2 || cz > N - 2) return -1;
-    return cz * N + cx;
+    const cx = Math.floor(x / PASSO);
+    const cz = Math.floor(z / PASSO);
+    if (Math.abs(cx - this.cx0) >= N / 2 - 1 || Math.abs(cz - this.cz0) >= N / 2 - 1) return -1;
+    return resto(cz) * N + resto(cx);
   }
 
   centro(cella: number, esito: THREE.Vector3): THREE.Vector3 {
-    const cx = cella % N;
-    const cz = (cella - cx) / N;
-    return esito.set((cx + 0.5) * PASSO - LATO / 2, 0, (cz + 0.5) * PASSO - LATO / 2);
+    const mx = cella % N;
+    const mz = (cella - mx) / N;
+    // Tra tutte le colonne del mondo che cadono su questo quadretto, quella dentro la finestra attuale.
+    const cx = this.cx0 + resto(mx - this.cx0 + N / 2) - N / 2;
+    const cz = this.cz0 + resto(mz - this.cz0 + N / 2) - N / 2;
+    return esito.set((cx + 0.5) * PASSO, 0, (cz + 0.5) * PASSO);
+  }
+
+  /**
+   * Sposta la finestra attorno a chi gioca. Le strisce di prato che entrano dalla parte opposta
+   * tornano vergini: ciò che era successo laggiù, troppo lontano, viene dimenticato.
+   */
+  segui(x: number, z: number): void {
+    const cx = Math.floor(x / PASSO);
+    const cz = Math.floor(z / PASSO);
+    const pulisci = (da: number, a: number, colonne: boolean): void => {
+      for (let c = da; c <= a; c++) {
+        const m = resto(c);
+        for (let k = 0; k < N; k++) {
+          const i = colonne ? k * N + m : m * N + k;
+          this.bruciato[i] = this.gelo[i] = this.crescita[i] = this.fuoco[i] = 0;
+          this.accese.delete(i);
+        }
+      }
+      this.sporco = true;
+    };
+    const passiX = Math.min(N, Math.abs(cx - this.cx0));
+    const passiZ = Math.min(N, Math.abs(cz - this.cz0));
+    if (passiX > 0) {
+      if (cx > this.cx0) pulisci(cx + N / 2 - passiX, cx + N / 2 - 1, true);
+      else pulisci(cx - N / 2, cx - N / 2 + passiX - 1, true);
+    }
+    if (passiZ > 0) {
+      if (cz > this.cz0) pulisci(cz + N / 2 - passiZ, cz + N / 2 - 1, false);
+      else pulisci(cz - N / 2, cz - N / 2 + passiZ - 1, false);
+    }
+    this.cx0 = cx;
+    this.cz0 = cz;
   }
 
   private cerchio(x: number, z: number, raggio: number, fai: (cella: number, vicinanza: number) => void): void {
     const r = Math.ceil(raggio / PASSO);
-    const cx = Math.floor((x + LATO / 2) / PASSO);
-    const cz = Math.floor((z + LATO / 2) / PASSO);
+    const cx = Math.floor(x / PASSO);
+    const cz = Math.floor(z / PASSO);
     for (let dz = -r; dz <= r; dz++) {
       for (let dx = -r; dx <= r; dx++) {
         const d = Math.hypot(dx, dz) * PASSO;
         if (d > raggio) continue;
         const ix = cx + dx;
         const iz = cz + dz;
-        if (ix < 1 || iz < 1 || ix > N - 2 || iz > N - 2) continue;
-        fai(iz * N + ix, 1 - d / raggio);
+        if (Math.abs(ix - this.cx0) >= N / 2 - 1 || Math.abs(iz - this.cz0) >= N / 2 - 1) continue;
+        fai(resto(iz) * N + resto(ix), 1 - d / raggio);
       }
     }
     this.sporco = true;
@@ -176,10 +218,11 @@ export class Campo {
       }
       const e = this.energia[i]!;
       if (e > 0 && b > 0.15 && Math.random() < 0.3) {
-        const vicino = i + [1, -1, N, -N][Math.floor(Math.random() * 4)]!;
-        const cx = vicino % N;
-        const cz = (vicino - cx) / N;
-        if (cx >= 1 && cz >= 1 && cx <= N - 2 && cz <= N - 2 && this.fuoco[vicino] === 0) {
+        const mx = i % N;
+        const mz = (i - mx) / N;
+        const passo = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(Math.random() * 4)]!;
+        const vicino = resto(mz + passo[1]!) * N + resto(mx + passo[0]!);
+        if (this.fuoco[vicino] === 0) {
           this.energia[vicino] = Math.max(0, e - 1 - Math.floor(Math.random() * 2));
           nuove.push(vicino);
         }

@@ -73,7 +73,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         float dist = length(rel);
         float bordo = 1.0 - smoothstep(uLato * 0.36, uLato * 0.5, dist);
         float terra = texture2D(uAltezze, uvAltezze(w)).r;
-        vec4 stato = texture2D(uStato, w / uLatoCampo + 0.5);
+        vec4 stato = texture2D(uStato, w / uLatoCampo);
         vec4 bio = texture2D(uBiomi, uvAltezze(w));
         // Dove c'è poca erba (sabbia, cenere) ne spunta solo qualche ciuffo; la magia della crescita la fa nascere ovunque.
         float quanta = max(bio.r, stato.b);
@@ -170,7 +170,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         vec2 w = rel + uCam.xz;
         float bordo = 1.0 - smoothstep(uLato * 0.34, uLato * 0.48, length(rel));
         float terra = texture2D(uAltezze, uvAltezze(w)).r;
-        vec4 stato = texture2D(uStato, w / uLatoCampo + 0.5);
+        vec4 stato = texture2D(uStato, w / uLatoCampo);
         float aiuola = sin(w.x * 0.11 + 1.3) * sin(w.y * 0.13 + 0.7) + 0.45 * sin(w.x * 0.31 + w.y * 0.27);
         vec4 bio = texture2D(uBiomi, uvAltezze(w));
         float prato = bio.r * (1.0 - bio.g) * (1.0 - bio.b) * (1.0 - bio.a);

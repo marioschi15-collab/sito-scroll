@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { limita } from './base/matematica.js';
 import type { Comandi } from './comandi.js';
-import { altezza, RAGGIO_GIOCO } from './mondo/terreno.js';
+import { altezza } from './mondo/terreno.js';
 
 const OCCHI = 0.72;
 
@@ -63,11 +63,6 @@ export class Giocatore {
     this.posizione.y += m.y;
     this.posizione.z += m.z;
 
-    const r = Math.hypot(this.posizione.x, this.posizione.z);
-    if (r > RAGGIO_GIOCO) {
-      this.posizione.x *= RAGGIO_GIOCO / r;
-      this.posizione.z *= RAGGIO_GIOCO / r;
-    }
     // Rete di sicurezza: se per qualche motivo si finisce sotto terra, si torna su.
     const suolo = altezza(this.posizione.x, this.posizione.z);
     if (this.posizione.y < suolo + 0.4) {

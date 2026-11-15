@@ -4,7 +4,7 @@ import type { Particelle } from '../effetti/particelle.js';
 import type { Campo } from '../mondo/campo.js';
 import {
   ARENARIA, BLOCCO_GHIACCIO, BRACE, INTONACO, LEGNO, OSSIDIANA, PAGLIA, PIETRA, TEGOLA,
-  type Gruppo, type Mattone,
+  type Mattone,
 } from '../mondo/costruzioni.js';
 
 const DENSITA: Record<number, number> = {
@@ -13,6 +13,16 @@ const DENSITA: Record<number, number> = {
 };
 /** A che distanza da chi gioca un luogo "prende vita" (i suoi pezzi ricevono peso e attrito). */
 const DISTANZA_VIVA = 135;
+
+/** I pezzi di un luogo: stanno tutti di seguito, da `da` (compreso) ad `a` (escluso). */
+export interface Gruppo {
+  readonly x: number;
+  readonly z: number;
+  readonly raggio: number;
+  readonly da: number;
+  readonly a: number;
+  vivo: boolean;
+}
 const CARBONE = new THREE.Color(0.05, 0.04, 0.035);
 const GHIACCIO = new THREE.Color(0.62, 0.86, 1.0);
 const TIC = 0.2;
@@ -21,10 +31,16 @@ const TIC = 0.2;
  * Tutti i pezzi delle costruzioni: ognuno è un corpo con peso e attrito, disegnati tutti insieme in un colpo solo.
  * Appena fermi "si addormentano" (non costano più calcoli) e si risvegliano quando qualcosa li tocca.
  * I luoghi lontani restano solo disegnati: prendono vita quando chi gioca si avvicina.
+ * Il mondo è senza confini, quindi i luoghi si aggiungono e si tolgono mentre si cammina: i posti lasciati liberi
+ * da un luogo ormai lontano vengono riusati per quelli nuovi.
  */
 export class Pezzi {
   readonly mesh: THREE.InstancedMesh;
-  readonly n: number;
+  /** Fin dove arrivano i posti usati finora (alcuni, in mezzo, possono essere vuoti). */
+  n = 0;
+  private readonly mattoni: (Mattone | undefined)[] = [];
+  private readonly gruppi: Gruppo[] = [];
+  private readonly liberi: { da: number; a: number }[] = [];
   /** Posizioni aggiornate a ogni fotogramma (x, y, z di seguito), per i calcoli degli incantesimi. */
   readonly pos: Float32Array;
   readonly massa: Float32Array;
@@ -51,19 +67,17 @@ export class Pezzi {
   private readonly c = new THREE.Color();
 
   constructor(
-    private readonly mattoni: Mattone[],
-    private readonly gruppi: Gruppo[],
     private readonly R: typeof RAPIER,
     private readonly fisica: RAPIER.World,
     ombre: boolean,
+    private readonly capienza = 20000,
   ) {
-    this.n = mattoni.length;
-    this.pos = new Float32Array(this.n * 3);
-    this.massa = new Float32Array(this.n);
-    this.fiamma = new Float32Array(this.n);
-    this.carbone = new Float32Array(this.n);
-    this.ghiaccio = new Float32Array(this.n);
-    this.scala = new Float32Array(this.n).fill(1);
+    this.pos = new Float32Array(capienza * 3);
+    this.massa = new Float32Array(capienza);
+    this.fiamma = new Float32Array(capienza);
+    this.carbone = new Float32Array(capienza);
+    this.ghiaccio = new Float32Array(capienza);
+    this.scala = new Float32Array(capienza).fill(1);
     const materiale = new THREE.MeshLambertMaterial({ color: 0xffffff });
     // Ogni blocco è un po' più scuro in basso e lungo gli spigoli: dà volume e stacca un blocco dall'altro.
     materiale.onBeforeCompile = (shader) => {
@@ -80,29 +94,95 @@ export class Pezzi {
            diffuseColor.rgb *= mix(0.78, 1.05, smoothstep(-0.5, 0.3, vLocale.y)) * (1.0 - 0.3 * spigolo);`,
         );
     };
-    this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), materiale, this.n);
+    this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), materiale, capienza);
+    this.mesh.count = 0;
     this.mesh.castShadow = ombre;
     this.mesh.receiveShadow = ombre;
     this.mesh.frustumCulled = false;
-    mattoni.forEach((b, i) => {
+    this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.mesh.setColorAt(0, new THREE.Color(1, 1, 1));
+  }
+
+  /** Aggiunge i pezzi di un luogo (per ora solo disegnati). Restituisce null se non c'è più posto. */
+  aggiungi(mattoni: Mattone[], x: number, z: number, raggio: number): Gruppo | null {
+    const quanti = mattoni.length;
+    let da = -1;
+    const buco = this.liberi.findIndex((l) => l.a - l.da >= quanti);
+    if (buco >= 0) {
+      const l = this.liberi[buco]!;
+      da = l.da;
+      l.da += quanti;
+      if (l.da >= l.a) this.liberi.splice(buco, 1);
+    } else if (this.n + quanti <= this.capienza) {
+      da = this.n;
+      this.n += quanti;
+      this.mesh.count = this.n;
+    } else {
+      return null;
+    }
+    mattoni.forEach((b, k) => {
+      const i = da + k;
+      this.mattoni[i] = b;
+      this.fiamma[i] = this.carbone[i] = this.ghiaccio[i] = 0;
+      this.scala[i] = 1;
       this.disegna(i, b.x, b.y, b.z, b.q);
       this.mesh.setColorAt(i, b.colore);
     });
-    this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceColor!.needsUpdate = true;
+    const g: Gruppo = { x, z, raggio, da, a: da + quanti, vivo: false };
+    this.gruppi.push(g);
+    return g;
+  }
+
+  /** Toglie dal mondo i pezzi di un luogo rimasto lontano e libera i loro posti. */
+  togli(g: Gruppo): void {
+    this.m.makeScale(0, 0, 0);
+    for (let i = g.da; i < g.a; i++) {
+      const corpo = this.corpi[i];
+      if (corpo) {
+        this.perManiglia.delete(this.collisori[i]!.handle);
+        this.fisica.removeRigidBody(corpo);
+        this.corpi[i] = undefined;
+        this.collisori[i] = undefined;
+      }
+      this.mattoni[i] = undefined;
+      this.ardenti.delete(i);
+      this.gelati.delete(i);
+      this.pos[i * 3 + 1] = -1e6;
+      this.mesh.setMatrixAt(i, this.m);
+    }
+    for (const r of this.rammendi) r.pezzi = r.pezzi.filter((p) => p.i < g.da || p.i >= g.a);
+    this.mesh.instanceMatrix.needsUpdate = true;
+    // I posti liberati si ricuciono con quelli liberi accanto; se in fondo all'elenco non c'è più niente, lo si accorcia.
+    this.liberi.push({ da: g.da, a: g.a });
+    this.liberi.sort((p, q) => p.da - q.da);
+    for (let k = this.liberi.length - 1; k > 0; k--) {
+      if (this.liberi[k - 1]!.a !== this.liberi[k]!.da) continue;
+      this.liberi[k - 1]!.a = this.liberi[k]!.a;
+      this.liberi.splice(k, 1);
+    }
+    const ultimo = this.liberi[this.liberi.length - 1];
+    if (ultimo && ultimo.a === this.n) {
+      this.n = ultimo.da;
+      this.mesh.count = this.n;
+      this.liberi.pop();
+    }
+    this.gruppi.splice(this.gruppi.indexOf(g), 1);
+    const k = this.vivi.indexOf(g);
+    if (k >= 0) this.vivi.splice(k, 1);
   }
 
   /** Dà vita ai luoghi vicini a un punto (di solito: dove sta chi gioca). */
   avvicina(x: number, z: number): void {
     for (const g of this.gruppi) {
-      if (this.vivi.includes(g)) continue;
-      if (Math.hypot(g.x - x, g.z - z) - g.raggio < DISTANZA_VIVA) this.daiVita(g);
+      if (!g.vivo && Math.hypot(g.x - x, g.z - z) - g.raggio < DISTANZA_VIVA) this.daiVita(g);
     }
   }
 
-  /** Dà vita a tutto il mondo in una volta (serve alle prove). */
+  /** Dà vita a tutti i luoghi presenti in una volta (serve alle prove). */
   daiVitaATutto(): void {
-    for (const g of this.gruppi) if (!this.vivi.includes(g)) this.daiVita(g);
+    for (const g of this.gruppi) if (!g.vivo) this.daiVita(g);
   }
 
   private daiVita(g: Gruppo): void {
@@ -122,6 +202,7 @@ export class Pezzi {
       this.perManiglia.set(collisore.handle, i);
       this.massa[i] = corpo.mass();
     }
+    g.vivo = true;
     this.vivi.push(g);
   }
 
@@ -219,8 +300,10 @@ export class Pezzi {
   }
 
   private infiammabile(i: number): boolean {
-    const m = this.mattoni[i]!.materiale;
-    return !!this.corpi[i] && (m === LEGNO || m === INTONACO || m === PAGLIA) && this.carbone[i]! < 0.05 && this.fiamma[i] === 0 && this.ghiaccio[i]! < 0.3;
+    const b = this.mattoni[i];
+    if (!b || !this.corpi[i]) return false;
+    const m = b.materiale;
+    return (m === LEGNO || m === INTONACO || m === PAGLIA) && this.carbone[i]! < 0.05 && this.fiamma[i] === 0 && this.ghiaccio[i]! < 0.3;
   }
 
   accendi(i: number): void {
@@ -330,7 +413,7 @@ export class Pezzi {
       } else {
         this.fiamma[i] = resta;
         this.tingi(i, (1 - this.carbone[i]!) * (0.5 + Math.random() * 0.5));
-        if (y < 1.4) campo.accendi(x, z, 0.9, 5);
+        if (y - this.mattoni[i]!.quota < 1.4) campo.accendi(x, z, 0.9, 5);
         if (Math.random() < 0.45) {
           let accesi = 0;
           for (let j = 0; j < this.n && accesi < 2; j++) {
@@ -351,7 +434,8 @@ export class Pezzi {
     if (campo.celleAccese > 0) {
       for (let k = 0; k < 160; k++) {
         const i = Math.floor(Math.random() * this.n);
-        if (this.pos[i * 3 + 1]! > 1.6 || !this.infiammabile(i)) continue;
+        const b = this.mattoni[i];
+        if (!b || this.pos[i * 3 + 1]! - b.quota > 1.6 || !this.infiammabile(i)) continue;
         const cella = campo.cella(this.pos[i * 3]!, this.pos[i * 3 + 2]!);
         if (cella >= 0 && campo.fuoco[cella]! > 0.3) this.accendi(i);
       }
@@ -455,7 +539,7 @@ export class Pezzi {
     this.rammendi.length = 0;
     this.mattoni.forEach((b, i) => {
       const corpo = this.corpi[i];
-      if (!corpo) return;
+      if (!b || !corpo) return;
       this.collisori[i]!.setCollisionGroups(0xffffffff);
       if (this.scala[i] !== 1) {
         this.scala[i] = 1;
@@ -476,6 +560,12 @@ export class Pezzi {
     this.mesh.instanceColor!.needsUpdate = true;
   }
 
+  /** Vero se il pezzo si sta ancora muovendo (serve alle prove). */
+  sveglio(i: number): boolean {
+    const corpo = this.corpi[i];
+    return !!corpo && !corpo.isSleeping();
+  }
+
   /**
    * Di quanto si è spostato ogni pezzo dal suo posto d'origine (serve alle prove).
    * Si chiede la posizione vera al motore fisico: quella tenuta per il disegno non si aggiorna per i pezzi addormentati.
@@ -483,7 +573,7 @@ export class Pezzi {
   spostamenti(): number[] {
     return this.mattoni.map((b, i) => {
       const t = this.corpi[i]?.translation();
-      return t ? Math.hypot(t.x - b.x, t.y - b.y, t.z - b.z) : 0;
+      return t && b ? Math.hypot(t.x - b.x, t.y - b.y, t.z - b.z) : 0;
     });
   }
 }

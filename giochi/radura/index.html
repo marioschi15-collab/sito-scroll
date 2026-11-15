@@ -27,6 +27,7 @@
       #annuncio span { display: block; margin-top: 6px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
       #stato { left: 14px; top: 12px; font-size: 12px; opacity: .8; text-shadow: 0 1px 4px rgba(0,0,0,.7); font-variant-numeric: tabular-nums; }
       #ricostruisci { position: fixed; z-index: 3; right: 12px; top: 10px; padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(14,16,22,.5); color: var(--carta); font: 600 13px system-ui, sans-serif; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+      #casa { position: fixed; z-index: 3; right: 12px; top: 52px; padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(14,16,22,.5); color: var(--carta); font: 600 13px system-ui, sans-serif; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
       #leva { position: fixed; z-index: 2; display: none; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: rgba(255,255,255,.07); pointer-events: none; }
       #pomello { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; background: rgba(255,255,255,.45); transform: translate(-50%, -50%); }
       .tocco { position: fixed; z-index: 3; display: none; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); background: rgba(14,16,22,.45); color: #fff; font: 600 13px system-ui, sans-serif; touch-action: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
@@ -86,6 +87,7 @@
     <div id="nome" class="hud"><b></b><span></span></div>
     <div id="barra" class="hud"></div>
     <button id="ricostruisci" type="button">↺ Ricostruisci</button>
+    <button id="casa" type="button">⌂ Al villaggio</button>
     <div id="leva"><div id="pomello"></div></div>
     <button id="salta" class="tocco" type="button">Salta</button>
     <button id="lancia" class="tocco" type="button" aria-label="Lancia l'incantesimo">✦</button>
@@ -126,7 +128,7 @@
     <div id="inizio">
       <div class="scheda">
         <h1>Radura</h1>
-        <p>Cinque terre da esplorare, tredici incantesimi<br />e un’officina per inventare i tuoi.</p>
+        <p>Un mondo senza confini da esplorare, tredici incantesimi<br />e un’officina per inventare i tuoi.</p>
         <p class="come" id="come"></p>
         <button id="entra" type="button" disabled>Sto preparando il mondo…</button>
         <p><button id="grafica" type="button"></button></p>

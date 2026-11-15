@@ -58,7 +58,7 @@ function qualitaDelDispositivo(): Qualita {
     };
   }
   return {
-    telefono, filiErba: 150000, latoErba: 72, fiori: 10000, ombre: true, latoOmbre: 2048, bagliore: true,
+    telefono, filiErba: 190000, latoErba: 80, fiori: 12000, ombre: true, latoOmbre: 2048, bagliore: true,
     densitaPixel: Math.min(window.devicePixelRatio, 2), scintille: 9000, fumo: 2200, siAdatta: grafica === 'automatica',
   };
 }
