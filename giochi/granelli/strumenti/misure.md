@@ -12,6 +12,7 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | partenza | 0,65 / 2,56 / 3,50 (60) | 1,27 / 5,18 / 8,16 (60) | 1,91 / 9,18 / 13,11 (51) | 2,87 / 11,85 / 17,56 (43) | 0,90 / 4,18 / 5,10 (60) | 0,92 / 4,69 / 5,58 (60) | 2,55 / 11,29 / 14,48 (47) | 2,89 / 13,54 / 30,69 (28) | 2,85 / 9,85 / 19,91 (31) |
 | dopo P1 | 0,60 / 2,43 / 3,30 (60) | 0,76 / 3,16 / 5,52 (60) | 1,14 / 6,01 / 6,30 (59) | 2,48 / 12,24 / 14,38 (52) | 0,81 / 3,94 / 5,33 (60) | 0,97 / 4,26 / 6,65 (60) | 1,47 / 6,61 / 6,77 (60) | 1,14 / 4,72 / 7,23 (60) | 1,41 / 7,28 / 9,72 (50) |
+| dopo P2 | 0,59 / 1,95 / 2,91 (60) | 0,69 / 2,56 / 4,42 (60) | 0,92 / 3,72 / 5,11 (59) | 2,27 / 8,66 / 12,59 (58) | 0,85 / 3,33 / 4,23 (60) | 0,77 / 3,58 / 5,32 (60) | 1,13 / 4,64 / 6,91 (58) | 1,29 / 4,02 / 5,90 (60) | 1,15 / 5,11 / 8,21 (54) |
 
 ## Note
 
@@ -26,3 +27,12 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
   macchina, a x6, un giro): mare da 25,2 a 6,8 ms (da 35 a 60 fotogrammi al secondo), temporale da 11,6 a 6,6,
   incendio da 15,4 a 14,4, mondo vuoto da 3,9 a 3,7. Il paese, in tre giri alternati, va da 5,1 a 7,3 dopo e da
   5,1 a 6,4 prima (di notte 7,0-7,7 e 6,5-7,7): nessuna differenza che non sia rumore.
+- **dopo P2** (omini con un paese e le fonti colonna per colonna, costruzioni che si posano solo dove stanno, muretto
+  sotto le costruzioni): le scene «paese» e «mondo maturo» sono cambiate, perché le costruzioni non si posano più una
+  sull'altra: ora stanno in fila dove il terreno è piano, e gli alberi del mondo maturo hanno il tronco segnato.
+  Nessun costo che si veda: confronto alternato con la copia di prima (stesse scene, a x6, tre giri per parte) per il
+  paese di notte 4,33-4,89 prima e 4,34-4,88 dopo; togliendo il muretto sotto le costruzioni 4,28-5,17 (rumore).
+  Il ricalcolo delle fonti (ogni 120 istanti) e l'assestarsi delle cose (ogni 4) non si distinguono dal rumore.
+- **dopo P2, controllo indipendente** (un giro completo, poi le scene del paese e il mondo maturo ripetute a macchina
+  ferma, due giri): paese di giorno 0,68 / 3,84, paese di notte 0,82 / 4,36, mondo maturo 1,03 / 7,08 (pieno / x6),
+  sempre 57-60 fotogrammi al secondo. Tutto entro il rumore rispetto alla riga «dopo P2».

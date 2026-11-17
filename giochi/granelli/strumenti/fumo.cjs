@@ -7,7 +7,9 @@
 // Per aggiungere una prova: un nuovo passo in fondo all'elenco PASSI (o nel punto in cui ha senso). Ogni passo
 // riceve lo stato della prova (`s`: pagina, sessione per i tocchi, errori raccolti) e lancia un errore se quello che
 // vede non è quello che si aspetta. Dal passo 2 fino alla ricarica della pagina il mondo è in pausa.
-const { apri, quadro, scegli, gesto, tratto, M, C } = require('./comune.cjs');
+// Il mondo nasce sempre dallo stesso seme (come in misura.cjs): il profilo della roccia è lo stesso a ogni giro, e
+// un passo che cerca un punto piano dove costruire lo trova sempre lì.
+const { apri, chiudiFinestre, quadro, scegli, gesto, tratto, M, C } = require('./comune.cjs');
 
 function pretendi(vero, messaggio) {
   if (!vero) throw new Error(messaggio);
@@ -93,15 +95,61 @@ const PASSI = [
   {
     nome: 'una capanna posata nel mondo resta dove è stata messa',
     fai: async (s) => {
+      // Si scopre la capanna (così entra in tavolozza) e la si posa nel primo punto abbastanza piano a destra del
+      // centro, dove è caduta la terra del passo 2.
       const posata = await s.page.evaluate((capanna) => {
         const m = window.granelli();
-        m.visti.add(capanna);
-        const x = (m.w >> 1) + 30;
-        return m.posa(capanna, x, m.suolo(x) - 1);
+        m.scopri(capanna, m.w >> 1, m.h >> 1);
+        for (let x = (m.w >> 1) + 14; x < (m.w >> 1) + 30; x++) if (m.posa(capanna, x, 20)) return true;
+        return false;
       }, C.CAPANNA);
-      pretendi(posata, 'il mondo ha rifiutato di posare la capanna');
+      pretendi(posata, 'il mondo ha rifiutato di posare la capanna in tutti i punti provati');
+      // Con la capanna le scoperte possono bastare per il Mestolo: la sua finestra arriva dopo un paio di secondi.
+      await s.page.waitForTimeout(2300);
+      await chiudiFinestre(s.page);
       const cose = await s.page.evaluate(() => window.granelli().cose.map((c) => c.id));
       pretendi(cose.length === 1 && cose[0] === C.CAPANNA, 'la capanna posata non è tra le cose del mondo');
+    },
+  },
+  {
+    nome: 'una costruzione non si posa sopra un’altra (una riga dice perché), e accanto sì',
+    fai: async (s) => {
+      await s.page.waitForFunction(() => document.querySelector('.avvisi').childElementCount === 0, null, { timeout: 12000 });
+      await scegli(s.page, 'Capanna');
+      // Dove sta sullo schermo una cella del mondo: il foglio dei granelli è già spostato e ingrandito come la vista.
+      const sulloSchermo = (cella) =>
+        s.page.evaluate(([x, y]) => {
+          const m = window.granelli();
+          const r = document.querySelector('.foglio').getBoundingClientRect();
+          const scala = r.width / m.w;
+          return [r.left + (x + 0.5) * scala, r.top + (y + 0.5) * scala];
+        }, cella);
+      const capanna = await s.page.evaluate(() => {
+        const c = window.granelli().cose[0];
+        return [c.x + 5, c.y - 2];
+      });
+      await gesto(s.cdp, [[await sulloSchermo(capanna)]]);
+      await s.page.locator('.riga.su').waitFor({ timeout: 3000 });
+      const riga = (await s.page.locator('.riga').textContent()) ?? '';
+      pretendi(riga.includes('già una costruzione'), `toccando sopra la capanna la riga dice «${riga}»`);
+      pretendi((await s.page.evaluate(() => window.granelli().cose.length)) === 1, 'una seconda capanna è finita sopra la prima');
+      // Un punto libero e abbastanza piano, a destra della prima e ancora in vista: lì il tocco la posa.
+      const libero = await s.page.evaluate((id) => {
+        const m = window.granelli();
+        for (let x = m.cose[0].x + 15; x < (m.w >> 1) + 44; x++) {
+          const dove = m.puoPosare(id, x, 20);
+          if (dove.si) return [x, dove.y - 2];
+        }
+        return null;
+      }, C.CAPANNA);
+      pretendi(libero, 'vicino alla capanna non c’è un punto dove posarne un’altra');
+      await gesto(s.cdp, [[await sulloSchermo(libero)]]);
+      await s.page.waitForFunction(() => window.granelli().cose.length === 2, null, { timeout: 3000 });
+      const sovrapposte = await s.page.evaluate(() => {
+        const [a, b] = window.granelli().cose;
+        return a.x < b.x + 10 && b.x < a.x + 10;
+      });
+      pretendi(!sovrapposte, 'le due capanne si sovrappongono');
     },
   },
   {
@@ -132,17 +180,40 @@ const PASSI = [
       const prima = await foto();
       await s.page.reload();
       await s.page.waitForFunction(() => typeof window.granelli === 'function');
+      await s.page.evaluate(() => window.__oraVera());
       pretendi((await s.page.getByRole('button', { name: 'Inizia' }).count()) === 0, 'dopo la ricarica è ricomparso il benvenuto: la partita non è stata ritrovata');
       // Dopo la ricarica il mondo riparte subito: può esserci una scoperta in più, mai una in meno.
       const dopo = await foto();
       pretendi(prima.visti.every((id) => dopo.visti.includes(id)), `le scoperte non sono tornate: prima ${prima.visti}, dopo ${dopo.visti}`);
       pretendi(dopo.visti.includes(M.FANGO) && dopo.visti.includes(C.CAPANNA), 'tra le scoperte tornate mancano il fango o la capanna');
       // Una cosa posata può ancora assestarsi di una cella o due sul terreno: contano il tipo e la colonna.
-      const stesse = dopo.cose.length === prima.cose.length && dopo.cose.every((c, n) => c[0] === prima.cose[n][0] && c[1] === prima.cose[n][1] && Math.abs(c[2] - prima.cose[n][2]) <= 3);
+      const stesse = dopo.cose.length === 2 && dopo.cose.length === prima.cose.length && dopo.cose.every((c, n) => c[0] === prima.cose[n][0] && c[1] === prima.cose[n][1] && Math.abs(c[2] - prima.cose[n][2]) <= 3);
       pretendi(stesse, `le cose posate non sono tornate: prima ${JSON.stringify(prima.cose)}, dopo ${JSON.stringify(dopo.cose)}`);
       pretendi(JSON.stringify(dopo.misure) === JSON.stringify(prima.misure) && dopo.tic >= prima.tic, 'il mondo tornato non è quello di prima');
       pretendi(prima.suolo > 20 && dopo.suolo === prima.suolo, `terra e fango non sono tornati: prima ${prima.suolo} celle, dopo ${dopo.suolo}`);
       pretendi(dopo.tasto.startsWith(`Libro ${dopo.visti.length}/`), `il conto del Libro non è tornato: dice «${dopo.tasto}», le scoperte sono ${dopo.visti.length}`);
+    },
+  },
+  {
+    nome: 'quando un omino muore di sete, una riga lo dice',
+    fai: async (s) => {
+      // Dopo la ricarica il mondo ha ripreso a girare: un omino allo stremo, lontano dall'acqua, muore subito.
+      const lontano = await s.page.evaluate(() => {
+        const m = window.granelli();
+        for (let x = m.w - 20; x > 20; x--) {
+          const fonte = m.fonti.bere(x);
+          if (fonte >= 0 && Math.abs(fonte - x) < 12) continue;
+          m.aggiungiOmino(x, m.suolo(x) - 1);
+          m.omini[m.omini.length - 1].sete = 899;
+          return true;
+        }
+        return false;
+      });
+      pretendi(lontano, 'non c’è un punto lontano dall’acqua dove mettere l’omino');
+      await s.page.locator('.riga.su').waitFor({ timeout: 5000 });
+      const riga = (await s.page.locator('.riga').textContent()) ?? '';
+      pretendi(riga.includes('morto di sete'), `alla morte dell’omino la riga dice «${riga}»`);
+      pretendi((await s.page.evaluate(() => window.granelli().omini.length)) === 0, 'l’omino allo stremo è ancora vivo');
     },
   },
   {
@@ -154,7 +225,7 @@ const PASSI = [
 ];
 
 (async () => {
-  const s = await apri({ entra: false });
+  const s = await apri({ entra: false, mondoFisso: true });
   let fallito = null;
   try {
     for (const [n, passo] of PASSI.entries()) {

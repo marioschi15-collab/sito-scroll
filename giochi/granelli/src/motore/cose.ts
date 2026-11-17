@@ -78,6 +78,8 @@ export interface Cosa {
   id: number;
   x: number;
   y: number;
+  /** Il suo numero d'ordine: non cambia mai e non ce ne sono due uguali. Serve a riconoscerla (la casa di un omino è questa). */
+  n: number;
 }
 
 /** Un tetto sotto cui un omino può vivere, e quanti ne ospita. */

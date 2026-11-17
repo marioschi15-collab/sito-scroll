@@ -1,6 +1,8 @@
+import { ALTEZZA } from './cammino.js';
 import { CONSEGUENZE, type Cosa, INGOMBRO, unione } from './cose.js';
 import { REAZIONI, SOLO_NEL_MONDO, coppiaDAutore, esitoNoto, fenomenoDi } from './esiti.js';
 import { fenomeni } from './fenomeni.js';
+import { Fonti } from './fonti.js';
 import {
   ALBERO,
   BASE,
@@ -25,10 +27,12 @@ import {
   STATO,
   type Sostanza,
   TEMPORALE,
+  TRONCO,
 } from './materiali.js';
 import { SOGLIA, faMale, fondi, idMiscela, siMangia } from './miscele.js';
 import { nomeMiscela } from './nomi.js';
-import { ALTEZZA, type Omino, POPOLAZIONE_MAX, aggiornaOmini, nuovoOmino } from './omini.js';
+import { type Fatto, type Omino, POPOLAZIONE_MAX, aggiornaOmini, nuovoOmino } from './omini.js';
+import { type Posto, assestaCose, puoPosare, sgombra, sottoUnaCosa } from './posa.js';
 import { ACCENDI, RESTA } from './ricette.js';
 
 /** Una scoperta appena avvenuta: cosa e dove (in celle), per far brillare il punto sullo schermo. */
@@ -119,14 +123,16 @@ export class Mondo {
   readonly visti = new Set<number>();
   /** Scoperte avvenute dall'ultima volta che qualcuno le ha lette. */
   novita: Novita[] = [];
-  /** Dove sono morti degli omini dall'ultima volta che qualcuno ha guardato (in celle). */
-  caduti: { x: number; y: number }[] = [];
-  /** Dove sono nati dei bambini dall'ultima volta che qualcuno ha guardato (in celle). */
-  nati: { x: number; y: number }[] = [];
+  /** Le nascite e le morti degli omini (con la causa) dall'ultima volta che qualcuno le ha lette. */
+  fatti: Fatto[] = [];
   /** Le esplosioni avvenute dall'ultima volta che qualcuno ha guardato (in celle). */
   botti: { x: number; y: number; r: number }[] = [];
   /** Le invenzioni posate nel mondo. */
   cose: Cosa[] = [];
+  /** Per ogni colonna, 1 se una cosa posata la copre: lì sotto non germoglia niente (lo tiene aggiornato `assestaCose`). */
+  readonly coperta: Uint8Array;
+  /** Dove si beve e dove si mangia, colonna per colonna: gli omini lo consultano quando hanno sete o fame. */
+  readonly fonti: Fonti;
   /** Quante celle ci sono di ogni materiale: aggiornato ogni due secondi circa. */
   readonly conta = new Uint32Array(N_TIPI);
   /** Tic in cui gli omini potranno (ri)comparire. */
@@ -175,6 +181,8 @@ export class Mondo {
     this.dato = new Uint8Array(n);
     this.tinta = new Uint8Array(n);
     this.fatto = new Uint8Array(n);
+    this.coperta = new Uint8Array(w);
+    this.fonti = new Fonti(w);
     this.semi[0] = seme | 0 || 1;
     this.fasciaNuvole = Math.max(1, (h * 0.13) | 0);
     for (let t = 0; t < N_TIPI; t++) {
@@ -374,23 +382,26 @@ export class Mondo {
     return y;
   }
 
-  /** Posa un'invenzione nel mondo, centrata sulla colonna indicata e appoggiata a terra. */
-  posa(id: number, x: number, y: number): boolean {
-    const ingombro = INGOMBRO[id];
-    if (!ingombro || !this.visti.has(id) || this.cose.length >= 120) return false;
-    const sx = Math.max(0, Math.min(this.w - ingombro[0], x - (ingombro[0] >> 1)));
-    this.cose.push({ id, x: sx, y: Math.max(ingombro[1], Math.min(this.h - 1, y)) });
-    return true;
+  /**
+   * Dice se un'invenzione si può posare con il centro sulla colonna x, vicino alla riga y, e dove finirebbe: sul
+   * terreno vero più alto sotto il suo ingombro (o sul pelo dell'acqua, per barca e ponte). Se non si può, dice perché.
+   */
+  puoPosare(id: number, x: number, y: number): Posto {
+    return puoPosare(this, id, x, y);
   }
 
-  /** Le cose posate cadono finché non trovano qualcosa su cui appoggiarsi (basta il centro). */
-  private assestaCose(): void {
-    for (const c of this.cose) {
-      const centro = c.x + (INGOMBRO[c.id][0] >> 1);
-      const terra = this.suolo(centro, c.y - 2);
-      if (terra - 1 > c.y) c.y = Math.min(terra - 1, c.y + 2);
-      else if (terra - 1 < c.y - 1) c.y--;
-    }
+  /** Posa un'invenzione nel mondo, se lì può stare (vedi `puoPosare`). Le piante che trova al suo posto le toglie. */
+  posa(id: number, x: number, y: number): boolean {
+    const dove = puoPosare(this, id, x, y);
+    if (!dove.si) return false;
+    sgombra(this, id, dove.x, dove.y);
+    // Ogni cosa ha un numero d'ordine tutto suo, anche dopo che altre sono state tolte.
+    let n = 1;
+    for (const c of this.cose) if (c.n >= n) n = c.n + 1;
+    this.cose.push({ id, x: dove.x, y: dove.y, n });
+    this.coperta.fill(1, dove.x, dove.x + INGOMBRO[id][0]);
+    this.fonti.daRifare = true;
+    return true;
   }
 
   svuota(i: number): void {
@@ -588,13 +599,14 @@ export class Mondo {
     const r2 = (r + 1) * (r + 1);
     this.omini = this.omini.filter((o) => {
       if ((o.x - x) * (o.x - x) + (o.y - 1 - y) * (o.y - 1 - y) > r2) return true;
-      this.caduti.push({ x: o.x, y: o.y - 1 });
+      this.fatti.push({ cosa: 'morto', causa: 'fuoco', x: o.x, y: o.y - 1 });
       return false;
     });
   }
 
-  /** Fa nascere un germoglio: erba bassa, oppure (più di rado) un albero. */
+  /** Fa nascere un germoglio: erba bassa, oppure (più di rado) un albero. Sotto una cosa posata non spunta niente. */
   private germoglia(j: number, fertile: boolean): void {
+    if (sottoUnaCosa(this, j % this.w, (j / this.w) | 0)) return;
     const albero = this.caso() < (fertile ? 0.35 : 0.15);
     this.metti(j, M.PIANTA, albero ? ALBERO + 6 + ((this.caso() * 8) | 0) : 1 + ((this.caso() * 4) | 0));
   }
@@ -656,8 +668,11 @@ export class Mondo {
     if (this.tic % 120 === 0) {
       this.contaCelle();
       fenomeni(this);
+      this.fonti.daRifare = true;
     }
-    if (this.tic % 4 === 0 && this.cose.length > 0) this.assestaCose();
+    if (this.tic % 4 === 0) assestaCose(this);
+    // Dove si beve e dove si mangia: ogni due secondi circa, e subito se una cosa è stata posata o tolta.
+    if (this.fonti.daRifare) this.fonti.aggiorna(this);
     aggiornaOmini(this);
   }
 
@@ -761,7 +776,7 @@ export class Mondo {
         if (this.muoviPolvere(i, x, y, 0.3, t)) return;
         if (y < this.h - 1) {
           const sotto = tipo[i + w];
-          if ((sotto === M.FANGO || sotto === M.HUMUS || sotto === M.TERRA) && this.caso() < 0.002) {
+          if ((sotto === M.FANGO || sotto === M.HUMUS || sotto === M.TERRA) && this.caso() < 0.002 && !sottoUnaCosa(this, x, y)) {
             this.metti(i, M.PIANTA, ALBERO + 6 + ((this.caso() * 8) | 0));
             return;
           }
@@ -1102,12 +1117,14 @@ export class Mondo {
         if (this.caso() < 0.15) dx = this.caso() < 0.5 ? -1 : 1;
         if (x + dx < 0 || x + dx >= w || tipo[i - w + dx] !== M.VUOTO) dx = 0;
         const j = i - w + dx;
-        if (tipo[j] !== M.VUOTO) {
+        // Trova chiuso, oppure salirebbe dentro una costruzione: l'albero si ferma qui.
+        if (tipo[j] !== M.VUOTO || sottoUnaCosa(this, x + dx, y - 1)) {
           dato[i] = 0;
           return;
         }
         this.metti(j, M.PIANTA, resto > 0 ? ALBERO + resto : 0);
-        this.metti(i, M.LEGNO);
+        // Il tronco di un albero è uno sfondo per gli omini, non un muro: lo dice il suo dato.
+        this.metti(i, M.LEGNO, TRONCO);
         if (resto <= 0) this.chioma(x + dx, y - 1);
         return;
       }
@@ -1354,10 +1371,12 @@ export class Mondo {
         this.svuota((y + dy) * this.w + x + dx);
       }
     }
+    const prima = this.cose.length;
     this.cose = this.cose.filter((c) => {
       const [lw, lh] = INGOMBRO[c.id];
       return !(x >= c.x - raggio && x < c.x + lw + raggio && y <= c.y + raggio && y > c.y - lh - raggio);
     });
+    if (this.cose.length !== prima) this.fonti.daRifare = true;
     // Un omino sparisce se la gomma passa su un punto qualsiasi del suo corpo.
     const r2 = (raggio + 1) * (raggio + 1);
     this.omini = this.omini.filter((o) => {

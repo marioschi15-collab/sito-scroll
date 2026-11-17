@@ -205,6 +205,31 @@ button {
   opacity: 0;
 }
 
+/* Una frase breve in fondo al cielo: spiega una posa rifiutata o racconta un lutto, poi sparisce da sola. */
+.riga {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  margin: 0;
+  width: max-content;
+  max-width: min(92%, 440px);
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: #1b2340f2;
+  border: 1px solid var(--bordo);
+  box-shadow: 0 6px 20px #0008;
+  font-size: 14px;
+  line-height: 1.3;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+.riga.su {
+  opacity: 1;
+}
+
 /* ── Tavolozza ── */
 .piede {
   display: flex;

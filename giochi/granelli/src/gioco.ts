@@ -6,6 +6,7 @@ import { Mondo } from './motore/mondo.js';
 import { SUPERFICIE, terreno } from './motore/terreno.js';
 import { apriUnisci } from './unisci.js';
 import { costruisciPagina, el } from './pagina.js';
+import { NON_SI_POSA, annuncioDiLutto } from './righe.js';
 import { carica, extraDi, fotografa, ripristina, salva } from './salvataggio.js';
 import { INIZIALI, PER_ID, SCOPERTE, meritaIlMestolo, vociTrovate } from './scoperte.js';
 
@@ -252,8 +253,14 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       return;
     }
     if (INGOMBRO[scelto]) {
-      mondo.posa(scelto, x, y);
-      salvaTutto();
+      // Una costruzione si posa solo dove può stare: se no, una riga dice perché.
+      const dove = mondo.puoPosare(scelto, x, y);
+      if (!dove.si) diRiga(NON_SI_POSA[dove.perche]);
+      else if (mondo.posa(scelto, x, y)) {
+        // Posata: la spiegazione di un rifiuto di prima, se è ancora lì, non serve più.
+        p.riga.classList.remove('su');
+        salvaTutto();
+      }
       return;
     }
     dita.set(e.pointerId, { x, y, px: x, py: y, nati: new Set() });
@@ -291,6 +298,18 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     e.preventDefault();
     muoviVista(camX + (e.shiftKey ? e.deltaY : e.deltaX) / scala, camY + (e.shiftKey ? 0 : e.deltaY) / scala);
   }, { passive: false });
+
+  /** Una riga breve in fondo al cielo: spiega una posa rifiutata o racconta un lutto, e dopo qualche secondo se ne va. */
+  let viaLaRiga = 0;
+  function diRiga(testo: string): void {
+    if (!testo) return;
+    p.riga.textContent = testo;
+    p.riga.classList.add('su');
+    clearTimeout(viaLaRiga);
+    viaLaRiga = window.setTimeout(() => p.riga.classList.remove('su'), 4500);
+  }
+  /** Quando è stato annunciato l'ultimo lutto: se ne dice al più uno ogni tanto. */
+  let ultimoLutto = -Infinity;
 
   let avvisatoPieno = false;
   /** Versa (o cancella, o mescola) sotto ogni dito appoggiato, seguendo il tratto: anche un gesto veloce lascia una scia continua. */
@@ -362,10 +381,18 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
 
   function leggiNovita(): void {
-    for (const c of mondo.caduti) pittore.sbuffo(c.x, c.y);
-    mondo.caduti.length = 0;
-    for (const n of mondo.nati) pittore.cuore(n.x, n.y);
-    mondo.nati.length = 0;
+    for (const f of mondo.fatti) {
+      if (f.cosa === 'nato') pittore.cuore(f.x, f.y);
+      else {
+        pittore.sbuffo(f.x, f.y);
+        const frase = annuncioDiLutto(f.causa, performance.now(), ultimoLutto);
+        if (frase) {
+          ultimoLutto = performance.now();
+          diRiga(frase);
+        }
+      }
+    }
+    mondo.fatti.length = 0;
     for (const b of mondo.botti) pittore.botto(b.x, b.y, b.r);
     if (mondo.botti.length > 0) lampo();
     mondo.botti.length = 0;

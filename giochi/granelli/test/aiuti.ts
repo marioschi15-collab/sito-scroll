@@ -1,5 +1,7 @@
-import { M, N_BASE, type Sostanza } from '../src/motore/materiali.js';
+import { M, N_BASE, type Sostanza, TRONCO } from '../src/motore/materiali.js';
 import { Mondo } from '../src/motore/mondo.js';
+import type { Causa } from '../src/motore/omini.js';
+import { terreno } from '../src/motore/terreno.js';
 import { INIZIALI } from '../src/scoperte.js';
 
 /** Un mondo piccolo e vuoto, con i quattro elementi già noti e un seme fisso: ogni prova rifà sempre la stessa storia. */
@@ -78,4 +80,77 @@ export function primaGenerazione(m: Mondo): Miscela[] {
     }
   }
   return tutte;
+}
+
+// ── Mondi veri: grandi come quello del gioco, con il suo terreno ─────────────────
+
+/** Quanti istanti dura un giorno del mondo (lo stesso numero di src/motore/tempo.ts). */
+export const GIORNO = 14400;
+
+/** Un mondo grande come quello del gioco (420 x 190), con il suo fondo di roccia: colline, conca e pianoro. */
+export function mondoVero(seme: number): Mondo {
+  const m = mondo(420, 190, seme);
+  terreno(m);
+  return m;
+}
+
+/** Riempie d'acqua il punto più basso del mondo fino a `fondo` celle di profondità: dice da che colonna a che colonna arriva il lago, e a che riga sta il pelo. */
+export function lago(m: Mondo, fondo: number): { x0: number; x1: number; pelo: number } {
+  let giu = 0;
+  for (let x = 0; x < m.w; x++) if (m.suolo(x) > m.suolo(giu)) giu = x;
+  const pelo = m.suolo(giu) - fondo;
+  let x0 = giu;
+  let x1 = giu;
+  while (x0 > 0 && m.suolo(x0 - 1) > pelo) x0--;
+  while (x1 < m.w - 1 && m.suolo(x1 + 1) > pelo) x1++;
+  for (let x = x0; x <= x1; x++) {
+    const fondale = m.suolo(x);
+    for (let y = pelo; y < fondale; y++) m.metti(y * m.w + x, M.ACQUA);
+  }
+  return { x0, x1, pelo };
+}
+
+/** Copre la roccia nuda, da una colonna all'altra, con due celle di terriccio e un filo d'erba ogni due colonne. */
+export function prato(m: Mondo, x0: number, x1: number): void {
+  for (let x = Math.max(0, x0); x <= Math.min(m.w - 1, x1); x++) {
+    const cima = m.suolo(x);
+    if (m.leggi(x, cima) !== M.ROCCIA) continue;
+    m.metti((cima - 1) * m.w + x, M.HUMUS);
+    m.metti((cima - 2) * m.w + x, M.HUMUS);
+    if (x % 2 === 0) m.metti((cima - 3) * m.w + x, M.PIANTA, 0);
+  }
+}
+
+/** Un albero cresciuto, come quelli che il mondo fa da sé: un tronco alto `alto` celle sopra il suolo e la sua chioma. */
+export function albero(m: Mondo, x: number, alto: number): void {
+  const piede = m.suolo(x) - 1;
+  for (let k = 0; k < alto; k++) m.metti((piede - k) * m.w + x, M.LEGNO, TRONCO);
+  for (let dy = -2; dy <= 1; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      const i = (piede - alto + dy) * m.w + x + dx;
+      if (m.dentro(x + dx, piede - alto + dy) && m.tipo[i] === M.VUOTO) m.metti(i, M.PIANTA, 0);
+    }
+  }
+}
+
+/** Tiene il conto di nascite e morti (per causa) mentre il mondo gira: va chiamato ogni tanto, svuota la coda del mondo. */
+export class Anagrafe {
+  nati = 0;
+  readonly morti: Partial<Record<Causa, number>> = {};
+
+  leggi(m: Mondo): void {
+    for (const f of m.fatti) {
+      if (f.cosa === 'nato') this.nati++;
+      else this.morti[f.causa] = (this.morti[f.causa] ?? 0) + 1;
+    }
+    m.fatti.length = 0;
+  }
+
+  /** Fa girare il mondo per `tic` istanti, leggendo la coda ogni mille. */
+  gira(m: Mondo, tic: number): void {
+    for (let fatti = 0; fatti < tic; fatti += 1000) {
+      gira(m, Math.min(1000, tic - fatti));
+      this.leggi(m);
+    }
+  }
 }

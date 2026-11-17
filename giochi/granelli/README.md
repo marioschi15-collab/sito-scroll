@@ -16,6 +16,17 @@ lo regala: «succede solo nel mondo». Il Mestolo e Unisci danno lo stesso esito
 Mestolo una reazione cambia le celle e un'invenzione viene scoperta. Dove una coppia è tutte e due le cose, come
 pietra e acqua, Unisci dà l'invenzione (il pozzo); il Mestolo fa la reazione (il muschio) e scopre anche lui il pozzo.
 
+Gli **omini** arrivano da soli vicino all'acqua e hanno un paese a cui tornare: ognuno ricorda casa sua (dove è
+arrivato, poi la casa o il falò dove passa la notte), ci passeggia intorno, e quando ha sete o fame va alla fonte più
+vicina (acqua, pozzo, erba, campo) per quanto lontana sia. Davanti ai tronchi degli alberi passano (il legno messo da
+chi gioca resta un muro), si arrampicano su sponde fino a cinque celle, e non stanno mai in due nella stessa cella.
+Quando uno muore, una riga dice di che cosa.
+
+Le **costruzioni** si posano solo dove possono stare: a terra, sul punto più alto sotto di loro, se il terreno non
+sale o scende di più di tre celle (un muretto di pietre copre il dislivello); mai una sull'altra; barca e ponte solo
+sull'acqua. Quando non si può, una riga spiega perché. Una volta posate scendono soltanto, se il terreno cede: né la
+sabbia né un albero le sollevano, e sotto di loro non cresce niente.
+
 Non usa nessun servizio a pagamento: gira tutto nel browser di chi gioca, anche da telefono, e ricorda la partita
 sul dispositivo.
 
@@ -24,7 +35,7 @@ sul dispositivo.
 ```powershell
 pnpm install
 pnpm dev          # il gioco in sviluppo, si aggiorna mentre si modifica
-pnpm test         # le prove del motore (materiali, acqua, miscele, Unisci, omini, salvataggio)
+pnpm test         # le prove del motore (materiali, acqua, miscele, Unisci, omini, paesi, costruzioni, salvataggio)
 pnpm typecheck
 pnpm build        # produce dist/index.html: un solo file, si apre con un doppio clic
 node strumenti/fumo.cjs     # giro di fumo nel browser, su un telefono simulato (dopo pnpm build)
@@ -32,8 +43,9 @@ node strumenti/misura.cjs   # millesimi per fotogramma nelle scene di riferiment
 ```
 
 Le prove nel browser stanno in `strumenti/` e usano il Chromium di Playwright già presente sulla macchina (non è una
-dipendenza del gioco). `fumo.cjs` gioca una piccola partita con tocchi veri ed esce con un errore al primo passo che
-non torna: chi aggiunge una regola che si vede solo nel browser aggiunge lì il suo passo. `misura.cjs` stampa la
+dipendenza del gioco). `fumo.cjs` gioca una piccola partita con tocchi veri (in un mondo che nasce sempre uguale) ed
+esce con un errore al primo passo che non torna: chi aggiunge una regola che si vede solo nel browser aggiunge lì il
+suo passo. `misura.cjs` stampa la
 tabella dei costi a velocità piena e con il processore rallentato 4 e 6 volte; con `--scrivi "nome"` aggiunge una
 riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
 
@@ -50,8 +62,13 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
   `cose.ts`: le invenzioni, le loro unioni e le ere.
 - `src/motore/fenomeni.ts`: le scoperte che non sono materiali (lago, notte, arcobaleno…). `tempo.ts`: il giorno
   e la notte. `terreno.ts`: il fondo di roccia con cui nasce ogni mondo.
-- `src/motore/omini.ts`: gli abitanti. Arrivano da soli quando il mondo ha acqua, piante e un riparo di pietra o
-  mattoni; bevono, mangiano piante, frutti e funghi, nuotano, scappano dal fuoco, fanno figli.
+- `src/motore/omini.ts`: gli abitanti. Bevono, mangiano piante, frutti e funghi, nuotano, scappano dal fuoco, fanno
+  figli, tornano a casa; e lasciano in `Mondo.fatti` nascite e morti con la causa. `cammino.ts`: dove un omino può
+  stare e passare (i tronchi degli alberi sì), gradini e dirupi. `fonti.ts`: dove si beve e dove si mangia, colonna
+  per colonna (il Mondo lo ricalcola ogni due secondi). `arrivi.ts`: quando e dove arrivano i primi omini (acqua,
+  piante e un riparo di pietra o mattoni; vicino all'acqua, in un punto da cui ci si arriva a piedi).
+- `src/motore/posa.ts`: dove una costruzione può stare (`puoPosare`, con il perché di ogni rifiuto), le piante che
+  toglie quando si posa e come si assesta dopo (scende soltanto; barca e ponte seguono l'acqua).
 - `src/scoperte.ts`: le voci del Libro, con capitolo, indizio, descrizione e modi in cui nascono.
   `src/libro.ts`: il Libro sullo schermo (capitoli, voci, pagine collegate tra loro).
 - `src/disegno/`: tutto quello che si vede. `pittore.ts` colora i granelli con ombre e luci (di notte un fuoco
@@ -59,7 +76,8 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
   montagne e arcobaleno; `particelle.ts` scintille, lucciole e la festa delle scoperte; `omini.ts` i personaggi
   animati; `colori.ts` i colori di ogni materiale e i tondini della tavolozza.
 - `src/pagina.ts` e `src/stile.css`: lo scheletro e l'aspetto della pagina. `src/gioco.ts`: tavolozza, dito,
-  avvisi e il tempo che scorre. `src/main.ts`: la partenza.
+  avvisi e il tempo che scorre. `src/righe.ts`: le frasi brevi in fondo al cielo (una posa rifiutata, un lutto).
+  `src/main.ts`: la partenza.
 - `src/salvataggio.ts`: la partita salvata nel browser, miscele comprese.
 
 Il carattere dei titoli è Pixelify Sans (licenza libera SIL OFL 1.1), preso dal pacchetto

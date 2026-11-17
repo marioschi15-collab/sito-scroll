@@ -4,8 +4,9 @@ import type { Mondo } from '../motore/mondo.js';
 import { Cielo, oraDelMondo } from './cielo.js';
 import { FIORI, TA, TB, TG, TR, tinteMiscela } from './colori.js';
 import { FIAMME, figura, figureOmino } from './figure.js';
-import { C, ERE, INGOMBRO } from '../motore/cose.js';
+import { C, type Cosa, ERE, INGOMBRO } from '../motore/cose.js';
 import { NUOTA, type Omino, SCAPPA } from '../motore/omini.js';
+import { PENDENZA_MAX, regge, staAGalla } from '../motore/posa.js';
 import { LUCCIOLA, Particelle, SCINTILLA } from './particelle.js';
 
 /** Le tele sovrapposte su cui si disegna, da quella più in fondo a quella più in alto. */
@@ -482,6 +483,24 @@ export class Pittore {
     this.disegnaSopra(dt, camX, camY, ora.ambiente, ora.giorno < 0.45);
   }
 
+  /**
+   * Dove il terreno sotto una costruzione è un po' più basso (fino a tre celle: di più non si posa), la regge un
+   * muretto di pietre fino a terra, così non sembra sospesa. Se sotto le hanno scavato un vuoto più fondo, niente
+   * muretto: resta a sbalzo finché qualcosa la regge.
+   */
+  private fondamenta(x: CanvasRenderingContext2D, c: Cosa, lw: number, ox: number, oy: number): void {
+    const m = this.mondo;
+    for (let cx = Math.max(0, c.x); cx < Math.min(m.w, c.x + lw); cx++) {
+      let vuoto = 0;
+      while (vuoto <= PENDENZA_MAX && c.y + 1 + vuoto < m.h && !regge(m, (c.y + 1 + vuoto) * m.w + cx)) vuoto++;
+      if (vuoto === 0 || vuoto > PENDENZA_MAX) continue;
+      for (let k = 1; k <= vuoto; k++) {
+        x.fillStyle = ((cx + c.y + k) & 1) === 0 ? '#7f8794' : '#555c68';
+        x.fillRect(cx * 2 - ox, (c.y + k) * 2 - oy, 2, 2);
+      }
+    }
+  }
+
   /** Invenzioni, omini e particelle: figure disegnate sopra i granelli, con la luce dell'ora e i loro lumi. */
   private disegnaSopra(dt: number, camX: number, camY: number, luce: readonly number[], notte: boolean): void {
     const { cose, omini } = this.mondo;
@@ -502,6 +521,7 @@ export class Pittore {
       const X = Math.round((c.x + lw / 2) * 2 - f.width / 2) - ox;
       const Y = (c.y + 1) * 2 - f.height + 1 - oy;
       if (X > W || X + f.width < 0 || Y > H || Y + f.height < 0) continue;
+      if (!staAGalla(c.id)) this.fondamenta(x, c, lw, ox, oy);
       x.drawImage(f, X, Y);
       if (c.id === C.FALO) {
         lumi.push([X + f.width / 2, Y + f.height / 2, 22 + Math.sin(this.tempo * 9) * 3, notte ? 'rgba(255,150,50,0.6)' : 'rgba(255,150,50,0.25)']);

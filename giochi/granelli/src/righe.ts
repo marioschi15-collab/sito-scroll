@@ -1,0 +1,41 @@
+import type { Causa } from './motore/omini.js';
+import { COSE_MAX, type Divieto } from './motore/posa.js';
+
+/**
+ * Le righe brevi con cui il gioco spiega quello che è appena successo: una costruzione che non si è posata, un
+ * omino che non c'è più. Una frase, in fondo al cielo, che se ne va da sola. Dove non c'è niente da spiegare,
+ * la frase è vuota e non compare niente.
+ */
+
+/** Perché una costruzione non si è posata, detto a chi gioca. */
+export const NON_SI_POSA: Record<Divieto, string> = {
+  ignota: '',
+  troppe: `Nel mondo ci sono già ${COSE_MAX} costruzioni: togline una con la Gomma per fare posto.`,
+  occupato: 'Qui c’è già una costruzione: cerca un posto libero lì accanto.',
+  pende: 'Qui pende troppo: cerca un punto più piano.',
+  bagnato: 'Qui si affonda: serve la terra ferma.',
+  asciutto: 'Barca e Ponte si posano solo sull’acqua.',
+  stretto: 'Qui non c’è abbastanza spazio.',
+};
+
+/** Di che cosa è morto un omino, e che cosa si può fare perché non succeda ancora. La vecchiaia non si annuncia. */
+export const LUTTO: Record<Causa, string> = {
+  sete: 'Un omino è morto di sete: manca l’acqua vicino al paese.',
+  fame: 'Un omino è morto di fame: vicino al paese non c’è da mangiare.',
+  fuoco: 'Un omino è morto tra le fiamme: tieni il fuoco lontano dal paese.',
+  veleno: 'Un omino ha toccato qualcosa che fa male, e non ce l’ha fatta.',
+  annegato: 'Un omino è annegato: l’acqua gli è salita sopra la testa.',
+  sepolto: 'Un omino è rimasto sepolto: gli è caduto addosso qualcosa.',
+  vecchiaia: '',
+};
+
+/** Ogni quanto, al più, si annuncia un lutto (in millesimi di secondo): un paese in difficoltà non deve diventare una sirena. */
+export const PAUSA_LUTTI = 20000;
+
+/**
+ * La frase con cui annunciare una morte, oppure niente se non c'è niente da dire o se un lutto è stato annunciato
+ * da poco. `ora` e `ultimo` sono in millesimi di secondo: l'istante di adesso e quello dell'ultimo annuncio.
+ */
+export function annuncioDiLutto(causa: Causa, ora: number, ultimo: number): string {
+  return ora - ultimo < PAUSA_LUTTI ? '' : LUTTO[causa];
+}

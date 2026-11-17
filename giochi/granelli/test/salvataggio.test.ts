@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { C } from '../src/motore/cose.js';
-import { M, PRIMA_ID_MISCELA, PRIMA_MISCELA } from '../src/motore/materiali.js';
+import { libera } from '../src/motore/cammino.js';
+import { M, PRIMA_ID_MISCELA, PRIMA_MISCELA, TRONCO } from '../src/motore/materiali.js';
 import { idMiscela } from '../src/motore/miscele.js';
 import { type Salvato, extraDi, fotografa, impacchetta, ripristina, spacchetta } from '../src/salvataggio.js';
 import { gira, mondo, quanti, riempi } from './aiuti.js';
@@ -125,5 +126,91 @@ describe('il salvataggio', () => {
     expect(copia.unisci(M.TERRA, M.ACQUA)).toBe(M.FANGO);
     expect(copia.registra(M.TERRA, M.ACQUA)).toBe(-1);
     expect(copia.registra(vecchia, M.FUOCO)).toBeGreaterThanOrEqual(PRIMA_ID_MISCELA);
+  });
+
+  it('ricorda i tronchi degli alberi, la casa e le abitudini di ogni omino, e il numero di ogni cosa posata', () => {
+    const m = mondo(100, 60);
+    riempi(m, 0, 50, 99, 59, M.ROCCIA);
+    riempi(m, 5, 50, 15, 51, M.ACQUA);
+    riempi(m, 60, 48, 90, 49, M.PIANTA);
+    for (let y = 40; y <= 49; y++) m.metti(y * m.w + 30, M.LEGNO, TRONCO);
+    riempi(m, 95, 46, 96, 49, M.LEGNO);
+    for (const id of [C.CAPANNA, C.FALO]) m.visti.add(id);
+    m.posa(C.FALO, 50, 30);
+    m.posa(C.CAPANNA, 75, 30);
+    m.cancella(50, 48, 1);
+    m.posa(C.FALO, 52, 30);
+    m.aggiungiOmino(45, 49);
+    gira(m, 6000);
+    const o = m.omini[0];
+    expect([typeof o.casa, typeof o.bevuta, typeof o.pasto]).toEqual(['number', 'number', 'number']);
+    expect(m.cose.map((c) => c.n)).toEqual([2, 3]);
+    const copia = spacchetta(impacchetta(m))!;
+    expect(copia.omini).toEqual(m.omini);
+    expect(copia.cose).toEqual(m.cose);
+    expect([...copia.dato]).toEqual([...m.dato]);
+    expect(libera(copia, 30, 45)).toBe(true);
+    expect(libera(copia, 95, 48)).toBe(false);
+  });
+
+  it('in una partita di prima i tronchi degli alberi smettono di essere muri, e chi dormiva in casa ci dorme ancora', () => {
+    const m = mondo(100, 60);
+    riempi(m, 0, 50, 99, 59, M.ROCCIA);
+    for (const id of [C.CAPANNA, C.POZZO, C.CAMPO]) m.visti.add(id);
+    m.posa(C.POZZO, 35, 49);
+    m.posa(C.CAPANNA, 50, 49);
+    m.posa(C.CAMPO, 65, 49);
+    m.aggiungiOmino(47, 49);
+    m.aggiungiOmino(53, 49);
+    m.tic = 9200;
+    gira(m, 900);
+    expect(m.omini.filter((o) => o.dentro).length).toBe(2);
+    // Com'era scritta una partita prima di questo lavoro: ogni legno aveva il dato a zero, le cose non avevano
+    // numero, e chi dormiva ricordava la colonna della casa più uno. Gli omini non avevano ricordi.
+    riempi(m, 20, 40, 20, 49, M.LEGNO);
+    riempi(m, 80, 44, 84, 49, M.LEGNO);
+    const vecchio = JSON.parse(impacchetta(m)) as Salvato;
+    delete vecchio.tronchi;
+    for (const c of vecchio.cose ?? []) delete c.n;
+    const capanna = vecchio.cose?.find((c) => c.id === C.CAPANNA);
+    for (const o of vecchio.omini) {
+      o.dentro = (capanna?.x ?? 0) + 1;
+      for (const campo of ['casa', 'bevuta', 'pasto', 'chiusa'] as const) delete o[campo];
+    }
+    const copia = ripristina(vecchio)!;
+    // L'albero (un tronco largo una cella) ora lascia passare; la catasta larga cinque resta un muro.
+    expect(libera(copia, 20, 45)).toBe(true);
+    expect(libera(copia, 82, 47)).toBe(false);
+    expect(copia.cose.map((c) => c.n)).toEqual([1, 2, 3]);
+    expect(copia.omini.map((o) => o.dentro)).toEqual([2, 2]);
+    gira(copia, 80);
+    expect(copia.omini.filter((o) => o.dentro).length).toBe(2);
+    // Al mattino escono, e da allora hanno una casa e delle abitudini come tutti.
+    copia.tic = 14400 + 600;
+    gira(copia, 3000);
+    expect(copia.omini.length).toBe(2);
+    for (const o of copia.omini) expect(typeof o.casa).toBe('number');
+    // Una partita salvata adesso non viene ritoccata: un legno sottile messo da chi gioca resta un muro.
+    const nuovo = mondo(60, 60);
+    riempi(nuovo, 30, 40, 30, 49, M.LEGNO);
+    expect(libera(spacchetta(impacchetta(nuovo))!, 30, 45)).toBe(false);
+  });
+
+  it('ricordi strani negli omini e numeri doppi nelle cose non impediscono di riaprire la partita', () => {
+    const m = mondo(100, 60);
+    riempi(m, 0, 50, 99, 59, M.ROCCIA);
+    for (const id of [C.CAPANNA, C.FALO]) m.visti.add(id);
+    m.posa(C.FALO, 20, 30);
+    m.posa(C.CAPANNA, 60, 30);
+    m.aggiungiOmino(40, 49);
+    const sporco = JSON.parse(impacchetta(m)) as Salvato;
+    Object.assign(sporco.omini[0], { casa: 'là', bevuta: -4, pasto: 5000, chiusa: null });
+    for (const c of sporco.cose ?? []) c.n = 7;
+    const copia = ripristina(sporco)!;
+    const o = copia.omini[0];
+    expect([o.casa, o.bevuta, o.pasto, o.chiusa]).toEqual([undefined, undefined, undefined, undefined]);
+    expect(copia.cose.map((c) => c.n)).toEqual([1, 2]);
+    gira(copia, 200);
+    expect(copia.omini[0].casa).toBe(40);
   });
 });

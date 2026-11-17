@@ -167,3 +167,8 @@ for (const t of [M.PIANTA, M.FRUTTO, M.FUNGO]) CIBO[t] = 1;
 
 /** Una pianta con questo valore (o più) nel suo dato sta crescendo come albero. */
 export const ALBERO = 100;
+/**
+ * Nel `dato` del legno: questa cella è il tronco di un albero cresciuto da sé. Per gli omini è uno sfondo, ci
+ * passano davanti; e una costruzione non ci si appoggia sopra. Il legno versato da chi gioca (dato 0) resta un muro.
+ */
+export const TRONCO = 1;

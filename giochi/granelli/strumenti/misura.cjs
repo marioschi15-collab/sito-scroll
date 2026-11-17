@@ -105,14 +105,29 @@ const SCENE = {
   maturoTrascinato: { nome: 'maturo, vista trascinata', prepara: maturo, trascina: true },
 };
 
-/** Venti omini e quindici edifici intorno al centro del mondo. */
+/**
+ * Venti omini e una dozzina di edifici in fila intorno al centro del mondo, uno accanto all'altro dove il terreno
+ * è abbastanza piano (le costruzioni non si posano più una sull'altra né sui pendii ripidi).
+ */
 function paese() {
   const m = window.granelli();
-  const ids = [202, 209, 201, 208, 206, 210, 222, 217, 218, 221, 224, 216, 229, 213, 228, 214];
-  for (const id of ids) m.visti.add(id);
+  // Gli edifici da terra con la loro larghezza in celle (la stessa di INGOMBRO in src/motore/cose.ts).
+  const edifici = [[202, 10], [209, 11], [201, 5], [208, 6], [206, 10], [210, 7], [222, 16], [217, 6], [218, 12], [221, 9], [224, 10], [216, 8], [229, 5], [213, 8]];
+  for (const [id] of edifici) m.visti.add(id);
   const cx = m.w >> 1;
-  for (let k = 0; k < 15; k++) m.posa(ids[k % ids.length], cx - 42 + k * 6, m.suolo(cx - 42 + k * 6) - 1);
-  for (let k = 0; k < 20; k++) m.aggiungiOmino(cx - 45 + k * 4, m.suolo(cx - 45 + k * 4) - 1);
+  const cima = [];
+  for (let x = 0; x < m.w; x++) cima.push(m.suolo(x));
+  let x = cx - 62;
+  for (const [id, largo] of edifici) {
+    for (let prove = 0; prove < 40 && x + largo < m.w; prove++, x++) {
+      const sotto = cima.slice(x, x + largo);
+      const alto = Math.min(...sotto);
+      if (Math.max(...sotto) - alto > 3 || !m.posa(id, x + (largo >> 1), alto - 1)) continue;
+      x += largo;
+      break;
+    }
+  }
+  for (let k = 0; k < 20; k++) m.aggiungiOmino(cx - 45 + k * 4, cima[cx - 45 + k * 4] - 1);
   return { omini: m.omini.length, edifici: m.cose.length };
 }
 
@@ -126,11 +141,26 @@ function maturo() {
   const cime = sup.map((s) => s - 12).sort((a, b) => a - b);
   const mare = cime[Math.floor(cime.length * 0.45)];
   for (let x = 0; x < w; x++) for (let y = mare; y < sup[x] - 12; y++) m.metti(y * w + x, 2);
+  // Il paese: una dozzina di edifici in fila dove la terra è asciutta e abbastanza piana, a partire dal centro.
+  const edifici = [[202, 10], [209, 11], [201, 5], [208, 6], [206, 10], [210, 7], [222, 16], [217, 6], [218, 12], [221, 9], [224, 10], [216, 8], [229, 5], [213, 8]];
+  for (const [id] of edifici) m.visti.add(id);
+  const cx = w >> 1;
+  let px = cx - 62;
+  for (const [id, largo] of edifici) {
+    for (let prove = 0; prove < 60 && px + largo < w; prove++, px++) {
+      const sotto = sup.slice(px, px + largo).map((s) => s - 12);
+      const alto = Math.min(...sotto);
+      if (Math.max(...sotto) - alto > 3 || Math.max(...sotto) > mare || !m.posa(id, px + (largo >> 1), alto - 1)) continue;
+      px += largo;
+      break;
+    }
+  }
   for (let x = 3; x < w - 3; x += 5) {
     const cima = sup[x] - 12;
     if (cima <= mare || x % 97 < 28) continue;
     const alto = 6 + (x % 5);
-    for (let k = 1; k <= alto; k++) m.metti((cima - k) * w + x, 16);
+    // Tronchi d'albero, come quelli cresciuti da sé (dato 1): gli omini ci passano davanti.
+    for (let k = 1; k <= alto; k++) m.metti((cima - k) * w + x, 16, 1);
     for (let dy = -2; dy <= 1; dy++) {
       for (let dx = -2; dx <= 2; dx++) {
         const i = (cima - alto - 1 + dy) * w + x + dx;
@@ -139,11 +169,7 @@ function maturo() {
     }
   }
   for (let y = 4; y < 11; y++) for (let x = 0; x < w; x++) if ((x >> 6) % 2 === 0) m.metti(y * w + x, 10);
-  const ids = [202, 209, 201, 208, 206, 210, 222, 217, 218, 221, 224, 216, 229, 213, 228, 214];
-  for (const id of ids) m.visti.add(id);
-  const cx = w >> 1;
-  for (let k = 0; k < 15; k++) m.posa(ids[k % ids.length], cx - 42 + k * 6, m.suolo(cx - 42 + k * 6) - 1);
-  for (let k = 0; k < 20; k++) m.aggiungiOmino(cx - 45 + k * 4, m.suolo(cx - 45 + k * 4) - 1);
+  for (let k = 0; k < 20; k++) m.aggiungiOmino(cx - 45 + k * 4, sup[cx - 45 + k * 4] - 13);
   return { omini: m.omini.length, edifici: m.cose.length };
 }
 

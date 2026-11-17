@@ -1,5 +1,5 @@
-import { INGOMBRO } from './motore/cose.js';
-import { N_BASE, N_TIPI, PRIMA_MISCELA } from './motore/materiali.js';
+import { type Cosa, INGOMBRO, OSPITA } from './motore/cose.js';
+import { M, N_BASE, N_TIPI, PRIMA_MISCELA, TRONCO } from './motore/materiali.js';
 import { Mondo } from './motore/mondo.js';
 import type { Omino } from './motore/omini.js';
 
@@ -20,8 +20,10 @@ export interface Salvato {
   ricette?: [number, number, number, string][];
   /** Quale miscela occupa quale posto nelle celle di questo mondo. */
   posti?: [number, number][];
-  /** Le invenzioni posate nel mondo. */
-  cose?: { id: number; x: number; y: number }[];
+  /** Le invenzioni posate nel mondo (il numero d'ordine `n` manca nelle partite salvate prima che esistesse). */
+  cose?: { id: number; x: number; y: number; n?: number }[];
+  /** 1 se i tronchi degli alberi sono già segnati nel `dato` del legno (vedi TRONCO): nelle partite più vecchie no. */
+  tronchi?: 1;
   /** Il tempo che fa: da che parte tira il vento, quanto ha piovuto di recente, quanto si vede l'arcobaleno. */
   vento?: number;
   pioggia?: number;
@@ -66,6 +68,7 @@ export function fotografa(m: Mondo, extra?: unknown): Salvato {
     ricette: [...m.ricettario].map(([id, r]) => [id, r.a, r.b, r.nome]),
     posti,
     cose: m.cose.map((c) => ({ ...c })),
+    tronchi: 1,
     vento: m.vento,
     pioggia: m.pioggia,
     arcobaleno: m.arcobaleno,
@@ -77,6 +80,40 @@ export function fotografa(m: Mondo, extra?: unknown): Salvato {
 /** Ricopia in un mondo le miscele conosciute (nell'ordine in cui sono nate: i genitori vengono prima dei figli). */
 export function ricopiaRicette(m: Mondo, ricette: readonly (readonly [number, number, number, string])[]): void {
   for (const [id, a, b, nome] of ricette) m.ricettario.set(id, { a, b, nome: String(nome) });
+}
+
+/**
+ * Nelle partite salvate quando ogni legno era un muro, riconosce i tronchi degli alberi (legno largo una cella sola:
+ * col dito non si riesce a versarne di così sottile) e li segna, così gli omini di quel mondo non restano chiusi.
+ */
+function segnaTronchi(m: Mondo): void {
+  const { tipo, dato, w } = m;
+  for (let i = 0; i < tipo.length; i++) {
+    if (tipo[i] !== M.LEGNO) continue;
+    const x = i % w;
+    if ((x > 0 && tipo[i - 1] === M.LEGNO) || (x < w - 1 && tipo[i + 1] === M.LEGNO)) continue;
+    dato[i] = TRONCO;
+  }
+}
+
+/** Le cose posate di una fotografia, ognuna con il suo numero d'ordine; e se i numeri mancavano, quelli nuovi. */
+function cosePosate(d: Salvato, m: Mondo): { cose: Cosa[]; rinumerate: boolean } {
+  const buone = (d.cose ?? []).filter((c) => INGOMBRO[c.id] && m.dentro(c.x, c.y));
+  const numeri = new Set(buone.map((c) => c.n));
+  const rinumerate = numeri.size !== buone.length || buone.some((c) => !Number.isInteger(c.n) || (c.n as number) < 1);
+  return { cose: buone.map((c, k) => ({ id: c.id, x: c.x, y: c.y, n: rinumerate ? k + 1 : (c.n as number) })), rinumerate };
+}
+
+/** Un omino di una fotografia, senza i ricordi che non hanno senso in questo mondo (colonne che non esistono). */
+function ominoPulito(o: Omino, m: Mondo): Omino {
+  const copia = { ...o };
+  for (const campo of ['casa', 'bevuta', 'pasto'] as const) {
+    const v = copia[campo];
+    if (numeroBuono(v) && v < m.w) copia[campo] = Math.floor(v);
+    else delete copia[campo];
+  }
+  if (typeof copia.chiusa !== 'number' || !Number.isFinite(copia.chiusa)) delete copia.chiusa;
+  return copia;
 }
 
 /** Ricostruisce il mondo da una fotografia; null se non è una fotografia valida. */
@@ -94,8 +131,18 @@ export function ripristina(dati: unknown): Mondo | null {
       if (t >= N_BASE && m.idTipo[t] === 0) m.tipo[i] = 0;
     }
     for (const id of d.visti) m.visti.add(id);
-    m.omini = Array.isArray(d.omini) ? d.omini.filter((o) => m.dentro(o.x, o.y)).map((o) => ({ ...o })) : [];
-    if (Array.isArray(d.cose)) m.cose = d.cose.filter((c) => INGOMBRO[c.id] && m.dentro(c.x, c.y)).map((c) => ({ id: c.id, x: c.x, y: c.y }));
+    if (d.tronchi !== 1) segnaTronchi(m);
+    m.omini = Array.isArray(d.omini) ? d.omini.filter((o) => m.dentro(o.x, o.y)).map((o) => ominoPulito(o, m)) : [];
+    if (Array.isArray(d.cose)) {
+      const { cose, rinumerate } = cosePosate(d, m);
+      m.cose = cose;
+      // Una volta chi dormiva in casa ricordava la colonna della casa più uno: ora ricorda il suo numero d'ordine.
+      if (rinumerate) {
+        for (const o of m.omini) {
+          if (o.dentro) o.dentro = cose.find((c) => OSPITA[c.id] && c.x + 1 === o.dentro)?.n ?? 0;
+        }
+      }
+    }
     m.tic = d.tic | 0;
     // Il tempo che fa e l'attesa degli omini: i salvataggi di prima non li hanno, e allora valgono quelli di un mondo nuovo.
     if (d.vento === 1 || d.vento === -1) m.vento = d.vento;

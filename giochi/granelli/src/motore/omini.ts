@@ -1,5 +1,8 @@
-import { BAMBINO, GAS, M, OMINO, VILLAGGIO } from './materiali.js';
+import { arrivo } from './arrivi.js';
+import { ALTEZZA, appoggio, libera, posto, quotaDelPasso } from './cammino.js';
 import { C, type Cosa, INGOMBRO, OSPITA } from './cose.js';
+import { BAMBINO, M, OMINO, PRIMA_MISCELA, VILLAGGIO } from './materiali.js';
+import { SOGLIA } from './miscele.js';
 import { luceDelGiorno } from './tempo.js';
 import type { Mondo } from './mondo.js';
 
@@ -21,31 +24,61 @@ export interface Omino {
   aspetto: number;
   /** Cosa sta facendo, per chi lo disegna: 0 cammina, 1 scappa, 2 nuota. */
   stato: number;
-  /** In quale casa sta dormendo: la colonna della casa più uno; 0 (o niente) se è fuori. */
+  /** In quale casa sta dormendo: il numero d'ordine della casa (vedi `Cosa.n`); 0 (o niente) se è fuori. */
   dentro?: number;
+  /**
+   * La colonna di casa: dove è arrivato, o la casa dei suoi genitori, e poi la casa (o il falò) dove passa la
+   * notte. Quando non ha bisogni passeggia lì intorno. Manca solo nelle partite salvate prima che esistesse.
+   */
+  casa?: number;
+  /** La colonna dell'ultima bevuta e quella dell'ultimo pasto: ci torna quando il mondo non gli mostra di meglio. */
+  bevuta?: number;
+  pasto?: number;
+  /**
+   * Da che parte ha trovato la strada chiusa mentre andava a bere o a mangiare, e per quanto se ne ricorda ancora:
+   * il segno è la direzione, il numero i momenti che restano. Finché se ne ricorda cerca dall'altra parte.
+   */
+  chiusa?: number;
 }
+
+/** Di che cosa può morire un omino. */
+export type Causa = 'sete' | 'fame' | 'fuoco' | 'veleno' | 'annegato' | 'sepolto' | 'vecchiaia';
+
+/** Una nascita o una morte, con il punto in cui è avvenuta (in celle): la pagina le legge e svuota la coda. */
+export type Fatto = { cosa: 'nato'; x: number; y: number } | { cosa: 'morto'; causa: Causa; x: number; y: number };
 
 export const CAMMINA = 0;
 export const SCAPPA = 1;
 export const NUOTA = 2;
 
-export const ALTEZZA = 3;
 /** Al posto di un materiale preciso: qualsiasi cosa un omino possa mangiare (piante, frutti, funghi, miscele nutrienti). */
 const CIBO = -1;
 /** Ogni quanti istanti del mondo un omino fa un passo e pensa. */
 const RITMO = 8;
 const SETE_MAX = 900;
 const FAME_MAX = 1350;
+/** Da quanta sete (o fame) in su un omino lascia quello che sta facendo e va a bere (o a mangiare). */
+const HA_SETE = 300;
+const HA_FAME = 450;
+/** Da quanta sete (o fame) in su non c'è più tempo da perdere: pur di arrivare ci si butta anche da un dirupo. */
+const SETE_NERA = 600;
+const FAME_NERA = 900;
+/** Quanti momenti vive, in media, un omino (due giorni e mezzo); ognuno ha la sua età, fino a tanto in più o in meno. */
 const ETA_MAX = 4500;
+const ETA_DIVERSA = 1500;
+/** Quanto si allontana da casa, al più, un omino che passeggia senza bisogni (in celle). */
+export const PASSEGGIO = 50;
+/** Per quanti momenti un omino si ricorda che da una parte la strada era chiusa. */
+const RICORDO = 150;
+/** Quanto lontano, al più, va a cercare un tetto o un falò per la notte (in celle). */
+const A_CASA = 150;
 export const POPOLAZIONE_MAX = 24;
 /** Quanti omini campano senza un tetto: per essere di più servono capanne, case, castelli. */
 export const SENZA_TETTO = 6;
 /** Quanti omini vivi insieme fanno un villaggio. */
 export const ABITANTI_VILLAGGIO = 6;
-/** Cosa serve al mondo perché arrivino i primi omini (in celle). */
-export const SERVE = { acqua: 120, piante: 50, riparo: 30 };
 
-export function nuovoOmino(m: Mondo, x: number, y: number, attesa: number): Omino {
+export function nuovoOmino(m: Mondo, x: number, y: number, attesa: number, casa = x): Omino {
   return {
     x,
     y,
@@ -58,30 +91,8 @@ export function nuovoOmino(m: Mondo, x: number, y: number, attesa: number): Omin
     attesa,
     aspetto: (m.caso() * 256) | 0,
     stato: CAMMINA,
+    casa,
   };
-}
-
-/** Un omino può stare (o passare) in una cella vuota, nell'erba, nell'acqua e nei gas. */
-function libero(m: Mondo, t: number): boolean {
-  return t === M.VUOTO || t === M.PIANTA || t === M.ACQUA || t === M.ALGA || t === M.FUNGO || t === M.FRUTTO || m.stato[t] === GAS;
-}
-
-/** C'è posto per un omino in piedi con i piedi in (x, y)? */
-function posto(m: Mondo, x: number, y: number): boolean {
-  for (let k = 0; k < ALTEZZA; k++) if (!libero(m, m.leggi(x, y - k))) return false;
-  return true;
-}
-
-/** Da che parte si trova la cosa cercata, guardando fino a 40 celle di distanza: -1, 1, oppure 0 se non c'è. */
-function cerca(m: Mondo, o: Omino, cosa: number): -1 | 0 | 1 {
-  const e = (t: number): boolean => (cosa === CIBO ? m.cibo[t] === 1 : t === cosa);
-  for (let dx = 1; dx <= 40; dx++) {
-    for (let dy = -6; dy <= 6; dy++) {
-      if (e(m.leggi(o.x + dx, o.y + dy))) return 1;
-      if (e(m.leggi(o.x - dx, o.y + dy))) return -1;
-    }
-  }
-  return 0;
 }
 
 /** La prima cella di quel tipo a portata di mano; -1 se non ce n'è. */
@@ -106,86 +117,142 @@ function pericolo(m: Mondo, o: Omino, raggio: number): -1 | 0 | 1 {
   return 0;
 }
 
-function tocca(m: Mondo, o: Omino): boolean {
+/** Se l'omino sta toccando qualcosa che uccide, di che morte muore: bruciato, oppure avvelenato (o corroso). */
+function tocca(m: Mondo, o: Omino): Causa | null {
   for (let dy = -ALTEZZA; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
-      if (m.mortale[m.leggi(o.x + dx, o.y + dy)]) return true;
+      const t = m.leggi(o.x + dx, o.y + dy);
+      if (!m.mortale[t]) continue;
+      const brucia = t < PRIMA_MISCELA ? t !== M.ACIDO : m.calore[t] > SOGLIA.calore;
+      return brucia ? 'fuoco' : 'veleno';
     }
   }
-  return false;
+  return null;
 }
 
 function gira(o: Omino): void {
   o.dir = o.dir === 1 ? -1 : 1;
 }
 
-function cammina(m: Mondo, o: Omino, inFuga: boolean): void {
-  const nx = o.x + o.dir;
-  if (nx < 0 || nx >= m.w) {
-    gira(o);
-    return;
+/** L'altro omino (sveglio) che sta già in quella cella, se c'è. */
+function chiCE(m: Mondo, io: Omino, x: number, y: number): Omino | null {
+  for (const altro of m.omini) {
+    if (altro !== io && !altro.dentro && altro.x === x && Math.abs(altro.y - y) < ALTEZZA) return altro;
   }
-  if (posto(m, nx, o.y)) {
-    if (!inFuga) {
-      // Non si butta da un dirupo: guarda quanto è profondo il salto (in acqua, invece, si tuffa).
-      let salto = 0;
-      while (salto < 6) {
-        const sotto = m.leggi(nx, o.y + 1 + salto);
-        if (!libero(m, sotto) || sotto === M.ACQUA) break;
-        salto++;
-      }
-      if (salto >= 6) {
-        gira(o);
-        return;
-      }
-    }
-    o.x = nx;
-    return;
-  }
-  // Un gradino di una o due celle si scavalca, se c'è spazio sopra la testa.
-  for (let su = 1; su <= 2; su++) {
-    if (!libero(m, m.leggi(o.x, o.y - ALTEZZA - su + 1))) break;
-    if (posto(m, nx, o.y - su)) {
-      o.x = nx;
-      o.y -= su;
-      return;
-    }
-  }
-  gira(o);
+  return null;
 }
 
-/** La cosa di un certo tipo più vicina a un omino (entro `raggio` celle in orizzontale), con la colonna del suo centro. */
-function cosaVicina(m: Mondo, o: Omino, adatta: (c: Cosa) => boolean, raggio: number): { cosa: Cosa; centro: number } | null {
-  let scelta: { cosa: Cosa; centro: number } | null = null;
-  let meglio = raggio + 1;
-  for (const cosa of m.cose) {
-    if (!adatta(cosa)) continue;
-    const centro = cosa.x + (INGOMBRO[cosa.id][0] >> 1);
-    const d = Math.abs(centro - o.x);
-    if (d < meglio && Math.abs(cosa.y - o.y) < 14) {
-      meglio = d;
-      scelta = { cosa, centro };
+const occupata = (m: Mondo, io: Omino, x: number, y: number): boolean => chiCE(m, io, x, y) !== null;
+
+/**
+ * Un passo nella direzione in cui guarda; `diCorsa` vale per chi scappa o non ne può più, e salta anche i dirupi.
+ * Davanti a un muro (o a un dirupo) si gira, e lo dice (restituisce true).
+ * Due omini non si fermano mai nella stessa cella: chi trova il posto occupato scavalca l'altro, e se oltre non c'è
+ * posto i due si scambiano il posto. Così una fila non si blocca mai, nemmeno contro un'altra che viene incontro.
+ */
+function cammina(m: Mondo, o: Omino, diCorsa: boolean): boolean {
+  const y = quotaDelPasso(m, o.x, o.y, o.dir, diCorsa);
+  if (y < 0) {
+    gira(o);
+    return true;
+  }
+  const x = o.x + o.dir;
+  const altro = chiCE(m, o, x, y);
+  if (altro) {
+    const oltre = quotaDelPasso(m, x, y, o.dir, diCorsa);
+    if (oltre >= 0 && !occupata(m, o, x + o.dir, oltre)) {
+      o.x = x + o.dir;
+      o.y = oltre;
+      return false;
     }
+    // Chi scappa dal fuoco non spinge indietro nessuno: passa e basta, e ci si scosta al momento dopo.
+    if (o.stato !== SCAPPA) {
+      altro.x = o.x;
+      altro.y = o.y;
+    }
+  }
+  o.x = x;
+  o.y = y;
+  return false;
+}
+
+/**
+ * Fino a che età arriva un omino prima di poter morire di vecchiaia. Dipende da lui (dal suo aspetto, che non cambia):
+ * così chi è arrivato o nato nello stesso momento non se ne va nello stesso giorno, e il paese non resta vuoto di colpo.
+ */
+const vecchiaia = (o: Omino): number => ETA_MAX + ((((o.aspetto * 167) & 255) - 128) * ETA_DIVERSA) / 128;
+
+/** Fin dove cerca un posto libero chi si ritrova nella cella di un altro (in passi). */
+const SCOSTARSI = 8;
+
+/**
+ * Non si sta in due nella stessa cella: chi ci si ritrova (un bambino appena nato, chi esce di casa al mattino, uno
+ * caduto dall'alto) va a mettersi nel primo posto libero che raggiunge a piedi, da una parte o dall'altra.
+ */
+function scostati(m: Mondo, o: Omino): void {
+  for (let lato = 0; lato < 2; lato++) {
+    let x = o.x;
+    let y = o.y;
+    for (let passi = 0; passi < SCOSTARSI; passi++) {
+      const quota = quotaDelPasso(m, x, y, o.dir, false);
+      if (quota < 0) break;
+      x += o.dir;
+      y = appoggio(m, x, quota);
+      if (occupata(m, o, x, y)) continue;
+      o.x = x;
+      o.y = y;
+      return;
+    }
+    gira(o);
+  }
+}
+
+const centroDi = (cosa: Cosa): number => cosa.x + (INGOMBRO[cosa.id][0] >> 1);
+
+/** Quanti omini stanno dormendo in una casa. */
+function inCasa(m: Mondo, casa: Cosa): number {
+  let quanti = 0;
+  for (const o of m.omini) if (o.dentro === casa.n) quanti++;
+  return quanti;
+}
+
+/** Al posto di una cosa precisa: un tetto qualsiasi (capanna, casa, castello) in cui ci sia ancora un posto. */
+const UN_TETTO = -1;
+
+/** Il tetto con un posto libero più vicino a un omino, oppure (se `id` è una cosa precisa) la più vicina di quel tipo. */
+function ritrovo(m: Mondo, o: Omino, id: number): Cosa | null {
+  let scelta: Cosa | null = null;
+  let meglio = A_CASA + 1;
+  for (const cosa of m.cose) {
+    if (id >= 0 ? cosa.id !== id : OSPITA[cosa.id] === undefined) continue;
+    const d = Math.abs(centroDi(cosa) - o.x);
+    if (d >= meglio || (id < 0 && inCasa(m, cosa) >= OSPITA[cosa.id])) continue;
+    meglio = d;
+    scelta = cosa;
   }
   return scelta;
 }
 
-const inCasa = (m: Mondo, casa: Cosa): number => m.omini.filter((o) => o.dentro === casa.x + 1).length;
+/** Un pozzo o un campo a portata di mano (vedi `Fonti`): la sua riga non deve essere troppo lontana da quella dei piedi. */
+const aPortata = (riga: number, y: number): boolean => riga >= 0 && Math.abs(riga - y) < 14;
 
-/** Un momento della vita di un omino. Restituisce false se in questo momento muore. */
-function vivi(m: Mondo, o: Omino, notte: boolean): boolean {
-  if (tocca(m, o)) return false;
+/** Un momento della vita di un omino. Restituisce di che cosa muore, se in questo momento muore. */
+function vivi(m: Mondo, o: Omino, notte: boolean): Causa | null {
+  const scottato = tocca(m, o);
+  if (scottato) return scottato;
+  if (o.casa === undefined) o.casa = o.x;
 
   if (o.dentro) {
     // Dorme in casa: esce al mattino, o se la casa non c'è più. Al chiuso fame e sete crescono piano.
-    const casa = m.cose.find((cosa) => cosa.x + 1 === o.dentro && OSPITA[cosa.id]);
+    let casa: Cosa | null = null;
+    for (const cosa of m.cose) if (cosa.n === o.dentro && OSPITA[cosa.id]) casa = cosa;
     if (notte && casa) {
       o.eta++;
       if (o.eta % 3 === 0) {
         o.sete++;
         o.fame++;
       }
-      return o.sete <= SETE_MAX && o.fame <= FAME_MAX;
+      return o.sete > SETE_MAX ? 'sete' : o.fame > FAME_MAX ? 'fame' : null;
     }
     o.dentro = 0;
   }
@@ -196,35 +263,45 @@ function vivi(m: Mondo, o: Omino, notte: boolean): boolean {
       if (posto(m, o.x, o.y - su)) {
         o.y -= su;
         o.sepolto = 0;
-        return true;
+        return null;
       }
     }
-    return ++o.sepolto <= 20;
+    return ++o.sepolto > 20 ? 'sepolto' : null;
   }
   o.sepolto = 0;
 
   if (m.leggi(o.x, o.y - ALTEZZA + 1) === M.ACQUA) {
     // Ha la testa sott'acqua: risale, e intanto trattiene il fiato.
-    if (libero(m, m.leggi(o.x, o.y - ALTEZZA))) o.y -= 1;
-    if (++o.apnea > 40) return false;
+    if (libera(m, o.x, o.y - ALTEZZA)) o.y -= 1;
+    if (++o.apnea > 40) return 'annegato';
   } else o.apnea = 0;
 
   o.stato = m.leggi(o.x, o.y) === M.ACQUA ? NUOTA : CAMMINA;
   o.eta++;
   o.sete++;
   o.fame++;
-  if (o.sete > SETE_MAX || o.fame > FAME_MAX) return false;
-  if (o.eta > ETA_MAX && m.caso() < 0.02) return false;
+  if (o.sete > SETE_MAX) return 'sete';
+  if (o.fame > FAME_MAX) return 'fame';
+  if (o.eta > vecchiaia(o) && m.caso() < 0.02) return 'vecchiaia';
 
-  // Si beve dall'acqua, o da un pozzo; si mangia quello che si trova, o dal campo.
-  if (o.sete > 60 && (accanto(m, o, M.ACQUA, 2) >= 0 || cosaVicina(m, o, (cosa) => cosa.id === C.POZZO, 4))) o.sete = 0;
-  if (o.fame > 250 && cosaVicina(m, o, (cosa) => cosa.id === C.CAMPO, 6)) o.fame = 0;
+  // Si beve dall'acqua, o da un pozzo; si mangia quello che si trova, o dal campo. E ci si ricorda dove.
+  const { fonti } = m;
+  if (o.sete > 60 && (accanto(m, o, M.ACQUA, 2) >= 0 || aPortata(fonti.pozzo[o.x], o.y))) {
+    o.sete = 0;
+    o.bevuta = o.x;
+  }
   if (o.fame > 250) {
-    const cibo = accanto(m, o, CIBO, 2);
-    if (cibo >= 0) {
+    if (aPortata(fonti.campo[o.x], o.y)) {
       o.fame = 0;
-      // Un frutto o un fungo si mangia intero; di una pianta si bruca solo qualche foglia.
-      if (m.tipo[cibo] !== M.PIANTA || m.caso() < 0.3) m.svuota(cibo);
+      o.pasto = o.x;
+    } else {
+      const cibo = accanto(m, o, CIBO, 2);
+      if (cibo >= 0) {
+        o.fame = 0;
+        o.pasto = o.x;
+        // Un frutto o un fungo si mangia intero; di una pianta si bruca solo qualche foglia.
+        if (m.tipo[cibo] !== M.PIANTA || m.caso() < 0.3) m.svuota(cibo);
+      }
     }
   }
 
@@ -234,44 +311,65 @@ function vivi(m: Mondo, o: Omino, notte: boolean): boolean {
     o.stato = SCAPPA;
     cammina(m, o, true);
     cammina(m, o, true);
-    return true;
+    return null;
   }
 
-  if (notte && o.sete < 500 && o.fame < 800) {
+  if (occupata(m, o, o.x, o.y)) {
+    scostati(m, o);
+    return null;
+  }
+
+  // Dove andare. Prima i bisogni: alla fonte più vicina, per quanto lontana o in basso sia; se il mondo non ne
+  // mostra nessuna, dove ha bevuto (o mangiato) l'ultima volta.
+  const chiusa = o.chiusa ? (o.chiusa > 0 ? 1 : -1) : 0;
+  if (o.chiusa) o.chiusa -= chiusa;
+  let meta = -1;
+  if (o.sete > HA_SETE) {
+    meta = fonti.bere(o.x, chiusa);
+    if (meta < 0 && o.bevuta !== undefined) meta = o.bevuta;
+  }
+  if (meta < 0 && o.fame > HA_FAME) {
+    meta = fonti.mangiare(o.x, chiusa);
+    if (meta < 0 && o.pasto !== undefined) meta = o.pasto;
+  }
+  if (meta >= 0 && meta !== o.x) {
+    const verso = meta > o.x ? 1 : -1;
+    o.dir = verso;
+    // Chi non ne può più salta giù anche da dove non potrà risalire (cadere non fa male). E se di lì proprio non
+    // si passa, per un po' cerca dall'altra parte: forse c'è un'altra fonte.
+    const allaDisperata = o.sete > SETE_NERA || o.fame > FAME_NERA;
+    if (m.caso() < 0.7 && cammina(m, o, allaDisperata)) o.chiusa = verso * RICORDO;
+    return null;
+  }
+
+  if (notte && meta < 0) {
     // Di notte si torna a casa, se c'è un posto; chi non ha un tetto si raduna intorno al falò.
-    const casa = cosaVicina(m, o, (cosa) => OSPITA[cosa.id] !== undefined && inCasa(m, cosa) < OSPITA[cosa.id], 90);
-    const meta = casa ?? cosaVicina(m, o, (cosa) => cosa.id === C.FALO, 90);
-    if (meta) {
-      const d = meta.centro - o.x;
-      if (casa && Math.abs(d) <= 2) {
-        o.dentro = casa.cosa.x + 1;
-        return true;
+    const tetto = ritrovo(m, o, UN_TETTO);
+    const dove = tetto ?? ritrovo(m, o, C.FALO);
+    if (dove) {
+      const centro = centroDi(dove);
+      const d = centro - o.x;
+      if (tetto && Math.abs(d) <= 2) {
+        o.dentro = tetto.n;
+        o.casa = centro;
+        return null;
       }
       // Dal falò ci si ferma a qualche passo: abbastanza vicino da scaldarsi, non tanto da bruciarsi.
-      if (!casa && Math.abs(d) <= 5) return true;
+      if (!tetto && Math.abs(d) <= 5) {
+        o.casa = centro;
+        return null;
+      }
       o.dir = d > 0 ? 1 : -1;
       cammina(m, o, false);
-      return true;
+      return null;
     }
   }
 
-  if (o.eta % 4 === 0) {
-    let verso: -1 | 0 | 1 = 0;
-    if (o.sete > 300) {
-      verso = cerca(m, o, M.ACQUA);
-      const pozzo = verso === 0 ? cosaVicina(m, o, (cosa) => cosa.id === C.POZZO, 120) : null;
-      if (pozzo) verso = pozzo.centro > o.x ? 1 : -1;
-    }
-    if (verso === 0 && o.fame > 450) {
-      verso = cerca(m, o, CIBO);
-      const campo = verso === 0 ? cosaVicina(m, o, (cosa) => cosa.id === C.CAMPO, 120) : null;
-      if (campo) verso = campo.centro > o.x ? 1 : -1;
-    }
-    if (verso !== 0) o.dir = verso;
-    else if (m.caso() < 0.12) gira(o);
-  }
+  // Niente da fare: si passeggia, senza perdere di vista casa.
+  if (Math.abs(o.x - o.casa) > PASSEGGIO) o.dir = o.casa > o.x ? 1 : -1;
+  else if (o.eta % 4 === 0 && m.caso() < 0.12) gira(o);
   if (m.caso() < 0.7) cammina(m, o, false);
-  return true;
+  return null;
 }
 
 function figli(m: Mondo): void {
@@ -282,38 +380,22 @@ function figli(m: Mondo): void {
   for (const cosa of m.cose) posti += OSPITA[cosa.id] ?? 0;
   if (omini.length >= Math.min(POPOLAZIONE_MAX, posti)) return;
   for (const a of omini) {
-    if (a.attesa > 0 || a.dentro || a.sete > 300 || a.fame > 450) continue;
-    const b = omini.find((o) => o !== a && !o.dentro && o.attesa <= 0 && Math.abs(o.x - a.x) <= 3 && Math.abs(o.y - a.y) <= 3);
+    if (a.attesa > 0 || a.dentro || a.sete > HA_SETE || a.fame > HA_FAME) continue;
+    let b: Omino | null = null;
+    for (const o of omini) {
+      if (o === a || o.dentro || o.attesa > 0 || Math.abs(o.x - a.x) > 3 || Math.abs(o.y - a.y) > 3) continue;
+      b = o;
+      break;
+    }
     if (!b) continue;
     a.attesa = 600;
     b.attesa = 600;
-    omini.push(nuovoOmino(m, a.x, a.y, 900));
-    m.nati.push({ x: a.x, y: a.y - 2 });
-    m.scopri(BAMBINO, a.x, a.y - 2);
-    return;
-  }
-}
-
-/**
- * I primi omini arrivano da soli quando il mondo ha da bere, da mangiare e un riparo fatto dal giocatore
- * (pietra o mattoni: la roccia nuda del fondo non conta).
- */
-function arrivo(m: Mondo): void {
-  if (m.omini.length > 0 || m.tic < m.prossimoArrivo) return;
-  const c = m.conta;
-  // Un riparo: pietra o mattoni messi dal giocatore, oppure un tetto vero (capanna, casa, castello).
-  const riparo = c[M.PIETRA] + c[M.MATTONE] + m.cose.filter((cosa) => OSPITA[cosa.id]).length * 30;
-  if (c[M.ACQUA] < SERVE.acqua || c[M.PIANTA] < SERVE.piante || riparo < SERVE.riparo) return;
-  // Cerca una pianta, scende fino a terra e controlla che lì si possa stare in piedi.
-  for (let prova = 0; prova < 200; prova++) {
-    const x = (m.caso() * m.w) | 0;
-    let y = ALTEZZA + ((m.caso() * (m.h - ALTEZZA)) | 0);
-    if (m.leggi(x, y) !== M.PIANTA) continue;
-    while (y < m.h - 1 && libero(m, m.leggi(x, y + 1)) && m.leggi(x, y + 1) !== M.ACQUA) y++;
-    if (!posto(m, x, y)) continue;
-    m.aggiungiOmino(x, y);
-    m.aggiungiOmino(x, y);
-    m.prossimoArrivo = m.tic + 1200;
+    // Il bambino nasce accanto ai genitori (in una cella tutta sua, appena la trova); la loro casa è anche la sua.
+    const bimbo = nuovoOmino(m, a.x, a.y, 900, a.casa);
+    omini.push(bimbo);
+    scostati(m, bimbo);
+    m.fatti.push({ cosa: 'nato', x: bimbo.x, y: bimbo.y - 2 });
+    m.scopri(BAMBINO, bimbo.x, bimbo.y - 2);
     return;
   }
 }
@@ -322,13 +404,14 @@ export function aggiornaOmini(m: Mondo): void {
   // La gravità vale a ogni istante (chi ha i piedi in acqua galleggia); camminare e pensare, più di rado.
   for (const o of m.omini) {
     if (o.dentro) continue;
-    if (o.y < m.h - 1 && m.leggi(o.x, o.y) !== M.ACQUA && libero(m, m.leggi(o.x, o.y + 1))) o.y++;
+    if (o.y < m.h - 1 && m.leggi(o.x, o.y) !== M.ACQUA && libera(m, o.x, o.y + 1)) o.y++;
   }
   if (m.tic % RITMO === 0 && m.omini.length > 0) {
     const notte = luceDelGiorno(m.tic) < 0.3;
     m.omini = m.omini.filter((o) => {
-      if (vivi(m, o, notte)) return true;
-      m.caduti.push({ x: o.x, y: o.y - 1 });
+      const causa = vivi(m, o, notte);
+      if (!causa) return true;
+      m.fatti.push({ cosa: 'morto', causa, x: o.x, y: o.y - 1 });
       return false;
     });
     if (m.omini.length === 0) m.prossimoArrivo = m.tic + 1200;
