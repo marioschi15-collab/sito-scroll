@@ -104,15 +104,27 @@ const MAGLIE = ['#b06ce0', '#4a8fe6', '#e6a23c', '#e8504a', '#5ac896', '#f08c3c'
 const PELLI: readonly (readonly [string, string])[] = [['#f2c79b', '#cf9a6c'], ['#dba878', '#b8824f'], ['#a9714c', '#84553a']];
 const CAPELLI = ['#3a2a20', '#6b4423', '#d8b25a', '#c9c9d2'];
 
+/** Come ci si veste in ogni era: pelli all'inizio, poi tuniche chiare, poi i colori. [maglia (vuoto = quella sua), calzoni] */
+const MODA: readonly (readonly [string, string])[] = [
+  ['#9a6a44', '#6b4426'],
+  ['#b88a5a', '#6b4426'],
+  ['#d8ceb4', '#8f5e36'],
+  ['#efe6cf', '#a8362b'],
+  ['', '#34426e'],
+  ['', '#3a2a20'],
+];
+
 const omini = new Map<number, { passi: HTMLCanvasElement[]; fuga: HTMLCanvasElement }>();
-/** Le figure di un omino, a seconda del suo aspetto (maglia, pelle, capelli). */
-export function figureOmino(aspetto: number): { passi: HTMLCanvasElement[]; fuga: HTMLCanvasElement } {
-  let f = omini.get(aspetto);
+/** Le figure di un omino, a seconda del suo aspetto (maglia, pelle, capelli) e dell'era in cui vive (da 0 in su). */
+export function figureOmino(aspetto: number, era = 4): { passi: HTMLCanvasElement[]; fuga: HTMLCanvasElement } {
+  const chiave = aspetto + era * 1000;
+  let f = omini.get(chiave);
   if (!f) {
     const pelle = PELLI[(aspetto >> 3) % PELLI.length];
-    const scambi = { A: MAGLIE[aspetto % MAGLIE.length], p: pelle[0], q: pelle[1], h: CAPELLI[(aspetto >> 5) % CAPELLI.length] };
+    const moda = MODA[Math.max(0, Math.min(MODA.length - 1, era))];
+    const scambi = { A: moda[0] || MAGLIE[aspetto % MAGLIE.length], m: moda[1], p: pelle[0], q: pelle[1], h: CAPELLI[(aspetto >> 5) % CAPELLI.length] };
     f = { passi: POSE.map((p) => prepara(p, scambi)), fuga: prepara(BRACCIA_SU, scambi) };
-    omini.set(aspetto, f);
+    omini.set(chiave, f);
   }
   return f;
 }

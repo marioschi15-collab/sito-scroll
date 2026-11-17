@@ -3,7 +3,7 @@ import type { Mondo } from '../motore/mondo.js';
 import { Cielo, oraDelMondo } from './cielo.js';
 import { FIORI, TA, TB, TG, TR, tinteMiscela } from './colori.js';
 import { FIAMME, figura, figureOmino } from './figure.js';
-import { C, INGOMBRO } from '../motore/cose.js';
+import { C, ERE, INGOMBRO } from '../motore/cose.js';
 import { NUOTA, type Omino, SCAPPA } from '../motore/omini.js';
 import { LUCCIOLA, Particelle, SCINTILLA } from './particelle.js';
 
@@ -490,6 +490,9 @@ export class Pittore {
     const oy = Math.round(camY * 2);
     x.clearRect(0, 0, W, H);
     const lumi: [number, number, number, string][] = [];
+    // In che era siamo: 0 prima di tutto, poi una in più per ogni era raggiunta.
+    let era = 0;
+    for (const id of ERE) if (this.mondo.visti.has(id)) era++;
     for (const c of cose) {
       const [lw, lh] = INGOMBRO[c.id];
       const f = c.id === C.FALO ? FIAMME[(this.fotogrammi >> 3) % 3] : figura(c.id, notte);
@@ -509,6 +512,7 @@ export class Pittore {
       void lh;
     }
     for (const o of omini) {
+      if (o.dentro) continue;
       let posa = this.pose.get(o);
       if (!posa) {
         posa = { x: o.x, y: o.y, passo: 0 };
@@ -524,7 +528,7 @@ export class Pittore {
         posa.y += dy * 0.5;
       }
       if (Math.abs(dx) > 0.05) posa.passo += o.stato === SCAPPA ? 0.35 : 0.2;
-      const figure = figureOmino(o.aspetto);
+      const figure = figureOmino(o.aspetto, era);
       const f = o.stato === SCAPPA ? figure.fuga : figure.passi[Math.floor(posa.passo) & 3];
       // I bambini nascono piccoli e crescono.
       const grande = o.eta < 600 ? 0.6 + (0.4 * o.eta) / 600 : 1;

@@ -529,6 +529,62 @@ describe('unire due scoperte', () => {
   });
 });
 
+describe('gli omini e le loro case', () => {
+  function paese(): Mondo {
+    const m = mondo(140, 60);
+    riempi(m, 0, 50, 139, 59, M.ROCCIA);
+    for (const id of [C.CAPANNA, C.POZZO, C.CAMPO, C.FALO, C.CASA]) m.visti.add(id);
+    return m;
+  }
+
+  it('con un pozzo e un campo vivono anche senza acqua né piante', () => {
+    const m = paese();
+    m.posa(C.POZZO, 40, 40);
+    m.posa(C.CAMPO, 70, 40);
+    m.aggiungiOmino(55, 49);
+    m.aggiungiOmino(56, 49);
+    gira(m, 12000);
+    expect(m.omini.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('di notte entrano in casa finché c’è posto, e al mattino escono', () => {
+    const m = paese();
+    m.posa(C.CAPANNA, 60, 40);
+    m.posa(C.POZZO, 40, 40);
+    m.posa(C.CAMPO, 85, 40);
+    for (let i = 0; i < 5; i++) m.aggiungiOmino(50 + i * 4, 49);
+    gira(m, 200);
+    expect(m.omini.filter((o) => o.dentro).length).toBe(0);
+    m.tic = 9200;
+    gira(m, 1500);
+    // la capanna ne ospita tre: gli altri due restano fuori
+    expect(m.omini.filter((o) => o.dentro).length).toBe(3);
+    m.tic = 14400 + 600;
+    gira(m, 200);
+    expect(m.omini.filter((o) => o.dentro).length).toBe(0);
+    // se la casa sparisce mentre dormono, tornano fuori
+    m.tic = 9200;
+    gira(m, 1500);
+    m.cose = m.cose.filter((cosa) => cosa.id !== C.CAPANNA);
+    gira(m, 100);
+    expect(m.omini.filter((o) => o.dentro).length).toBe(0);
+  });
+
+  it('senza tetti il paese si ferma a sei; con le case cresce', () => {
+    const m = paese();
+    m.posa(C.POZZO, 40, 40);
+    m.posa(C.CAMPO, 85, 40);
+    for (let i = 0; i < 4; i++) m.aggiungiOmino(55 + i * 3, 49);
+    gira(m, 40000);
+    expect(m.omini.length).toBeLessThanOrEqual(6);
+    expect(m.omini.length).toBeGreaterThanOrEqual(4);
+    m.posa(C.CASA, 60, 40);
+    m.posa(C.CAPANNA, 110, 40);
+    gira(m, 40000);
+    expect(m.omini.length).toBeGreaterThan(6);
+  });
+});
+
 describe('il mondo appena nato', () => {
   it('ha un fondo di sola roccia, con il cielo libero sopra, e la roccia non è una scoperta', () => {
     for (const [w, h] of [
