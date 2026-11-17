@@ -17,6 +17,7 @@ import {
   PRIMA_MISCELA,
   VILLAGGIO,
 } from '../src/motore/materiali.js';
+import { C, CONSEGUENZE, E, ERE, vieDi } from '../src/motore/cose.js';
 import { idMiscela, tratti } from '../src/motore/miscele.js';
 import { descriviMiscela, etichette } from '../src/motore/nomi.js';
 import { Mondo } from '../src/motore/mondo.js';
@@ -473,6 +474,61 @@ describe('il mestolo e le miscele', () => {
   });
 });
 
+describe('unire due scoperte', () => {
+  it('pietra e legno fanno l’utensile, e con lui comincia l’età della pietra', () => {
+    const m = mondo();
+    expect(m.unisci(M.PIETRA, M.LEGNO)).toBe(-1);
+    m.visti.add(M.PIETRA).add(M.LEGNO);
+    expect(m.unisci(M.LEGNO, M.PIETRA)).toBe(C.UTENSILE);
+    expect(m.visti.has(C.UTENSILE)).toBe(true);
+    expect(m.visti.has(E.PIETRA)).toBe(true);
+    expect(m.novita.map((n) => n.id)).toEqual([C.UTENSILE, E.PIETRA]);
+    // due materiali senza un'unione scritta danno la loro miscela; un'invenzione con qualcosa a caso, niente
+    m.visti.add(M.SABBIA);
+    expect(m.unisci(M.SABBIA, M.LEGNO)).toBe(idMiscela(M.SABBIA, M.LEGNO));
+    expect(m.unisci(C.UTENSILE, M.SABBIA)).toBe(-1);
+    expect(m.unisci(M.PIETRA, M.PIETRA)).toBe(-1);
+  });
+
+  it('ogni invenzione si può raggiungere partendo dai quattro elementi, e ha la sua voce nel libro', () => {
+    const raggiunte = new Set<number>([...INIZIALI]);
+    // quello che il mondo dei granelli sa far nascere da sé
+    for (const s of SCOPERTE) if (s.sezione !== 'cose' && s.sezione !== 'ere') raggiunte.add(s.id);
+    for (let giro = 0; giro < 12; giro++) {
+      for (const id of Object.values(C)) if (vieDi(id).some(([a, b]) => raggiunte.has(a) && raggiunte.has(b))) raggiunte.add(id);
+    }
+    for (const id of Object.values(C)) {
+      expect(raggiunte.has(id), `invenzione ${id}`).toBe(true);
+      expect(SCOPERTE.some((s) => s.id === id)).toBe(true);
+    }
+    for (const id of Object.values(E)) expect(SCOPERTE.some((s) => s.id === id)).toBe(true);
+    for (const id of ERE) expect(CONSEGUENZE.some(([, allora]) => allora === id)).toBe(true);
+  });
+
+  it('una cosa posata cade fino a terra, si salva con la partita e la gomma la toglie', () => {
+    const m = mondo(80, 60);
+    riempi(m, 0, 50, 79, 59, M.PIETRA);
+    expect(m.posa(C.CAPANNA, 40, 20)).toBe(false);
+    m.visti.add(C.CAPANNA).add(C.UTENSILE);
+    expect(m.posa(C.UTENSILE, 40, 20)).toBe(false);
+    expect(m.posa(C.CAPANNA, 40, 20)).toBe(true);
+    gira(m, 200);
+    expect(m.cose[0].y).toBe(49);
+    const copia = ripristina(JSON.parse(JSON.stringify(fotografa(m))))!;
+    expect(copia.cose).toEqual(m.cose);
+    // con una capanna, acqua e piante arrivano gli omini anche senza pietra messa dal giocatore
+    riempi(m, 0, 50, 79, 59, M.ROCCIA);
+    riempi(m, 5, 45, 30, 49, M.ACQUA);
+    riempi(m, 4, 45, 4, 49, M.ROCCIA);
+    riempi(m, 31, 45, 31, 49, M.ROCCIA);
+    riempi(m, 50, 47, 78, 49, M.PIANTA);
+    gira(m, 400);
+    expect(m.omini.length).toBeGreaterThanOrEqual(2);
+    m.cancella(40, 47, 3);
+    expect(m.cose.length).toBe(0);
+  });
+});
+
 describe('il mondo appena nato', () => {
   it('ha un fondo di sola roccia, con il cielo libero sopra, e la roccia non è una scoperta', () => {
     for (const [w, h] of [
@@ -487,7 +543,7 @@ describe('il mondo appena nato', () => {
         else expect(t).toBe(M.VUOTO);
       }
       expect(roccia).toBeGreaterThan(w * 2);
-      expect(roccia).toBeLessThan(w * h * 0.25);
+      expect(roccia).toBeLessThan(w * h * 0.6);
       expect(m.novita.length).toBe(0);
       expect(m.visti.has(M.ROCCIA)).toBe(false);
       // Ogni colonna è piena dal fondo fino alla sua cima, e tra una colonna e l'altra il gradino è al più di due celle.
@@ -496,7 +552,7 @@ describe('il mondo appena nato', () => {
         let y = 0;
         while (m.leggi(x, y) === M.VUOTO) y++;
         for (let sotto = y; sotto < h; sotto++) expect(m.leggi(x, sotto)).toBe(M.ROCCIA);
-        expect(y).toBeGreaterThan(h * 0.7);
+        expect(y).toBeGreaterThan(h * 0.3);
         cime.push(y);
       }
       for (let x = 1; x < w; x++) expect(Math.abs(cime[x] - cime[x - 1])).toBeLessThanOrEqual(2);
@@ -510,12 +566,12 @@ describe('il mondo appena nato', () => {
     terreno(b);
     expect([...a.tipo]).not.toEqual([...b.tipo]);
     const rocciaPrima = quanti(a, M.ROCCIA);
-    riempi(a, 20, 20, 120, 40, M.SABBIA);
-    riempi(a, 20, 50, 120, 60, M.ACQUA);
-    riempi(a, 60, 70, 80, 75, M.LAVA);
+    riempi(a, 20, 20, 120, 30, M.SABBIA);
+    riempi(a, 20, 35, 120, 40, M.ACQUA);
+    riempi(a, 60, 45, 80, 48, M.LAVA);
     gira(a, 600);
     expect(quanti(a, M.ROCCIA)).toBe(rocciaPrima);
-    expect(quanti(a, M.SABBIA)).toBeGreaterThan(1500);
+    expect(quanti(a, M.SABBIA)).toBeGreaterThan(800);
   });
 });
 

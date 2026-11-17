@@ -1,4 +1,5 @@
 import { GAS, LIQUIDO, M, N_TIPI, OMINO, type Sostanza, VILLAGGIO } from '../motore/materiali.js';
+import { figura, stendardo } from './figure.js';
 
 /** Quattro sfumature per materiale: la "grana" che fa sembrare la terra terra e non una macchia piatta. */
 export const TR = new Uint8Array(N_TIPI * 4);
@@ -66,6 +67,18 @@ export const FIORI: readonly (readonly [number, number, number])[] = [
 
 const campioni = new Map<number, string>();
 
+/** Una figura (un edificio, un attrezzo, uno stendardo) messa al centro di un quadratino scuro. */
+function incornicia(f: HTMLCanvasElement): string {
+  const lato = Math.max(f.width, f.height) + 2;
+  const tela = document.createElement('canvas');
+  tela.width = tela.height = lato;
+  const ctx = tela.getContext('2d')!;
+  ctx.fillStyle = '#1c2748';
+  ctx.fillRect(0, 0, lato, lato);
+  ctx.drawImage(f, Math.floor((lato - f.width) / 2), Math.floor((lato - f.height) / 2));
+  return tela.toDataURL();
+}
+
 /**
  * Un quadratino di materiale da mostrare nella tavolozza e nel libro: la stessa grana che ha nel mondo,
  * così il giocatore riconosce a colpo d'occhio cosa sta per versare.
@@ -73,6 +86,12 @@ const campioni = new Map<number, string>();
 export function campione(id: number, miscela?: Sostanza | null): string {
   const pronto = campioni.get(id);
   if (pronto) return pronto;
+  const disegnata = figura(id) ?? (id >= 400 && id < 1000 ? stendardo(id) : null);
+  if (disegnata) {
+    const url = incornicia(disegnata);
+    campioni.set(id, url);
+    return url;
+  }
   const lato = 7;
   const tela = document.createElement('canvas');
   tela.width = tela.height = lato;

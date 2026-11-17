@@ -65,8 +65,19 @@ button {
   gap: 8px;
   padding: 8px 10px;
 }
-.titolo {
+.titoli {
   margin: 0 auto 0 2px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.era {
+  font-size: 11px;
+  color: var(--accento);
+  white-space: nowrap;
+}
+.titolo {
+  margin: 0;
   font: 600 22px/1 var(--titoli);
   letter-spacing: 0.03em;
 }
@@ -82,6 +93,7 @@ button {
   transform: scale(0.96);
 }
 .tasto.attivo,
+.tasto-unisci,
 .tasto-libro {
   border-color: var(--accento);
   color: var(--accento);
@@ -105,12 +117,19 @@ button {
   overflow: hidden;
 }
 .quadro {
-  position: relative;
+  position: absolute;
+  inset: 0;
   touch-action: none;
   cursor: crosshair;
-  border-radius: 6px;
   overflow: hidden;
   background: #101a3c;
+}
+/* Il foglio è grande quanto tutto il mondo e scorre dietro la finestra del quadro. */
+.foglio {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
 }
 .tela {
   position: absolute;
@@ -643,4 +662,88 @@ button.voce:active {
 .pallino.mestolo {
   background: conic-gradient(from 0deg, #ffd54a, #ff7a4a, #b06ce0, #5ab4ff, #6fdc6f, #ffd54a);
   border-radius: 50%;
+}
+
+/* Sui telefoni la barra è stretta: i tasti si fanno più piccoli. */
+@media (max-width: 480px) {
+  .barra {
+    gap: 5px;
+    padding: 8px 8px;
+  }
+  .tasto {
+    padding: 7px 9px;
+    font-size: 13px;
+  }
+  .titolo {
+    font-size: 18px;
+  }
+}
+.pallino.mano {
+  display: grid;
+  place-items: center;
+  background: #232b47;
+  color: var(--accento);
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* ── Unisci: due posti, il risultato, e lo scaffale con tutto quello che si conosce ── */
+.banco {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 4px 16px 10px;
+}
+.posto {
+  flex: 1;
+  max-width: 220px;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #1d2542;
+  border: 1px solid var(--accento);
+  font-size: 15px;
+  text-align: left;
+}
+.posto.vuoto {
+  justify-content: center;
+  border: 1px dashed var(--bordo);
+  background: transparent;
+  color: var(--tenue);
+  font-size: 22px;
+}
+.esito {
+  margin: 0 16px 10px;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #121930;
+  border: 1px solid var(--bordo);
+}
+.esito.nuova {
+  border-color: var(--accento);
+  box-shadow: 0 0 22px #ffd54a44;
+  animation: entra 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.esito strong {
+  font: 600 20px/1.15 var(--titoli);
+}
+.scaffale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gettone.scelto {
+  border-color: var(--accento);
+  background: #2a2f1c;
+}
+.scheda.unisci .libro-corpo {
+  border-top: 1px solid var(--bordo);
 }

@@ -1,4 +1,5 @@
 import { BAMBINO, GAS, M, OMINO, VILLAGGIO } from './materiali.js';
+import { OSPITA } from './cose.js';
 import type { Mondo } from './mondo.js';
 
 /** Un abitante del mondo. È largo una cella e alto tre: (x, y) sono i piedi, (x, y-2) la testa. */
@@ -232,7 +233,8 @@ function figli(m: Mondo): void {
 function arrivo(m: Mondo): void {
   if (m.omini.length > 0 || m.tic < m.prossimoArrivo) return;
   const c = m.conta;
-  const riparo = c[M.PIETRA] + c[M.MATTONE];
+  // Un riparo: pietra o mattoni messi dal giocatore, oppure un tetto vero (capanna, casa, castello).
+  const riparo = c[M.PIETRA] + c[M.MATTONE] + m.cose.filter((cosa) => OSPITA[cosa.id]).length * 30;
   if (c[M.ACQUA] < SERVE.acqua || c[M.PIANTA] < SERVE.piante || riparo < SERVE.riparo) return;
   // Cerca una pianta, scende fino a terra e controlla che lì si possa stare in piedi.
   for (let prova = 0; prova < 200; prova++) {

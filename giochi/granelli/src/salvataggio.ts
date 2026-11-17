@@ -1,3 +1,4 @@
+import { INGOMBRO } from './motore/cose.js';
 import { N_BASE, N_TIPI, PRIMA_MISCELA } from './motore/materiali.js';
 import { Mondo } from './motore/mondo.js';
 import type { Omino } from './motore/omini.js';
@@ -19,6 +20,8 @@ export interface Salvato {
   ricette?: [number, number, number, string][];
   /** Quale miscela occupa quale posto nelle celle di questo mondo. */
   posti?: [number, number][];
+  /** Le invenzioni posate nel mondo. */
+  cose?: { id: number; x: number; y: number }[];
   /** Quello che la pagina vuole ricordare insieme alla partita (per esempio gli ultimi materiali usati). */
   extra?: unknown;
 }
@@ -51,6 +54,7 @@ export function fotografa(m: Mondo, extra?: unknown): Salvato {
     tic: m.tic,
     ricette: [...m.ricettario].map(([id, r]) => [id, r.a, r.b, r.nome]),
     posti,
+    cose: m.cose.map((c) => ({ ...c })),
     extra,
   };
 }
@@ -76,6 +80,7 @@ export function ripristina(dati: unknown): Mondo | null {
     }
     for (const id of d.visti) m.visti.add(id);
     m.omini = Array.isArray(d.omini) ? d.omini.filter((o) => m.dentro(o.x, o.y)).map((o) => ({ ...o })) : [];
+    if (Array.isArray(d.cose)) m.cose = d.cose.filter((c) => INGOMBRO[c.id] && m.dentro(c.x, c.y)).map((c) => ({ id: c.id, x: c.x, y: c.y }));
     m.tic = d.tic | 0;
     return m;
   } catch {

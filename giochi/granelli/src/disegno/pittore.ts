@@ -2,7 +2,9 @@ import { ALBERO, GAS, LIQUIDO as STATO_LIQUIDO, M, N_TIPI, PRIMA_MISCELA, STATO 
 import type { Mondo } from '../motore/mondo.js';
 import { Cielo, oraDelMondo } from './cielo.js';
 import { FIORI, TA, TB, TG, TR, tinteMiscela } from './colori.js';
-import { Personaggi } from './omini.js';
+import { FIAMME, figura, figureOmino } from './figure.js';
+import { C, INGOMBRO } from '../motore/cose.js';
+import { NUOTA, type Omino, SCAPPA } from '../motore/omini.js';
 import { LUCCIOLA, Particelle, SCINTILLA } from './particelle.js';
 
 /** Le tele sovrapposte su cui si disegna, da quella più in fondo a quella più in alto. */
@@ -15,7 +17,7 @@ export interface Tele {
   gas: HTMLCanvasElement;
   /** Il bagliore di ciò che brucia. */
   luce: HTMLCanvasElement;
-  /** Omini e particelle, alla risoluzione vera dello schermo. */
+  /** Omini, invenzioni e particelle: figure a quadretti grandi mezza cella, solo per la parte di mondo che si vede. */
   sopra: HTMLCanvasElement;
 }
 
@@ -121,15 +123,18 @@ export class Pittore {
   /** Per ogni colonna, quanti granelli ci sono sopra quello che si sta disegnando. */
   private readonly sopra: Uint8Array;
   private readonly cielo: Cielo;
-  private readonly personaggi = new Personaggi();
+  private readonly pose = new WeakMap<Omino, { x: number; y: number; passo: number }>();
+  private readonly copia = document.createElement('canvas');
   private readonly particelle = new Particelle();
-  /** Sugli schermi piccoli le celle sono minuscole: lì gli omini si disegnano un po' più grandi del vero. */
-  private ingrandimento = 1;
+  /** Quante celle di mondo entrano nella vista. */
+  private visteW = 1;
+  private visteH = 1;
   private tempo = 0;
   private fotogrammi = 0;
   private eraLampo = false;
-  private sporco = true;
   private forzaLuce = -1;
+  private cieloX = -1;
+  private cieloY = -1;
   private versione = -1;
   /** Chiamata quando un fulmine attraversa il cielo. */
   suLampo: (() => void) | null = null;
@@ -169,7 +174,7 @@ export class Pittore {
     this.gb = new Float32Array(n);
     this.ga = new Float32Array(n);
     this.sopra = new Uint8Array(w);
-    this.cielo = new Cielo(tele.cielo, w * 7919 + h);
+    this.cielo = new Cielo(tele.cielo);
   }
 
   /** Ogni miscela presente nel mondo prende i suoi colori, il suo modo di essere disegnata e la sua luce. */
@@ -204,19 +209,16 @@ export class Pittore {
     this.particelle.sbuffo(x + 0.5, y + 0.5);
   }
 
-  /** Da chiamare quando cambia la grandezza del mondo sullo schermo (in pixel della pagina). */
-  adatta(larghezza: number, altezza: number): void {
-    // Omini e particelle si disegnano fitti (ma non oltre il doppio: di più non si vede e costa);
-    // il cielo è fatto di sfumature e sagome lontane, e gli basta molto meno.
-    const densita = Math.min(2, window.devicePixelRatio || 1);
-    this.tele.sopra.width = Math.max(1, Math.round(larghezza * densita));
-    this.tele.sopra.height = Math.max(1, Math.round(altezza * densita));
-    const ridotto = Math.min(1, 420 / Math.max(larghezza, altezza));
-    this.tele.cielo.width = Math.max(1, Math.round(larghezza * ridotto));
-    this.tele.cielo.height = Math.max(1, Math.round(altezza * ridotto));
-    this.ingrandimento = Math.max(1, Math.min(1.35, 3.6 / (larghezza / this.mondo.w)));
-    this.sporco = true;
-    this.fotogrammi = 0;
+  /** Da chiamare quando cambia la vista: quante celle di mondo si vedono, in larghezza e in altezza. */
+  adatta(celleW: number, celleH: number): void {
+    this.visteW = Math.max(1, Math.ceil(celleW));
+    this.visteH = Math.max(1, Math.ceil(celleH));
+    this.tele.cielo.width = this.visteW;
+    this.tele.cielo.height = this.visteH;
+    for (const t of [this.tele.sopra, this.copia]) {
+      t.width = this.visteW * 2;
+      t.height = this.visteH * 2;
+    }
   }
 
   /** La festa per una scoperta, nel punto in cui è nata (in celle). */
@@ -233,7 +235,7 @@ export class Pittore {
   }
 
   /** Disegna un fotogramma; `dt` sono i secondi passati dal precedente. */
-  disegna(dt: number): void {
+  disegna(dt: number, camX: number, camY: number): void {
     const { tipo, dato, tinta, w, h, tic } = this.mondo;
     const { punti, puntiGas, puntiLuce, lw, lh, lr, lg, lb, gr, gg, gb, ga, sopra, particelle } = this;
     this.tempo += dt;
@@ -241,7 +243,12 @@ export class Pittore {
     const ora = oraDelMondo(tic);
     // Il cielo cambia piano: basta ridisegnarlo qualche volta al secondo.
     if (this.versione !== this.mondo.versioneTipi) this.aggiornaMiscele();
-    if (this.fotogrammi++ % 8 === 0) this.cielo.disegna(ora, tempo, this.mondo.arcobaleno);
+    // Il cielo cambia piano: si ridisegna subito solo quando la vista si sposta.
+    if (this.fotogrammi++ % 6 === 0 || camX !== this.cieloX || camY !== this.cieloY) {
+      this.cielo.disegna(ora, tempo, this.mondo.arcobaleno, camX, camY, this.mondo.h * 0.56);
+      this.cieloX = camX;
+      this.cieloY = camY;
+    }
 
     // Prima passata: chi manda luce e dove stanno i gas.
     lr.fill(0);
@@ -255,10 +262,15 @@ export class Pittore {
     let accese = 0;
     let lampi = 0;
     const scintille = particelle.quante < 260;
-    let i = 0;
-    for (let y = 0; y < h; y++) {
+    // Si disegna solo la parte di mondo che si vede, con un po' di margine perché la luce arrivi anche da fuori.
+    const x0 = Math.max(0, (Math.floor(camX) - 12) & ~1);
+    const x1 = Math.min(w, Math.ceil(camX + this.visteW) + 12);
+    const y0 = Math.max(0, (Math.floor(camY) - 18) & ~1);
+    const y1 = Math.min(h, Math.ceil(camY + this.visteH) + 12);
+    for (let y = y0; y < y1; y++) {
       const riga = (y >> 1) * lw;
-      for (let x = 0; x < w; x++, i++) {
+      let i = y * w + x0;
+      for (let x = x0; x < x1; x++, i++) {
         const t = tipo[i];
         if (t === M.VUOTO) continue;
         const modo = MODO[t];
@@ -309,10 +321,10 @@ export class Pittore {
 
     // Seconda passata: ogni granello con il suo colore, la sua ombra e la sua luce.
     sopra.fill(0);
-    i = 0;
-    for (let y = 0; y < h; y++) {
+    for (let y = y0; y < y1; y++) {
       const riga = (y >> 1) * lw;
-      for (let x = 0; x < w; x++, i++) {
+      let i = y * w + x0;
+      for (let x = x0; x < x1; x++, i++) {
         const t = tipo[i];
         const modo = MODO[t];
         if (modo === 0 || modo === SOFFICE) {
@@ -433,8 +445,8 @@ export class Pittore {
     }
 
     // I gas: per ogni punto della mappa, il colore medio di ciò che c'è e tanto più opaco quanto più ce n'è.
-    const n = lw * lh;
-    for (let li = 0; li < n; li++) {
+    for (let ly = y0 >> 1; ly < (y1 + 1) >> 1; ly++)
+    for (let li = ly * lw + (x0 >> 1), fine = ly * lw + ((x1 + 1) >> 1); li < fine; li++) {
       const q = ga[li];
       if (q <= 0) {
         puntiGas[li] = 0;
@@ -447,9 +459,9 @@ export class Pittore {
       puntiGas[li] = (((A > 255 ? 255 : A) << 24) | ((B > 255 ? 255 : B) << 16) | ((G > 255 ? 255 : G) << 8) | (R > 255 ? 255 : R)) >>> 0;
     }
 
-    this.ctx.putImageData(this.immagine, 0, 0);
-    this.ctxGas.putImageData(this.immagineGas, 0, 0);
-    this.ctxLuce.putImageData(this.immagineLuce, 0, 0);
+    this.ctx.putImageData(this.immagine, 0, 0, x0, y0, x1 - x0, y1 - y0);
+    this.ctxGas.putImageData(this.immagineGas, 0, 0, x0 >> 1, y0 >> 1, ((x1 + 1) >> 1) - (x0 >> 1), ((y1 + 1) >> 1) - (y0 >> 1));
+    this.ctxLuce.putImageData(this.immagineLuce, 0, 0, x0 >> 1, y0 >> 1, ((x1 + 1) >> 1) - (x0 >> 1), ((y1 + 1) >> 1) - (y0 >> 1));
     if (Math.abs(forza - this.forzaLuce) > 0.03) {
       this.forzaLuce = forza;
       this.tele.luce.style.opacity = String(Math.min(1, 0.5 + forza * 0.4));
@@ -465,16 +477,96 @@ export class Pittore {
         if (tipo[j] === M.PIANTA) particelle.aggiungi(LUCCIOLA, (j % w) + 0.5, ((j / w) | 0) - 1, 0, 0, 4 + Math.random() * 5, 0.4);
       }
     }
+    this.disegnaSopra(dt, camX, camY, ora.ambiente, ora.giorno < 0.45);
+  }
 
-    const { omini } = this.mondo;
-    if (omini.length > 0 || particelle.quante > 0 || this.sporco) {
-      const ctx = this.ctxSopra;
-      const tela = this.tele.sopra;
-      ctx.clearRect(0, 0, tela.width, tela.height);
-      const cella = tela.width / w;
-      this.personaggi.disegna(ctx, omini, cella, this.ingrandimento, ora.ambiente, tempo);
-      particelle.disegna(ctx, cella, dt);
-      this.sporco = omini.length > 0 || particelle.quante > 0;
+  /** Invenzioni, omini e particelle: figure disegnate sopra i granelli, con la luce dell'ora e i loro lumi. */
+  private disegnaSopra(dt: number, camX: number, camY: number, luce: readonly number[], notte: boolean): void {
+    const { cose, omini } = this.mondo;
+    const x = this.ctxSopra;
+    const W = this.tele.sopra.width;
+    const H = this.tele.sopra.height;
+    const ox = Math.round(camX * 2);
+    const oy = Math.round(camY * 2);
+    x.clearRect(0, 0, W, H);
+    const lumi: [number, number, number, string][] = [];
+    for (const c of cose) {
+      const [lw, lh] = INGOMBRO[c.id];
+      const f = c.id === C.FALO ? FIAMME[(this.fotogrammi >> 3) % 3] : figura(c.id, notte);
+      if (!f) continue;
+      const X = Math.round((c.x + lw / 2) * 2 - f.width / 2) - ox;
+      const Y = (c.y + 1) * 2 - f.height + 1 - oy;
+      if (X > W || X + f.width < 0 || Y > H || Y + f.height < 0) continue;
+      x.drawImage(f, X, Y);
+      if (c.id === C.FALO) {
+        lumi.push([X + f.width / 2, Y + f.height / 2, 22 + Math.sin(this.tempo * 9) * 3, notte ? 'rgba(255,150,50,0.6)' : 'rgba(255,150,50,0.25)']);
+        if (Math.random() < 0.1) this.particelle.aggiungi(SCINTILLA, c.x + lw / 2, c.y - lh + 1, (Math.random() - 0.5) * 3, -4 - Math.random() * 5, 0.6 + Math.random() * 0.8, 0.45);
+      } else if (c.id === C.FARO) lumi.push([X + f.width / 2, Y + 3, notte ? 30 : 10, 'rgba(255,240,170,0.6)']);
+      else if (c.id === C.FORNACE) lumi.push([X + f.width / 2, Y + f.height - 5, 12, 'rgba(255,140,50,0.45)']);
+      else if (notte && lh > 5 && c.id !== C.CAMPO && c.id !== C.CARRO && c.id !== C.BARCA && c.id !== C.PONTE && c.id !== C.MURA && c.id !== C.POZZO) {
+        lumi.push([X + f.width / 2, Y + f.height - 6, f.width * 0.5, 'rgba(255,205,90,0.35)']);
+      }
+      void lh;
     }
+    for (const o of omini) {
+      let posa = this.pose.get(o);
+      if (!posa) {
+        posa = { x: o.x, y: o.y, passo: 0 };
+        this.pose.set(o, posa);
+      }
+      const dx = o.x - posa.x;
+      const dy = o.y - posa.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 8) {
+        posa.x = o.x;
+        posa.y = o.y;
+      } else {
+        posa.x += dx * 0.3;
+        posa.y += dy * 0.5;
+      }
+      if (Math.abs(dx) > 0.05) posa.passo += o.stato === SCAPPA ? 0.35 : 0.2;
+      const figure = figureOmino(o.aspetto);
+      const f = o.stato === SCAPPA ? figure.fuga : figure.passi[Math.floor(posa.passo) & 3];
+      // I bambini nascono piccoli e crescono.
+      const grande = o.eta < 600 ? 0.6 + (0.4 * o.eta) / 600 : 1;
+      const fw = Math.round(f.width * grande);
+      const fh = Math.round(f.height * grande);
+      const X = Math.round((posa.x + 0.5) * 2 - fw / 2) - ox;
+      const affonda = o.stato === NUOTA ? 4 + Math.round(Math.sin(this.tempo * 3 + o.aspetto) * 0.6) : 0;
+      const Y = Math.round((posa.y + 1) * 2) - fh + 1 - oy + affonda;
+      if (X > W || X + fw < 0 || Y > H || Y + fh < 0) continue;
+      const visibile = o.stato === NUOTA ? Math.max(1, f.height - Math.round(affonda / grande) - 1) : f.height;
+      x.save();
+      if (o.dir < 0) {
+        x.translate(X + fw, Y);
+        x.scale(-1, 1);
+      } else x.translate(X, Y);
+      x.drawImage(f, 0, 0, f.width, visibile, 0, 0, fw, Math.round(visibile * grande));
+      x.restore();
+    }
+    // La luce dell'ora cade sulle figure (non sul vuoto intorno), poi si accendono i lumi.
+    if (luce[0] < 0.98 || luce[1] < 0.98 || luce[2] < 0.98) {
+      const k = this.copia.getContext('2d')!;
+      k.clearRect(0, 0, W, H);
+      k.drawImage(this.tele.sopra, 0, 0);
+      x.globalCompositeOperation = 'multiply';
+      x.fillStyle = `rgb(${(luce[0] * 255) | 0},${(luce[1] * 255) | 0},${(luce[2] * 255) | 0})`;
+      x.fillRect(0, 0, W, H);
+      x.globalCompositeOperation = 'destination-in';
+      x.drawImage(this.copia, 0, 0);
+      x.globalCompositeOperation = 'source-over';
+    }
+    x.globalCompositeOperation = 'lighter';
+    for (const [lx, ly, r, colore] of lumi) {
+      const g = x.createRadialGradient(lx, ly, 1, lx, ly, r);
+      g.addColorStop(0, colore);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = g;
+      x.fillRect(lx - r, ly - r, r * 2, r * 2);
+    }
+    x.globalCompositeOperation = 'source-over';
+    x.save();
+    x.translate(-ox, -oy);
+    this.particelle.disegna(x, 2, dt);
+    x.restore();
   }
 }

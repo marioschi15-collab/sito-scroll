@@ -1,3 +1,4 @@
+import { C, E, INGOMBRO, vieDi } from './motore/cose.js';
 import * as K from './motore/materiali.js';
 
 const { M } = K;
@@ -31,6 +32,8 @@ export const SEZIONI: readonly (readonly [string, string])[] = [
   ['fuoco', 'Fuoco e fumo'],
   ['vita', 'Vita'],
   ['genti', 'Genti'],
+  ['cose', 'Invenzioni'],
+  ['ere', 'Ere ed eventi'],
 ];
 
 export const INIZIALI: readonly number[] = [M.TERRA, M.ACQUA, M.FUOCO, M.ARIA];
@@ -44,7 +47,7 @@ const nota = (testo: string, ...ids: number[]): Via => ({ con: ids, nota: testo 
 const evento = (id: number, nome: string, sezione: string, indizio: string, descrizione: string, nasce: readonly Via[]): Scoperta =>
   voce(id, nome, sezione, indizio, descrizione, nasce, false);
 
-export const SCOPERTE: readonly Scoperta[] = [
+export const SCOPERTE: Scoperta[] = [
   // ── I quattro elementi ──
   voce(M.TERRA, 'Terra', 'elementi', '', 'Cade, si ammucchia, regge quello che le metti sopra. Quasi tutto comincia da qui.'),
   voce(M.ACQUA, 'Acqua', 'elementi', '', 'Scorre verso il basso e riempie ogni conca. Spegne, bagna, disseta.'),
@@ -108,5 +111,54 @@ export const SCOPERTE: readonly Scoperta[] = [
   evento(K.BAMBINO, 'Bambino', 'genti', 'Due omini che stanno bene, vicini.', 'Nasce quando due omini hanno bevuto e mangiato e si trovano vicini. Piccolo all’inizio, poi cresce.', [con(K.OMINO)]),
   evento(K.VILLAGGIO, 'Villaggio', 'genti', 'Sei omini vivi nello stesso momento.', 'Sei omini vivi insieme: da quattro granelli a un paese abitato.', [nota('sei insieme', K.OMINO)]),
 ];
+
+/** Un'invenzione: nasce unendo due scoperte nel pannello Unisci; se ha un ingombro, si può posare nel mondo. */
+const invenzione = (id: number, nome: string, indizio: string, descrizione: string): Scoperta =>
+  voce(id, nome, 'cose', indizio, descrizione, vieDi(id).map(([a, b]) => con(a, b)), INGOMBRO[id] !== undefined);
+const era = (id: number, nome: string, indizio: string, descrizione: string, grazie: number): Scoperta =>
+  voce(id, nome, 'ere', indizio, descrizione, [con(grazie)], false);
+
+const INVENZIONI: readonly Scoperta[] = [
+  invenzione(C.UTENSILE, 'Utensile', 'Una pietra e un bastone, insieme, fanno molto di più.', 'Una pietra legata a un legno: la prima cosa fatta apposta per farne altre. Da qui comincia tutto.'),
+  invenzione(C.FALO, 'Falò', 'Il fuoco, dato da mangiare a qualcosa che brucia piano.', 'Un fuoco tenuto vivo. Scalda, fa luce di notte e raduna intorno a sé chi ha freddo.'),
+  invenzione(C.CAPANNA, 'Capanna', 'Legno per reggere, foglie per coprire.', 'Rami e frasche: il primo tetto. Ci vivono tre omini, e basta a farli arrivare.'),
+  invenzione(C.LANCIA, 'Lancia', 'Un utensile con il manico lungo.', 'Un utensile in cima a un bastone lungo: per cacciare, e per tenere lontano quello che fa paura.'),
+  invenzione(C.RUOTA, 'Ruota', 'Con l’utensile giusto, anche la pietra rotola.', 'Una pietra lavorata finché gira. Sembra poco, ma senza di lei niente carri e niente mulini.'),
+  invenzione(C.VASO, 'Vaso', 'L’argilla tiene l’acqua, se le dai la forma.', 'Argilla modellata per contenere: acqua, semi, olio. Quello che si conserva si può mettere da parte.'),
+  invenzione(C.CAMPO, 'Campo', 'La terra, lavorata con un utensile.', 'Terra smossa e seminata. Il cibo non si cerca più: si aspetta.'),
+  invenzione(C.PANE, 'Pane', 'Quello che dà il campo, passato sul fuoco.', 'Il raccolto del campo, macinato e cotto. Si conserva per giorni e sfama molti.'),
+  invenzione(C.POZZO, 'Pozzo', 'Pietra intorno all’acqua.', 'Un cerchio di pietre attorno all’acqua: da bere anche lontano dal lago.'),
+  invenzione(C.CASA, 'Casa', 'Mattoni per i muri, legno per il tetto.', 'Muri di mattoni e tetto di legno. Ci vivono cinque omini, al riparo da pioggia e vento.'),
+  invenzione(C.FORNACE, 'Fornace', 'Un fuoco chiuso tra i mattoni scalda molto di più.', 'Mattoni attorno al fuoco: dentro fa così caldo da fondere quello che il falò non scalfisce.'),
+  invenzione(C.BRONZO, 'Bronzo', 'Il metallo, nella fornace, diventa un altro.', 'Metallo fuso nella fornace e colato in forma. Più duro della pietra, e si rifà quando si rompe.'),
+  invenzione(C.SPADA, 'Spada', 'Il bronzo lavorato con l’utensile.', 'Bronzo battuto e affilato. Con lei arrivano i guerrieri, e chi comanda.'),
+  invenzione(C.CARRO, 'Carro', 'Una ruota ha bisogno di qualcosa da portare.', 'Assi di legno su ruote: quello che prima si portava in spalla ora si porta in dieci volte tanto.'),
+  invenzione(C.BARCA, 'Barca', 'Con l’utensile, sull’acqua.', 'Un tronco scavato con l’utensile. L’acqua smette di essere un confine e diventa una strada.'),
+  invenzione(C.STRADA, 'Strada', 'Pietra e sabbia, stese per terra.', 'Pietre posate sulla sabbia. Dove c’è una strada, i carri passano anche quando piove.'),
+  invenzione(C.MURA, 'Mura', 'Pietra e mattoni, uno sull’altro.', 'Pietre e mattoni uno sull’altro. Dentro le mura si dorme tranquilli.'),
+  invenzione(C.TORRE, 'Torre', 'Mura, e ancora pietra sopra.', 'Mura che salgono. Da lassù si vede arrivare chiunque, molto prima.'),
+  invenzione(C.TEMPIO, 'Tempio', 'Mura e vetro: un posto che non serve per abitare.', 'Colonne e luce. Il primo edificio costruito non per ripararsi, ma per qualcosa di più grande.'),
+  invenzione(C.SCRITTURA, 'Scrittura', 'Un utensile sull’argilla lascia il segno.', 'Segni incisi nell’argilla. Quello che si sa non muore più con chi lo sa.'),
+  invenzione(C.MONETA, 'Moneta', 'Il bronzo, ripassato sul fuoco, in pezzi piccoli.', 'Dischetti di bronzo tutti uguali. Non si scambia più una capra con un vaso: si conta.'),
+  invenzione(C.MULINO, 'Mulino', 'Una ruota che gira col vento.', 'Una ruota mossa dall’aria. Macina da sola, giorno e notte.'),
+  invenzione(C.CASTELLO, 'Castello', 'Una torre con le sue mura.', 'Torri e mura insieme. Ci vivono in dodici, e da lì si governa tutto il paese intorno.'),
+  invenzione(C.CITTA, 'Città', 'Un villaggio, cinto di mura.', 'Un villaggio che si è chiuso tra le mura ed è cresciuto. Mestieri, piazze, rumore.'),
+  invenzione(C.MERCATO, 'Mercato', 'Monete e carri: qualcuno compra, qualcuno vende.', 'Banchi, carri e monete. Qui arriva quello che il paese non sa fare da sé.'),
+  invenzione(C.LIBRO, 'Libro', 'La scrittura, su qualcosa di più leggero dell’argilla.', 'Segni su fogli fatti di piante. Leggero, si porta ovunque: le idee cominciano a viaggiare.'),
+  invenzione(C.FERRO, 'Ferro', 'Nella fornace, con il carbone al posto della legna.', 'Con il carbone la fornace scalda ancora di più, e ne esce un metallo che non si piega.'),
+  invenzione(C.ARATRO, 'Aratro', 'Il ferro, nel campo.', 'Una lama di ferro che apre la terra. Lo stesso campo dà il doppio.'),
+  invenzione(C.PONTE, 'Ponte', 'Una strada che non si ferma davanti all’acqua.', 'Una strada sospesa sull’acqua. Due rive diventano un posto solo.'),
+  invenzione(C.FARO, 'Faro', 'Un fuoco in cima a una torre.', 'Un fuoco in cima a una torre: di notte dice alle barche dov’è la terra.'),
+  era(E.PIETRA, 'Età della pietra', 'Comincia con il primo utensile.', 'Il mondo ha il suo primo utensile. Da adesso le cose non si trovano soltanto: si fanno.', C.UTENSILE),
+  era(E.FUOCO_DOMATO, 'Il fuoco domato', 'Quando il fuoco smette di fare paura.', 'Il fuoco non è più solo un pericolo: è calore, luce e compagnia. Le notti non sono più le stesse.', C.FALO),
+  era(E.AGRICOLTURA, 'Nasce l’agricoltura', 'Quando si smette di cercare il cibo.', 'Chi semina resta. Intorno ai campi nascono i paesi.', C.CAMPO),
+  era(E.BRONZO, 'Età del bronzo', 'Comincia con il primo metallo fuso.', 'Il metallo si fonde e prende la forma che si vuole. Attrezzi migliori, e anche armi.', C.BRONZO),
+  era(E.NASCE_SCRITTURA, 'Nasce la scrittura', 'Quando le parole restano.', 'Finisce la preistoria: da qui in poi, quello che succede si può raccontare a chi verrà.', C.SCRITTURA),
+  era(E.FERRO, 'Età del ferro', 'Comincia con un metallo più duro del bronzo.', 'Il ferro è dappertutto e costa poco: aratri, chiodi, lame per tutti.', C.FERRO),
+  era(E.ANTICA, 'Età antica', 'Comincia con il primo tempio.', 'Templi, città, leggi scritte. Il mondo dei grandi popoli.', C.TEMPIO),
+  era(E.COMMERCIO, 'Nasce il commercio', 'Quando le cose cominciano a viaggiare.', 'Monete e mercati: le cose viaggiano più lontano delle persone.', C.MERCATO),
+  era(E.MEDIOEVO, 'Medioevo', 'Comincia con il primo castello.', 'Castelli sulle colline e paesi stretti intorno. Un’altra età.', C.CASTELLO),
+];
+SCOPERTE.push(...INVENZIONI);
 
 export const PER_ID = new Map(SCOPERTE.map((s) => [s.id, s]));

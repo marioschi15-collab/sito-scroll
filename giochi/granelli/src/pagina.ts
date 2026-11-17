@@ -12,23 +12,30 @@ export function costruisciPagina(app: HTMLElement) {
 
   const barra = el('header', 'barra');
   const bLibro = el('button', 'tasto tasto-libro');
+  const bUnisci = el('button', 'tasto tasto-unisci', 'Unisci');
+  const era = el('span', 'era');
   const bPausa = el('button', 'tasto', 'Pausa');
   const bNuovo = el('button', 'tasto', 'Nuovo');
-  barra.append(el('h1', 'titolo', 'Granelli'), bLibro, bPausa, bNuovo);
+  const titoli = el('div', 'titoli');
+  titoli.append(el('h1', 'titolo', 'Granelli'), era);
+  barra.append(titoli, bUnisci, bLibro, bPausa, bNuovo);
 
   const cielo = el('main', 'cielo');
   const quadro = el('div', 'quadro');
   // Le tele del mondo, dalla più lontana alla più vicina (vedi `Tele` in disegno/pittore.ts).
   const tele = {
-    cielo: el('canvas', 'tela tela-liscia'),
+    cielo: el('canvas', 'tela'),
     granelli: el('canvas', 'tela'),
     gas: el('canvas', 'tela tela-liscia tela-mezza'),
     luce: el('canvas', 'tela tela-liscia tela-mezza tela-luce'),
-    sopra: el('canvas', 'tela tela-liscia'),
+    sopra: el('canvas', 'tela'),
   };
   const bagliore = el('div', 'bagliore');
-  quadro.append(tele.cielo, tele.granelli, tele.gas, tele.luce, tele.sopra, bagliore);
-  const suggerimento = el('p', 'suggerimento', 'Scegli un elemento qui sotto e trascina il dito nel cielo.');
+  // Il mondo è più grande della vista: le sue tele stanno in un foglio che scorre dietro la finestra.
+  const foglio = el('div', 'foglio');
+  foglio.append(tele.granelli, tele.gas, tele.luce);
+  quadro.append(tele.cielo, foglio, tele.sopra, bagliore);
+  const suggerimento = el('p', 'suggerimento', 'Scegli un elemento qui sotto e trascina il dito nel cielo. Con la Mano sposti la vista.');
   cielo.append(quadro, suggerimento);
 
   const piede = el('footer', 'piede');
@@ -39,5 +46,5 @@ export function costruisciPagina(app: HTMLElement) {
   const avvisi = el('div', 'avvisi');
   app.append(barra, cielo, piede, avvisi);
 
-  return { bLibro, bPausa, bNuovo, cielo, quadro, tele, suggerimento, pennelli, tavolozza, avvisi };
+  return { bLibro, bUnisci, bPausa, bNuovo, era, foglio, cielo, quadro, tele, suggerimento, pennelli, tavolozza, avvisi };
 }

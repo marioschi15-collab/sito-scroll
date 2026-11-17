@@ -1,3 +1,4 @@
+import { CONSEGUENZE, type Cosa, INGOMBRO, unione } from './cose.js';
 import { fenomeni } from './fenomeni.js';
 import {
   ALBERO,
@@ -47,6 +48,10 @@ export interface Ricetta {
 const RESISTE = new Uint8Array(N_TIPI);
 for (const t of [M.VUOTO, M.ROCCIA, M.VETRO, M.DIAMANTE, M.OSSIDIANA, M.BRACE]) RESISTE[t] = 1;
 
+/** Ciò che non fa mai niente da solo: in un mondo grande è quasi tutto, e saltarlo fa andare veloce il resto. */
+const FERMO = new Uint8Array(N_TIPI);
+for (const t of [M.VUOTO, M.ROCCIA, M.PIETRA, M.VETRO, M.MATTONE, M.OSSIDIANA, M.GHIACCIO, M.METALLO, M.DIAMANTE, M.FUNGO]) FERMO[t] = 1;
+
 /** Segno che il Mestolo lascia tra le cose nate in un gesto: "in questo gesto una miscela nuova è già nata". */
 const UNA_NUOVA = -1;
 
@@ -84,6 +89,8 @@ export class Mondo {
   nati: { x: number; y: number }[] = [];
   /** Le esplosioni avvenute dall'ultima volta che qualcuno ha guardato (in celle). */
   botti: { x: number; y: number; r: number }[] = [];
+  /** Le invenzioni posate nel mondo. */
+  cose: Cosa[] = [];
   /** Quante celle ci sono di ogni materiale: aggiornato ogni due secondi circa. */
   readonly conta = new Uint32Array(N_TIPI);
   /** Tic in cui gli omini potranno (ri)comparire. */
@@ -296,6 +303,45 @@ export class Mondo {
     if (id <= 0 || this.visti.has(id)) return;
     this.visti.add(id);
     this.novita.push({ id, x, y });
+    for (const [quando, allora] of CONSEGUENZE) if (quando === id) this.scopri(allora, x, y);
+  }
+
+  /**
+   * Unisce due scoperte, come nei giochi di alchimia. Se la coppia è scritta a mano nasce quell'invenzione;
+   * se sono due sostanze senza un risultato scritto nasce la loro miscela; altrimenti niente (-1).
+   */
+  unisci(a: number, b: number): number {
+    if (a === b || !this.visti.has(a) || !this.visti.has(b)) return -1;
+    let esito = unione(a, b);
+    if (esito < 0) esito = this.registra(a, b);
+    if (esito > 0) this.scopri(esito, this.w >> 1, this.h >> 1);
+    return esito;
+  }
+
+  /** La cella più alta di una colonna su cui qualcosa può appoggiarsi (il primo punto che non è vuoto né gas). */
+  suolo(x: number, da = 0): number {
+    let y = Math.max(0, da);
+    while (y < this.h && (this.tipo[y * this.w + x] === M.VUOTO || this.stato[this.tipo[y * this.w + x]] === GAS || this.tipo[y * this.w + x] === M.PIANTA)) y++;
+    return y;
+  }
+
+  /** Posa un'invenzione nel mondo, centrata sulla colonna indicata e appoggiata a terra. */
+  posa(id: number, x: number, y: number): boolean {
+    const ingombro = INGOMBRO[id];
+    if (!ingombro || !this.visti.has(id) || this.cose.length >= 120) return false;
+    const sx = Math.max(0, Math.min(this.w - ingombro[0], x - (ingombro[0] >> 1)));
+    this.cose.push({ id, x: sx, y: Math.max(ingombro[1], Math.min(this.h - 1, y)) });
+    return true;
+  }
+
+  /** Le cose posate cadono finché non trovano qualcosa su cui appoggiarsi (basta il centro). */
+  private assestaCose(): void {
+    for (const c of this.cose) {
+      const centro = c.x + (INGOMBRO[c.id][0] >> 1);
+      const terra = this.suolo(centro, c.y - 2);
+      if (terra - 1 > c.y) c.y = Math.min(terra - 1, c.y + 2);
+      else if (terra - 1 < c.y - 1) c.y--;
+    }
   }
 
   svuota(i: number): void {
@@ -539,7 +585,7 @@ export class Mondo {
         const x = daSinistra ? k : w - 1 - k;
         const i = riga + x;
         const t = tipo[i];
-        if (t === M.VUOTO || fatto[i] === giro) continue;
+        if (FERMO[t] || fatto[i] === giro) continue;
         this.aggiorna(i, x, y, t);
       }
     }
@@ -548,6 +594,7 @@ export class Mondo {
       this.contaCelle();
       fenomeni(this);
     }
+    if (this.tic % 4 === 0 && this.cose.length > 0) this.assestaCose();
     aggiornaOmini(this);
   }
 
@@ -1158,6 +1205,10 @@ export class Mondo {
         this.svuota((y + dy) * this.w + x + dx);
       }
     }
+    this.cose = this.cose.filter((c) => {
+      const [lw, lh] = INGOMBRO[c.id];
+      return !(x >= c.x - raggio && x < c.x + lw + raggio && y <= c.y + raggio && y > c.y - lh - raggio);
+    });
     // Un omino sparisce se la gomma passa su un punto qualsiasi del suo corpo.
     const r2 = (raggio + 1) * (raggio + 1);
     this.omini = this.omini.filter((o) => {

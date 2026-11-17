@@ -1,17 +1,23 @@
 import { Pittore } from './disegno/pittore.js';
 import { apriLibro, nomeDi, tondino } from './libro.js';
+import { ERE, INGOMBRO } from './motore/cose.js';
 import { M, OMINO, PRIMA_ID_MISCELA, VILLAGGIO } from './motore/materiali.js';
 import { Mondo } from './motore/mondo.js';
-import { terreno } from './motore/terreno.js';
+import { SUPERFICIE, terreno } from './motore/terreno.js';
+import { apriUnisci } from './unisci.js';
 import { costruisciPagina, el } from './pagina.js';
 import { carica, extraDi, fotografa, ripristina, salva } from './salvataggio.js';
 import { INIZIALI, PER_ID, SCOPERTE } from './scoperte.js';
 
 const GOMMA = -1;
 const MESTOLO = -2;
+const MANO = -3;
 const ISTANTE = 1000 / 60;
-/** Quante celle ha, più o meno, un mondo nuovo: abbastanza fini da sembrare sabbia, abbastanza poche per un telefono. */
-const CELLE = 30000;
+/** Quanto è grande un mondo nuovo, in celle: molto più della vista, che ci scorre sopra. */
+const LARGO = 420;
+const ALTO = 190;
+/** Quante celle si vedono, più o meno, sul lato corto dello schermo. */
+const IN_VISTA = 96;
 /** Quante cose stanno nella tavolozza: le ultime usate o scoperte. Tutte le altre si prendono dal Libro. */
 const POSTI = 14;
 /** Dopo quante scoperte (oltre ai quattro elementi) arriva il Mestolo. */
@@ -71,12 +77,9 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
 
   // ── Il mondo ─────────────────────────────────────────────────────────────────
-  /** Un mondo di sola roccia, con la forma dello spazio libero sullo schermo. */
+  /** Un mondo di sola roccia. */
   function mondoNuovo(): Mondo {
-    const r = p.cielo.getBoundingClientRect();
-    const forma = Math.max(0.4, Math.min(2.5, r.width / Math.max(1, r.height)));
-    const w = Math.round(Math.sqrt(CELLE * forma));
-    const m = new Mondo(w, Math.round(w / forma), (Date.now() & 0x7fffffff) || 1);
+    const m = new Mondo(LARGO, ALTO, (Date.now() & 0x7fffffff) || 1);
     for (const id of INIZIALI) m.visti.add(id);
     terreno(m);
     return m;
@@ -97,22 +100,45 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
   let pittore = nuovoPittore();
 
-  /** Fa stare il mondo intero nello spazio libero, senza deformarlo. */
+  // ── La vista: una finestra che scorre sul mondo ───────────────────────────────
+  /** Quanti pixel della pagina è grande una cella, e dove guarda la vista (in celle, dall'angolo in alto a sinistra). */
+  let scala = 4;
+  let vistaW = 1;
+  let vistaH = 1;
+  let camX = 0;
+  let camY = 0;
+  let centrata = false;
+
+  function muoviVista(x: number, y: number): void {
+    camX = Math.max(0, Math.min(mondo.w - vistaW, x));
+    camY = Math.max(0, Math.min(mondo.h - vistaH, y));
+    p.foglio.style.transform = `translate(${-Math.round(camX * scala)}px, ${-Math.round(camY * scala)}px)`;
+  }
+
+  /** Mette la vista al centro del mondo, con la superficie a due terzi dell'altezza. */
+  function centra(): void {
+    centrata = true;
+    muoviVista((mondo.w - vistaW) / 2, mondo.h * SUPERFICIE - vistaH * 0.66);
+  }
+
   function adatta(): void {
     const r = p.cielo.getBoundingClientRect();
-    const scala = Math.min(r.width / mondo.w, r.height / mondo.h);
-    const larghezza = Math.floor(mondo.w * scala);
-    const altezza = Math.floor(mondo.h * scala);
-    p.quadro.style.width = `${larghezza}px`;
-    p.quadro.style.height = `${altezza}px`;
-    pittore.adatta(larghezza, altezza);
+    if (r.width < 2 || r.height < 2) return;
+    scala = Math.max(3, Math.round(Math.min(r.width, r.height) / IN_VISTA));
+    vistaW = Math.min(mondo.w, r.width / scala);
+    vistaH = Math.min(mondo.h, r.height / scala);
+    p.foglio.style.width = `${mondo.w * scala}px`;
+    p.foglio.style.height = `${mondo.h * scala}px`;
+    pittore.adatta(vistaW, vistaH);
+    if (centrata) muoviVista(camX, camY);
+    else centra();
   }
   new ResizeObserver(adatta).observe(p.cielo);
   adatta();
 
   // ── Tavolozza ────────────────────────────────────────────────────────────────
   const eMiscela = (id: number): boolean => id >= PRIMA_ID_MISCELA;
-  /** Si può versare col dito: i materiali del libro che lo permettono, e tutte le miscele. */
+  /** Si può mettere nel mondo col dito: i materiali e le invenzioni che lo permettono, e tutte le miscele. */
   const versabile = (id: number): boolean => (eMiscela(id) ? mondo.ricettario.has(id) : PER_ID.get(id)?.versabile === true);
   const quanteVoci = (): number => SCOPERTE.filter((s) => mondo.visti.has(s.id)).length;
   const quanteMiscele = (): number => [...mondo.visti].filter(eMiscela).length;
@@ -137,6 +163,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       segno = el('span', 'pallino');
       segno.style.backgroundImage = 'repeating-linear-gradient(45deg,#fff 0 3px,#f48 3px 6px)';
     } else if (id === MESTOLO) segno = el('span', 'pallino mestolo');
+    else if (id === MANO) segno = el('span', 'pallino mano', '✥');
     else segno = tondino(mondo, id);
     b.append(segno, el('span', 'nome', nome));
     b.addEventListener('click', () => scegli(id));
@@ -146,7 +173,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   /** Ridisegna la tavolozza; i granelli appena arrivati (`nuovi`) si fanno notare. */
   function ridisegnaTavolozza(nuovi: readonly number[] = []): void {
     p.tavolozza.innerHTML = '';
-    p.tavolozza.append(granello(GOMMA, 'Gomma'));
+    p.tavolozza.append(granello(MANO, 'Mano'), granello(GOMMA, 'Gomma'));
     if (ricordi.mestolo) {
       const b = granello(MESTOLO, 'Mestolo');
       if (nuovi.includes(MESTOLO)) b.classList.add('nuovo');
@@ -165,6 +192,8 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     scegli(scelto);
     const miscele = quanteMiscele();
     p.bLibro.textContent = `Libro ${quanteVoci()}/${SCOPERTE.length}${miscele ? ` +${miscele}` : ''}`;
+    const eraDiOra = [...ERE].reverse().find((id) => mondo.visti.has(id));
+    p.era.textContent = eraDiOra ? (PER_ID.get(eraDiOra)?.nome ?? '') : 'Prima di tutto';
   }
   ridisegnaTavolozza();
 
@@ -182,18 +211,39 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
   const dita = new Map<number, Dito>();
 
-  function cella(e: PointerEvent): { x: number; y: number } {
+  function cella(e: { clientX: number; clientY: number }): { x: number; y: number } {
     const r = p.quadro.getBoundingClientRect();
     return {
-      x: Math.floor(((e.clientX - r.left) / r.width) * mondo.w),
-      y: Math.floor(((e.clientY - r.top) / r.height) * mondo.h),
+      x: Math.floor((e.clientX - r.left) / scala + camX),
+      y: Math.floor((e.clientY - r.top) / scala + camY),
     };
   }
+
+  /** Chi sta trascinando la vista: con la Mano basta un dito, altrimenti ne servono due (o il tasto destro). */
+  const prese = new Map<number, { x: number; y: number }>();
+  let trascina: { x: number; y: number; camX: number; camY: number } | null = null;
+  const centroPrese = (): { x: number; y: number } => {
+    let x = 0;
+    let y = 0;
+    for (const q of prese.values()) {
+      x += q.x;
+      y += q.y;
+    }
+    return { x: x / prese.size, y: y / prese.size };
+  };
 
   p.quadro.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     p.quadro.setPointerCapture(e.pointerId);
     p.suggerimento.classList.add('via');
+    prese.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (scelto === MANO || e.button === 2 || prese.size >= 2) {
+      // Due dita (o la Mano) spostano la vista: quello che si stava versando si ferma.
+      dita.clear();
+      const centro = centroPrese();
+      trascina = { x: centro.x, y: centro.y, camX, camY };
+      return;
+    }
     const { x, y } = cella(e);
     if (scelto === OMINO) {
       mondo.aggiungiOmino(x, y);
@@ -203,9 +253,24 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       mondo.fulmine(Math.max(0, Math.min(mondo.w - 1, x)), 0);
       return;
     }
+    if (INGOMBRO[scelto]) {
+      mondo.posa(scelto, x, y);
+      salvaTutto();
+      return;
+    }
     dita.set(e.pointerId, { x, y, px: x, py: y, nati: new Set() });
   });
   p.quadro.addEventListener('pointermove', (e) => {
+    const presa = prese.get(e.pointerId);
+    if (presa) {
+      presa.x = e.clientX;
+      presa.y = e.clientY;
+    }
+    if (trascina) {
+      const centro = centroPrese();
+      muoviVista(trascina.camX - (centro.x - trascina.x) / scala, trascina.camY - (centro.y - trascina.y) / scala);
+      return;
+    }
     const d = dita.get(e.pointerId);
     if (!d) return;
     const { x, y } = cella(e);
@@ -214,10 +279,20 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   });
   const alza = (e: PointerEvent): void => {
     dita.delete(e.pointerId);
+    prese.delete(e.pointerId);
+    if (prese.size === 0) trascina = null;
+    else if (trascina) {
+      const centro = centroPrese();
+      trascina = { x: centro.x, y: centro.y, camX, camY };
+    }
   };
   p.quadro.addEventListener('pointerup', alza);
   p.quadro.addEventListener('pointercancel', alza);
   p.quadro.addEventListener('contextmenu', (e) => e.preventDefault());
+  p.quadro.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    muoviVista(camX + (e.shiftKey ? e.deltaY : e.deltaX) / scala, camY + (e.shiftKey ? 0 : e.deltaY) / scala);
+  }, { passive: false });
 
   let avvisatoPieno = false;
   /** Versa (o cancella, o mescola) sotto ogni dito appoggiato, seguendo il tratto: anche un gesto veloce lascia una scia continua. */
@@ -377,7 +452,8 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   function benvenuto(): void {
     const { scheda, chiudi } = messaggio('Granelli', [
       'Sotto il cielo c’è solo roccia nuda. Tu hai quattro elementi: terra, acqua, fuoco e aria.',
-      'Versali col dito e falli incontrare. Ogni cosa nuova che nasce entra nella tua tavolozza e nel Libro.',
+      'Versali col dito e falli incontrare: ogni cosa nuova entra nella tavolozza e nel Libro. Il mondo è grande: con la Mano (o con due dita) sposti la vista.',
+      'Con Unisci metti insieme due scoperte e ne nasce una terza: attrezzi, case, e via via le ere della storia.',
       'Se ti blocchi, apri il Libro: ci sono gli indizi.',
     ]);
     const b = el('button', 'tasto pieno', 'Inizia');
@@ -402,6 +478,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       pittore = nuovoPittore();
       dita.clear();
       inCoda.length = 0;
+      centrata = false;
       adatta();
       ridisegnaTavolozza();
       salvaTutto();
@@ -427,6 +504,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
 
   p.bLibro.addEventListener('click', () => libro());
+  p.bUnisci.addEventListener('click', () => apriUnisci(app, mondo));
   p.bNuovo.addEventListener('click', chiediNuovo);
   p.bPausa.addEventListener('click', pausa);
   addEventListener('keydown', (e) => {
@@ -448,7 +526,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       if (!inPausa) mondo.passo();
     }
     leggiNovita();
-    pittore.disegna(Math.min(0.05, passato / 1000));
+    pittore.disegna(Math.min(0.05, passato / 1000), camX, camY);
     requestAnimationFrame(fotogramma);
   }
   requestAnimationFrame(fotogramma);
