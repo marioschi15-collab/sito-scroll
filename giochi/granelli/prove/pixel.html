@@ -8,99 +8,155 @@
   /* Impianto: il mondo a tutta pagina, una riga di spiegazione in alto. Un solo mondo visivo, a quadretti. */
   :root { --fondo:#0e1326; --testo:#f4f1e6; --accento:#ffd54a; --ombra:#0e1326cc; color-scheme: dark; }
   html, body { margin:0; height:100%; overflow:hidden; background:var(--fondo); color:var(--testo); font:15px/1.4 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; }
-  body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
   canvas { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; touch-action:none; cursor:grab; }
-  .nota { position:absolute; left:50%; top:calc(env(safe-area-inset-top) + 12px); transform:translateX(-50%); width:max-content; max-width:calc(100% - 32px); padding:8px 14px; border-radius:999px; background:var(--ombra); border:1px solid #ffffff22; text-align:center; pointer-events:none; }
+  .nota { position:absolute; left:50%; top:calc(env(safe-area-inset-top) + 12px); transform:translateX(-50%); width:max-content; max-width:calc(100% - 32px); padding:7px 14px; border-radius:999px; background:var(--ombra); border:1px solid #ffffff22; text-align:center; pointer-events:none; }
   .nota b { color:var(--accento); }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div class="nota"><b>Trascina</b> per esplorare: a destra, a sinistra e sotto terra</div>
+<div class="nota"><b>Trascina</b> per esplorare. Il giorno passa in fretta: aspetta la notte</div>
 <script>
 const c = document.getElementById('c'), x = c.getContext('2d');
-const MW = 720, MH = 300, SUOLO = 150, MARE = 162;
-let VW = 240, VH = 135, camX = 150, camY = 40, t = 0;
-function misura() { const r = innerWidth / innerHeight; VH = r > 1 ? 150 : 250; VW = Math.round(VH * r); c.width = VW; c.height = VH; camY = Math.min(camY, MH - VH); }
-addEventListener('resize', misura); misura();
+const strato = document.createElement('canvas'), m = strato.getContext('2d');
+const copia = document.createElement('canvas'), sagoma = copia.getContext('2d');
+const MW = 900, MH = 330, SUOLO = 170, MARE = 184, GIORNO = 2400;
+let VW = 240, VH = 135, camX = 500, camY = 60, t = 0, mossa = false;
+function misura() { const r = innerWidth / innerHeight; VH = r > 1 ? 170 : 280; VW = Math.round(VH * r); c.width = strato.width = copia.width = VW; c.height = strato.height = copia.height = VH; camX = Math.min(camX, MW - VW); if (!mossa) camY = SUOLO - VH * 0.66; camY = Math.max(0, Math.min(camY, MH - VH)); }
 const caso = (a, b) => { let s = (a * 374761393 + b * 668265263) | 0; s = (s ^ (s >>> 13)) * 1274126177; return ((s ^ (s >>> 16)) >>> 0) / 4294967296; };
-// Il profilo del terreno: colline, una conca per il lago, un altopiano per il villaggio.
+const liscio = (a, b, v) => { const k = Math.max(0, Math.min(1, (v - a) / (b - a))); return k * k * (3 - 2 * k); };
+const misto = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+const rgb = (v) => `rgb(${v[0] | 0},${v[1] | 0},${v[2] | 0})`;
+
+// Il profilo del terreno: colline dolci, una conca per il lago, un pianoro per il villaggio.
 const quota = [];
 for (let i = 0; i < MW; i++) {
-  let q = SUOLO + Math.sin(i / 70) * 14 + Math.sin(i / 23 + 2) * 4;
-  if (i > 250 && i < 400) q += Math.sin(((i - 250) / 150) * Math.PI) * 34;      // conca del lago
-  if (i > 430 && i < 560) q = q * 0.25 + (SUOLO - 12) * 0.75;                   // altopiano
+  let q = SUOLO + Math.sin(i / 90) * 16 + Math.sin(i / 31 + 2) * 5 + Math.sin(i / 11) * 1.5;
+  q += Math.sin(liscio(250, 330, i) * liscio(470, 390, i) * Math.PI / 2) * 36;            // conca del lago
+  const piano = liscio(500, 540, i) * liscio(720, 680, i); q = q * (1 - piano * 0.85) + (SUOLO - 14) * piano * 0.85;
   quota.push(Math.round(q));
 }
-// ── Figure: ogni lettera è un colore ──
-const P = { k:'#2a1d1a', n:'#3b2a22', b:'#6b4426', B:'#8a5a34', g:'#2c6e3f', G:'#3f9a4f', l:'#62c063', L:'#9be07a', r:'#c2452f', R:'#e2674a', o:'#ff9a2e', y:'#ffd95a', Y:'#fff3b0', w:'#f6eedb', W:'#ffffff', s:'#8b93a0', S:'#b3bac4', d:'#5b626e', c:'#4a8fe6', C:'#8fc4ff', p:'#f2c79b', q:'#d9a273', h:'#3a2a20', e:'#e6a23c', v:'#b06ce0', m:'#3b4a7a', t:'#d9b77e', T:'#ecd592', a:'#e8504a', f:'#ff6a8a' };
-function figura(righe, X, Y, specchio) { for (let j = 0; j < righe.length; j++) { const r = righe[j]; for (let i = 0; i < r.length; i++) { const k = r[specchio ? r.length - 1 - i : i]; if (k !== '.') { x.fillStyle = P[k]; x.fillRect(X + i, Y + j, 1, 1); } } } }
-const ALBERO = ['....GGGG....','..GGlllGGG..','.GlLLllllGG.','GGlLlllalGGg','GllllllllGgg','GlalllllGGgg','GGllllGGGggg','.GGGGGGgggg.','..ggggbggg..','.....bB.....','.....bB.....','....nbB.....','.....bB.....','.....bBn....','....nbBB....'];
-const PINO = ['....g....','...gGg...','...GlG...','..gGlGg..','..GllGg..','.gGllGgg.','.GlllGgg.','gGllllGgg','gGGGGGggg','....b....','....b....','...nbn...'];
-const CAPANNA = ['.......tt.......','.....ttTTtt.....','...ttTTTTTTtt...','.ttTTtTTTTtTTtt.','tTTtTTTtTTTTtTTt','.bBBBBBBBBBBBBb.','.bBwwBBnnBBwwBb.','.bBwcBBnnBBcwBb.','.bBBBBBnhBBBBBb.','.bBBBBBnnBBBBBb.'];
-const CASA = ['..........dd....','..........dS....','....rrrrrrdSrr..','...rRRRRRRRRRRr.','..rRRrRRRRRrRRRr','.rRRRRRRrRRRRRRr','rrrrrrrrrrrrrrrr','.wwwwwwwwwwwwww.','.wCCwwwwnnwwCCw.','.wCcwwwwnnwwcCw.','.wwwwwwwnhwwwww.','.ssssssSnnSsssss'];
-const TEMPIO = ['.......SS.......','.....SSwwSS.....','...SSwwwwwwSS...','.SSwwwwwwwwwwSS.','SSSSSSSSSSSSSSSS','.sw.sw.sw.sw.sw.','.sw.sw.sw.sw.sw.','.sw.sw.sw.sw.sw.','.sw.sw.sw.sw.sw.','.sw.sw.sw.sw.sw.','.sw.sw.sw.sw.sw.','SSSSSSSSSSSSSSSS','dSSSSSSSSSSSSSSd'];
-const OMINO = [['.hhh.','.ppp.','.pkp.','vvvvv','pvvvp','.vvv.','.m.m.','.m.m.'], ['.hhh.','.ppp.','.pkp.','vvvvv','pvvvp','.vvv.','.mm..','m..m.']];
-const FUOCO = [['...y...','..yo...','..ooy..','.oyYo..','.oYYo..','nbBbBbn'], ['..y....','...oy..','..oyo..','..oYyo.','.oYYo..','nbBbBbn']];
-const CESPUGLIO = ['..GGG..','.GllaG.','GlLllGg','GGGGggg'];
-const SASSO = ['..SSS.','.SSssd','SSsssd','ssdddd'];
-const UCCELLO = [['k...k','.k.k.','..k..'], ['.....','kk.kk','..k..']];
-const NUVOLA = ['....WWWWW........','..WWWWWWWWW..WW..','.WWWWWWWWWWWWWWW.','WWWWWWWWWWWWWWWWW','.SWWWWWWWWWWWWWS.','...SSSSSSSSSSS...'];
-// Cosa c'è sulla mappa: [figura, colonna].
-const COSE = [[PINO, 30], [PINO, 46], [ALBERO, 70], [CESPUGLIO, 96], [ALBERO, 120], [SASSO, 150], [ALBERO, 180], [PINO, 206], [CESPUGLIO, 232], [SASSO, 420], [CAPANNA, 440], [CASA, 474], [CAPANNA, 508], [ALBERO, 536], [TEMPIO, 590], [PINO, 640], [ALBERO, 662], [PINO, 690]];
-const OMINI = [{ x: 455, d: 1, v: 0.12, col: 'v' }, { x: 500, d: -1, v: 0.09, col: 'c' }, { x: 610, d: 1, v: 0.07, col: 'e' }, { x: 130, d: -1, v: 0.1, col: 'a' }];
+
+// ── Figure: ogni lettera è un colore. Ognuna viene preparata una volta, con il suo contorno scuro. ──
+const P = { k:'#1b1420', n:'#3b2a22', b:'#6b4426', B:'#8f5e36', D:'#b07a48', g:'#1f5a3a', G:'#2f8048', l:'#4fae58', L:'#86d66c', M:'#c4ee8a', r:'#a8362b', R:'#d2553c', O:'#ef7d55', o:'#ff9a2e', y:'#ffd95a', Y:'#fff3b0', w:'#efe6cf', W:'#ffffff', V:'#d8ceb4', s:'#7f8794', S:'#aab1bd', d:'#555c68', c:'#3f7fd6', C:'#8fc4ff', p:'#f2c79b', q:'#cf9a6c', h:'#3a2a20', v:'#b06ce0', u:'#7a44b0', m:'#34426e', t:'#c9a55e', T:'#e8cf8a', U:'#f6e6b0', a:'#e8504a', f:'#ff7a9a', F:'#9fd0ff', e:'#e6a23c', E:'#b87a1e', i:'#4a8fe6', I:'#2f66b8', z:'#e8504a', Z:'#b03030' };
+function prepara(righe, scambi) {
+  const w = Math.max(...righe.map((r) => r.length)) + 2, h = righe.length + 2;
+  const tela = document.createElement('canvas'); tela.width = w; tela.height = h; const g = tela.getContext('2d');
+  const pieno = (i, j) => j >= 0 && j < righe.length && i >= 0 && i < righe[j].length && righe[j][i] !== '.';
+  g.fillStyle = P.k;
+  for (let j = -1; j <= righe.length; j++) for (let i = -1; i < w - 1; i++) if (!pieno(i, j) && (pieno(i - 1, j) || pieno(i + 1, j) || pieno(i, j - 1) || pieno(i, j + 1))) g.fillRect(i + 1, j + 1, 1, 1);
+  righe.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (r[i] !== '.') { g.fillStyle = P[(scambi && scambi[r[i]]) || r[i]]; g.fillRect(i + 1, j + 1, 1, 1); } });
+  return tela;
+}
+const ALBERO = prepara(['......GGGGGG......','....GGlLLLllGG....','...GlLMMLLlllGG...','..GlLMMLLLllllGG..','.GlLMLLLlllallllG.','.GlLLLllllllllgGG.','GlLLLllallllllggGG','GlLllllllllllgggGg','GllllllllllalgggGg','GGlllalllllllggGgg','.GgllllllllggggGg.','.GgggllllggggggGg.','..GGgggggggggGgg..','....GGGgbBgGGgg...','.......nbBDn......','........bBD.......','........bBD.......','........bBDn......','.......nbBD.......','........bBD.......','.......bbBDD......','......nbbBDDn.....']);
+const PINO = prepara(['.....G.....','....GlG....','....GLG....','...GlLlG...','...GLLlG...','..GlLLlgG..','..GLLllgG..','.GlLLllggG.','.GLLlllggG.','GlLLllllggG','GLLlllllggG','GGGGgggggGG','.....bB....','.....bB....','....nbBn...']);
+const CAPANNA = (notte) => prepara(['........tTt........','......ttTUTtt......','....ttTUUTTTTtt....','..ttTUUTTtTTTTTtt..','ttTUUTTtTTTTtTTTTtt','tTTTtTTTTtTTTTtTTTt','.bBDBBBBBBBBBBBDBb.','.bBDBFFBBnnBBFFDBb.','.bBDBFFBBnhBBFFDBb.','.bBDBBBBBnnBBBBDBb.','.bBDBBBBBnnBBBBDBb.'], notte && { F: 'y' });
+const CASA = (notte) => prepara(['..............dSd....','..............dSd....','.....rrrrrrrrrdSdrr..','....rROORRRRRRRRRRRr.','...rROORRrRRRRRrRRRRr','..rROORRRRRRrRRRRRRRr','.rRRRRRrRRRRRRRRrRRRr','rrrrrrrrrrrrrrrrrrrrr','.VwwwwwwwwwwwwwwwwwV.','.VwFFwwwwwnnwwwFFwwV.','.VwFFwwwwwnnwwwFFwwV.','.VwwwwwwwwnhwwwwwwwV.','.VwwwwwwwwnnwwwwwwwV.','.ssSSsssssnnsssSSsss.'], notte && { F: 'y' });
+const TEMPIO = prepara(['..........SS..........','.......SSSwWSSS.......','....SSSwwWWWWwwSSS....','.SSSwwwwwWWWWwwwwwSSS.','SSSSSSSSSSSSSSSSSSSSSS','.sSSSSSSSSSSSSSSSSSSs.','..sw..sw..sw..sw..sw..','..sW..sW..sW..sW..sW..','..sw..sw..sw..sw..sw..','..sW..sW..sW..sW..sW..','..sw..sw..sw..sw..sw..','..sW..sW..sW..sW..sW..','..sw..sw..sw..sw..sw..','.sSSSSSSSSSSSSSSSSSSs.','sSSSSSSSSSSSSSSSSSSSSs','dsssssssssssssssssssssd']);
+const CESPUGLIO = prepara(['...GGGG...','.GGlLLlGG.','GlLMLlalgG','GllLlllggG','.GGGggggG.']);
+const SASSO = prepara(['...SSSS..','..SSWSSs.','.SSSSsssd','SSSsssddd','sssdddddd']);
+const FUOCO = [0, 1, 2].map((f) => prepara([['....y....','...yo....','...ooy...','..oyYo...','..oYYyo..','.ooYYoo..','nbBDbBDbn'], ['...y.....','....oy...','...oyo...','..oyYyo..','..oYYo...','.ooYYYoo.','nbBDbBDbn'], ['.....y...','...yo....','..oyoo...','..oYYo...','.oyYYyo..','.ooYYoo..','nbBDbBDbn']][f]));
+const UCCELLO = [prepara(['k...k','.k.k.','..k..']), prepara(['.....','kk.kk','..k..'])];
+const NUVOLA = (() => { const righe = ['.......WWWWWW..........','....WWWWWWWWWWW..WWW...','..WWWWWWWWWWWWWWWWWWW..','.WWWWWWWWWWWWWWWWWWWWW.','WWWWWWWWWWWWWWWWWWWWWWW','.SWWWWWWWWWWWWWWWWWWWS.','...SSSSWWWWWWWWSSSSS...','.......SSSSSSSS........']; const tela = document.createElement('canvas'); tela.width = 23; tela.height = 8; const g = tela.getContext('2d'); righe.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (r[i] !== '.') { g.fillStyle = r[i] === 'W' ? '#ffffff' : '#c9d6ea'; g.fillRect(i, j, 1, 1); } }); return tela; })();
+// L'omino: quattro pose per camminare, in tre colori di maglia.
+const POSE = [['.hhhh.','.hpph.','.pkpk.','.pppp.','qAAAAq','pAAAAp','.AAAA.','.mm.m.','.m..m.','.n..n.'], ['.hhhh.','.hpph.','.pkpk.','.pppp.','.AAAA.','pAAAAq','.AAAA.','.mmmm.','..mm..','..nn..'], ['.hhhh.','.hpph.','.pkpk.','.pppp.','qAAAAq','pAAAAp','.AAAA.','.m.mm.','.m..m.','.n..n.'], ['.hhhh.','.hpph.','.pkpk.','.pppp.','.AAAA.','qAAAAp','.AAAA.','.mmmm.','..mm..','..nn..']];
+const MAGLIE = { A: [['v', 'u']], B: [['i', 'I']], C: [['e', 'E']], D: [['z', 'Z']] };
+const OMINO = {}; for (const k of 'ABCD') { P.A = P[MAGLIE[k][0][0]]; OMINO[k] = POSE.map((p) => prepara(p)); }
+const CAPANNE = [CAPANNA(false), CAPANNA(true)], CASE = [CASA(false), CASA(true)];
+
+// Cosa c'è sulla mappa: [figura, colonna, ondeggia?]
+const COSE = [[PINO, 30, 1], [PINO, 48, 1], [ALBERO, 80, 1], [CESPUGLIO, 112], [ALBERO, 140, 1], [SASSO, 172], [ALBERO, 205, 1], [PINO, 236, 1], [CESPUGLIO, 262], [SASSO, 498], [ALBERO, 520, 1], ['capanna', 548], ['casa', 588], ['capanna', 632], [CESPUGLIO, 664], [ALBERO, 690, 1], [TEMPIO, 760], [PINO, 808, 1], [ALBERO, 834, 1], [PINO, 866, 1]];
+const OMINI = [{ x: 575, d: 1, v: 0.11, k: 'A' }, { x: 620, d: -1, v: 0.08, k: 'B' }, { x: 775, d: 1, v: 0.07, k: 'C' }, { x: 150, d: -1, v: 0.1, k: 'D' }, { x: 660, d: 1, v: 0.09, k: 'C' }];
+const FALO = 612, fumo = [], lucciole = [];
+for (let n = 0; n < 26; n++) lucciole.push({ x: 40 + caso(n, 1) * 820, y: -6 - caso(n, 2) * 26, f: caso(n, 3) * 9 });
+const stelle = []; for (let n = 0; n < 70; n++) stelle.push([caso(n, 11), caso(n, 12) * 0.7, caso(n, 13) * 6]);
+
+// I colori del cielo e della luce lungo la giornata.
+const CIELO = { notte: [[10, 14, 40], [34, 50, 104]], giorno: [[60, 132, 222], [196, 228, 250]], rosso: [[70, 52, 120], [255, 160, 96]] };
+const LUCE = { notte: [92, 104, 170], giorno: [255, 255, 255], rosso: [255, 196, 160] };
 
 function disegna() {
   t++;
-  // cielo a fasce, con le fasce che si sfrangiano una nell'altra
-  const fasce = ['#3f7fd0', '#4f90da', '#63a2e4', '#7bb4ec', '#97c7f2', '#b8daf6', '#d9ebf8', '#f6ecd2'];
-  const alta = Math.ceil(VH / fasce.length);
-  fasce.forEach((col, i) => { x.fillStyle = col; x.fillRect(0, i * alta, VW, alta); if (i < fasce.length - 1) { x.fillStyle = fasce[i + 1]; for (let k = (i % 2); k < VW; k += 2) x.fillRect(k, (i + 1) * alta - 1, 1, 1); for (let k = 0; k < VW; k += 4) x.fillRect(k + (i % 4), (i + 1) * alta - 2, 1, 1); } });
-  // sole con alone
-  const sx = VW * 0.74 - camX * 0.03, sy = 24 - camY * 0.1;
-  x.fillStyle = '#fff3b055'; x.beginPath(); x.arc(sx, sy, 17, 0, 7); x.fill();
-  x.fillStyle = '#ffe680'; x.beginPath(); x.arc(sx, sy, 10, 0, 7); x.fill();
-  x.fillStyle = '#fff8cf'; x.beginPath(); x.arc(sx - 2, sy - 2, 5, 0, 7); x.fill();
-  // nuvole e monti lontani si muovono più piano del mondo: danno profondità
-  for (const [nx, ny, v] of [[40, 14, 0.2], [190, 30, 0.3], [330, 8, 0.2], [470, 24, 0.3]]) figura(NUVOLA, Math.round(((nx - camX * v + t * 0.02 * (v * 5)) % (VW + 60) + VW + 60) % (VW + 60)) - 30, Math.round(ny - camY * 0.2));
-  for (const [par, base, amp, col] of [[0.25, 118, 22, '#8fb0d2'], [0.45, 132, 16, '#6f9a8a']]) for (let i = 0; i < VW; i++) { const wx = i + camX * par; const h = base - camY * par - Math.sin(wx / 37) * amp * 0.5 - Math.sin(wx / 13 + 1) * amp * 0.2 - Math.abs(Math.sin(wx / 61)) * amp; x.fillStyle = col; x.fillRect(i, Math.round(h), 1, VH); }
-  figura(UCCELLO[(t >> 4) & 1], Math.round((t * 0.3) % (VW + 20)) - 10, 34 + Math.round(Math.sin(t / 40) * 4));
-  figura(UCCELLO[((t >> 4) + 1) & 1], Math.round((t * 0.3 + 14) % (VW + 20)) - 10, 40 + Math.round(Math.sin(t / 40 + 1) * 4));
-  // il terreno, colonna per colonna: erba, terra, pietra con le sue vene
-  const cx = Math.round(camX), cy = Math.round(camY);
+  const fase = ((t + GIORNO * 0.12) % GIORNO) / GIORNO, sole = Math.sin(fase * 6.283) + 0.3;
+  const giorno = liscio(-0.3, 0.3, sole), rosso = Math.pow(1 - Math.abs(giorno * 2 - 1), 1.4), buio = 1 - giorno;
+  const alto = misto(misto(CIELO.notte[0], CIELO.giorno[0], giorno), CIELO.rosso[0], rosso * 0.8);
+  const basso = misto(misto(CIELO.notte[1], CIELO.giorno[1], giorno), CIELO.rosso[1], rosso * 0.9);
+  const luce = misto(misto(LUCE.notte, LUCE.giorno, giorno), LUCE.rosso, rosso * 0.6);
+  const cx = Math.round(camX), cy = Math.round(camY), vento = Math.sin(t / 50) + Math.sin(t / 23) * 0.5;
+
+  // ── Cielo: fasce di colore che si sfrangiano una nell'altra, stelle, sole e luna ──
+  const N = 14, alta = Math.ceil(VH / N);
+  for (let i = 0; i < N; i++) { x.fillStyle = rgb(misto(alto, basso, i / (N - 1))); x.fillRect(0, i * alta, VW, alta); if (i < N - 1) { x.fillStyle = rgb(misto(alto, basso, (i + 1) / (N - 1))); for (let k = i % 2; k < VW; k += 2) x.fillRect(k, (i + 1) * alta - 1, 1, 1); for (let k = i % 4; k < VW; k += 4) x.fillRect(k, (i + 1) * alta - 2, 1, 1); } }
+  if (buio > 0.1) for (const [sx, sy, f] of stelle) { const a = buio * (0.5 + 0.5 * Math.sin(t / 20 + f)); if (a > 0.35) { x.fillStyle = `rgba(255,255,240,${a})`; x.fillRect(Math.round(sx * VW), Math.round(sy * VH * 0.8), 1, 1); } }
+  const giro = fase * 6.283, orizz = VH * 0.62 - cy * 0.15;
+  const astro = (ax, ay, r, dentro, fuori, alone) => { x.fillStyle = alone; x.beginPath(); x.arc(ax, ay, r + 7, 0, 7); x.fill(); x.fillStyle = fuori; x.beginPath(); x.arc(ax, ay, r, 0, 7); x.fill(); x.fillStyle = dentro; x.beginPath(); x.arc(ax - r * 0.25, ay - r * 0.25, r * 0.55, 0, 7); x.fill(); };
+  astro(Math.round(VW * (0.5 - 0.42 * Math.cos(giro))), Math.round(orizz - Math.sin(giro) * VH * 0.5), 9, '#fff8cf', rosso > 0.3 ? '#ffb060' : '#ffe680', 'rgba(255,240,170,0.25)');
+  if (buio > 0.05) astro(Math.round(VW * (0.5 + 0.42 * Math.cos(giro))), Math.round(orizz + Math.sin(giro) * VH * 0.5), 7, '#ffffff', '#dfe6ff', `rgba(200,215,255,${0.2 * buio})`);
+
+  // ── Tutto il resto si disegna su uno strato a parte, che poi prende la luce dell'ora ──
+  m.clearRect(0, 0, VW, VH);
+  for (const [nx, ny, v] of [[40, 16, 0.2], [210, 34, 0.3], [380, 10, 0.2], [540, 28, 0.3]]) { const L = VW + 80; m.drawImage(NUVOLA, Math.round((((nx - camX * v + t * 0.03 * v * 4) % L) + L) % L) - 40, Math.round(ny - cy * 0.2)); }
+  for (const [par, base, amp, col, cresta] of [[0.2, 150, 34, '#93b2d6', '#a9c4e2'], [0.38, 166, 24, '#6f9d92', '#84b0a0'], [0.6, 176, 14, '#4f8a66', '#62a074']]) for (let i = 0; i < VW; i++) { const wx = i + camX * par; const hh = Math.round(base - cy * par - Math.sin(wx / 43) * amp * 0.45 - Math.sin(wx / 15 + 1) * amp * 0.16 - Math.abs(Math.sin(wx / 71)) * amp); m.fillStyle = col; m.fillRect(i, hh, 1, VH); m.fillStyle = cresta; m.fillRect(i, hh, 1, 2); if (par > 0.5 && caso(Math.round(wx), 3) > 0.8) { m.fillStyle = '#3d7455'; m.fillRect(i, hh - 2 - (caso(Math.round(wx), 4) * 3 | 0), 1, 3); } }
+  if (giorno > 0.4) for (const k of [0, 1]) m.drawImage(UCCELLO[((t >> 4) + k) & 1], Math.round((t * 0.3 + k * 16) % (VW + 20)) - 10, 40 + Math.round(Math.sin(t / 40 + k) * 4) - cy * 0.3 | 0);
+
+  // il terreno, colonna per colonna
   for (let i = 0; i < VW; i++) {
-    const wx = i + cx; if (wx < 0 || wx >= MW) continue; const q = quota[wx];
+    const wx = i + cx; if (wx < 0 || wx >= MW) continue; const q = quota[wx], spiaggia = q > MARE - 2;
     for (let j = Math.max(0, q - cy); j < VH; j++) {
       const wy = j + cy, prof = wy - q, r = caso(wx, wy); let col;
-      if (prof < 1) col = q > MARE ? '#e9d49a' : r > 0.5 ? '#8fdc74' : '#74c860';
-      else if (prof < 3) col = q > MARE ? '#d9bf80' : r > 0.6 ? '#4f9d4a' : '#5cae52';
-      else if (prof < 26 + Math.sin(wx / 19) * 6) col = r > 0.93 ? '#6f4a2e' : r > 0.5 ? '#9a6a44' : '#a47249';
-      else { const vena = caso(wx >> 2, wy >> 1); col = vena > 0.965 ? '#ffd95a' : vena < 0.03 ? '#4a8fe6' : r > 0.9 ? '#5b626e' : r > 0.45 ? '#7b8490' : '#858e9a'; if (Math.sin(wx / 31) + Math.sin(wy / 17 + wx / 53) > 1.5) col = '#2b2f3c'; }
-      x.fillStyle = col; x.fillRect(i, j, 1, 1);
+      const strato2 = 24 + Math.sin(wx / 23) * 7 + Math.sin(wx / 7) * 2;
+      if (prof < 1) col = spiaggia ? '#f2dfa6' : r > 0.5 ? '#9fe07a' : '#86d66c';
+      else if (prof < 3) col = spiaggia ? '#e2c98a' : r > 0.5 ? '#4fae58' : '#5fbc5c';
+      else if (prof < 5 && !spiaggia) col = r > 0.6 ? '#3f8a4a' : '#7a5234';
+      else if (prof < strato2) col = spiaggia && prof < 9 ? (r > 0.7 ? '#d2b676' : '#dcc282') : r > 0.94 ? '#5f3f28' : r > 0.86 ? '#b8875a' : (prof + (wx >> 3)) % 9 < 2 ? '#8f6240' : '#9c6c46';
+      else { const vena = caso(wx >> 2, wy >> 1), grotta = Math.sin(wx / 37) + Math.sin(wy / 19 + wx / 61) + Math.sin((wx + wy) / 29) * 0.5;
+        if (grotta > 1.72) col = wy > MH - 40 && grotta > 1.9 ? ((wx + (t >> 3)) % 7 < 2 ? '#6fb8ff' : '#3f7fd6') : r > 0.5 ? '#2b3040' : '#252a38';
+        else if (grotta > 1.6) col = '#454c5c';
+        else col = vena > 0.985 ? ((t >> 4) + wx) % 11 === 0 ? '#fff3b0' : '#ffd95a' : vena < 0.012 ? '#5fd0e6' : (prof - strato2 < 2) ? '#5f6672' : r > 0.92 ? '#5b626e' : r > 0.5 ? '#7b8490' : '#868f9b'; }
+      m.fillStyle = col; m.fillRect(i, j, 1, 1);
     }
-    // il lago: più scuro in fondo, con riflessi che corrono in superficie
-    if (q > MARE) for (let wy = MARE; wy < q; wy++) { const j = wy - cy; if (j < 0 || j >= VH) continue; const d = wy - MARE; x.fillStyle = d === 0 ? ((wx + (t >> 3)) % 9 < 3 ? '#d6efff' : '#8fc8f7') : d < 5 ? '#4f9eea' : d < 14 ? '#3a84d8' : '#2a67b8'; x.fillRect(i, j, 1, 1); if (d > 1 && d < 12 && (wx * 7 + wy * 13 + (t >> 2)) % 97 === 0) { x.fillStyle = '#a8d8ff'; x.fillRect(i, j, 2, 1); } }
-    // fili d'erba e fiori
-    if (q <= MARE) { const j = q - cy - 1, r = caso(wx, 7); if (r > 0.6) { x.fillStyle = '#62c063'; x.fillRect(i, j, 1, 1); } if (r > 0.94) { x.fillStyle = r > 0.97 ? '#ff6a8a' : '#ffd95a'; x.fillRect(i, j - 1, 1, 1); } }
+    // il lago: fondo più scuro, e in superficie il riflesso del cielo che trema
+    if (q > MARE) for (let wy = MARE; wy < q; wy++) { const j = wy - cy; if (j < 0 || j >= VH) continue; const d = wy - MARE;
+      m.fillStyle = d === 0 ? ((wx + (t >> 3)) % 11 < 3 ? '#e2f4ff' : '#9fd2fa') : d < 4 ? '#5aa6ee' : d < 12 ? '#4089dc' : d < 24 ? '#2f6fc4' : '#2458a6'; m.fillRect(i, j, 1, 1);
+      if (d > 0 && d < 9 && (wx + Math.round(Math.sin(wy * 1.3 + t / 12) * 2)) % 6 < 2) { m.fillStyle = 'rgba(210,238,255,0.35)'; m.fillRect(i, j, 1, 1); } }
+    // fili d'erba che si piegano al vento, e fiori
+    if (!spiaggia) { const j = q - cy - 1, r = caso(wx, 7); if (r > 0.55) { m.fillStyle = r > 0.8 ? '#9fe07a' : '#62c063'; m.fillRect(i + (r > 0.8 && vento > 0.7 ? 1 : 0), j, 1, 1); if (r > 0.88) m.fillRect(i + (vento > 0.3 ? 1 : 0), j - 1, 1, 1); } if (r > 0.95) { m.fillStyle = r > 0.975 ? '#ff7a9a' : '#ffd95a'; m.fillRect(i + (vento > 0.3 ? 1 : 0), j - 2, 1, 1); } }
   }
-  // alberi, case, il tempio: ognuno con la sua ombra a terra
-  for (const [f, col] of COSE) { const w = f[0].length, X = col - cx, Y = quota[col + (w >> 1)] - cy - f.length; if (X > VW || X + w < 0) continue; x.fillStyle = '#00000030'; x.fillRect(X + 1, Y + f.length, w - 2, 1); figura(f, X, Y); }
-  // il falò, con la luce che trema
-  const fx = 492, fy = quota[fx + 3] - cy - 6;
-  x.fillStyle = `rgba(255,170,60,${0.1 + 0.05 * Math.sin(t / 5)})`; x.beginPath(); x.arc(fx - cx + 3, fy + 3, 14 + Math.sin(t / 7) * 2, 0, 7); x.fill();
-  figura(FUOCO[(t >> 3) & 1], fx - cx, fy);
-  for (let n = 0; n < 4; n++) { const e = (t * 0.5 + n * 9) % 36; x.fillStyle = e < 18 ? '#ffd95a' : '#ff9a2e'; x.fillRect(Math.round(fx - cx + 3 + Math.sin(e / 4 + n) * 3), Math.round(fy - e * 0.6), 1, 1); }
-  // gli omini camminano avanti e indietro
-  for (const o of OMINI) { o.x += o.d * o.v; if (caso(Math.round(o.x), t >> 7) > 0.995 || o.x < 20 || o.x > MW - 20 || quota[Math.round(o.x) + 3 * o.d] > MARE) o.d = -o.d; const wx = Math.round(o.x); P.v = P[o.col === 'v' ? 'v' : o.col]; const f = OMINO[(Math.round(o.x * 2) >> 1) & 1]; x.fillStyle = '#00000030'; x.fillRect(wx - cx, quota[wx + 2] - cy, 5, 1); figura(f, wx - cx, quota[wx + 2] - cy - 8, o.d < 0); P.v = '#b06ce0'; }
+  // alberi (che ondeggiano), case, tempio: ognuno con la sua ombra
+  const notte = buio > 0.55 ? 1 : 0;
+  for (const [quale, col, ondeggia] of COSE) { const f = quale === 'capanna' ? CAPANNE[notte] : quale === 'casa' ? CASE[notte] : quale; const w = f.width, h = f.height, X = col - cx, Y = quota[col + (w >> 1)] - cy - h + 2; if (X > VW || X + w < 0) continue;
+    m.fillStyle = 'rgba(0,0,0,0.2)'; m.fillRect(X + 2, Y + h - 1, w - 4, 1);
+    if (!ondeggia) m.drawImage(f, X, Y); else for (let riga = 0; riga < h; riga++) m.drawImage(f, 0, riga, w, 1, X + Math.round(vento * 1.4 * Math.pow(1 - riga / h, 2) + Math.sin(t / 9 + col + riga / 3) * 0.3 * (1 - riga / h)), Y + riga, w, 1); }
+  // fumo dal camino della casa
+  if (t % 14 === 0) fumo.push({ x: 588 + 16, y: quota[598] - 16, e: 0 });
+  for (let n = fumo.length - 1; n >= 0; n--) { const f = fumo[n]; f.e++; f.y -= 0.18; f.x += vento * 0.08 + 0.03; if (f.e > 150) { fumo.splice(n, 1); continue; } const r = 1 + f.e / 50; m.fillStyle = `rgba(226,228,236,${0.5 * (1 - f.e / 150)})`; m.fillRect(Math.round(f.x - cx - r / 2), Math.round(f.y - cy - r / 2), Math.ceil(r), Math.ceil(r)); }
+  // falò e omini
+  const fy = quota[FALO + 4] - cy - 7;
+  m.drawImage(FUOCO[(t >> 3) % 3], FALO - cx, fy);
+  for (const o of OMINI) { o.x += o.d * o.v; if (caso(Math.round(o.x), t >> 7) > 0.994 || o.x < 20 || o.x > MW - 20 || quota[Math.round(o.x) + 6 * o.d] > MARE - 2) o.d = -o.d; const wx = Math.round(o.x), f = OMINO[o.k][(Math.floor(o.x * 1.2)) & 3]; const X = wx - cx, Y = quota[wx + 3] - cy - 10; m.fillStyle = 'rgba(0,0,0,0.2)'; m.fillRect(X + 1, Y + 11, 6, 1); if (o.d < 0) { m.save(); m.translate(X + 8, Y); m.scale(-1, 1); m.drawImage(f, 0, 0); m.restore(); } else m.drawImage(f, X, Y); }
+
+  // ── La luce dell'ora cade su tutto lo strato; poi si accendono fuoco, finestre e lucciole ──
+  sagoma.clearRect(0, 0, VW, VH); sagoma.drawImage(strato, 0, 0);
+  m.fillStyle = rgb(luce); m.globalCompositeOperation = 'multiply'; m.fillRect(0, 0, VW, VH);
+  m.globalCompositeOperation = 'destination-in'; m.drawImage(copia, 0, 0); m.globalCompositeOperation = 'source-over';
+  x.drawImage(strato, 0, 0);
+  x.globalCompositeOperation = 'lighter';
+  const alone = (ax, ay, r, col) => { const g = x.createRadialGradient(ax, ay, 1, ax, ay, r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(ax - r, ay - r, r * 2, r * 2); };
+  alone(FALO - cx + 5, fy + 4, 26 + Math.sin(t / 6) * 3, `rgba(255,150,50,${0.25 + buio * 0.45})`);
+  if (notte) { for (const [col, dy] of [[548, 9], [632, 9], [588, 11]]) { const Y = quota[col + 10] - cy - dy; alone(col - cx + 6, Y + 5, 10, 'rgba(255,205,90,0.5)'); alone(col - cx + 15, Y + 5, 10, 'rgba(255,205,90,0.5)'); }
+    for (const l of lucciole) { const wx = l.x + Math.sin(t / 60 + l.f) * 8, acceso = Math.max(0, Math.sin(t / 25 + l.f * 3)); if (acceso < 0.2) continue; const X = Math.round(wx - cx), Y = Math.round(quota[Math.max(0, Math.min(MW - 1, Math.round(wx)))] + l.y + Math.cos(t / 45 + l.f) * 4 - cy); x.fillStyle = `rgba(210,255,130,${acceso})`; x.fillRect(X, Y, 1, 1); alone(X, Y, 4, `rgba(190,255,110,${0.3 * acceso})`); } }
+  for (let n = 0; n < 5; n++) { const e = (t * 0.5 + n * 8) % 40; x.fillStyle = e < 20 ? '#ffd95a' : '#ff9a2e'; x.fillRect(Math.round(FALO - cx + 4 + Math.sin(e / 4 + n) * 3 + vento * e * 0.05), Math.round(fy - e * 0.55), 1, 1); }
+  x.globalCompositeOperation = 'source-over';
   requestAnimationFrame(disegna);
 }
-requestAnimationFrame(disegna);
+addEventListener('resize', misura); misura(); requestAnimationFrame(disegna);
 // Trascinare sposta la vista, in orizzontale e in verticale.
 let presa = null;
-c.addEventListener('pointerdown', (e) => { c.setPointerCapture(e.pointerId); presa = { x: e.clientX, y: e.clientY, cx: camX, cy: camY }; c.style.cursor = 'grabbing'; });
+c.addEventListener('pointerdown', (e) => { mossa = true; c.setPointerCapture(e.pointerId); presa = { x: e.clientX, y: e.clientY, cx: camX, cy: camY }; c.style.cursor = 'grabbing'; });
 c.addEventListener('pointermove', (e) => { if (!presa) return; const s = VW / c.clientWidth; camX = Math.max(0, Math.min(MW - VW, presa.cx - (e.clientX - presa.x) * s)); camY = Math.max(0, Math.min(MH - VH, presa.cy - (e.clientY - presa.y) * s)); });
 const lascia = () => { presa = null; c.style.cursor = 'grab'; };
 c.addEventListener('pointerup', lascia); c.addEventListener('pointercancel', lascia);
+window.salta = (n) => { t = n; };
 </script>
 </body>
 </html>
