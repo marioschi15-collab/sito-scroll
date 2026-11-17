@@ -10,7 +10,7 @@ const TELEFONO = { width: 390, height: 780 };
 const COMPUTER = { width: 1280, height: 720 };
 
 /** I numeri dei materiali e delle cose che servono alle prove (gli stessi di src/motore/materiali.ts e cose.ts). */
-const M = { VUOTO: 0, TERRA: 1, ACQUA: 2, FUOCO: 3, ARIA: 4, VAPORE: 5, FANGO: 6, SABBIA: 7, LAVA: 8, PIETRA: 9, NUVOLA: 10, PIANTA: 15, LEGNO: 16 };
+const M = { VUOTO: 0, TERRA: 1, ACQUA: 2, FUOCO: 3, ARIA: 4, VAPORE: 5, FANGO: 6, SABBIA: 7, LAVA: 8, PIETRA: 9, NUVOLA: 10, PIANTA: 15, LEGNO: 16, ROCCIA: 24 };
 const C = { FALO: 201, CAPANNA: 202, CAMPO: 206, POZZO: 208, CASA: 209, FORNACE: 210, CARRO: 213, BARCA: 214, MURA: 216, TORRE: 217, TEMPIO: 218, MULINO: 221, CASTELLO: 222, MERCATO: 224, PONTE: 228, FARO: 229 };
 
 /**

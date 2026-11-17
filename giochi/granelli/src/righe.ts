@@ -1,4 +1,6 @@
+import type { Annuncio } from './motore/mondo.js';
 import type { Causa } from './motore/omini.js';
+import type { PercheNo } from './motore/porta.js';
 import { COSE_MAX, type Divieto } from './motore/posa.js';
 
 /**
@@ -16,6 +18,19 @@ export const NON_SI_POSA: Record<Divieto, string> = {
   bagnato: 'Qui si affonda: serve la terra ferma.',
   asciutto: 'Barca e Ponte si posano solo sull’acqua.',
   stretto: 'Qui non c’è abbastanza spazio.',
+};
+
+/** Perché una cosa portata nel mondo non si è messa lì: i divieti della posa, e quelli di chi versa o fa nascere. */
+export const NON_QUI: Record<PercheNo, string> = {
+  ...NON_SI_POSA,
+  soloSopra: 'Portala sopra un’altra cosa.',
+  pieno: 'Qui non c’è più posto: prova un po’ più in là.',
+  troppi: 'Gli omini sono già tanti: per ora non ne arrivano altri.',
+};
+
+/** Gli avvisi del mondo, detti una volta sola. */
+export const ANNUNCIO: Record<Annuncio, string> = {
+  miscele: 'Da adesso anche le cose senza una ricetta si mescolano.',
 };
 
 /** Di che cosa è morto un omino, e che cosa si può fare perché non succeda ancora. La vecchiaia non si annuncia. */

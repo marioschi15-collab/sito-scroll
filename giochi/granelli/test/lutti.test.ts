@@ -3,7 +3,7 @@ import { C } from '../src/motore/cose.js';
 import { M } from '../src/motore/materiali.js';
 import type { Mondo } from '../src/motore/mondo.js';
 import type { Causa, Fatto } from '../src/motore/omini.js';
-import { LUTTO, NON_SI_POSA, PAUSA_LUTTI, annuncioDiLutto } from '../src/righe.js';
+import { ANNUNCIO, LUTTO, NON_QUI, NON_SI_POSA, PAUSA_LUTTI, annuncioDiLutto } from '../src/righe.js';
 import { gira, mondo, riempi } from './aiuti.js';
 
 /** Un piano di roccia con un omino solo, alla colonna 30. */
@@ -115,8 +115,9 @@ describe('le righe che la pagina dice a chi gioca', () => {
   });
 
   it('ogni causa e ogni rifiuto ha la sua frase: breve, in italiano semplice, senza gergo', () => {
-    const frasi = [...CAUSE.map((c) => LUTTO[c]), ...Object.values(NON_SI_POSA)].filter((f) => f !== '');
-    expect(frasi.length).toBe(CAUSE.length - 1 + Object.keys(NON_SI_POSA).length - 1);
+    const altre = [...Object.values(NON_QUI), ...Object.values(ANNUNCIO)].filter((f) => !Object.values(NON_SI_POSA).includes(f));
+    const frasi = [...CAUSE.map((c) => LUTTO[c]), ...Object.values(NON_SI_POSA), ...altre].filter((f) => f !== '');
+    expect(frasi.length).toBe(CAUSE.length - 1 + Object.keys(NON_SI_POSA).length - 1 + altre.length);
     expect(new Set(frasi).size).toBe(frasi.length);
     for (const frase of frasi) {
       expect(frase.length).toBeLessThanOrEqual(90);
@@ -125,5 +126,9 @@ describe('le righe che la pagina dice a chi gioca', () => {
     }
     expect(NON_SI_POSA.pende).toBe('Qui pende troppo: cerca un punto più piano.');
     expect(NON_SI_POSA.troppe).toContain('120');
+    // Portando una cosa dove non sta, la riga è quella della posa; un utensile va portato sopra qualcosa.
+    expect(NON_QUI.pende).toBe(NON_SI_POSA.pende);
+    expect(NON_QUI.soloSopra).toBe('Portala sopra un’altra cosa.');
+    expect(ANNUNCIO.miscele).toBe('Da adesso anche le cose senza una ricetta si mescolano.');
   });
 });

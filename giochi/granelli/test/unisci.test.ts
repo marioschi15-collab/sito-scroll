@@ -7,7 +7,7 @@ import type { Mondo } from '../src/motore/mondo.js';
 import { ACCENDI, COPPIE } from '../src/motore/ricette.js';
 import { fotografa, ripristina } from '../src/salvataggio.js';
 import { INIZIALI, SCOPERTE, meritaIlMestolo, vociTrovate } from '../src/scoperte.js';
-import { gira, mondo, quanti, riempi } from './aiuti.js';
+import { gira, libroDa12, mondo, quanti, riempi } from './aiuti.js';
 
 describe('unire due scoperte', () => {
   it('pietra e legno fanno l’utensile, e con lui comincia l’età della pietra', () => {
@@ -18,8 +18,12 @@ describe('unire due scoperte', () => {
     expect(m.visti.has(C.UTENSILE)).toBe(true);
     expect(m.visti.has(E.PIETRA)).toBe(true);
     expect(m.novita.map((n) => n.id)).toEqual([C.UTENSILE, E.PIETRA]);
-    // due materiali senza un'unione scritta danno la loro miscela; un'invenzione con qualcosa a caso, niente
+    // due materiali senza un'unione scritta danno la loro miscela, ma solo da quando il Libro ha dodici voci;
+    // un'invenzione con qualcosa a caso, niente
     m.visti.add(M.SABBIA);
+    expect(m.unisci(M.SABBIA, M.LEGNO)).toBe(-1);
+    expect(m.giaProvata(M.SABBIA, M.LEGNO)).toBe(false);
+    libroDa12(m);
     expect(m.unisci(M.SABBIA, M.LEGNO)).toBe(idMiscela(M.SABBIA, M.LEGNO));
     expect(m.unisci(C.UTENSILE, M.SABBIA)).toBe(-1);
     expect(m.unisci(M.PIETRA, M.PIETRA)).toBe(-1);
@@ -262,12 +266,16 @@ describe('Unisci conosce le reazioni del mondo', () => {
     expect(quanti(m, M.PIANTA) + quanti(m, M.LEGNO)).toBeGreaterThan(subito);
   });
 
-  it('il Mestolo si guadagna con le voci del Libro: le miscele nate in Unisci non contano', () => {
+  it('il Mestolo si guadagna con le voci del Libro: le miscele non contano', () => {
     const m = mondo();
     m.visti.add(M.SABBIA);
     for (const altra of [M.ACQUA, M.FUOCO, M.FANGO]) {
       m.visti.add(altra);
-      expect(m.unisci(M.SABBIA, altra)).toBeGreaterThanOrEqual(PRIMA_ID_MISCELA);
+      // Prima della dodicesima voce Unisci non mescola: le miscele le fa il Mestolo.
+      expect(m.unisci(M.SABBIA, altra)).toBe(-1);
+      const miscela = m.registra(M.SABBIA, altra);
+      expect(miscela).toBeGreaterThanOrEqual(PRIMA_ID_MISCELA);
+      m.scopri(miscela, 0, 0);
     }
     // quattro elementi, sabbia, fango e tre miscele: nove scoperte, ma solo due voci nuove del Libro
     expect(m.visti.size).toBe(9);

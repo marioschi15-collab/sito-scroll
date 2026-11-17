@@ -1,6 +1,7 @@
 import { SCOPERTE } from '../scoperte.js';
 import { chiaveCoppia, unione } from './cose.js';
-import { N_BASE, OMINO, VILLAGGIO } from './materiali.js';
+import { BASE, N_BASE, OMINO, PRIMA_ID_MISCELA, VILLAGGIO } from './materiali.js';
+import { idMiscela } from './miscele.js';
 import { COPPIE, DEL_MESTOLO, RESTA } from './ricette.js';
 
 /** Quello che `Mondo.unisci` risponde quando la coppia è la via di un fenomeno: succede solo nel mondo. */
@@ -61,6 +62,52 @@ export function coppiaDAutore(a: number, b: number): boolean {
   if (unione(a, b) >= 0) return true;
   const chiave = chiaveCoppia(a, b);
   return MATERIA.has(chiave) || FENOMENO.has(chiave) || (a < 256 && b < 256 && REAZIONI.has(a * 256 + b));
+}
+
+/**
+ * Da quante voci del Libro trovate (i quattro elementi compresi) due sostanze senza un esito scritto si mescolano.
+ * Prima, la coppia non dà niente «per ora»: i primi minuti sono per le cose che il Libro racconta, non per le miscele.
+ */
+export const SOGLIA_MISCELE = 12;
+
+/** Che cosa dà una coppia, deciso una volta sola per Unisci, per la tavolozza e per il mondo. */
+export type Esito =
+  /** Un'unione scritta a mano (invenzioni, e quello che verrà): `id` è ciò che nasce. */
+  | { genere: 'unione'; id: number }
+  /** Una reazione del mondo tra due materiali (terra e acqua: fango). */
+  | { genere: 'materia'; id: number }
+  /** La via di un fenomeno: non si regala, va visto nel mondo. `id` è il fenomeno. */
+  | { genere: 'fenomeno'; id: number }
+  /** Due sostanze senza esito scritto: la loro miscela, con il suo numero (non ancora registrata). */
+  | { genere: 'miscela'; id: number }
+  /** Niente. `perOra` se sarebbe una miscela ma il Libro è ancora troppo vuoto: quella coppia non va ricordata. */
+  | { genere: 'niente'; id: -1; perOra?: true };
+
+const NIENTE: Esito = { genere: 'niente', id: -1 };
+const PER_ORA: Esito = { genere: 'niente', id: -1, perOra: true };
+
+/** Vero per ciò che ha un carattere di sostanza e si può fondere: i materiali scritti a mano (non roccia e brace) e le miscele. */
+function sostanza(id: number): boolean {
+  return id >= PRIMA_ID_MISCELA || (id > 0 && id < N_BASE && BASE[id] !== null);
+}
+
+/**
+ * L'esito di una coppia, sempre nello stesso ordine: unione scritta a mano, reazione del mondo, via di un fenomeno,
+ * miscela (solo da quando il Libro ha `SOGLIA_MISCELE` voci), niente. `voci` è quante voci del Libro sono trovate.
+ * Non tocca niente: non registra miscele, non scopre, non guarda cosa è già visto. Si può chiamare mentre il dito
+ * si muove sopra le cose, quante volte si vuole; registrano e scoprono solo `Mondo.unisci` e `Mondo.porta`.
+ */
+export function esitoDi(a: number, b: number, voci: number): Esito {
+  if (a === b) return NIENTE;
+  const invenzione = unione(a, b);
+  if (invenzione >= 0) return { genere: 'unione', id: invenzione };
+  const materia = esitoNoto(a, b);
+  if (materia >= 0) return { genere: 'materia', id: materia };
+  const fenomeno = fenomenoDi(a, b);
+  if (fenomeno >= 0) return { genere: 'fenomeno', id: fenomeno };
+  if (!sostanza(a) || !sostanza(b) || coppiaDAutore(a, b)) return NIENTE;
+  if (voci < SOGLIA_MISCELE) return PER_ORA;
+  return { genere: 'miscela', id: idMiscela(a, b) };
 }
 
 const INVENZIONI = new Set(SCOPERTE.filter((s) => s.sezione === 'cose').map((s) => s.id));

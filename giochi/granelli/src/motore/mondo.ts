@@ -1,6 +1,8 @@
 import { ALTEZZA } from './cammino.js';
-import { CONSEGUENZE, type Cosa, INGOMBRO, unione } from './cose.js';
-import { REAZIONI, SOLO_NEL_MONDO, coppiaDAutore, esitoNoto, fenomenoDi } from './esiti.js';
+import { PER_ID, vociTrovate } from '../scoperte.js';
+import { type Cosa, INGOMBRO, unione } from './cose.js';
+import { erePronte } from './ere.js';
+import { REAZIONI, SOGLIA_MISCELE, SOLO_NEL_MONDO, coppiaDAutore, esitoDi } from './esiti.js';
 import { fenomeni } from './fenomeni.js';
 import { Fonti } from './fonti.js';
 import {
@@ -33,6 +35,7 @@ import { SOGLIA, faMale, fondi, idMiscela, siMangia } from './miscele.js';
 import { nomeMiscela } from './nomi.js';
 import { type Fatto, type Omino, POPOLAZIONE_MAX, aggiornaOmini, nuovoOmino } from './omini.js';
 import { type Posto, assestaCose, puoPosare, sgombra, sottoUnaCosa } from './posa.js';
+import { type EsitoPorta, type Provenienza, porta } from './porta.js';
 import { ACCENDI, RESTA } from './ricette.js';
 
 /** Una scoperta appena avvenuta: cosa e dove (in celle), per far brillare il punto sullo schermo. */
@@ -41,6 +44,15 @@ export interface Novita {
   x: number;
   y: number;
 }
+
+/**
+ * Un avviso del motore per la pagina, che lo mostra una volta sola: `miscele` vuol dire che il Libro è arrivato alla
+ * dodicesima voce e da adesso due sostanze senza un esito scritto si mescolano.
+ */
+export type Annuncio = 'miscele';
+
+/** La chiave di una coppia provata, uguale nei due ordini. Un testo e non `chiaveCoppia`: le miscele hanno numeri grandi. */
+const chiaveProvata = (a: number, b: number): string => `${Math.min(a, b)}:${Math.max(a, b)}`;
 
 /** Una miscela conosciuta: i suoi due ingredienti e il nome che le è toccato. */
 export interface Ricetta {
@@ -123,6 +135,14 @@ export class Mondo {
   readonly visti = new Set<number>();
   /** Scoperte avvenute dall'ultima volta che qualcuno le ha lette. */
   novita: Novita[] = [];
+  /** Gli avvisi del motore per la pagina (vedi `Annuncio`), dall'ultima volta che qualcuno li ha letti. */
+  annunci: Annuncio[] = [];
+  /**
+   * Le coppie già provate unendo (in Unisci o portando una cosa sopra un'altra): si ricorda solo CHE sono state
+   * provate, non come è andata. L'esito si ricalcola ogni volta con `esitoDi`, così una coppia che oggi non dà
+   * niente e domani ha un'unione scritta mostra quella nuova.
+   */
+  readonly provate = new Set<string>();
   /** Le nascite e le morti degli omini (con la causa) dall'ultima volta che qualcuno le ha lette. */
   fatti: Fatto[] = [];
   /** Le esplosioni avvenute dall'ultima volta che qualcuno ha guardato (in celle). */
@@ -356,23 +376,51 @@ export class Mondo {
     if (id <= 0 || this.visti.has(id)) return;
     this.visti.add(id);
     this.novita.push({ id, x, y });
-    for (const [quando, allora] of CONSEGUENZE) if (quando === id) this.scopri(allora, x, y);
+    if (PER_ID.has(id) && vociTrovate(this.visti) === SOGLIA_MISCELE) this.annunci.push('miscele');
+    // Le ere arrivano in ordine: quella che tocca adesso scatta, e con lei, a cascata, quelle che aspettavano.
+    for (const era of erePronte(this.visti)) this.scopri(era, x, y);
+  }
+
+  /** Quante voci del Libro sono state trovate (le miscele non contano). */
+  voci(): number {
+    return vociTrovate(this.visti);
+  }
+
+  /** Segna che una coppia è stata provata unendo. */
+  ricordaProvata(a: number, b: number): void {
+    this.provate.add(chiaveProvata(a, b));
+  }
+
+  /** Vero se quella coppia (in qualsiasi ordine) è già stata provata. */
+  giaProvata(a: number, b: number): boolean {
+    return this.provate.has(chiaveProvata(a, b));
   }
 
   /**
-   * Unisce due scoperte, come nei giochi di alchimia. Nell'ordine: se la coppia è un'invenzione scritta a mano
-   * nasce quella; se nel mondo quelle due cose reagiscono, nasce ciò che nascerebbe lì (terra e acqua: fango);
-   * se la coppia è la via di un fenomeno non lo regala e risponde SOLO_NEL_MONDO; se sono due sostanze rimaste
-   * senza esito nasce la loro miscela; altrimenti niente (-1).
+   * Unisce due scoperte, come nei giochi di alchimia: l'esito lo decide `esitoDi`, lo stesso per Unisci e per il
+   * mondo. Un'invenzione o una reazione del mondo nasce e si scopre; la via di un fenomeno non lo regala e risponde
+   * SOLO_NEL_MONDO; due sostanze senza esito danno la loro miscela (solo da quando il Libro ha dodici voci);
+   * altrimenti niente (-1). Si uniscono solo cose già scoperte. La coppia provata si ricorda, tranne i fenomeni e
+   * le miscele che aspettano il Libro più pieno.
    */
   unisci(a: number, b: number): number {
     if (a === b || !this.visti.has(a) || !this.visti.has(b)) return -1;
-    let esito = unione(a, b);
-    if (esito < 0) esito = esitoNoto(a, b);
-    if (esito < 0 && fenomenoDi(a, b) >= 0) return SOLO_NEL_MONDO;
-    if (esito < 0) esito = this.registra(a, b);
-    if (esito > 0) this.scopri(esito, this.w >> 1, this.h >> 1);
-    return esito;
+    const esito = esitoDi(a, b, this.voci());
+    if (esito.genere === 'fenomeno') return SOLO_NEL_MONDO;
+    if (esito.genere === 'niente' && esito.perOra) return -1;
+    this.ricordaProvata(a, b);
+    const nato = esito.genere === 'miscela' ? this.registra(a, b) : esito.id;
+    if (nato > 0) this.scopri(nato, this.w >> 1, this.h >> 1);
+    return nato;
+  }
+
+  /**
+   * Porta la scoperta `id` sopra il punto (x, y) del mondo, da un gettone o da una cosa del mondo tenuta con la Mano:
+   * la mette lì, oppure la unisce con quello che c'è, con le stesse regole di Unisci (vedi porta.ts). Il punto può
+   * arrivare con la virgola (dal dito, in pixel divisi per la scala): conta la cella che lo contiene.
+   */
+  porta(id: number, x: number, y: number, da: Provenienza): EsitoPorta {
+    return porta(this, id, Math.floor(x), Math.floor(y), da);
   }
 
   /** La cella più alta di una colonna su cui qualcosa può appoggiarsi (il primo punto che non è vuoto né gas). */
@@ -1351,13 +1399,17 @@ export class Mondo {
     }
   }
 
-  private trasforma(i: number, esito: number, nati: Set<number>): void {
+  /**
+   * Cambia una cella come dice una reazione del mondo: resta com'è, prende fuoco, o diventa un'altra cosa (la pianta
+   * nasce come germoglio). `nati` è la raccolta del Mestolo per il gesto in corso.
+   */
+  trasforma(i: number, esito: number, nati?: Set<number>): void {
     if (esito === RESTA) return;
     if (esito === ACCENDI) {
       this.accendi(i);
       return;
     }
-    nati.add(esito);
+    nati?.add(esito);
     // Una pianta fatta nascere dal Mestolo è un germoglio che poi cresce da sé, non una foglia ferma a mezz'aria.
     if (esito === M.PIANTA) this.germoglia(i, true);
     else this.metti(i, esito);

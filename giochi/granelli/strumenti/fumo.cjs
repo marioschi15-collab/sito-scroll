@@ -217,6 +217,56 @@ const PASSI = [
     },
   },
   {
+    nome: 'portare l’acqua sulla terra (window.granelli().porta) fa nascere il fango proprio lì',
+    fai: async (s) => {
+      // Prima una manciata di terra portata sulla roccia nuda più vicina al mezzo del mondo, lontano dalle capanne
+      // e dagli omini (portata su di loro la terra cercherebbe di unirsi): si mette lì e si posa.
+      const messa = await s.page.evaluate(([terra, roccia]) => {
+        const m = window.granelli();
+        // Roccia nuda in tutte le colonne lì intorno, senza niente sopra (acqua, piante, terra) a meno di tre celle.
+        const nuda = (x) => {
+          for (let k = -5; k <= 5; k++) if (m.leggi(x + k, m.suolo(x + k)) !== roccia || m.leggi(x + k, m.suolo(x + k) - 1) !== 0) return false;
+          return true;
+        };
+        const libera = (x) => m.cose.every((c) => x < c.x - 12 || x > c.x + 24) && m.omini.every((o) => Math.abs(o.x - x) > 10);
+        for (let d = 0; d < m.w >> 1; d++) {
+          for (const x of [(m.w >> 1) - d, (m.w >> 1) + d]) {
+            if (nuda(x) && libera(x)) {
+              return m.porta(terra, x, m.suolo(x) - 1, 'gettone');
+            }
+          }
+        }
+        return null;
+      }, [M.TERRA, M.ROCCIA]);
+      pretendi(messa.genere === 'messa', `la terra portata sulla roccia non si è messa lì: ${JSON.stringify(messa)}`);
+      await s.page.waitForTimeout(800);
+      const r = await s.page.evaluate(([terra, acqua, fango]) => {
+        const m = window.granelli();
+        // Il fango intorno a un punto, entro cinque celle: deve crescere proprio dove si è portata l'acqua.
+        const fangoVicino = (x, y) => {
+          let n = 0;
+          for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) if (m.leggi(x + dx, y + dy) === fango) n++;
+          return n;
+        };
+        // La cella di terra con il cielo libero sopra più vicina al mezzo: lì si porta il gettone dell'acqua.
+        for (let d = 0; d < 40; d++) {
+          for (const x of [(m.w >> 1) - d, (m.w >> 1) + d]) {
+            const y = m.suolo(x);
+            if (m.leggi(x, y) !== terra) continue;
+            const prima = fangoVicino(x, y);
+            const esito = m.porta(acqua, x, y, 'gettone');
+            return { esito, prima, dopo: fangoVicino(x, y), provata: m.giaProvata(terra, acqua) };
+          }
+        }
+        return null;
+      }, [M.TERRA, M.ACQUA, M.FANGO]);
+      pretendi(r, 'nel mondo non c’è una cella di terra scoperta su cui portare l’acqua');
+      pretendi(r.esito.genere === 'unione' && r.esito.nato === M.FANGO, `portando l’acqua sulla terra è successo ${JSON.stringify(r.esito)}`);
+      pretendi(r.dopo > r.prima, `il fango lì intorno non è cresciuto: prima ${r.prima} celle, dopo ${r.dopo}`);
+      pretendi(r.provata, 'la coppia terra e acqua non risulta provata');
+    },
+  },
+  {
     nome: 'la pagina non ha scritto errori',
     fai: async (s) => {
       pretendi(s.errori.length === 0, s.errori.join('\n'));

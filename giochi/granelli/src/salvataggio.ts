@@ -28,6 +28,8 @@ export interface Salvato {
   vento?: number;
   pioggia?: number;
   arcobaleno?: number;
+  /** Le coppie già provate unendo (solo che sono state provate: l'esito si ricalcola). Le partite di prima non le hanno. */
+  provate?: [number, number][];
   /** L'istante prima del quale gli omini non (ri)compaiono. */
   prossimoArrivo?: number;
   /** Quello che la pagina vuole ricordare insieme alla partita (per esempio gli ultimi materiali usati). */
@@ -73,6 +75,7 @@ export function fotografa(m: Mondo, extra?: unknown): Salvato {
     pioggia: m.pioggia,
     arcobaleno: m.arcobaleno,
     prossimoArrivo: m.prossimoArrivo,
+    provate: [...m.provate].map((k) => k.split(':').map(Number) as [number, number]),
     extra,
   };
 }
@@ -149,6 +152,11 @@ export function ripristina(dati: unknown): Mondo | null {
     if (numeroBuono(d.pioggia)) m.pioggia = d.pioggia;
     if (numeroBuono(d.arcobaleno)) m.arcobaleno = Math.min(1, d.arcobaleno);
     if (numeroBuono(d.prossimoArrivo)) m.prossimoArrivo = Math.floor(d.prossimoArrivo);
+    if (Array.isArray(d.provate)) {
+      for (const p of d.provate as unknown[]) {
+        if (Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1])) m.ricordaProvata(p[0], p[1]);
+      }
+    }
     return m;
   } catch {
     return null;

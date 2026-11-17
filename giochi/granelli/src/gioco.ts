@@ -6,7 +6,7 @@ import { Mondo } from './motore/mondo.js';
 import { SUPERFICIE, terreno } from './motore/terreno.js';
 import { apriUnisci } from './unisci.js';
 import { costruisciPagina, el } from './pagina.js';
-import { NON_SI_POSA, annuncioDiLutto } from './righe.js';
+import { ANNUNCIO, NON_SI_POSA, annuncioDiLutto } from './righe.js';
 import { carica, extraDi, fotografa, ripristina, salva } from './salvataggio.js';
 import { INIZIALI, PER_ID, SCOPERTE, meritaIlMestolo, vociTrovate } from './scoperte.js';
 
@@ -393,6 +393,8 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       }
     }
     mondo.fatti.length = 0;
+    for (const a of mondo.annunci) diRiga(ANNUNCIO[a]);
+    mondo.annunci.length = 0;
     for (const b of mondo.botti) pittore.botto(b.x, b.y, b.r);
     if (mondo.botti.length > 0) lampo();
     mondo.botti.length = 0;

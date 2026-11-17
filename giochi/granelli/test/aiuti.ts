@@ -1,4 +1,4 @@
-import { M, N_BASE, type Sostanza, TRONCO } from '../src/motore/materiali.js';
+import { ALBA, ARCOBALENO, FIORE, FORESTA, LAGO, LUCCIOLE, M, N_BASE, NOTTE, PIOGGIA, type Sostanza, TRONCO } from '../src/motore/materiali.js';
 import { Mondo } from '../src/motore/mondo.js';
 import type { Causa } from '../src/motore/omini.js';
 import { terreno } from '../src/motore/terreno.js';
@@ -8,6 +8,17 @@ import { INIZIALI } from '../src/scoperte.js';
 export function mondo(w = 60, h = 60, seme = 7): Mondo {
   const m = new Mondo(w, h, seme);
   for (const t of INIZIALI) m.visti.add(t);
+  return m;
+}
+/**
+ * Porta il Libro a dodici voci aggiungendo fenomeni che non entrano in nessuna unione (notte, alba, lago…): da lì
+ * in poi due sostanze senza esito scritto si mescolano. Le prove che creano miscele partono da qui.
+ */
+export function libroDa12(m: Mondo = mondo()): Mondo {
+  for (const id of [NOTTE, ALBA, PIOGGIA, ARCOBALENO, LAGO, FIORE, LUCCIOLE, FORESTA]) {
+    if (m.voci() >= 12) break;
+    m.visti.add(id);
+  }
   return m;
 }
 export function riempi(m: Mondo, x0: number, y0: number, x1: number, y1: number, t: number): void {
