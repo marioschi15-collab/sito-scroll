@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Granelli, prova in pixel art</title>
+<style>
+  /* Impianto: il mondo a tutta pagina, una riga di spiegazione in alto. Un solo mondo visivo, a quadretti. */
+  :root { --fondo:#0e1326; --testo:#f4f1e6; --accento:#ffd54a; --ombra:#0e1326cc; color-scheme: dark; }
+  html, body { margin:0; height:100%; overflow:hidden; background:var(--fondo); color:var(--testo); font:15px/1.4 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; }
+  body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing:border-box; }
+  canvas { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; touch-action:none; cursor:grab; }
+  .nota { position:absolute; left:50%; top:calc(env(safe-area-inset-top) + 12px); transform:translateX(-50%); width:max-content; max-width:calc(100% - 32px); padding:8px 14px; border-radius:999px; background:var(--ombra); border:1px solid #ffffff22; text-align:center; pointer-events:none; }
+  .nota b { color:var(--accento); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="nota"><b>Trascina</b> per esplorare: a destra, a sinistra e sotto terra</div>
+<script>
+const c = document.getElementById('c'), x = c.getContext('2d');
+const MW = 720, MH = 300, SUOLO = 150, MARE = 162;
+let VW = 240, VH = 135, camX = 150, camY = 40, t = 0;
+function misura() { const r = innerWidth / innerHeight; VH = r > 1 ? 150 : 250; VW = Math.round(VH * r); c.width = VW; c.height = VH; camY = Math.min(camY, MH - VH); }
+addEventListener('resize', misura); misura();
+const caso = (a, b) => { let s = (a * 374761393 + b * 668265263) | 0; s = (s ^ (s >>> 13)) * 1274126177; return ((s ^ (s >>> 16)) >>> 0) / 4294967296; };
+// Il profilo del terreno: colline, una conca per il lago, un altopiano per il villaggio.
+const quota = [];
+for (let i = 0; i < MW; i++) {
+  let q = SUOLO + Math.sin(i / 70) * 14 + Math.sin(i / 23 + 2) * 4;
+  if (i > 250 && i < 400) q += Math.sin(((i - 250) / 150) * Math.PI) * 34;      // conca del lago
+  if (i > 430 && i < 560) q = q * 0.25 + (SUOLO - 12) * 0.75;                   // altopiano
+  quota.push(Math.round(q));
+}
+// ── Figure: ogni lettera è un colore ──
+const P = { k:'#2a1d1a', n:'#3b2a22', b:'#6b4426', B:'#8a5a34', g:'#2c6e3f', G:'#3f9a4f', l:'#62c063', L:'#9be07a', r:'#c2452f', R:'#e2674a', o:'#ff9a2e', y:'#ffd95a', Y:'#fff3b0', w:'#f6eedb', W:'#ffffff', s:'#8b93a0', S:'#b3bac4', d:'#5b626e', c:'#4a8fe6', C:'#8fc4ff', p:'#f2c79b', q:'#d9a273', h:'#3a2a20', e:'#e6a23c', v:'#b06ce0', m:'#3b4a7a', t:'#d9b77e', T:'#ecd592', a:'#e8504a', f:'#ff6a8a' };
+function figura(righe, X, Y, specchio) { for (let j = 0; j < righe.length; j++) { const r = righe[j]; for (let i = 0; i < r.length; i++) { const k = r[specchio ? r.length - 1 - i : i]; if (k !== '.') { x.fillStyle = P[k]; x.fillRect(X + i, Y + j, 1, 1); } } } }
+const ALBERO = ['....GGGG....','..GGlllGGG..','.GlLLllllGG.','GGlLlllalGGg','GllllllllGgg','GlalllllGGgg','GGllllGGGggg','.GGGGGGgggg.','..ggggbggg..','.....bB.....','.....bB.....','....nbB.....','.....bB.....','.....bBn....','....nbBB....'];
+const PINO = ['....g....','...gGg...','...GlG...','..gGlGg..','..GllGg..','.gGllGgg.','.GlllGgg.','gGllllGgg','gGGGGGggg','....b....','....b....','...nbn...'];
+const CAPANNA = ['.......tt.......','.....ttTTtt.....','...ttTTTTTTtt...','.ttTTtTTTTtTTtt.','tTTtTTTtTTTTtTTt','.bBBBBBBBBBBBBb.','.bBwwBBnnBBwwBb.','.bBwcBBnnBBcwBb.','.bBBBBBnhBBBBBb.','.bBBBBBnnBBBBBb.'];
+const CASA = ['..........dd....','..........dS....','....rrrrrrdSrr..','...rRRRRRRRRRRr.','..rRRrRRRRRrRRRr','.rRRRRRRrRRRRRRr','rrrrrrrrrrrrrrrr','.wwwwwwwwwwwwww.','.wCCwwwwnnwwCCw.','.wCcwwwwnnwwcCw.','.wwwwwwwnhwwwww.','.ssssssSnnSsssss'];
+const TEMPIO = ['.......SS.......','.....SSwwSS.....','...SSwwwwwwSS...','.SSwwwwwwwwwwSS.','SSSSSSSSSSSSSSSS','.sw.sw.sw.sw.sw.','.sw.sw.sw.sw.sw.','.sw.sw.sw.sw.sw.','.sw.sw.sw.sw.sw.','.sw.sw.sw.sw.sw.','.sw.sw.sw.sw.sw.','SSSSSSSSSSSSSSSS','dSSSSSSSSSSSSSSd'];
+const OMINO = [['.hhh.','.ppp.','.pkp.','vvvvv','pvvvp','.vvv.','.m.m.','.m.m.'], ['.hhh.','.ppp.','.pkp.','vvvvv','pvvvp','.vvv.','.mm..','m..m.']];
+const FUOCO = [['...y...','..yo...','..ooy..','.oyYo..','.oYYo..','nbBbBbn'], ['..y....','...oy..','..oyo..','..oYyo.','.oYYo..','nbBbBbn']];
+const CESPUGLIO = ['..GGG..','.GllaG.','GlLllGg','GGGGggg'];
+const SASSO = ['..SSS.','.SSssd','SSsssd','ssdddd'];
+const UCCELLO = [['k...k','.k.k.','..k..'], ['.....','kk.kk','..k..']];
+const NUVOLA = ['....WWWWW........','..WWWWWWWWW..WW..','.WWWWWWWWWWWWWWW.','WWWWWWWWWWWWWWWWW','.SWWWWWWWWWWWWWS.','...SSSSSSSSSSS...'];
+// Cosa c'è sulla mappa: [figura, colonna].
+const COSE = [[PINO, 30], [PINO, 46], [ALBERO, 70], [CESPUGLIO, 96], [ALBERO, 120], [SASSO, 150], [ALBERO, 180], [PINO, 206], [CESPUGLIO, 232], [SASSO, 420], [CAPANNA, 440], [CASA, 474], [CAPANNA, 508], [ALBERO, 536], [TEMPIO, 590], [PINO, 640], [ALBERO, 662], [PINO, 690]];
+const OMINI = [{ x: 455, d: 1, v: 0.12, col: 'v' }, { x: 500, d: -1, v: 0.09, col: 'c' }, { x: 610, d: 1, v: 0.07, col: 'e' }, { x: 130, d: -1, v: 0.1, col: 'a' }];
+
+function disegna() {
+  t++;
+  // cielo a fasce, con le fasce che si sfrangiano una nell'altra
+  const fasce = ['#3f7fd0', '#4f90da', '#63a2e4', '#7bb4ec', '#97c7f2', '#b8daf6', '#d9ebf8', '#f6ecd2'];
+  const alta = Math.ceil(VH / fasce.length);
+  fasce.forEach((col, i) => { x.fillStyle = col; x.fillRect(0, i * alta, VW, alta); if (i < fasce.length - 1) { x.fillStyle = fasce[i + 1]; for (let k = (i % 2); k < VW; k += 2) x.fillRect(k, (i + 1) * alta - 1, 1, 1); for (let k = 0; k < VW; k += 4) x.fillRect(k + (i % 4), (i + 1) * alta - 2, 1, 1); } });
+  // sole con alone
+  const sx = VW * 0.74 - camX * 0.03, sy = 24 - camY * 0.1;
+  x.fillStyle = '#fff3b055'; x.beginPath(); x.arc(sx, sy, 17, 0, 7); x.fill();
+  x.fillStyle = '#ffe680'; x.beginPath(); x.arc(sx, sy, 10, 0, 7); x.fill();
+  x.fillStyle = '#fff8cf'; x.beginPath(); x.arc(sx - 2, sy - 2, 5, 0, 7); x.fill();
+  // nuvole e monti lontani si muovono più piano del mondo: danno profondità
+  for (const [nx, ny, v] of [[40, 14, 0.2], [190, 30, 0.3], [330, 8, 0.2], [470, 24, 0.3]]) figura(NUVOLA, Math.round(((nx - camX * v + t * 0.02 * (v * 5)) % (VW + 60) + VW + 60) % (VW + 60)) - 30, Math.round(ny - camY * 0.2));
+  for (const [par, base, amp, col] of [[0.25, 118, 22, '#8fb0d2'], [0.45, 132, 16, '#6f9a8a']]) for (let i = 0; i < VW; i++) { const wx = i + camX * par; const h = base - camY * par - Math.sin(wx / 37) * amp * 0.5 - Math.sin(wx / 13 + 1) * amp * 0.2 - Math.abs(Math.sin(wx / 61)) * amp; x.fillStyle = col; x.fillRect(i, Math.round(h), 1, VH); }
+  figura(UCCELLO[(t >> 4) & 1], Math.round((t * 0.3) % (VW + 20)) - 10, 34 + Math.round(Math.sin(t / 40) * 4));
+  figura(UCCELLO[((t >> 4) + 1) & 1], Math.round((t * 0.3 + 14) % (VW + 20)) - 10, 40 + Math.round(Math.sin(t / 40 + 1) * 4));
+  // il terreno, colonna per colonna: erba, terra, pietra con le sue vene
+  const cx = Math.round(camX), cy = Math.round(camY);
+  for (let i = 0; i < VW; i++) {
+    const wx = i + cx; if (wx < 0 || wx >= MW) continue; const q = quota[wx];
+    for (let j = Math.max(0, q - cy); j < VH; j++) {
+      const wy = j + cy, prof = wy - q, r = caso(wx, wy); let col;
+      if (prof < 1) col = q > MARE ? '#e9d49a' : r > 0.5 ? '#8fdc74' : '#74c860';
+      else if (prof < 3) col = q > MARE ? '#d9bf80' : r > 0.6 ? '#4f9d4a' : '#5cae52';
+      else if (prof < 26 + Math.sin(wx / 19) * 6) col = r > 0.93 ? '#6f4a2e' : r > 0.5 ? '#9a6a44' : '#a47249';
+      else { const vena = caso(wx >> 2, wy >> 1); col = vena > 0.965 ? '#ffd95a' : vena < 0.03 ? '#4a8fe6' : r > 0.9 ? '#5b626e' : r > 0.45 ? '#7b8490' : '#858e9a'; if (Math.sin(wx / 31) + Math.sin(wy / 17 + wx / 53) > 1.5) col = '#2b2f3c'; }
+      x.fillStyle = col; x.fillRect(i, j, 1, 1);
+    }
+    // il lago: più scuro in fondo, con riflessi che corrono in superficie
+    if (q > MARE) for (let wy = MARE; wy < q; wy++) { const j = wy - cy; if (j < 0 || j >= VH) continue; const d = wy - MARE; x.fillStyle = d === 0 ? ((wx + (t >> 3)) % 9 < 3 ? '#d6efff' : '#8fc8f7') : d < 5 ? '#4f9eea' : d < 14 ? '#3a84d8' : '#2a67b8'; x.fillRect(i, j, 1, 1); if (d > 1 && d < 12 && (wx * 7 + wy * 13 + (t >> 2)) % 97 === 0) { x.fillStyle = '#a8d8ff'; x.fillRect(i, j, 2, 1); } }
+    // fili d'erba e fiori
+    if (q <= MARE) { const j = q - cy - 1, r = caso(wx, 7); if (r > 0.6) { x.fillStyle = '#62c063'; x.fillRect(i, j, 1, 1); } if (r > 0.94) { x.fillStyle = r > 0.97 ? '#ff6a8a' : '#ffd95a'; x.fillRect(i, j - 1, 1, 1); } }
+  }
+  // alberi, case, il tempio: ognuno con la sua ombra a terra
+  for (const [f, col] of COSE) { const w = f[0].length, X = col - cx, Y = quota[col + (w >> 1)] - cy - f.length; if (X > VW || X + w < 0) continue; x.fillStyle = '#00000030'; x.fillRect(X + 1, Y + f.length, w - 2, 1); figura(f, X, Y); }
+  // il falò, con la luce che trema
+  const fx = 492, fy = quota[fx + 3] - cy - 6;
+  x.fillStyle = `rgba(255,170,60,${0.1 + 0.05 * Math.sin(t / 5)})`; x.beginPath(); x.arc(fx - cx + 3, fy + 3, 14 + Math.sin(t / 7) * 2, 0, 7); x.fill();
+  figura(FUOCO[(t >> 3) & 1], fx - cx, fy);
+  for (let n = 0; n < 4; n++) { const e = (t * 0.5 + n * 9) % 36; x.fillStyle = e < 18 ? '#ffd95a' : '#ff9a2e'; x.fillRect(Math.round(fx - cx + 3 + Math.sin(e / 4 + n) * 3), Math.round(fy - e * 0.6), 1, 1); }
+  // gli omini camminano avanti e indietro
+  for (const o of OMINI) { o.x += o.d * o.v; if (caso(Math.round(o.x), t >> 7) > 0.995 || o.x < 20 || o.x > MW - 20 || quota[Math.round(o.x) + 3 * o.d] > MARE) o.d = -o.d; const wx = Math.round(o.x); P.v = P[o.col === 'v' ? 'v' : o.col]; const f = OMINO[(Math.round(o.x * 2) >> 1) & 1]; x.fillStyle = '#00000030'; x.fillRect(wx - cx, quota[wx + 2] - cy, 5, 1); figura(f, wx - cx, quota[wx + 2] - cy - 8, o.d < 0); P.v = '#b06ce0'; }
+  requestAnimationFrame(disegna);
+}
+requestAnimationFrame(disegna);
+// Trascinare sposta la vista, in orizzontale e in verticale.
+let presa = null;
+c.addEventListener('pointerdown', (e) => { c.setPointerCapture(e.pointerId); presa = { x: e.clientX, y: e.clientY, cx: camX, cy: camY }; c.style.cursor = 'grabbing'; });
+c.addEventListener('pointermove', (e) => { if (!presa) return; const s = VW / c.clientWidth; camX = Math.max(0, Math.min(MW - VW, presa.cx - (e.clientX - presa.x) * s)); camY = Math.max(0, Math.min(MH - VH, presa.cy - (e.clientY - presa.y) * s)); });
+const lascia = () => { presa = null; c.style.cursor = 'grab'; };
+c.addEventListener('pointerup', lascia); c.addEventListener('pointercancel', lascia);
+</script>
+</body>
+</html>
