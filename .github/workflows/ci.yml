@@ -22,3 +22,23 @@ jobs:
       - run: pnpm test
       - name: Controllo anti-credenziali e regole di permesso
         run: node scripts/verifica-sicurezza.mjs
+  granelli:
+    name: Gioco Granelli (tipi, prove, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: giochi/granelli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        # la versione di pnpm viene dal package.json nella radice: è la stessa che usa il gioco
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: giochi/granelli/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
