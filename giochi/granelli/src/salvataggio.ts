@@ -22,6 +22,12 @@ export interface Salvato {
   posti?: [number, number][];
   /** Le invenzioni posate nel mondo. */
   cose?: { id: number; x: number; y: number }[];
+  /** Il tempo che fa: da che parte tira il vento, quanto ha piovuto di recente, quanto si vede l'arcobaleno. */
+  vento?: number;
+  pioggia?: number;
+  arcobaleno?: number;
+  /** L'istante prima del quale gli omini non (ri)compaiono. */
+  prossimoArrivo?: number;
   /** Quello che la pagina vuole ricordare insieme alla partita (per esempio gli ultimi materiali usati). */
   extra?: unknown;
 }
@@ -37,6 +43,11 @@ function daTesto(s: string, in_: Uint8Array): boolean {
   if (b.length !== in_.length) return false;
   for (let i = 0; i < b.length; i++) in_[i] = b.charCodeAt(i);
   return true;
+}
+
+/** Un numero vero, finito e non negativo (in un salvataggio può esserci scritto di tutto). */
+function numeroBuono(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0;
 }
 
 export function fotografa(m: Mondo, extra?: unknown): Salvato {
@@ -55,6 +66,10 @@ export function fotografa(m: Mondo, extra?: unknown): Salvato {
     ricette: [...m.ricettario].map(([id, r]) => [id, r.a, r.b, r.nome]),
     posti,
     cose: m.cose.map((c) => ({ ...c })),
+    vento: m.vento,
+    pioggia: m.pioggia,
+    arcobaleno: m.arcobaleno,
+    prossimoArrivo: m.prossimoArrivo,
     extra,
   };
 }
@@ -82,6 +97,11 @@ export function ripristina(dati: unknown): Mondo | null {
     m.omini = Array.isArray(d.omini) ? d.omini.filter((o) => m.dentro(o.x, o.y)).map((o) => ({ ...o })) : [];
     if (Array.isArray(d.cose)) m.cose = d.cose.filter((c) => INGOMBRO[c.id] && m.dentro(c.x, c.y)).map((c) => ({ id: c.id, x: c.x, y: c.y }));
     m.tic = d.tic | 0;
+    // Il tempo che fa e l'attesa degli omini: i salvataggi di prima non li hanno, e allora valgono quelli di un mondo nuovo.
+    if (d.vento === 1 || d.vento === -1) m.vento = d.vento;
+    if (numeroBuono(d.pioggia)) m.pioggia = d.pioggia;
+    if (numeroBuono(d.arcobaleno)) m.arcobaleno = Math.min(1, d.arcobaleno);
+    if (numeroBuono(d.prossimoArrivo)) m.prossimoArrivo = Math.floor(d.prossimoArrivo);
     return m;
   } catch {
     return null;

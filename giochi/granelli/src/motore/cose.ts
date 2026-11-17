@@ -85,7 +85,8 @@ export const OSPITA: Record<number, number> = { [C.CAPANNA]: 3, [C.CASA]: 5, [C.
 
 /**
  * Le unioni scritte a mano: due scoperte qualsiasi (materiali, invenzioni, perfino gli omini) e ciò che ne nasce.
- * Tutte le altre coppie di materiali danno una miscela; le altre coppie non danno niente.
+ * In Unisci vengono prima di tutto; poi le reazioni del mondo (esiti.ts), e solo le coppie di sostanze rimaste
+ * senza esito danno una miscela. Le altre coppie non danno niente.
  */
 const UNIONI: readonly (readonly [number, number, number])[] = [
   [M.PIETRA, M.LEGNO, C.UTENSILE],
@@ -122,12 +123,19 @@ const UNIONI: readonly (readonly [number, number, number])[] = [
   [OMINO, M.FUOCO, C.FALO],
 ];
 
-const chiave = (a: number, b: number): string => (a < b ? `${a}+${b}` : `${b}+${a}`);
-const TAVOLA = new Map<string, number>(UNIONI.map(([a, b, r]) => [chiave(a, b), r]));
+/**
+ * Un numero solo per una coppia di scoperte d'autore, uguale nei due ordini (un numero, non un testo: il Mestolo
+ * lo chiede per ogni cella che tocca). -1 se una delle due è una miscela: le miscele non hanno coppie scritte.
+ */
+export function chiaveCoppia(a: number, b: number): number {
+  if (a >= 65536 || b >= 65536) return -1;
+  return a < b ? a * 65536 + b : b * 65536 + a;
+}
+const TAVOLA = new Map<number, number>(UNIONI.map(([a, b, r]) => [chiaveCoppia(a, b), r]));
 
 /** Cosa nasce unendo due scoperte secondo le unioni scritte a mano; -1 se quella coppia non è prevista. */
 export function unione(a: number, b: number): number {
-  return TAVOLA.get(chiave(a, b)) ?? -1;
+  return TAVOLA.get(chiaveCoppia(a, b)) ?? -1;
 }
 
 /** Per ogni invenzione, le coppie da cui nasce (serve al libro). */

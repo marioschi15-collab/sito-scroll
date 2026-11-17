@@ -120,6 +120,7 @@ export function descriviMiscela(s: Sostanza): string {
     corrode: 'Corrode quello che tocca, finché non si consuma.',
   };
   for (const t of forti) frasi.push(racconti[t]);
-  if (s.stato !== GAS && s.peso < 0.42) frasi.push('È leggera: galleggia sull’acqua.');
+  // Galleggia solo ciò che può muoversi: un solido resta dov'è, leggero o no.
+  if ((s.stato === POLVERE || s.stato === LIQUIDO) && s.peso < 0.42) frasi.push('È leggera: galleggia sull’acqua.');
   return frasi.join(' ');
 }

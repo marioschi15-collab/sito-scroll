@@ -69,7 +69,7 @@ export const SCOPERTE: Scoperta[] = [
   evento(K.DESERTO, 'Deserto', 'terra', 'Sabbia, sabbia e ancora sabbia.', 'Quando la sabbia è tanta da coprire mezzo mondo, il mondo ha il suo deserto.', [nota('tantissima', M.SABBIA)]),
 
   // ── Acqua e cielo ──
-  voce(M.VAPORE, 'Vapore', 'cielo', 'Cosa succede se spegni un fuoco?', 'Acqua scaldata che sale. Se arriva in alto diventa nuvola; se resta chiuso torna acqua.', [con(M.ACQUA, M.FUOCO)]),
+  voce(M.VAPORE, 'Vapore', 'cielo', 'Cosa succede se spegni un fuoco?', 'Acqua scaldata dal fuoco, o asciugata dal vento, che sale. Se arriva in alto diventa nuvola; se resta chiuso torna acqua.', [con(M.ACQUA, M.FUOCO), con(M.ACQUA, M.ARIA)]),
   voce(M.NUVOLA, 'Nuvola', 'cielo', 'Il vapore sale, sale… lascialo arrivare in cielo.', 'Vapore raccolto in cielo. Il vento la porta in giro, e goccia dopo goccia si svuota.', [nota('arrivato in alto', M.VAPORE), con(M.VAPORE, M.ARIA)]),
   evento(K.PIOGGIA, 'Pioggia', 'cielo', 'Prima o poi le nuvole restituiscono tutto.', 'L’acqua che torna giù dal cielo. Bagna la terra, riempie le conche, fa crescere.', [con(M.NUVOLA)]),
   voce(M.FULMINE, 'Fulmine', 'cielo', 'Fai crescere una nuvola bella grossa. E aspetta.', 'Si scarica dalle nuvole grandi e fitte. Incendia i boschi, fonde la sabbia, cambia il carbone.', [nota('grande e fitta', M.NUVOLA)]),
@@ -162,3 +162,18 @@ const INVENZIONI: readonly Scoperta[] = [
 SCOPERTE.push(...INVENZIONI);
 
 export const PER_ID = new Map(SCOPERTE.map((s) => [s.id, s]));
+
+/** Quante voci del Libro sono già state scoperte. Le miscele non sono voci: hanno un capitolo a parte, senza fine. */
+export function vociTrovate(visti: ReadonlySet<number>): number {
+  let n = 0;
+  for (const s of SCOPERTE) if (visti.has(s.id)) n++;
+  return n;
+}
+
+/** Dopo quante scoperte del Libro, oltre ai quattro elementi, arriva il Mestolo. */
+export const PER_IL_MESTOLO = 3;
+
+/** Il Mestolo si guadagna scoprendo voci del Libro: le miscele nate in Unisci non contano. */
+export function meritaIlMestolo(visti: ReadonlySet<number>): boolean {
+  return vociTrovate(visti) >= INIZIALI.length + PER_IL_MESTOLO;
+}

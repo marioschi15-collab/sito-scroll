@@ -30,19 +30,36 @@ export function dado(seme: number): () => number {
 
 const stringi = (v: number, da = 0, a = 1): number => Math.max(da, Math.min(a, v));
 
+/**
+ * Da che valore in su un tratto del carattere conta davvero. Le stesse soglie decidono le etichette che il Libro
+ * mostra e quello che la miscela fa nel mondo (mondo.ts): un'etichetta senza effetto sarebbe una bugia.
+ * Per il calore la soglia vale nei due versi: sopra scotta, sotto il suo opposto gela.
+ */
+export const SOGLIA = { calore: 0.5, luce: 0.5, brucia: 0.55, esplode: 0.6, fertile: 0.6, vivo: 0.6, veleno: 0.55, nutre: 0.6, corrode: 0.6 } as const;
+
+/** Fa male a chi la tocca: scotta, avvelena o corrode. Gli omini le stanno alla larga, e se la toccano muoiono. */
+export function faMale(s: Sostanza): boolean {
+  return s.calore > SOGLIA.calore || s.veleno > SOGLIA.veleno || s.corrode > SOGLIA.corrode;
+}
+
+/** Un omino la può mangiare: nutre e non fa male. */
+export function siMangia(s: Sostanza): boolean {
+  return s.nutre > SOGLIA.nutre && !faMale(s);
+}
+
 /** I tratti che una sostanza mostra davvero (quelli abbastanza forti da vedersi nel mondo). */
 export function tratti(s: Sostanza): string[] {
   const t: string[] = [];
-  if (s.calore > 0.5) t.push('caldo');
-  if (s.calore < -0.5) t.push('freddo');
-  if (s.luce > 0.5) t.push('luce');
-  if (s.brucia > 0.55) t.push('brucia');
-  if (s.esplode > 0.6) t.push('esplode');
-  if (s.fertile > 0.6) t.push('fertile');
-  if (s.vivo > 0.6) t.push('vivo');
-  if (s.veleno > 0.55) t.push('veleno');
-  if (s.nutre > 0.6) t.push('nutre');
-  if (s.corrode > 0.6) t.push('corrode');
+  if (s.calore > SOGLIA.calore) t.push('caldo');
+  if (s.calore < -SOGLIA.calore) t.push('freddo');
+  if (s.luce > SOGLIA.luce) t.push('luce');
+  if (s.brucia > SOGLIA.brucia) t.push('brucia');
+  if (s.esplode > SOGLIA.esplode) t.push('esplode');
+  if (s.fertile > SOGLIA.fertile) t.push('fertile');
+  if (s.vivo > SOGLIA.vivo) t.push('vivo');
+  if (s.veleno > SOGLIA.veleno) t.push('veleno');
+  if (siMangia(s)) t.push('nutre');
+  if (s.corrode > SOGLIA.corrode) t.push('corrode');
   return t;
 }
 

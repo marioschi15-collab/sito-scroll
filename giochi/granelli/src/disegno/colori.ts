@@ -1,4 +1,4 @@
-import { GAS, LIQUIDO, M, N_TIPI, OMINO, type Sostanza, VILLAGGIO } from '../motore/materiali.js';
+import { GAS, LIQUIDO, M, N_BASE, N_TIPI, OMINO, type Sostanza, VILLAGGIO } from '../motore/materiali.js';
 import { figura, stendardo } from './figure.js';
 
 /** Quattro sfumature per materiale: la "grana" che fa sembrare la terra terra e non una macchia piatta. */
@@ -131,7 +131,8 @@ export function campione(id: number, miscela?: Sostanza | null): string {
       } else if (miscela) {
         const f = 0.86 + c * 0.28;
         punto(x, y, Math.min(255, miscela.colore[0] * f), Math.min(255, miscela.colore[1] * f), Math.min(255, miscela.colore[2] * f), miscela.stato === GAS ? 0.6 : 1);
-      } else if (id < N_TIPI) {
+      } else if (id < N_BASE) {
+        // Solo i materiali hanno una grana loro: i fenomeni (numeri da 100 in su) hanno il piccolo cielo qui sotto.
         const k = id * 4 + ((c * 4) | 0);
         const fiore = id === M.PIANTA && c > 0.9;
         const f = fiore ? FIORI[(x + y) & 3] : [TR[k], TG[k], TB[k]];

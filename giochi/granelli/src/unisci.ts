@@ -1,19 +1,25 @@
 import { nomeDi, tondino } from './libro.js';
-import { OMINO, PRIMA_ID_MISCELA, VILLAGGIO } from './motore/materiali.js';
+import { SOLO_NEL_MONDO, coppiaDEsempio, fenomenoDi, siUnisce } from './motore/esiti.js';
+import { PRIMA_ID_MISCELA } from './motore/materiali.js';
 import type { Mondo } from './motore/mondo.js';
 import { el } from './pagina.js';
-import { PER_ID } from './scoperte.js';
 
 /** Si può unire ad altro: i materiali, le miscele, le invenzioni, e anche gli omini e il villaggio. */
 function unibile(mondo: Mondo, id: number): boolean {
-  if (id === OMINO || id === VILLAGGIO) return true;
-  if (id >= PRIMA_ID_MISCELA) return mondo.ricettario.has(id);
-  return mondo.sostanzaDi(id) !== null || PER_ID.get(id)?.sezione === 'cose';
+  return id >= PRIMA_ID_MISCELA ? mondo.ricettario.has(id) : siUnisce(id);
+}
+
+/** La frase con cui Unisci si presenta: un esempio fatto con due cose che chi gioca ha davvero sullo scaffale. */
+function invito(mondo: Mondo): string {
+  const esempio = coppiaDEsempio(mondo.visti);
+  const prova = esempio ? `Per esempio ${nomeDi(mondo, esempio[0]).toLowerCase()} e ${nomeDi(mondo, esempio[1]).toLowerCase()}. ` : '';
+  return `${prova}Molte coppie danno qualcosa; alcune niente.`;
 }
 
 /**
  * Il pannello Unisci: si scelgono due scoperte e si guarda cosa ne nasce, come nei giochi di alchimia.
- * Qui nascono le invenzioni (utensile, capanna, ruota…) e, tra due materiali senza un risultato loro, le miscele.
+ * Qui nascono le invenzioni (utensile, capanna, ruota…), i materiali che nel mondo nascerebbero dall'incontro
+ * di quelle due cose (terra e acqua: fango) e, tra due sostanze rimaste senza un risultato loro, le miscele.
  */
 export function apriUnisci(app: HTMLElement, mondo: Mondo): void {
   const velo = el('div', 'velo');
@@ -84,7 +90,11 @@ export function apriUnisci(app: HTMLElement, mondo: Mondo): void {
       const nota = new Set(mondo.visti);
       const nato = mondo.unisci(a, b);
       const insieme = `${nomeDi(mondo, a)} + ${nomeDi(mondo, b)}`;
-      if (nato < 0) mostra('Niente da fare', null, `${insieme}: queste due non si uniscono.`, false);
+      if (nato === SOLO_NEL_MONDO) {
+        // La via di un fenomeno: Unisci non lo regala. Se chi gioca lo ha già visto gli si dice quale, altrimenti resta un mistero.
+        const fenomeno = fenomenoDi(a, b);
+        mostra(insieme, mondo.visti.has(fenomeno) ? fenomeno : null, 'Questo succede solo nel mondo: guarda l’indizio nel Libro.', false);
+      } else if (nato < 0) mostra('Niente da fare', null, `${insieme}: queste due non si uniscono.`, false);
       else if (nota.has(nato)) mostra('La conosci già', nato, insieme, false);
       else mostra(nato >= PRIMA_ID_MISCELA ? 'Nuova miscela!' : 'Nuova scoperta!', nato, insieme, true);
       scelte = [];
@@ -92,7 +102,7 @@ export function apriUnisci(app: HTMLElement, mondo: Mondo): void {
     ridisegna();
   }
 
-  mostra('Prova una coppia', null, 'Per esempio pietra e legno. Molte coppie danno qualcosa; alcune niente.', false);
+  mostra('Prova una coppia', null, invito(mondo), false);
   ridisegna();
   app.append(velo);
 }

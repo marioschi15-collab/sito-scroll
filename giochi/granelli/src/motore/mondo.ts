@@ -1,4 +1,5 @@
 import { CONSEGUENZE, type Cosa, INGOMBRO, unione } from './cose.js';
+import { REAZIONI, SOLO_NEL_MONDO, coppiaDAutore, esitoNoto, fenomenoDi } from './esiti.js';
 import { fenomeni } from './fenomeni.js';
 import {
   ALBERO,
@@ -25,10 +26,10 @@ import {
   type Sostanza,
   TEMPORALE,
 } from './materiali.js';
-import { fondi, idMiscela } from './miscele.js';
+import { SOGLIA, faMale, fondi, idMiscela, siMangia } from './miscele.js';
 import { nomeMiscela } from './nomi.js';
 import { ALTEZZA, type Omino, POPOLAZIONE_MAX, aggiornaOmini, nuovoOmino } from './omini.js';
-import { ACCENDI, DEL_MESTOLO, RESTA } from './ricette.js';
+import { ACCENDI, RESTA } from './ricette.js';
 
 /** Una scoperta appena avvenuta: cosa e dove (in celle), per far brillare il punto sullo schermo. */
 export interface Novita {
@@ -52,6 +53,38 @@ for (const t of [M.VUOTO, M.ROCCIA, M.VETRO, M.DIAMANTE, M.OSSIDIANA, M.BRACE]) 
 const FERMO = new Uint8Array(N_TIPI);
 for (const t of [M.VUOTO, M.ROCCIA, M.PIETRA, M.VETRO, M.MATTONE, M.OSSIDIANA, M.GHIACCIO, M.METALLO, M.DIAMANTE, M.FUNGO]) FERMO[t] = 1;
 
+/**
+ * Ciò che lascia tranquilla l'acqua che lo tocca: lei non ci reagisce e non ci può entrare (altra acqua, oppure
+ * polveri e solidi, tolti quelli che bagnati cambiano: terra, zolfo, pietra, metallo, brace).
+ */
+const QUIETA = new Uint8Array(N_TIPI);
+for (let t = 0; t < N_BASE; t++) QUIETA[t] = STATO[t] === POLVERE || STATO[t] === SOLIDO ? 1 : 0;
+for (const t of [M.TERRA, M.ZOLFO, M.PIETRA, M.METALLO, M.BRACE]) QUIETA[t] = 0;
+QUIETA[M.ACQUA] = 1;
+
+/** Il suolo su cui una cosa viva può allargarsi e una miscela fertile può far spuntare un germoglio. */
+const SUOLO = new Uint8Array(N_TIPI);
+for (const t of [M.TERRA, M.FANGO, M.HUMUS]) SUOLO[t] = 1;
+
+/**
+ * Una miscela viva si allarga a catena, e la catena è corta. Ogni cella porta un'età (nel suo `dato`): ogni volta
+ * che prova ad allargarsi invecchia di uno; se ci riesce figlia una volta sola e poi resta com'è, e la figlia nasce
+ * con l'età della madre più uno. Arrivata a questa età una cella non ci prova più: da un granello versato ne
+ * nascono al più altrettanti, e dopo qualche minuto tutto è fermo, anche se la miscela è un liquido che scorrendo
+ * troverebbe sempre posto nuovo.
+ */
+const STERILE = 8;
+
+/** Le soglie del carattere di una miscela: le stesse che decidono le etichette mostrate nel Libro (vedi miscele.ts). */
+const { calore: CALDO, veleno: VELENO, corrode: CORRODE, vivo: VIVO, fertile: FERTILE, esplode: ESPLODE, brucia: BRUCIA_BENE } = SOGLIA;
+
+/** Ciò che anche ammucchiato lascia passare l'aria: sotto le foglie, la cenere o la neve il fuoco respira ancora. */
+const ARIOSO = new Uint8Array(N_TIPI);
+for (const t of [M.VUOTO, M.PIANTA, M.CENERE, M.NEVE, M.FRUTTO, M.FUNGO, M.MUSCHIO, M.ALGA]) ARIOSO[t] = 1;
+
+/** Nel `dato` del carbone: è nato da legno sepolto. La brace del legno che gli brucia accanto non lo riaccende. */
+const NATO_SEPOLTO = 1;
+
 /** Segno che il Mestolo lascia tra le cose nate in un gesto: "in questo gesto una miscela nuova è già nata". */
 const UNA_NUOVA = -1;
 
@@ -69,11 +102,14 @@ export class Mondo {
   readonly tipo: Uint8Array;
   /** Un numero per cella: vita residua del fuoco, acqua nella nuvola, crescita della pianta… */
   readonly dato: Uint8Array;
-  /** Un numero casuale per cella, fissato alla nascita: dà la grana ai colori e la quota alle nuvole. */
+  /** Un numero casuale per cella, fissato alla nascita: dà la grana ai colori, la quota alle nuvole, e alla brace ricorda se era legno. */
   readonly tinta: Uint8Array;
   private readonly fatto: Uint8Array;
   private giro = 0;
-  private seme: number;
+  /** Il seme dei numeri casuali, in una casella da 32 bit: tenuto in un campo normale, ogni tiro di dado lascerebbe un numero da buttare. */
+  private readonly semi = new Int32Array(1);
+  /** A che quota, al più, galleggiano le nuvole (in celle dalla cima del mondo). */
+  private readonly fasciaNuvole: number;
 
   tic = 0;
   /** Direzione in cui il vento spinge le nuvole: cambia ogni tanto. */
@@ -95,6 +131,8 @@ export class Mondo {
   readonly conta = new Uint32Array(N_TIPI);
   /** Tic in cui gli omini potranno (ri)comparire. */
   prossimoArrivo = 0;
+  /** Tic prima del quale il cielo non scarica un altro fulmine: anche il temporale più grosso prende fiato. */
+  prossimoFulmine = 0;
   /** Quanto ha piovuto di recente: sale a ogni goccia, cala col tempo. */
   pioggia = 0;
   /** Quanto si vede l'arcobaleno in questo momento, da 0 a 1. */
@@ -119,6 +157,7 @@ export class Mondo {
   readonly brucia = BRUCIA.slice();
   readonly mortale = MORTALE.slice();
   readonly cibo = CIBO.slice();
+  private readonly quieta = QUIETA.slice();
   readonly peso = new Float32Array(N_TIPI);
   readonly scorre = new Float32Array(N_TIPI);
   readonly calore = new Float32Array(N_TIPI);
@@ -136,7 +175,8 @@ export class Mondo {
     this.dato = new Uint8Array(n);
     this.tinta = new Uint8Array(n);
     this.fatto = new Uint8Array(n);
-    this.seme = seme | 0 || 1;
+    this.semi[0] = seme | 0 || 1;
+    this.fasciaNuvole = Math.max(1, (h * 0.13) | 0);
     for (let t = 0; t < N_TIPI; t++) {
       const s = t < N_BASE ? BASE[t] : null;
       this.idTipo.push(t < N_BASE ? t : 0);
@@ -149,11 +189,11 @@ export class Mondo {
 
   /** Numero casuale tra 0 e 1 (ripetibile a parità di seme: serve ai test). */
   caso(): number {
-    let s = this.seme;
+    let s = this.semi[0];
     s ^= s << 13;
     s ^= s >>> 17;
     s ^= s << 5;
-    this.seme = s;
+    this.semi[0] = s;
     return (s >>> 0) / 4294967296;
   }
 
@@ -195,6 +235,8 @@ export class Mondo {
     // Sempre nello stesso ordine: terra con sabbia e sabbia con terra devono dare la stessa identica miscela.
     const a = Math.min(primo, secondo);
     const b = Math.max(primo, secondo);
+    // Una coppia che ha già un esito scritto a mano dà quello, mai una miscela: terra e acqua fanno fango e basta.
+    if (coppiaDAutore(a, b)) return -1;
     const sa = this.sostanzaDi(a);
     const sb = this.sostanzaDi(b);
     if (!sa || !sb) return -1;
@@ -250,9 +292,12 @@ export class Mondo {
     this.tipoDiId.set(id, t);
     this.sostanze[t] = s;
     this.stato[t] = s.stato;
-    this.brucia[t] = s.brucia > 0.55 ? 1 : 0;
-    this.mortale[t] = s.calore > 0.75 || s.veleno > 0.7 || s.corrode > 0.6 ? 1 : 0;
-    this.cibo[t] = s.nutre > 0.6 && s.veleno <= 0.55 && s.stato !== GAS ? 1 : 0;
+    // Fuoco, lava e fulmine "accendono" ciò che brucia e ciò che esplode: la differenza la fa `accendi`.
+    this.brucia[t] = s.brucia > BRUCIA_BENE || s.esplode > ESPLODE ? 1 : 0;
+    this.mortale[t] = faMale(s) ? 1 : 0;
+    this.cibo[t] = siMangia(s) ? 1 : 0;
+    // Una miscela liquida o gassosa può far posto all'acqua; una polvere o un solido no (e l'acqua non ci reagisce).
+    this.quieta[t] = s.stato === POLVERE || s.stato === SOLIDO ? 1 : 0;
     this.peso[t] = s.peso;
     this.scorre[t] = s.scorre;
     this.calore[t] = s.calore;
@@ -307,12 +352,16 @@ export class Mondo {
   }
 
   /**
-   * Unisce due scoperte, come nei giochi di alchimia. Se la coppia è scritta a mano nasce quell'invenzione;
-   * se sono due sostanze senza un risultato scritto nasce la loro miscela; altrimenti niente (-1).
+   * Unisce due scoperte, come nei giochi di alchimia. Nell'ordine: se la coppia è un'invenzione scritta a mano
+   * nasce quella; se nel mondo quelle due cose reagiscono, nasce ciò che nascerebbe lì (terra e acqua: fango);
+   * se la coppia è la via di un fenomeno non lo regala e risponde SOLO_NEL_MONDO; se sono due sostanze rimaste
+   * senza esito nasce la loro miscela; altrimenti niente (-1).
    */
   unisci(a: number, b: number): number {
     if (a === b || !this.visti.has(a) || !this.visti.has(b)) return -1;
     let esito = unione(a, b);
+    if (esito < 0) esito = esitoNoto(a, b);
+    if (esito < 0 && fenomenoDi(a, b) >= 0) return SOLO_NEL_MONDO;
     if (esito < 0) esito = this.registra(a, b);
     if (esito > 0) this.scopri(esito, this.w >> 1, this.h >> 1);
     return esito;
@@ -391,6 +440,17 @@ export class Mondo {
   private muoviPolvere(i: number, x: number, y: number, scorre: number, t: number): boolean {
     if (y >= this.h - 1) return false;
     const giu = i + this.w;
+    if (x > 0 && x < this.w - 1) {
+      // Sepolta: sotto di lei, e sotto ai suoi lati, c'è solo roba che non cede (polvere o solido). Non può
+      // muoversi, quindi non serve nemmeno tirare i dadi: in un mondo pieno di terra è quasi tutta così.
+      const { stato, tipo } = this;
+      const sotto = stato[tipo[giu]];
+      if (sotto === POLVERE || sotto === SOLIDO) {
+        const a = stato[tipo[giu - 1]];
+        const b = stato[tipo[giu + 1]];
+        if ((a === POLVERE || a === SOLIDO) && (b === POLVERE || b === SOLIDO)) return false;
+      }
+    }
     if (this.entraPolvere(giu, t)) {
       this.scambia(i, giu);
       return true;
@@ -495,7 +555,7 @@ export class Mondo {
   /** Dà fuoco a qualcosa che brucia: più è buon combustibile, più a lungo arde. Ciò che esplode, esplode. */
   accendi(j: number): void {
     const t = this.tipo[j];
-    if (this.esplode[t] > 0.6) {
+    if (this.esplode[t] > ESPLODE) {
       this.esplodi(j % this.w, (j / this.w) | 0, 3 + Math.round(this.esplode[t] * 3));
       return;
     }
@@ -504,6 +564,9 @@ export class Mondo {
     else if (t === M.CARBONE) durata = 180 + ((this.caso() * 70) | 0);
     else if (t >= PRIMA_MISCELA) durata = 30 + (this.sostanze[t]?.brucia ?? 0.5) * 150 * (0.6 + this.caso() * 0.4);
     this.metti(j, M.BRACE, Math.min(255, durata | 0));
+    // La brace ricorda nel bit più basso della sua tinta se era legno: solo quella, sepolta, diventa carbone.
+    if (t === M.LEGNO) this.tinta[j] |= 1;
+    else this.tinta[j] &= 254;
   }
 
   /** Un'esplosione: spazza via quello che c'è intorno (la roccia no) e lascia fuoco e fumo. */
@@ -708,15 +771,25 @@ export class Mondo {
       }
 
       case M.ACQUA: {
+        // Chiusa tra altra acqua e cose che la lasciano tranquilla (sotto e ai lati; sopra anche niente) non può
+        // muoversi e non ha niente con cui reagire: si salta subito. Un mare fermo, o il velo d'acqua di una
+        // pozzanghera sulla roccia, così non costano quasi nulla.
+        if (x > 0 && x < w - 1 && y > 0 && y < this.h - 1) {
+          const quieta = this.quieta;
+          if (quieta[tipo[i + w]] && quieta[tipo[i - 1]] && quieta[tipo[i + 1]]) {
+            const sopra = tipo[i - w];
+            if (sopra === M.VUOTO || quieta[sopra]) return;
+          }
+        }
         const j = this.vicino(i, x, y);
         if (j >= 0) {
           const v = tipo[j];
           if (v === M.FUOCO) {
+            // L'acqua che spegne un fuoco se ne va in vapore: una cella d'acqua, una di vapore. I conti tornano,
+            // e il cielo non può restituire più acqua di quanta ne ha presa.
             this.metti(j, M.VAPORE);
-            if (this.caso() < 0.5) {
-              this.svuota(i);
-              return;
-            }
+            this.svuota(i);
+            return;
           } else if (v === M.LAVA) {
             this.metti(j, M.PIETRA);
             this.metti(i, M.VAPORE);
@@ -788,8 +861,9 @@ export class Mondo {
           } else if (v === M.FANGO) {
             if (this.caso() < 0.1) this.metti(j, M.TERRA);
           } else if (v === M.PIETRA) {
-            // La lava fonde la pietra e ne tira fuori il metallo.
-            if (this.caso() < 0.008) this.metti(j, M.METALLO);
+            // La lava fonde la pietra e ne tira fuori il metallo: di rado, perché una pozza che si raffredda
+            // deve restare quasi tutta pietra.
+            if (this.caso() < 0.0003) this.metti(j, M.METALLO);
           } else if (v === M.CENERE) {
             if (this.caso() < 0.2) this.metti(j, M.ZOLFO);
           } else if (v === M.ARIA) {
@@ -824,6 +898,8 @@ export class Mondo {
           if (this.brucia[v]) {
             if (this.caso() < 0.5) this.accendi(j);
           } else if (v === M.ACQUA) {
+            // Il fuoco si spegne in vapore e l'acqua che l'ha spento non c'è più (vedi il caso dell'acqua).
+            this.svuota(j);
             this.metti(i, M.VAPORE);
             return;
           } else if (v === M.TERRA) {
@@ -844,10 +920,10 @@ export class Mondo {
 
       case M.BRACE: {
         if (dato[i] <= 1) {
-          // Ciò che brucia soffocato, senz'aria sopra, non diventa cenere: diventa carbone.
-          const sopra = y > 0 ? tipo[i - w] : M.ROCCIA;
-          const soffocato = sopra !== M.VUOTO && this.stato[sopra] !== GAS;
-          this.metti(i, soffocato && this.caso() < 0.5 ? M.CARBONE : this.caso() < 0.6 ? M.CENERE : M.FUMO);
+          // Il legno che brucia soffocato non diventa cenere: diventa carbone. Soffocato vuol dire sepolto
+          // davvero: un albero che brucia all'aperto, con tutta la sua chioma, lascia solo cenere e fumo.
+          if ((this.tinta[i] & 1) === 1 && this.sepolta(x, y)) this.metti(i, M.CARBONE, NATO_SEPOLTO);
+          else this.metti(i, this.caso() < 0.6 ? M.CENERE : M.FUMO);
           return;
         }
         dato[i]--;
@@ -855,7 +931,12 @@ export class Mondo {
           this.metti(i - w, M.FUOCO, 8 + ((this.caso() * 10) | 0));
         }
         const j = this.vicino(i, x, y);
-        if (j >= 0 && this.brucia[tipo[j]] && this.caso() < 0.08) this.accendi(j);
+        // La brace attacca il fuoco a ciò che ha accanto. Solo la brace del legno non riaccende il carbone nato
+        // lì sotto insieme a lei: altrimenti una catasta sepolta brucerebbe in tondo senza fine (legno, carbone,
+        // brace, carbone…). Una fiamma vera, o la brace di altro carbone, lo accendono come sempre.
+        if (j >= 0 && this.brucia[tipo[j]] && !(tipo[j] === M.CARBONE && dato[j] === NATO_SEPOLTO && (this.tinta[i] & 1) === 1) && this.caso() < 0.08) {
+          this.accendi(j);
+        }
         return;
       }
 
@@ -881,7 +962,14 @@ export class Mondo {
               return;
             }
           } else if (v === M.VAPORE) {
-            if (this.caso() < 0.5) this.metti(j, M.NUVOLA);
+            if (this.caso() < 0.5) this.metti(j, M.NUVOLA, 1);
+          } else if (v === M.ACQUA) {
+            // L'aria asciuga: un soffio sull'acqua ne porta via un po', come vapore.
+            if (this.caso() < 0.04) {
+              this.metti(j, M.VAPORE);
+              this.svuota(i);
+              return;
+            }
           } else if (v === M.FUOCO || v === M.BRACE) {
             // L'aria alimenta il fuoco: la fiammata corre lungo il soffio.
             this.metti(i, M.FUOCO, 14 + ((this.caso() * 14) | 0));
@@ -904,8 +992,9 @@ export class Mondo {
 
       case M.VAPORE: {
         // Arrivato in alto, il vapore si raccoglie in nuvola; se resta intrappolato, torna acqua.
+        // Una cella di vapore fa una nuvola che porta una goccia sola: tanta acqua è salita, tanta ne ricade.
         if (y < this.h * 0.16) {
-          this.metti(i, M.NUVOLA);
+          this.metti(i, M.NUVOLA, 1);
           return;
         }
         if (dato[i] <= 1) {
@@ -927,14 +1016,15 @@ export class Mondo {
         return;
 
       case M.NUVOLA: {
-        const quota = 2 + (this.tinta[i] % Math.max(1, (this.h * 0.13) | 0));
+        const quota = 2 + (this.tinta[i] % this.fasciaNuvole);
         if (y > quota) {
           if (tipo[i - w] === M.VUOTO && this.caso() < 0.5) {
             this.scambia(i, i - w);
             return;
           }
         }
-        if (this.caso() < 0.0015 && y < this.h - 1 && tipo[i + w] === M.VUOTO) {
+        // Piove dalla pancia della nuvola: chi ha altra nuvola sotto di sé non tira nemmeno il dado.
+        if (y < this.h - 1 && tipo[i + w] === M.VUOTO && this.caso() < 0.0015) {
           this.metti(i + w, M.ACQUA);
           this.pioggia++;
           this.scopri(PIOGGIA, x, y + 1);
@@ -944,7 +1034,10 @@ export class Mondo {
           }
           dato[i]--;
         }
+        // Il fulmine scocca dal cuore di una nuvola grande e fitta. Dopo ogni scarica il cielo intero prende fiato
+        // per qualche secondo: un temporale tuona e lampeggia, ma non diventa una mitragliata senza fine.
         if (
+          this.tic >= this.prossimoFulmine &&
           this.caso() < 0.00005 &&
           x > 0 &&
           x < w - 1 &&
@@ -956,6 +1049,7 @@ export class Mondo {
         ) {
           // Fulmini e pioggia insieme: è un temporale.
           if (this.pioggia > 6) this.scopri(TEMPORALE, x, y);
+          this.prossimoFulmine = this.tic + 240 + ((this.caso() * 240) | 0);
           this.fulmine(x, y + 1);
           return;
         }
@@ -1054,6 +1148,7 @@ export class Mondo {
   /**
    * Come si comporta una miscela: non ha regole scritte apposta, segue il suo carattere. Se scotta accende e fa
    * evaporare, se è gelida ghiaccia, se è viva si allarga, se corrode mangia quello che tocca, e così via.
+   * Le soglie sono quelle delle etichette del Libro: ciò che l'etichetta promette, qui succede.
    */
   private aggiornaMiscela(i: number, x: number, y: number, t: number): void {
     const { tipo, dato, w } = this;
@@ -1062,39 +1157,51 @@ export class Mondo {
     if (j >= 0) {
       const v = tipo[j];
       const calore = this.calore[t];
-      if (calore > 0.5) {
+      if (calore > CALDO) {
+        // Accende quello che tocca (non sé stessa: una miscela rovente che brucia o esplode aspetta una fiamma vera).
         if (this.brucia[v]) {
-          if (this.caso() < 0.3) this.accendi(j);
+          if (v !== t && this.caso() < 0.3) this.accendi(j);
         } else if (v === M.ACQUA) {
-          if (this.caso() < 0.2) this.metti(j, M.VAPORE);
+          if (this.caso() < 0.2) {
+            this.metti(j, M.VAPORE);
+            // Far bollire l'acqua costa: ogni tanto la miscela si spegne in uno sbuffo di fumo. Così nessuno
+            // stagno bolle per sempre, e il temporale che ne nasce prima o poi finisce.
+            if (this.caso() < 0.15) {
+              this.metti(i, M.FUMO);
+              return;
+            }
+          }
         } else if (v === M.NEVE || v === M.GHIACCIO) this.metti(j, M.ACQUA);
-      } else if (calore < -0.5) {
+      } else if (calore < -CALDO) {
         if (v === M.ACQUA) {
           if (this.caso() < 0.03) this.metti(j, M.GHIACCIO);
         } else if (v === M.FUOCO) this.svuota(j);
         else if (v === M.LAVA && this.caso() < 0.1) this.metti(j, M.PIETRA);
       }
-      if (this.veleno[t] > 0.55 && (v === M.PIANTA || v === M.ALGA || v === M.MUSCHIO || v === M.FUNGO) && this.caso() < 0.1) {
+      if (this.veleno[t] > VELENO && (v === M.PIANTA || v === M.ALGA || v === M.MUSCHIO || v === M.FUNGO) && this.caso() < 0.1) {
         this.svuota(j);
       }
-      if (this.corrode[t] > 0.6 && v !== t && !RESISTE[v] && (this.stato[v] === POLVERE || this.stato[v] === SOLIDO) && this.caso() < 0.04) {
+      if (this.corrode[t] > CORRODE && v !== t && !RESISTE[v] && (this.stato[v] === POLVERE || this.stato[v] === SOLIDO) && this.caso() < 0.04) {
         this.svuota(j);
         if (this.caso() < 0.5) {
           this.svuota(i);
           return;
         }
       }
-      if (stato !== GAS && this.vivo[t] > 0.6 && dato[i] < 12 && this.caso() < 0.004) {
+      if (stato !== GAS && this.vivo[t] > VIVO && dato[i] < STERILE && this.caso() < 0.004) {
         // Si allarga come una cosa viva: sulla terra che tocca, o sul vuoto che ha qualcosa sotto su cui posarsi.
-        if (v === M.TERRA || v === M.FANGO || v === M.HUMUS) this.metti(j, t, dato[i] + 1);
-        else if (v === M.VUOTO && j + w < tipo.length && tipo[j + w] !== M.VUOTO && this.stato[tipo[j + w]] !== GAS) {
+        // Chi ha figliato non figlia più, e chi ci prova a vuoto invecchia (vedi STERILE): la catena si ferma da sola.
+        if (SUOLO[v] || (v === M.VUOTO && j + w < tipo.length && tipo[j + w] !== M.VUOTO && this.stato[tipo[j + w]] !== GAS)) {
           this.metti(j, t, dato[i] + 1);
-        }
+          dato[i] = STERILE;
+        } else dato[i]++;
       }
     }
+    const fertile = this.fertile[t] > FERTILE;
     if (stato === POLVERE) {
       if (this.muoviPolvere(i, x, y, this.scorre[t], t)) return;
     } else if (stato === LIQUIDO) {
+      if (fertile && this.germogliaSulSuolo(i, y)) return;
       if (this.caso() < 0.3 + 0.7 * this.scorre[t]) this.muoviLiquido(i, x, y, 1 + Math.round(this.scorre[t] * 4), t);
       return;
     } else if (stato === GAS) {
@@ -1103,13 +1210,45 @@ export class Mondo {
         return;
       }
       dato[i]--;
+      if (fertile && this.germogliaSulSuolo(i, y)) return;
       this.muoviGas(i, x, y, 0.75 - this.peso[t] * 4);
       return;
     }
-    // Su una miscela fertile, come sul terriccio, spuntano le piante.
-    if (this.fertile[t] > 0.6 && y > 1 && tipo[i - w] === M.VUOTO && tipo[i - 2 * w] === M.VUOTO && this.caso() < 0.0005) {
+    // Su una miscela fertile che sta ferma, come sul terriccio, spuntano le piante.
+    if (fertile && y > 1 && tipo[i - w] === M.VUOTO && tipo[i - 2 * w] === M.VUOTO && this.caso() < 0.0005) {
       this.germoglia(i - w, true);
     }
+  }
+
+  /**
+   * Una miscela fertile che scorre o che vola non fa da terreno: bagna (o sfiora) la terra che ha sotto e, a cielo
+   * aperto, ci lascia un germoglio al proprio posto. Vero se è successo.
+   */
+  private germogliaSulSuolo(i: number, y: number): boolean {
+    const { tipo, w } = this;
+    if (y < 1 || y >= this.h - 1 || !SUOLO[tipo[i + w]] || tipo[i - w] !== M.VUOTO || this.caso() >= 0.002) return false;
+    this.germoglia(i, true);
+    return true;
+  }
+
+  /**
+   * Vero se a quella cella non arriva aria da nessuna delle otto parti. Lasciano passare l'aria il vuoto, i gas, ciò
+   * che è arioso (foglie, cenere, neve…) e la brace di tutto ciò che non è legno: coprono davvero terra, sabbia,
+   * pietra, lava, altro legno e la sua brace. Fuori dal mondo è chiuso.
+   */
+  private sepolta(x: number, y: number): boolean {
+    const { tipo, w, h } = this;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if ((dx === 0 && dy === 0) || nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+        const j = ny * w + nx;
+        const t = tipo[j];
+        if (ARIOSO[t] || this.stato[t] === GAS || (t === M.BRACE && (this.tinta[j] & 1) === 0)) return false;
+      }
+    }
+    return true;
   }
 
   private chioma(x: number, y: number): void {
@@ -1147,7 +1286,10 @@ export class Mondo {
 
   /**
    * Il Mestolo: dove passa, due cose diverse che si toccano si fondono. Se la coppia ha già un suo risultato
-   * (terra e acqua fanno fango) succede quello; altrimenti nasce una miscela nuova, che nessuno ha scritto.
+   * succede quello, lo stesso che darebbe Unisci: una reazione del mondo (terra e acqua fanno fango) cambia le
+   * celle, un'invenzione (pietra e legno: l'utensile) viene scoperta lasciandole come sono, e dove la coppia è
+   * tutte e due le cose (pietra e acqua: muschio e pozzo) succedono entrambe. Altrimenti nasce una miscela nuova,
+   * che nessuno ha scritto.
    * `nati` raccoglie ciò che nasce durante lo stesso gesto: non si rimescola finché il dito non si alza,
    * altrimenti una sola passata fonderebbe tutto con tutto. E in un gesto nasce al più una miscela mai vista.
    */
@@ -1165,15 +1307,20 @@ export class Mondo {
         if (j < 0) continue;
         const b = tipo[j];
         if (b === a || NON_SI_MESCOLA[b] || nati.has(b)) continue;
-        const nota = DEL_MESTOLO.get(a * 256 + b);
+        const idA = Math.min(this.idTipo[a], this.idTipo[b]);
+        const idB = Math.max(this.idTipo[a], this.idTipo[b]);
+        // L'invenzione che Unisci darebbe per questa coppia si scopre anche qui, sempre: anche dove le due cose nel
+        // mondo reagiscono (pietra e acqua fanno il muschio, e chi le rimesta scopre lo stesso il pozzo).
+        const invenzione = unione(idA, idB);
+        if (invenzione >= 0) this.scopri(invenzione, cx, cy);
+        const nota = REAZIONI.get(a * 256 + b);
         if (nota) {
           this.trasforma(i, nota[0], nati);
           this.trasforma(j, nota[1], nati);
           continue;
         }
+        if (invenzione >= 0) continue;
         // Una sola miscela mai vista per gesto: ogni scoperta merita il suo momento.
-        const idA = Math.min(this.idTipo[a], this.idTipo[b]);
-        const idB = Math.max(this.idTipo[a], this.idTipo[b]);
         const nuova = !this.visti.has(idMiscela(idA, idB));
         if (nuova && nati.has(UNA_NUOVA)) continue;
         const id = this.registra(idA, idB);
@@ -1194,7 +1341,9 @@ export class Mondo {
       return;
     }
     nati.add(esito);
-    this.metti(i, esito);
+    // Una pianta fatta nascere dal Mestolo è un germoglio che poi cresce da sé, non una foglia ferma a mezz'aria.
+    if (esito === M.PIANTA) this.germoglia(i, true);
+    else this.metti(i, esito);
   }
 
   /** La gomma: toglie tutto quello che trova nel cerchio, omini compresi. */

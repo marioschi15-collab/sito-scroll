@@ -1,4 +1,5 @@
 import { ALBERO, GAS, LIQUIDO as STATO_LIQUIDO, M, N_TIPI, PRIMA_MISCELA, STATO } from '../motore/materiali.js';
+import { SOGLIA } from '../motore/miscele.js';
 import type { Mondo } from '../motore/mondo.js';
 import { Cielo, oraDelMondo } from './cielo.js';
 import { FIORI, TA, TB, TG, TR, tinteMiscela } from './colori.js';
@@ -187,7 +188,8 @@ export class Pittore {
       if (!s) continue;
       tinteMiscela(t, s);
       MODO[t] = s.stato === GAS ? SOFFICE : s.stato === STATO_LIQUIDO ? ALTRO_LIQUIDO : SOLIDO;
-      if (s.luce > 0.5 || s.calore > 0.6) {
+      // Fa luce chi ha l'etichetta «Fa luce» (stessa soglia), e in più tutto ciò che è rovente.
+      if (s.luce > SOGLIA.luce || s.calore > 0.6) {
         const forte = Math.max(s.colore[0], s.colore[1], s.colore[2], 1);
         LUCE[t] = 0.35 + s.luce * 0.5;
         LUCE_R[t] = s.colore[0] / forte;

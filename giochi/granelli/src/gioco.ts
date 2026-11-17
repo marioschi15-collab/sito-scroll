@@ -7,7 +7,7 @@ import { SUPERFICIE, terreno } from './motore/terreno.js';
 import { apriUnisci } from './unisci.js';
 import { costruisciPagina, el } from './pagina.js';
 import { carica, extraDi, fotografa, ripristina, salva } from './salvataggio.js';
-import { INIZIALI, PER_ID, SCOPERTE } from './scoperte.js';
+import { INIZIALI, PER_ID, SCOPERTE, meritaIlMestolo, vociTrovate } from './scoperte.js';
 
 const GOMMA = -1;
 const MESTOLO = -2;
@@ -20,8 +20,6 @@ const ALTO = 190;
 const IN_VISTA = 96;
 /** Quante cose stanno nella tavolozza: le ultime usate o scoperte. Tutte le altre si prendono dal Libro. */
 const POSTI = 14;
-/** Dopo quante scoperte (oltre ai quattro elementi) arriva il Mestolo. */
-const PER_IL_MESTOLO = 3;
 
 /** Quello che la pagina ricorda insieme alla partita. */
 interface Ricordi {
@@ -140,7 +138,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   const eMiscela = (id: number): boolean => id >= PRIMA_ID_MISCELA;
   /** Si può mettere nel mondo col dito: i materiali e le invenzioni che lo permettono, e tutte le miscele. */
   const versabile = (id: number): boolean => (eMiscela(id) ? mondo.ricettario.has(id) : PER_ID.get(id)?.versabile === true);
-  const quanteVoci = (): number => SCOPERTE.filter((s) => mondo.visti.has(s.id)).length;
+  const quanteVoci = (): number => vociTrovate(mondo.visti);
   const quanteMiscele = (): number => [...mondo.visti].filter(eMiscela).length;
 
   function scegli(id: number): void {
@@ -381,7 +379,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     }
     mondo.novita = [];
     navigator.vibrate?.(25);
-    if (!ricordi.mestolo && mondo.visti.size >= INIZIALI.length + PER_IL_MESTOLO) {
+    if (!ricordi.mestolo && meritaIlMestolo(mondo.visti)) {
       ricordi.mestolo = true;
       nuove.push(MESTOLO);
       setTimeout(arrivaIlMestolo, 1800);
