@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Granelli, tre stili a confronto</title>
+<style>
+  /* Impianto: tre schermate da telefono affiancate (in colonna su schermi stretti), ognuna con nome e due righe. */
+  :root { --fondo:#0e1326; --carta:#18203a; --bordo:#2c3760; --testo:#eef1f8; --tenue:#9aa5c4; --accento:#ffd54a; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:var(--fondo); color:var(--testo); font:16px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; }
+  main { max-width:1180px; margin:0 auto; padding:24px 16px 40px; }
+  h1 { font-size:26px; margin:0 0 6px; text-wrap:balance; }
+  p.intro { margin:0 0 22px; color:var(--tenue); max-width:65ch; }
+  .griglia { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px; }
+  article { background:var(--carta); border:1px solid var(--bordo); border-radius:18px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  canvas { width:100%; height:auto; border-radius:12px; display:block; background:#000; }
+  .pixel { image-rendering:pixelated; image-rendering:crisp-edges; }
+  h2 { margin:0; font-size:20px; }
+  h2 span { color:var(--accento); margin-right:6px; }
+  article p { margin:0; color:var(--tenue); font-size:15px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tre stili per il nuovo Granelli</h1>
+  <p class="intro">La stessa scena disegnata in tre modi: una collina con alberi, una casa, un falò, due omini e un lago. Sono disegni di prova fermi, per scegliere la direzione: dimmi A, B o C (o un misto).</p>
+  <div class="griglia">
+    <article><canvas id="a" width="720" height="1040"></canvas><h2><span>A</span>Illustrato e morbido</h2><p>Forme tonde, colori pieni, niente quadretti. Sembra un libro illustrato. Il mondo si guarda di lato e si scorre.</p></article>
+    <article><canvas id="b" class="pixel" width="90" height="130"></canvas><h2><span>B</span>Pixel art curata</h2><p>A quadretti, ma ogni cosa è una piccola figura disegnata a mano. Aria da gioco retrò fatto bene.</p></article>
+    <article><canvas id="c" width="720" height="1040"></canvas><h2><span>C</span>Mappa dall'alto</h2><p>Il mondo come una mappa a caselle vista dall'alto, con edifici e omini come pedine. Adatto a città, strade ed ere.</p></article>
+  </div>
+</main>
+<script>
+// ── A: illustrato e morbido ──────────────────────────────────────────────────
+(function () {
+  const c = document.getElementById('a'), x = c.getContext('2d'), W = c.width, H = c.height;
+  let g = x.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#8fd3ff'); g.addColorStop(0.6, '#d9f1ff'); g.addColorStop(1, '#fff3d6');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // sole
+  x.fillStyle = '#fff1a8'; x.beginPath(); x.arc(560, 170, 110, 0, 7); x.fill();
+  x.fillStyle = '#ffd95a'; x.beginPath(); x.arc(560, 170, 70, 0, 7); x.fill();
+  const nuvola = (cx, cy, s) => { x.fillStyle = '#ffffff'; for (const [dx, dy, r] of [[0,0,46],[50,10,36],[-48,12,34],[20,-22,34]]) { x.beginPath(); x.arc(cx + dx * s, cy + dy * s, r * s, 0, 7); x.fill(); } };
+  nuvola(170, 150, 1); nuvola(430, 300, 0.7);
+  const colle = (y, a, col, f) => { x.fillStyle = col; x.beginPath(); x.moveTo(0, H); for (let i = 0; i <= W; i += 8) x.lineTo(i, y + Math.sin(i / 120 + f) * a + Math.sin(i / 47 + f * 2) * a * 0.3); x.lineTo(W, H); x.fill(); };
+  colle(520, 60, '#a9c9e8', 1); colle(600, 50, '#86b89a', 2.2);
+  // prato
+  x.fillStyle = '#6cc070'; x.beginPath(); x.moveTo(0, H); x.lineTo(0, 700); x.bezierCurveTo(160, 640, 330, 660, 470, 730); x.bezierCurveTo(520, 760, 520, 800, 470, 830); x.lineTo(470, H); x.fill();
+  x.fillStyle = '#58ad62'; x.beginPath(); x.moveTo(0, H); x.lineTo(0, 780); x.bezierCurveTo(180, 740, 330, 780, 470, 830); x.lineTo(470, H); x.fill();
+  // lago
+  g = x.createLinearGradient(0, 800, 0, H); g.addColorStop(0, '#4aa8f0'); g.addColorStop(1, '#2769c4');
+  x.fillStyle = g; x.beginPath(); x.moveTo(430, 830); x.bezierCurveTo(520, 800, 640, 800, W, 815); x.lineTo(W, H); x.lineTo(380, H); x.bezierCurveTo(400, 900, 400, 860, 430, 830); x.fill();
+  x.strokeStyle = '#ffffffaa'; x.lineWidth = 6; x.lineCap = 'round';
+  for (const [a, b, l] of [[520, 860, 70], [610, 910, 50], [480, 950, 60], [640, 990, 40]]) { x.beginPath(); x.moveTo(a, b); x.lineTo(a + l, b); x.stroke(); }
+  // terra sotto
+  x.fillStyle = '#b07a4e'; x.beginPath(); x.moveTo(0, H); x.lineTo(0, 880); x.bezierCurveTo(150, 860, 300, 900, 400, 940); x.lineTo(380, H); x.fill();
+  // alberi
+  const albero = (cx, cy, s) => { x.fillStyle = '#8a5a36'; x.beginPath(); x.roundRect(cx - 9 * s, cy - 70 * s, 18 * s, 80 * s, 8 * s); x.fill();
+    x.fillStyle = '#3f9a55'; x.beginPath(); x.arc(cx, cy - 110 * s, 58 * s, 0, 7); x.fill();
+    x.fillStyle = '#56b866'; x.beginPath(); x.arc(cx - 16 * s, cy - 124 * s, 40 * s, 0, 7); x.fill();
+    x.fillStyle = '#e8504a'; for (const [dx, dy] of [[20,-96],[-28,-90],[6,-136]]) { x.beginPath(); x.arc(cx + dx * s, cy + dy * s, 7 * s, 0, 7); x.fill(); } };
+  albero(90, 705, 1.1); albero(200, 680, 0.8);
+  // casa
+  x.fillStyle = '#f3e3c2'; x.beginPath(); x.roundRect(290, 610, 120, 90, 10); x.fill();
+  x.fillStyle = '#d5553f'; x.beginPath(); x.moveTo(272, 620); x.lineTo(350, 550); x.lineTo(428, 620); x.closePath(); x.fill();
+  x.fillStyle = '#7a4a2c'; x.beginPath(); x.roundRect(336, 650, 30, 50, 6); x.fill();
+  x.fillStyle = '#8fd3ff'; x.beginPath(); x.roundRect(382, 640, 20, 20, 4); x.fill();
+  // falò
+  x.fillStyle = '#7a4a2c'; x.beginPath(); x.roundRect(232, 735, 50, 10, 5); x.fill();
+  x.fillStyle = '#ff8a2a'; x.beginPath(); x.moveTo(240, 738); x.quadraticCurveTo(232, 700, 257, 670); x.quadraticCurveTo(284, 700, 274, 738); x.fill();
+  x.fillStyle = '#ffd95a'; x.beginPath(); x.moveTo(248, 738); x.quadraticCurveTo(246, 716, 257, 700); x.quadraticCurveTo(270, 716, 266, 738); x.fill();
+  // omini
+  const omino = (cx, cy, col) => { x.fillStyle = col; x.beginPath(); x.roundRect(cx - 13, cy - 40, 26, 40, 12); x.fill();
+    x.fillStyle = '#f6cfa6'; x.beginPath(); x.arc(cx, cy - 52, 15, 0, 7); x.fill();
+    x.fillStyle = '#4a2f20'; x.beginPath(); x.arc(cx, cy - 56, 15, Math.PI, 0); x.fill();
+    x.fillStyle = '#2b2b3a'; x.beginPath(); x.arc(cx - 5, cy - 50, 2.2, 0, 7); x.arc(cx + 5, cy - 50, 2.2, 0, 7); x.fill(); };
+  omino(150, 760, '#4a8fe6'); omino(320, 780, '#e6a23c');
+})();
+
+// ── B: pixel art ─────────────────────────────────────────────────────────────
+(function () {
+  const c = document.getElementById('b'), x = c.getContext('2d'), W = 90, H = 130;
+  const p = (a, b, w, h, col) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
+  const bande = ['#5aa9e6', '#6db5ec', '#84c2f0', '#9dcff4', '#b9ddf7', '#d6ebfa'];
+  bande.forEach((col, i) => p(0, i * 13, W, 13, col));
+  for (let i = 0; i < 6; i++) for (let k = 0; k < W; k += 2) p(k + (i % 2), i * 13 + 12, 1, 1, bande[Math.min(5, i + 1)]);
+  // sole e nuvole
+  p(66, 14, 12, 12, '#ffe066'); p(64, 16, 16, 8, '#ffe066'); p(68, 12, 8, 16, '#ffe066'); p(68, 16, 8, 8, '#fff3a0');
+  const nuv = (a, b) => { p(a, b + 3, 18, 4, '#fff'); p(a + 3, b, 9, 4, '#fff'); p(a + 9, b + 1, 6, 3, '#fff'); p(a + 1, b + 6, 16, 1, '#dbe8f5'); };
+  nuv(10, 16); nuv(42, 34);
+  // monti lontani
+  for (let k = 0; k < W; k++) { const h = 10 + Math.round(6 * Math.sin(k / 9) + 3 * Math.sin(k / 4)); p(k, 78 - h, 1, h + 20, '#8fb1cf'); }
+  // terreno a strati
+  for (let k = 0; k < 58; k++) { const y = 84 + Math.round(3 * Math.sin(k / 8)); p(k, y, 1, 2, '#7ccf6a'); p(k, y + 2, 1, 2, '#58ad52'); p(k, y + 4, 1, 60, '#9a6a44'); if ((k * 7) % 5 === 0) p(k, y + 9 + (k % 4) * 6, 1, 1, '#7d5233'); }
+  // lago
+  p(58, 100, 32, 30, '#2f7fd6'); p(58, 98, 32, 2, '#7cc0f5'); for (const [a, b] of [[62, 104], [74, 110], [66, 118], [82, 106]]) p(a, b, 4, 1, '#9ed2fa');
+  for (let k = 54; k < 60; k++) p(k, 92 + (k - 54) * 2, 6, 40, '#e6cc8c');
+  // alberi
+  const alb = (a, b) => { p(a + 4, b + 10, 3, 9, '#7a4a2c'); p(a + 1, b + 2, 9, 8, '#2f8a48'); p(a + 2, b, 7, 3, '#2f8a48'); p(a, b + 4, 11, 4, '#2f8a48'); p(a + 2, b + 2, 4, 3, '#4fb866'); p(a + 7, b + 6, 1, 1, '#e8504a'); p(a + 3, b + 7, 1, 1, '#e8504a'); };
+  alb(6, 66); alb(20, 68);
+  // casa
+  p(34, 74, 14, 11, '#ead9b0'); p(32, 72, 18, 2, '#c2452f'); p(34, 70, 14, 2, '#c2452f'); p(36, 68, 10, 2, '#c2452f'); p(38, 66, 6, 2, '#c2452f'); p(39, 79, 4, 6, '#6b4026'); p(44, 76, 3, 3, '#7cc0f5');
+  // falò
+  p(26, 84, 6, 1, '#6b4026'); p(27, 81, 4, 3, '#ff8a2a'); p(28, 79, 2, 2, '#ff8a2a'); p(28, 82, 2, 2, '#ffe066');
+  // omini
+  const om = (a, b, col) => { p(a, b, 3, 1, '#4a2f20'); p(a, b + 1, 3, 2, '#f2c79b'); p(a, b + 3, 3, 3, col); p(a, b + 6, 1, 2, '#3b4a7a'); p(a + 2, b + 6, 1, 2, '#3b4a7a'); };
+  om(15, 77, '#4a8fe6'); om(51, 80, '#e6a23c');
+})();
+
+// ── C: mappa dall'alto ───────────────────────────────────────────────────────
+(function () {
+  const c = document.getElementById('c'), x = c.getContext('2d'), L = 90, COL = 8, RIG = 12;
+  x.fillStyle = '#20406e'; x.fillRect(0, 0, c.width, c.height);
+  // a acqua, s sabbia, e erba, f foresta, m montagna, c casa, r strada, o falò
+  const mappa = ['aaaaaaaa','aasseeaa','aseeffea','seefffee','seeffmme','eercremm','eerrreem','eecrceee','seeroeea','sseereaa','asseesaa','aaassaaa'];
+  const col = { a: ['#3b8fe0', '#4a9dea'], s: ['#ecd592', '#f2dea4'], e: ['#74c56c', '#82cf78'], f: ['#74c56c', '#82cf78'], m: ['#9aa3a8', '#a8b0b4'], c: ['#74c56c', '#82cf78'], r: ['#d9b77e', '#d9b77e'], o: ['#74c56c', '#82cf78'] };
+  for (let r = 0; r < RIG; r++) for (let k = 0; k < COL; k++) {
+    const t = mappa[r][k], X = k * L, Y = r * L - 20;
+    x.fillStyle = col[t][(r + k) % 2]; x.beginPath(); x.roundRect(X + 2, Y + 2, L - 4, L - 4, 14); x.fill();
+    if (t === 'a') { x.strokeStyle = '#ffffff55'; x.lineWidth = 4; x.lineCap = 'round'; x.beginPath(); x.moveTo(X + 22, Y + 34); x.lineTo(X + 46, Y + 34); x.moveTo(X + 44, Y + 58); x.lineTo(X + 66, Y + 58); x.stroke(); }
+    if (t === 'f') for (const [dx, dy, s] of [[26, 30, 1], [60, 40, 0.8], [38, 62, 0.9]]) { x.fillStyle = '#2f8a48'; x.beginPath(); x.arc(X + dx, Y + dy, 18 * s, 0, 7); x.fill(); x.fillStyle = '#4fb866'; x.beginPath(); x.arc(X + dx - 5 * s, Y + dy - 5 * s, 10 * s, 0, 7); x.fill(); }
+    if (t === 'm') { x.fillStyle = '#6f777c'; x.beginPath(); x.moveTo(X + 14, Y + 72); x.lineTo(X + 45, Y + 16); x.lineTo(X + 76, Y + 72); x.fill(); x.fillStyle = '#fff'; x.beginPath(); x.moveTo(X + 34, Y + 36); x.lineTo(X + 45, Y + 16); x.lineTo(X + 56, Y + 36); x.fill(); }
+    if (t === 'c') { x.fillStyle = '#00000033'; x.beginPath(); x.ellipse(X + 47, Y + 68, 28, 8, 0, 0, 7); x.fill(); x.fillStyle = '#f3e3c2'; x.beginPath(); x.roundRect(X + 22, Y + 34, 46, 34, 6); x.fill(); x.fillStyle = '#d5553f'; x.beginPath(); x.moveTo(X + 14, Y + 38); x.lineTo(X + 45, Y + 12); x.lineTo(X + 76, Y + 38); x.fill(); x.fillStyle = '#7a4a2c'; x.fillRect(X + 40, Y + 50, 11, 18); }
+    if (t === 'o') { x.fillStyle = '#7a4a2c'; x.beginPath(); x.roundRect(X + 28, Y + 56, 34, 8, 4); x.fill(); x.fillStyle = '#ff8a2a'; x.beginPath(); x.moveTo(X + 32, Y + 58); x.quadraticCurveTo(X + 30, Y + 34, X + 45, Y + 22); x.quadraticCurveTo(X + 62, Y + 36, X + 58, Y + 58); x.fill(); x.fillStyle = '#ffd95a'; x.beginPath(); x.arc(X + 45, Y + 50, 8, 0, 7); x.fill(); }
+  }
+  const pedina = (X, Y, colore) => { x.fillStyle = '#00000033'; x.beginPath(); x.ellipse(X, Y + 16, 14, 5, 0, 0, 7); x.fill(); x.fillStyle = colore; x.beginPath(); x.roundRect(X - 10, Y - 12, 20, 28, 9); x.fill(); x.fillStyle = '#f6cfa6'; x.beginPath(); x.arc(X, Y - 20, 11, 0, 7); x.fill(); };
+  pedina(225, 520, '#4a8fe6'); pedina(315, 700, '#e6a23c'); pedina(140, 430, '#b06ce0');
+})();
+</script>
+</body>
+</html>
