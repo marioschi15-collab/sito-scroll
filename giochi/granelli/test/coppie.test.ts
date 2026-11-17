@@ -8,7 +8,7 @@ import { staAGalla } from '../src/motore/posa.js';
 import type { EsitoPorta } from '../src/motore/porta.js';
 import { ACCENDI, COPPIE } from '../src/motore/ricette.js';
 import { SCOPERTE } from '../src/scoperte.js';
-import { libroDa12, mondo, quanti, riempi } from './aiuti.js';
+import { gira, libroDa12, mondo, quanti, riempi } from './aiuti.js';
 
 /** Tutte le coppie scritte a mano: le unioni delle invenzioni e le reazioni del mondo. */
 const TUTTE: [number, number][] = [
@@ -30,10 +30,14 @@ function inUnisci(a: number, b: number, voci: number): number {
   return e.genere === 'fenomeno' ? SOLO_NEL_MONDO : e.id;
 }
 
-/** La scoperta che il mondo ha dato portando una cosa (SOLO_NEL_MONDO per un fenomeno); null se non ha unito. */
-function nato(e: EsitoPorta): number | null {
+/**
+ * La scoperta che il mondo ha dato portando una cosa (SOLO_NEL_MONDO per un fenomeno); null se non ha unito.
+ * I primi omini arrivano solo vicino all'acqua: dove non ce n'è, l'Omino si scopre e l'esito dice che arriveranno.
+ */
+function nato(m: Mondo, e: EsitoPorta): number | null {
   if (e.genere === 'unione' || e.genere === 'giaFatta') return e.nato;
   if (e.genere === 'nelMondo') return SOLO_NEL_MONDO;
+  if (e.genere === 'nonQui' && e.perche === 'acqua' && m.visti.has(OMINO)) return OMINO;
   return null;
 }
 
@@ -62,7 +66,7 @@ function bersaglio(m: Mondo, id: number): [number, number] | null {
   return null;
 }
 
-describe('un esito solo, per Unisci, per il mondo e per il Mestolo', () => {
+describe('un esito solo, per Unisci e per il mondo', () => {
   it('per ogni coppia scritta, unisci() ed esitoDi danno lo stesso esito, nei due ordini', () => {
     const voci = saputo().voci();
     for (const [a, b] of TUTTE) {
@@ -90,7 +94,7 @@ describe('un esito solo, per Unisci, per il mondo e per il Mestolo', () => {
         const punto = bersaglio(m, sotto);
         if (!punto) continue;
         provati++;
-        visti.push(nato(m.porta(gettone, punto[0], punto[1], 'gettone')));
+        visti.push(nato(m, m.porta(gettone, punto[0], punto[1], 'gettone')));
       }
       if (provati === 0) {
         // Due cose che nel mondo non stanno (bronzo e utensile): si uniscono solo gettone su gettone.
@@ -102,20 +106,28 @@ describe('un esito solo, per Unisci, per il mondo e per il Mestolo', () => {
     expect(soloGettoni).toBeLessThanOrEqual(3);
   });
 
-  it('per ogni coppia di due materiali, anche il Mestolo scopre la stessa cosa', () => {
+  it('per ogni coppia di due materiali, portarne una sull’altra nel mondo vero scopre la stessa cosa, o la fa succedere', () => {
     const voci = saputo().voci();
     for (const [a, b] of TUTTE) {
       if (a >= N_BASE || b >= N_BASE) continue;
       const coppia = COPPIE.find(([x, y]) => (x === a && y === b) || (x === b && y === a));
       const accende = coppia !== undefined && (coppia[2] === ACCENDI || coppia[3] === ACCENDI);
       const atteso = inUnisci(a, b, voci);
-      const m = mondo();
-      riempi(m, 10, 15, 29, 19, a);
-      riempi(m, 10, 20, 29, 24, b);
-      for (let k = 0; k < 30; k++) m.mescola(20, 19, 5, new Set());
-      // Ciò che brucia, sotto il Mestolo, prende fuoco: quello che resta arriva col tempo.
-      if (atteso >= C.UTENSILE || !accende) expect(m.visti.has(atteso), `${a} + ${b}`).toBe(true);
-      else expect(quanti(m, M.BRACE) > 0 || m.botti.length > 0, `${a} + ${b}`).toBe(true);
+      // In un mondo dove sono noti solo i quattro elementi e le due cose: in un verso o nell'altro, dopo un po'.
+      const versi = [
+        [a, b],
+        [b, a],
+      ].map(([gettone, sotto]) => {
+        const m = mondo();
+        m.visti.add(a).add(b);
+        riempi(m, 10, 20, 29, 24, sotto);
+        m.porta(gettone, 20, 20, 'gettone');
+        gira(m, 30);
+        // Ciò che brucia prende fuoco: quello che resta arriva col tempo, e un fenomeno va guardato nel mondo.
+        if (atteso >= C.UTENSILE || !accende) return m.visti.has(atteso);
+        return quanti(m, M.BRACE) > 0 || m.botti.length > 0 || m.visti.has(atteso);
+      });
+      expect(versi, `${a} + ${b}`).toContain(true);
     }
   });
 

@@ -26,6 +26,59 @@ function approdo(m: Mondo, x: number): number {
   return siArriva(m, x, y, fonte, 2) ? y : -1;
 }
 
+/** Dove arrivano due omini: i piedi del primo e del secondo. */
+export interface Approdo {
+  x: number;
+  y: number;
+  x2: number;
+  y2: number;
+}
+
+/** Due punti d'arrivo vicini, il primo nella colonna x e il secondo a 3-5 celle da lui; null se lì non ci sono. */
+function inDue(m: Mondo, x: number): Approdo | null {
+  const y = approdo(m, x);
+  if (y < 0) return null;
+  for (const passi of COMPAGNO) {
+    const y2 = approdo(m, x + passi);
+    if (y2 >= 0) return { x, y, x2: x + passi, y2 };
+  }
+  return null;
+}
+
+/**
+ * Il posto d'arrivo per due omini più vicino alla colonna x, entro `raggio` colonne: prima x stessa, poi una per
+ * parte, e così via. Guarda le fonti come sono adesso: chi chiama le aggiorna, se il mondo è appena cambiato.
+ */
+export function cercaApprodo(m: Mondo, x: number, raggio: number): Approdo | null {
+  for (let d = 0; d <= raggio; d++) {
+    for (const lato of d === 0 ? [0] : [-1, 1]) {
+      const dove = inDue(m, x + lato * d);
+      if (dove) return dove;
+    }
+  }
+  return null;
+}
+
+/** Fa arrivare due omini nel posto d'arrivo trovato, e mette in pausa gli arrivi da soli. */
+function arrivano(m: Mondo, dove: Approdo): void {
+  m.aggiungiOmino(dove.x, dove.y);
+  m.aggiungiOmino(dove.x2, dove.y2);
+  m.prossimoArrivo = m.tic + 1200;
+}
+
+/**
+ * I primi omini chiamati da un'unione (un tetto e un frutto): arrivano in due, vicino all'acqua, nel posto buono
+ * più vicino alla colonna x entro `raggio` colonne. In due perché un omino da solo non fa figli e non fa paese.
+ * Restituisce dove sono arrivati, o null se lì intorno non c'è acqua a cui arrivare a piedi.
+ */
+export function primiOmini(m: Mondo, x: number, raggio: number): Approdo | null {
+  // L'acqua appena versata deve contare subito: le fonti si ricalcolano adesso, non fra due secondi.
+  m.fonti.aggiorna(m);
+  const dove = cercaApprodo(m, x, raggio);
+  if (dove) arrivano(m, dove);
+  return dove;
+}
+
 /**
  * I primi omini arrivano da soli quando il mondo ha da bere, da mangiare e un riparo fatto dal giocatore
  * (pietra o mattoni: la roccia nuda del fondo non conta). Arrivano in due, vicino all'acqua e a qualche cella
@@ -41,15 +94,9 @@ export function arrivo(m: Mondo): void {
   // Si parte da una colonna a caso e si scorre il mondo: ogni riva ha la sua occasione.
   const da = (m.caso() * m.w) | 0;
   for (let k = 0; k < m.w; k++) {
-    const x = (da + k) % m.w;
-    const y = approdo(m, x);
-    if (y < 0) continue;
-    for (const passi of COMPAGNO) {
-      const y2 = approdo(m, x + passi);
-      if (y2 < 0) continue;
-      m.aggiungiOmino(x, y);
-      m.aggiungiOmino(x + passi, y2);
-      m.prossimoArrivo = m.tic + 1200;
+    const dove = inDue(m, (da + k) % m.w);
+    if (dove) {
+      arrivano(m, dove);
       return;
     }
   }

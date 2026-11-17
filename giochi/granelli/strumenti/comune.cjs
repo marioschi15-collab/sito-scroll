@@ -71,7 +71,7 @@ async function premiInizia(page) {
   }
 }
 
-/** Chiude le finestre rimaste aperte sopra il mondo (l'arrivo del Mestolo, una festa, il Libro). */
+/** Chiude le finestre rimaste aperte sopra il mondo (un saluto, una festa, il Libro). */
 async function chiudiFinestre(page) {
   for (let k = 0; k < 4; k++) {
     if ((await page.locator('.velo').count()) === 0) return;

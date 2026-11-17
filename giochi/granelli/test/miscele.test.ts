@@ -1,30 +1,28 @@
 import { describe, expect, it } from 'vitest';
+import { C } from '../src/motore/cose.js';
 import { ESPLOSIONE, GAS, LIQUIDO, M, N_BASE, POLVERE, PRIMA_ID_MISCELA, PRIMA_MISCELA, SOLIDO } from '../src/motore/materiali.js';
 import { SOGLIA, faMale, idMiscela, siMangia, tratti } from '../src/motore/miscele.js';
 import type { Mondo } from '../src/motore/mondo.js';
 import { descriviMiscela, etichette } from '../src/motore/nomi.js';
-import { type Miscela, conca, gira, mondo, primaGenerazione, quanti, riempi, versaPer } from './aiuti.js';
+import { type Miscela, conca, gira, libroDa12, mondo, primaGenerazione, quanti, riempi, versaPer } from './aiuti.js';
 
-describe('il mestolo e le miscele', () => {
-  it('una coppia già nota dà il suo risultato: terra e acqua, fango', () => {
-    const m = mondo();
+describe('le miscele', () => {
+  it('una coppia già nota dà il suo risultato, mai una miscela: terra e acqua, fango; pietra e acqua, muschio', () => {
+    const m = libroDa12();
     riempi(m, 20, 50, 40, 59, M.TERRA);
-    riempi(m, 20, 45, 40, 49, M.PIETRA);
     riempi(m, 20, 40, 40, 44, M.ACQUA);
-    // acqua e pietra si toccano; la terra sotto la pietra no
-    const nati = new Set<number>();
-    for (let k = 0; k < 40; k++) m.mescola(30, 44, 3, nati);
+    expect(m.porta(M.ACQUA, 30, 50, 'gettone')).toMatchObject({ genere: 'unione', nato: M.FANGO });
+    expect(m.porta(M.PIETRA, 30, 40, 'gettone')).toMatchObject({ genere: 'unione', nato: C.POZZO });
     expect(m.visti.has(M.MUSCHIO)).toBe(true);
     expect(m.ricettario.size).toBe(0);
   });
 
   it('una coppia senza risultato scritto dà una miscela nuova, con nome, carattere e posto nel mondo', () => {
-    const m = mondo();
-    riempi(m, 20, 50, 40, 59, M.SABBIA);
+    const m = libroDa12();
     riempi(m, 20, 45, 40, 49, M.LEGNO);
-    const nati = new Set<number>();
-    for (let k = 0; k < 20; k++) m.mescola(30, 49, 6, nati);
+    const esito = m.porta(M.SABBIA, 30, 45, 'gettone');
     const id = idMiscela(M.SABBIA, M.LEGNO);
+    expect(esito).toMatchObject({ genere: 'unione', nato: id, nuova: true });
     expect(id).toBeGreaterThanOrEqual(PRIMA_ID_MISCELA);
     expect(idMiscela(M.LEGNO, M.SABBIA)).toBe(id);
     expect(m.visti.has(id)).toBe(true);
@@ -39,17 +37,19 @@ describe('il mestolo e le miscele', () => {
     expect(etichette(s).length).toBeGreaterThan(1);
     expect(descriviMiscela(s).length).toBeGreaterThan(20);
     expect(m.generazione(id)).toBe(1);
-    // nello stesso gesto la miscela appena nata non si rimescola con ciò che ha intorno
+    // un gesto, una miscela sola
     expect(m.ricettario.size).toBe(1);
-    // con gesti nuovi sì: una miscela nuova per gesto, fino alla seconda generazione
-    for (let gesto = 0; gesto < 6; gesto++) {
-      const prima = m.ricettario.size;
-      const nati2 = new Set<number>();
-      for (let k = 0; k < 30; k++) m.mescola(30, 49, 8, nati2);
-      expect(m.ricettario.size - prima).toBeLessThanOrEqual(1);
-    }
-    expect(m.ricettario.size).toBeGreaterThan(1);
-    expect(Math.max(...[...m.ricettario.keys()].map((k) => m.generazione(k)))).toBeGreaterThan(1);
+    // la miscela portata su un'altra cosa ne fa un'altra ancora, di seconda generazione, e poi di terza
+    riempi(m, 20, 50, 40, 54, M.TERRA);
+    const seconda = m.porta(id, 30, 50, 'gettone');
+    expect(seconda.genere).toBe('unione');
+    if (seconda.genere !== 'unione') return;
+    expect(m.generazione(seconda.nato)).toBe(2);
+    expect(m.ricettario.size).toBe(2);
+    riempi(m, 20, 55, 40, 59, M.CENERE);
+    const terza = m.porta(seconda.nato, 30, 55, 'gettone');
+    expect(terza.genere === 'unione' && m.generazione(terza.nato) === 3).toBe(true);
+    expect(Math.max(...[...m.ricettario.keys()].map((k) => m.generazione(k)))).toBe(3);
     gira(m, 600);
   });
 

@@ -14,6 +14,7 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
 | dopo P1 | 0,60 / 2,43 / 3,30 (60) | 0,76 / 3,16 / 5,52 (60) | 1,14 / 6,01 / 6,30 (59) | 2,48 / 12,24 / 14,38 (52) | 0,81 / 3,94 / 5,33 (60) | 0,97 / 4,26 / 6,65 (60) | 1,47 / 6,61 / 6,77 (60) | 1,14 / 4,72 / 7,23 (60) | 1,41 / 7,28 / 9,72 (50) |
 | dopo P2 | 0,59 / 1,95 / 2,91 (60) | 0,69 / 2,56 / 4,42 (60) | 0,92 / 3,72 / 5,11 (59) | 2,27 / 8,66 / 12,59 (58) | 0,85 / 3,33 / 4,23 (60) | 0,77 / 3,58 / 5,32 (60) | 1,13 / 4,64 / 6,91 (58) | 1,29 / 4,02 / 5,90 (60) | 1,15 / 5,11 / 8,21 (54) |
 | dopo P3a | 0,47 / 1,89 / 2,86 (60) | 0,71 / 2,63 / 3,83 (60) | 0,77 / 3,24 / 4,79 (59) | 1,86 / 8,04 / 11,80 (59) | 0,60 / 2,50 / 3,57 (60) | 0,76 / 2,69 / 4,37 (60) | 1,06 / 4,20 / 6,03 (59) | 0,86 / 3,75 / 5,48 (60) | 1,08 / 4,58 / 7,48 (57) |
+| dopo P3b | 0,53 / 2,10 / 2,83 (60) | 0,77 / 2,96 / 3,80 (60) | 0,91 / 3,65 / 5,08 (59) | 1,94 / 7,92 / 11,88 (59) | 0,63 / 2,43 / 3,35 (60) | 0,76 / 2,96 / 3,93 (60) | 1,03 / 4,52 / 7,33 (56) | 0,92 / 3,87 / 6,18 (60) | 1,17 / 5,28 / 6,65 (60) |
 
 ## Note
 
@@ -44,3 +45,9 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
 - **dopo P3a, controllo indipendente** (un giro completo dopo le correzioni): x6 vuoto 3,16, lago 3,80, temporale
   5,12, incendio 12,42, paese di giorno 3,89, di notte 4,90, maturo 5,81, mare 5,56, maturo trascinato 6,42, sempre
   58-60 fotogrammi al secondo. Tutto entro il rumore rispetto alle righe «dopo P2» e «dopo P3a».
+- **dopo P3b** (trenta e più unioni nuove, i primi omini chiamati da un'unione, Unisci che ricorda le coppie provate,
+  via il Mestolo): niente di nuovo gira a ogni fotogramma (si calcola solo quando si unisce), e il dito non passa più
+  dal ramo del Mestolo. Confronto con la copia di prima, a x6, due giri per parte: mondo vuoto 2,71 prima e 2,65
+  dopo; lago 3,79 e 3,76; temporale 4,68 e 5,07; incendio 11,64 e 11,40; paese di giorno 3,49 e 3,93; di notte 4,27
+  e 4,37; mondo maturo 5,78 e 6,37; mare 5,47 e 5,60; maturo trascinato 6,76 e 6,46. Le differenze vanno nei due
+  sensi e restano nel rumore della macchina, come il 7,33 del mondo maturo nella riga della tabella.

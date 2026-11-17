@@ -1,3 +1,4 @@
+import { primiOmini } from './arrivi.js';
 import { type Bersaglio, cheCosaCe } from './bersaglio.js';
 import { ALTEZZA, posto } from './cammino.js';
 import { INGOMBRO } from './cose.js';
@@ -12,9 +13,10 @@ export type Provenienza = 'gettone' | 'mondo';
 
 /**
  * Perché una cosa non si è messa lì: i divieti della posa, oppure `soloSopra` (si porta solo sopra un'altra cosa:
- * un utensile, la scrittura), `pieno` (non c'è posto per versarla), `troppi` (gli omini sono già tanti).
+ * un utensile, la scrittura), `pieno` (non c'è posto per versarla), `troppi` (gli omini sono già tanti), `acqua`
+ * (i primi omini chiamati da un'unione arrivano solo vicino all'acqua, e lì intorno non ce n'è).
  */
-export type PercheNo = Divieto | 'soloSopra' | 'pieno' | 'troppi';
+export type PercheNo = Divieto | 'soloSopra' | 'pieno' | 'troppi' | 'acqua';
 
 /** Quello che è successo portando una cosa sopra un punto del mondo: la pagina lo racconta. */
 export type EsitoPorta =
@@ -47,6 +49,8 @@ const COPPIE_MAX = 30;
 const VERSATE_MAX = 12;
 /** Fin dove si cerca un posto per una costruzione nata da un'unione (colonne dal punto). */
 const ACCANTO = 12;
+/** Fin dove si cerca la riva a cui far arrivare i primi omini chiamati da un'unione (colonne dal punto). */
+const VERSO_L_ACQUA = 30;
 
 const FIAMME = new Set<number>([M.FUOCO, M.LAVA, M.FULMINE]);
 
@@ -215,12 +219,30 @@ function posaAccanto(m: Mondo, id: number, b: Bersaglio, x: number, y: number): 
 }
 
 /**
+ * L'unione che chiama gli omini (un tetto e un frutto). Finché nel mondo non ce n'è nessuno ne arrivano due, vicino
+ * all'acqua più vicina al punto, anche se l'Omino è già nel Libro: è la via dei primi omini, e deve funzionare
+ * anche per chi li ha persi. L'Omino si scopre comunque; se lì intorno non c'è acqua, l'esito dice che arriveranno
+ * vicino all'acqua. Con gli omini già nel mondo è un'unione come le altre: già nota, non ne fa arrivare altri.
+ */
+function chiamaGliOmini(m: Mondo, con: number, x: number, y: number, nuova: boolean): EsitoPorta {
+  if (m.omini.length > 0) {
+    if (!nuova) return { genere: 'giaFatta', nato: OMINO, con };
+    m.scopri(OMINO, x, y);
+    return { genere: 'unione', nato: OMINO, nuova, con, x, y, posata: false };
+  }
+  const dove = primiOmini(m, x, VERSO_L_ACQUA);
+  m.scopri(OMINO, x, y);
+  if (!dove) return nonQui('acqua');
+  return { genere: 'unione', nato: OMINO, nuova, con, x: dove.x, y: dove.y - 1, posata: true };
+}
+
+/**
  * Porta la scoperta `id` sopra il punto (x, y) del mondo. Le regole, nell'ordine:
  * a) una cosa del mondo (tenuta con la Mano) riportata sul vuoto, sul terreno o su una sua uguale torna dov'era;
  * b) sul vuoto, su un appoggio o su una cosa uguale la cosa si mette lì (versata, posata, nata);
  * c) una cosa che si posa o nasce (costruzione, omino) portata su un materiale ci si mette sopra: non lo unisce;
  * d) altrimenti decide `esitoDi`, come in Unisci: invenzione nuova (nasce accanto, se si posa), invenzione già
- *    fatta, reazione del mondo (le celle cambiano davvero), via di un fenomeno (la cosa si mette lì e si guarda),
+ *    fatta, i primi omini (arrivano in due vicino all'acqua), reazione del mondo (le celle cambiano davvero), via di un fenomeno (la cosa si mette lì e si guarda),
  *    miscela (dalla dodicesima voce del Libro), niente. Le coppie provate in (d) si ricordano, tranne i fenomeni
  *    e le miscele che aspettano il Libro più pieno.
  * La cosa su cui si porta il gettone non viene mai tolta.
@@ -247,6 +269,7 @@ export function porta(m: Mondo, id: number, x: number, y: number, da: Provenienz
   const nuova = !m.visti.has(esito.id);
 
   if (esito.genere === 'unione') {
+    if (esito.id === OMINO) return chiamaGliOmini(m, b.id, x, y, nuova);
     if (!nuova) return { genere: 'giaFatta', nato: esito.id, con: b.id };
     m.scopri(esito.id, x, y);
     // Se la coppia è anche una reazione del mondo (pietra e acqua) succede pure quella, se non brucia e non distrugge.

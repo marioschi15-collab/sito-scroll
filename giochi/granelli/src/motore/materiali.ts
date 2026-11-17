@@ -42,7 +42,7 @@ export const M = {
 
 /** Quanti sono i materiali scritti a mano. */
 export const N_BASE = 36;
-/** Da questo numero in su, la cella contiene una miscela nata dal Mestolo: ogni mondo ne può ospitare 192 diverse. */
+/** Da questo numero in su, la cella contiene una miscela: ogni mondo ne può ospitare 192 diverse. */
 export const PRIMA_MISCELA = 64;
 /** Quanti numeri diversi può contenere una cella. */
 export const N_TIPI = 256;

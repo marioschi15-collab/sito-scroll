@@ -1,4 +1,5 @@
 import { campione } from './disegno/colori.js';
+import { SOGLIA_MISCELE } from './motore/esiti.js';
 import { PRIMA_ID_MISCELA } from './motore/materiali.js';
 import type { Mondo } from './motore/mondo.js';
 import { descriviMiscela, etichette } from './motore/nomi.js';
@@ -10,7 +11,6 @@ export interface PerIlLibro {
   mondo: Mondo;
   /** Il giocatore ha scelto di usare questa cosa nel mondo. */
   usa: (id: number) => void;
-  mestolo: boolean;
 }
 
 const MISCELE = 'miscele';
@@ -43,6 +43,8 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
   const ordine = [...visti];
   const miscele = ordine.filter((id) => id >= PRIMA_ID_MISCELA);
   const trovate = SCOPERTE.filter((s) => visti.has(s.id)).length;
+  /** Da quante voci in su anche le cose senza una ricetta si uniscono, e nascono le miscele. */
+  const siMescola = trovate >= SOGLIA_MISCELE;
 
   const velo = el('div', 'velo');
   const scheda = el('div', 'scheda libro');
@@ -114,7 +116,7 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
 
     corpo.append(el('p', 'voce-racconto', voce ? voce.descrizione : sostanza ? descriviMiscela(sostanza) : ''));
 
-    if (ricetta) corpo.append(blocco('Nasce da', fila([ricetta.a, ricetta.b], '+'), el('p', 'nota', 'Fuse insieme con il Mestolo.')));
+    if (ricetta) corpo.append(blocco('Nasce da', fila([ricetta.a, ricetta.b], '+'), el('p', 'nota', 'Nata unendo queste due cose.')));
     else if (voce && voce.nasce.length > 0) {
       corpo.append(
         blocco(
@@ -150,7 +152,7 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
         blocco(
           'Miscele',
           fuse.length > 0 ? fila(fuse, '') : null,
-          el('p', 'nota', dati.mestolo ? 'Con il Mestolo si può fondere con qualsiasi altra cosa: ogni coppia dà una miscela diversa.' : 'Più avanti imparerai a fonderla con altre cose.'),
+          el('p', 'nota', siMescola ? 'Unita a una cosa che non ha una ricetta con lei, dà una miscela nuova: ogni coppia la sua.' : 'Quando il Libro avrà dodici voci, si potrà unire anche alle cose che non hanno una ricetta con lei.'),
         ),
       );
     }
@@ -198,9 +200,9 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
         el(
           'p',
           'libro-premessa',
-          dati.mestolo
-            ? 'Prendi il Mestolo e strofinalo dove due cose diverse si toccano: si fondono in una miscela nuova, con il suo nome e il suo carattere. Poi fondi le miscele tra loro. Non finiscono mai.'
-            : 'Questo capitolo si apre quando avrai fatto qualche scoperta in più: allora riceverai il Mestolo, che fonde due cose qualsiasi in una nuova.',
+          siMescola
+            ? 'Unisci due cose che non hanno una ricetta: nasce una miscela nuova, con il suo nome e il suo carattere. Poi unisci le miscele tra loro. Non finiscono mai.'
+            : 'Questo capitolo si apre quando il Libro avrà dodici voci: da lì anche le cose senza una ricetta si uniscono, e nasce una miscela nuova.',
         ),
       );
       for (const id of [...miscele].reverse()) {

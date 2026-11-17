@@ -4,7 +4,7 @@ import { libera } from '../src/motore/cammino.js';
 import { M, PRIMA_ID_MISCELA, PRIMA_MISCELA, TRONCO } from '../src/motore/materiali.js';
 import { idMiscela } from '../src/motore/miscele.js';
 import { type Salvato, extraDi, fotografa, impacchetta, ripristina, spacchetta } from '../src/salvataggio.js';
-import { gira, mondo, quanti, riempi } from './aiuti.js';
+import { gira, libroDa12, mondo, quanti, riempi } from './aiuti.js';
 
 describe('il salvataggio', () => {
   it('il salvataggio riporta lo stesso mondo', () => {
@@ -27,10 +27,12 @@ describe('il salvataggio', () => {
   });
 
   it('il salvataggio ricorda le miscele, i loro posti e quello che la pagina gli affida', () => {
-    const m = mondo();
+    const m = libroDa12();
     riempi(m, 20, 50, 40, 59, M.SABBIA);
     riempi(m, 20, 45, 40, 49, M.LEGNO);
-    for (let k = 0; k < 20; k++) m.mescola(30, 49, 6, new Set());
+    m.porta(M.SABBIA, 30, 45, 'gettone');
+    m.porta(M.TERRA, 30, 50, 'gettone');
+    expect(m.ricettario.size).toBe(2);
     const foto = JSON.parse(JSON.stringify(fotografa(m, { recenti: [1, 2] })));
     const copia = ripristina(foto)!;
     expect([...copia.tipo]).toEqual([...m.tipo]);

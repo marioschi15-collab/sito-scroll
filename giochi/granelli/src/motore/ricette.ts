@@ -1,6 +1,6 @@
 import { ESPLOSIONE, M } from './materiali.js';
 
-/** Cosa fare di una cella quando il Mestolo la fonde con la sua vicina. */
+/** Cosa fare di una cella quando reagisce con la sua vicina: restare com'è, oppure prendere fuoco. */
 export const RESTA = -1;
 export const ACCENDI = -2;
 
@@ -11,7 +11,7 @@ export const ACCENDI = -2;
 export type Coppia = readonly [a: number, b: number, primo: number, secondo: number, inUnisci?: number];
 
 /**
- * Le reazioni del mondo, coppia per coppia: passandoci sopra il Mestolo succede subito quello che nel mondo
+ * Le reazioni del mondo, coppia per coppia: portando una cosa sopra l'altra succede subito quello che nel mondo
  * succederebbe da sé con un po' di tempo, e Unisci dà lo stesso risultato (vedi esiti.ts). Chi aggiunge al mondo
  * una reazione tra due materiali la scrive anche qui. Tutte le altre coppie, e sono infinite, danno una miscela.
  */
@@ -53,7 +53,7 @@ const SCRITTE: readonly Coppia[] = [
   // Il legno coperto dalla lava brucia senz'aria: è il modo più svelto di fare il carbone.
   [M.LEGNO, M.LAVA, ACCENDI, RESTA, M.CARBONE],
 
-  // ── Ciò che nel mondo nasce col tempo: il Mestolo e Unisci lo fanno nascere subito ──
+  // ── Ciò che nel mondo nasce col tempo: portando una cosa sopra l'altra, e in Unisci, nasce subito ──
   [M.HUMUS, M.ACQUA, RESTA, M.PIANTA],
   [M.ALGA, M.TERRA, M.PIANTA, RESTA],
   [M.FRUTTO, M.TERRA, M.PIANTA, RESTA],
@@ -92,8 +92,8 @@ export const COPPIE: readonly Coppia[] = (() => {
 })();
 
 /** Per ogni coppia ordinata (primo * 256 + secondo): cosa diventa il primo e cosa il secondo. */
-export const DEL_MESTOLO = new Map<number, readonly [number, number]>();
+export const CELLA_PER_CELLA = new Map<number, readonly [number, number]>();
 for (const [a, b, ra, rb] of COPPIE) {
-  DEL_MESTOLO.set(a * 256 + b, [ra, rb]);
-  DEL_MESTOLO.set(b * 256 + a, [rb, ra]);
+  CELLA_PER_CELLA.set(a * 256 + b, [ra, rb]);
+  CELLA_PER_CELLA.set(b * 256 + a, [rb, ra]);
 }

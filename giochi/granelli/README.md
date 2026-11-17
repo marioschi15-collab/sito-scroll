@@ -3,19 +3,35 @@
 Un mondo di granelli che reagiscono tra loro. Si parte da quattro elementi (terra, acqua, fuoco, aria), si versano
 col dito e si fanno incontrare: ogni cosa nuova che nasce entra nella tavolozza e nel Libro delle scoperte.
 
-Il Libro ha novanta voci scritte a mano (materiali, fenomeni come la pioggia o l'arcobaleno, piante, omini,
-invenzioni, ere), divise in capitoli, ognuna con la sua pagina: cos'è, come nasce, a cosa porta. Dopo le prime scoperte arriva il **Mestolo**,
-che fonde due cose qualsiasi: se la coppia ha già un risultato scritto succede quello, altrimenti nasce una
-**miscela** nuova, con nome, colore e comportamento decisi dal carattere dei due ingredienti. Le miscele si fondono
-ancora tra loro: non finiscono mai.
+Il Libro ha più di cento voci scritte a mano (materiali, fenomeni come la pioggia o l'arcobaleno, piante, omini e
+mestieri, invenzioni, ere), divise in capitoli, ognuna con la sua pagina: cos'è, come nasce, a cosa porta.
 
-Con **Unisci** si scelgono due scoperte e si guarda cosa ne nasce, come nei giochi di alchimia: prima le invenzioni
-scritte a mano (pietra e legno: l'utensile), poi le stesse reazioni del mondo (terra e acqua: fango, anche qui), e
-solo le coppie rimaste senza esito danno una miscela, e solo da quando il Libro ha dodici voci (prima «per ora»
-non si uniscono; alla dodicesima una riga lo annuncia). Ciò che è un fenomeno (un'esplosione, un temporale) Unisci non
-lo regala: «succede solo nel mondo». Il Mestolo e Unisci danno lo stesso esito sulle stesse coppie: sotto il
-Mestolo una reazione cambia le celle e un'invenzione viene scoperta. Dove una coppia è tutte e due le cose, come
-pietra e acqua, Unisci dà l'invenzione (il pozzo); il Mestolo fa la reazione (il muschio) e scopre anche lui il pozzo.
+Con **Unisci** si scelgono due scoperte e si guarda cosa ne nasce, come nei giochi di alchimia: prima le unioni
+scritte a mano (pietra e legno: l'utensile; un omino con la lancia: il cacciatore), poi le stesse reazioni del mondo
+(terra e acqua: fango, anche qui), e solo le coppie di sostanze rimaste senza esito danno una **miscela** nuova, con
+nome, colore e comportamento decisi dal carattere dei due ingredienti (e le miscele si uniscono ancora tra loro: non
+finiscono mai). Le miscele arrivano solo da quando il Libro ha dodici voci: prima quelle coppie «per ora» non si
+uniscono, e alla dodicesima una riga lo annuncia. Ciò che è un fenomeno (un'esplosione, un temporale) Unisci non lo
+regala: «succede solo nel mondo». Una coppia già provata lo dice («Già fatta: Fango», «Già provata: niente»).
+Una capanna e un frutto chiamano i **primi omini**: ne arrivano due, vicino all'acqua più vicina a dove si sta
+guardando (se l'acqua non c'è, «arriveranno vicino all'acqua»). Lo strumento dei primi giorni che rimestava le cose non
+c'è più: chi lo aveva in una partita salvata ritrova la Mano e un saluto, una volta sola.
+
+Le unioni scritte a mano sono una tabella che cresce, in `src/motore/cose.ts`:
+
+| Con… | …e… | nasce |
+| --- | --- | --- |
+| Omino | Lancia, Campo, Barca, Vaso, Pane, Fornace, Spada, Libro | Cacciatore, Contadino, Pescatore, Vasaio, Fornaio, Fabbro, Guerriero, Maestro |
+| Omino | Mercato, Mulino, Faro, Castello, Utensile, Carro, Capanna | Mercante, Mugnaio, Guardiano del faro, Re, Artigiano, Carrettiere, Famiglia |
+| Omino | Falò, Ponte, Città, Tempio | Cantastorie, Viandante, Cittadino, Custode del tempio |
+| Capanna | Frutto · Falò | i primi omini · Accampamento |
+| Falò | Legno · Vaso · Farina | Fiaccola · Minestra · Focaccia |
+| Campo | Mulino · Casa · Aratro · Pozzo · Frutto | Farina · Fattoria · Raccolto · Orto · Frutteto |
+| Pozzo, Barca, Casa | Vaso · Aria · Falò | Secchio · Veliero · Focolare |
+| Faro, Libro, Pane, Città | Barca · Tempio · Moneta · Castello | Porto · Biblioteca · Bottega · Regno |
+
+Prima di queste c'erano le trentadue unioni delle invenzioni, dall'utensile al faro; ora ogni invenzione serve a farne
+almeno un'altra.
 
 Il motore sa già **portare una cosa sopra un'altra** dentro il mondo (`Mondo.porta`, i gesti arriveranno dopo): con
 le stesse regole di Unisci, l'acqua portata sulla terra fa nascere il fango proprio lì, il legno portato su un albero
@@ -46,7 +62,7 @@ sul dispositivo.
 ```powershell
 pnpm install
 pnpm dev          # il gioco in sviluppo, si aggiorna mentre si modifica
-pnpm test         # le prove del motore (materiali, acqua, miscele, Unisci, portare, ere, omini, paesi, costruzioni, salvataggio)
+pnpm test         # le prove del motore (materiali, acqua, miscele, Unisci, unioni, portare, ere, omini, paesi, costruzioni, salvataggio)
 pnpm typecheck
 pnpm build        # produce dist/index.html: un solo file, si apre con un doppio clic
 node strumenti/fumo.cjs     # giro di fumo nel browser, su un telefono simulato (dopo pnpm build)
@@ -64,14 +80,16 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
 
 - `src/motore/materiali.ts`: l'elenco dei materiali, dei fenomeni e il carattere di ogni sostanza.
 - `src/motore/mondo.ts`: la griglia e le regole. Ogni materiale ha poche regole; pioggia, incendi, boschi e
-  temporali nascono dal loro incontro. Qui stanno anche il Mestolo e il comportamento delle miscele.
+  temporali nascono dal loro incontro. Qui sta anche il comportamento delle miscele.
 - `src/motore/miscele.ts`: come due sostanze si fondono in una terza, e le soglie del loro carattere (le stesse per
   le etichette del Libro e per il comportamento nel mondo). `nomi.ts`: come si chiama e come si racconta una miscela.
-- `src/motore/ricette.ts`: le reazioni del mondo, coppia per coppia (cosa diventa ogni cella sotto il Mestolo).
+- `src/motore/ricette.ts`: le reazioni del mondo, coppia per coppia (cosa diventa ogni cella quando si porta una
+  cosa sopra l'altra).
   `esiti.ts`: da quelle e dalle vie a due ingredienti del Libro, l'esito di ogni coppia in Unisci (`esitoNoto`),
   i fenomeni che non si regalano (`fenomenoDi`) e le coppie che non danno mai una miscela (`coppiaDAutore`).
-  `esitoDi` decide l'esito di una coppia, uno solo per Unisci, per il mondo e per il Mestolo, senza toccare niente.
-  `cose.ts`: le invenzioni, le loro unioni e le ere; `ere.ts`: quale era (o grande evento) può scattare adesso.
+  `esitoDi` decide l'esito di una coppia, uno solo per Unisci e per il mondo, senza toccare niente.
+  `cose.ts`: le invenzioni, i mestieri (`G`), tutte le unioni scritte e le ere; `ere.ts`: quale era (o grande evento)
+  può scattare adesso.
 - `src/motore/bersaglio.ts`: che cosa c'è in un punto del mondo per chi ci porta sopra qualcosa (`cheCosaCe`: un
   omino, una cosa posata, un materiale, un appoggio, il vuoto). `porta.ts`: portare una scoperta sopra quel punto
   (`Mondo.porta`), con le regole in ordine e l'esito da raccontare.
@@ -81,7 +99,8 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
   figli, tornano a casa; e lasciano in `Mondo.fatti` nascite e morti con la causa. `cammino.ts`: dove un omino può
   stare e passare (i tronchi degli alberi sì), gradini e dirupi. `fonti.ts`: dove si beve e dove si mangia, colonna
   per colonna (il Mondo lo ricalcola ogni due secondi). `arrivi.ts`: quando e dove arrivano i primi omini (acqua,
-  piante e un riparo di pietra o mattoni; vicino all'acqua, in un punto da cui ci si arriva a piedi).
+  piante e un riparo di pietra o mattoni; vicino all'acqua, in un punto da cui ci si arriva a piedi), e i primi omini
+  chiamati da un'unione (`primiOmini`, `cercaApprodo`).
 - `src/motore/posa.ts`: dove una costruzione può stare (`puoPosare`, con il perché di ogni rifiuto), le piante che
   toglie quando si posa e come si assesta dopo (scende soltanto; barca e ponte seguono l'acqua).
 - `src/scoperte.ts`: le voci del Libro, con capitolo, indizio, descrizione e modi in cui nascono.
@@ -91,7 +110,9 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
   montagne e arcobaleno; `particelle.ts` scintille, lucciole e la festa delle scoperte; `omini.ts` i personaggi
   animati; `colori.ts` i colori di ogni materiale e i tondini della tavolozza.
 - `src/pagina.ts` e `src/stile.css`: lo scheletro e l'aspetto della pagina. `src/gioco.ts`: tavolozza, dito,
-  avvisi e il tempo che scorre. `src/righe.ts`: le frasi brevi in fondo al cielo (una posa rifiutata, un lutto,
+  avvisi e il tempo che scorre. `src/unisci.ts`: il pannello Unisci; `src/risposta.ts`: che cosa dice dopo
+  un'unione. `src/ricordi.ts`: quello che la pagina ricorda con la partita (e il saluto per lo strumento che non c'è più).
+  `src/righe.ts`: le frasi brevi in fondo al cielo (una posa rifiutata, un lutto,
   una cosa che lì non si mette, l'annuncio delle miscele).
   `src/main.ts`: la partenza.
 - `src/salvataggio.ts`: la partita salvata nel browser, miscele e coppie provate comprese.
@@ -103,7 +124,8 @@ Il carattere dei titoli è Pixelify Sans (licenza libera SIL OFL 1.1), preso dal
 
 1. Un numero nuovo in `materiali.ts`, con il suo stato e il suo carattere (`base(...)`).
 2. La regola che la fa nascere in `mondo.ts`, dentro `aggiorna`; se nasce da una coppia, anche in `ricette.ts`
-   (così il Mestolo, Unisci e il mondo la conoscono: le prove in `test/unisci.test.ts` e `test/coppie.test.ts`
-   scorrono tutte le coppie).
+   (così Unisci e il mondo la conoscono: le prove in `test/unisci.test.ts` e `test/coppie.test.ts` scorrono tutte
+   le coppie). Se è una cosa che nasce unendo (un'invenzione, un mestiere), basta una riga in `UNIONI` di
+   `cose.ts` e la voce in `scoperte.ts` con `invenzione(...)` o `gente(...)`: le vie del Libro si scrivono da sole.
 3. La voce in `scoperte.ts` e il colore in `disegno/colori.ts`.
 4. Una prova in `test/` (un file per argomento, aiuti comuni in `test/aiuti.ts`) che la fa nascere davvero.

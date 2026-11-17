@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { C, CONSEGUENZE, E, ERE, unione, vieDi } from '../src/motore/cose.js';
+import { C, CONSEGUENZE, E, ERE, RISULTATI, unione, vieDi } from '../src/motore/cose.js';
 import { SOLO_NEL_MONDO, coppiaDEsempio, esitoNoto, fenomenoDi, siUnisce } from '../src/motore/esiti.js';
 import { BRUCIA, ESPLOSIONE, INCENDIO, M, N_BASE, NASCOSTO, PRIMA_ID_MISCELA, PRIMA_MISCELA, TEMPORALE } from '../src/motore/materiali.js';
 import { idMiscela } from '../src/motore/miscele.js';
 import type { Mondo } from '../src/motore/mondo.js';
 import { ACCENDI, COPPIE } from '../src/motore/ricette.js';
 import { fotografa, ripristina } from '../src/salvataggio.js';
-import { INIZIALI, SCOPERTE, meritaIlMestolo, vociTrovate } from '../src/scoperte.js';
+import { INIZIALI, SCOPERTE, vociTrovate } from '../src/scoperte.js';
 import { gira, libroDa12, mondo, quanti, riempi } from './aiuti.js';
 
 describe('unire due scoperte', () => {
@@ -95,36 +95,41 @@ describe('Unisci conosce le reazioni del mondo', () => {
     expect(m.novita.length).toBe(7);
   });
 
-  it('per ogni coppia di ricette.ts Unisci dà lo stesso esito del Mestolo, e mai una miscela', () => {
+  it('per ogni coppia di ricette.ts, portata una sopra l’altra nel mondo, le celle cambiano davvero; Unisci dà lo stesso esito, e mai una miscela', () => {
     for (const [a, b, primo, secondo, inUnisci] of COPPIE) {
       const coppia = `${a} + ${b}`;
-      // Nel mondo: due blocchi che si toccano, e il Mestolo passato dove si toccano.
-      const m = saputo();
-      riempi(m, 10, 15, 29, 19, a);
-      riempi(m, 10, 20, 29, 24, b);
-      const materia = primo > 0 ? primo : secondo;
-      const prima = materia > 0 ? quanti(m, materia) : 0;
-      const nati = new Set<number>();
-      for (let k = 0; k < 30; k++) m.mescola(20, 19, 5, nati);
+      const invenzione = unione(a, b);
       const accende = primo === ACCENDI || secondo === ACCENDI;
-      if (accende) expect(quanti(m, M.BRACE) > 0 || m.botti.length > 0, coppia).toBe(true);
-      else expect(quanti(m, materia), coppia).toBeGreaterThan(prima);
-      expect(m.ricettario.has(idMiscela(a, b)), coppia).toBe(false);
-      // Dove non è saltato in aria niente (il fumo di uno scoppio è roba nuova, e il Mestolo può fonderla) non c'è nessuna miscela.
-      if (m.botti.length === 0) {
+      const materia = primo > 0 ? primo : secondo;
+      // Ciò che brucia, nella coppia: l'altra è la fiamma.
+      const brucia = [a, b].find((x) => x !== M.FUOCO && x !== M.LAVA && x !== M.FULMINE) ?? a;
+      // Nel mondo: un blocco di una delle due, e l'altra portata sopra; in almeno uno dei due versi le celle cambiano.
+      const versi = [
+        [a, b],
+        [b, a],
+      ].map(([gettone, sotto]) => {
+        const m = saputo();
+        riempi(m, 10, 20, 29, 24, sotto);
+        const prima = quanti(m, accende ? brucia : materia);
+        m.porta(gettone, 20, 20, 'gettone');
+        if (accende) gira(m, 20);
+        // Né un verso né l'altro fanno mai una miscela.
         expect(m.ricettario.size, coppia).toBe(0);
         expect(m.tipo.some((t) => t >= PRIMA_MISCELA), coppia).toBe(false);
-      }
+        // Dove la coppia è anche un'invenzione (legno e fuoco: il falò) nasce quella, e le celle possono restare come sono.
+        if (invenzione >= 0) return m.visti.has(invenzione);
+        if (accende) return quanti(m, brucia) < prima || m.botti.length > 0;
+        return quanti(m, materia) > prima;
+      });
+      expect(versi, coppia).toContain(true);
 
-      // In Unisci: la stessa cosa. Dove la coppia è anche un'invenzione (legno e fuoco: il falò) Unisci dà quella,
-      // e il Mestolo la scopre anche lui (c'è una prova apposta più sotto); di ciò che brucia Unisci mostra quello
-      // che resta (o dice che l'esplosione va vista nel mondo).
+      // In Unisci: la stessa cosa. Dove la coppia è anche un'invenzione (legno e fuoco: il falò) Unisci dà quella;
+      // di ciò che brucia Unisci mostra quello che resta (o dice che l'esplosione va vista nel mondo).
       const u = saputo();
       const esito = u.unisci(a, b);
       expect(u.unisci(b, a), coppia).toBe(esito);
       expect(u.ricettario.size, coppia).toBe(0);
       expect(esito, coppia).not.toBe(-1);
-      const invenzione = unione(a, b);
       if (invenzione >= 0) expect(esito, coppia).toBe(invenzione);
       else if (accende) expect(esito, coppia).toBe(inUnisci! < N_BASE ? inUnisci : SOLO_NEL_MONDO);
       else expect(esito, coppia).toBe(materia);
@@ -151,7 +156,8 @@ describe('Unisci conosce le reazioni del mondo', () => {
     // Vale per ogni fenomeno o paesaggio del Libro che nasce da due cose: Unisci non lo scopre al posto del mondo.
     let provati = 0;
     for (const voce of SCOPERTE) {
-      if (voce.id < N_BASE || voce.sezione === 'cose' || voce.sezione === 'ere') continue;
+      // Ciò che nasce da un'unione scritta (l'Omino, alla capanna con un frutto) non è un fenomeno: lo dà Unisci.
+      if (voce.id < N_BASE || voce.sezione === 'cose' || voce.sezione === 'ere' || RISULTATI.has(voce.id)) continue;
       for (const via of voce.nasce) {
         if (via.con.length !== 2) continue;
         const n = mondo();
@@ -215,12 +221,11 @@ describe('Unisci conosce le reazioni del mondo', () => {
     expect(m.unisci(M.SABBIA, M.ACQUA)).toBe(idMiscela(M.SABBIA, M.ACQUA));
   });
 
-  it('il Mestolo passato dove pietra e legno si toccano scopre l’utensile, come Unisci, e lascia le celle come sono', () => {
+  it('pietra portata dove c’è il legno scopre l’utensile, come Unisci, e lascia le celle come sono', () => {
     const m = mondo();
     riempi(m, 20, 50, 40, 59, M.PIETRA);
     riempi(m, 20, 45, 40, 49, M.LEGNO);
-    const nati = new Set<number>();
-    for (let k = 0; k < 20; k++) m.mescola(30, 49, 5, nati);
+    expect(m.porta(M.PIETRA, 30, 45, 'gettone')).toMatchObject({ genere: 'unione', nato: C.UTENSILE });
     expect(m.visti.has(C.UTENSILE)).toBe(true);
     expect(m.visti.has(E.PIETRA)).toBe(true);
     expect(quanti(m, M.PIETRA)).toBe(21 * 10);
@@ -228,16 +233,14 @@ describe('Unisci conosce le reazioni del mondo', () => {
     expect(m.ricettario.size).toBe(0);
   });
 
-  it('dove una coppia è insieme una reazione del mondo e un’invenzione, il Mestolo fa la prima e scopre la seconda', () => {
-    // Per ogni invenzione che nasce da due materiali: rimestati nel mondo la scoprono, proprio come in Unisci.
+  it('dove una coppia è insieme una reazione del mondo e un’invenzione, portandole una sull’altra nasce l’invenzione e, se non distrugge, avviene la reazione', () => {
+    // Per ogni invenzione che nasce da due materiali: portati uno sull'altro nel mondo la scoprono, proprio come in Unisci.
     let anche = 0;
     for (const [a, b, invenzione] of Object.values(C).flatMap((id) => vieDi(id).map(([x, y]) => [x, y, id] as const))) {
       if (a >= N_BASE || b >= N_BASE) continue;
       const m = mondo();
-      riempi(m, 10, 30, 49, 34, a);
       riempi(m, 10, 35, 49, 39, b);
-      const nati = new Set<number>();
-      for (let k = 0; k < 30; k++) m.mescola(30, 34, 5, nati);
+      m.porta(a, 30, 35, 'gettone');
       expect(m.visti.has(invenzione), `${a} + ${b}`).toBe(true);
       expect(m.ricettario.size, `${a} + ${b}`).toBe(0);
       if (esitoNoto(a, b) >= 0) anche++;
@@ -245,33 +248,31 @@ describe('Unisci conosce le reazioni del mondo', () => {
     // Pietra e acqua (pozzo e muschio), legno e fuoco (falò e fiamme), legno e pianta (capanna e frutto).
     expect(anche).toBe(3);
     const m = mondo();
-    riempi(m, 10, 35, 49, 39, M.PIETRA);
-    riempi(m, 10, 30, 49, 34, M.ACQUA);
-    for (let k = 0; k < 30; k++) m.mescola(30, 34, 5, new Set());
+    riempi(m, 10, 35, 49, 39, M.ACQUA);
+    m.porta(M.PIETRA, 30, 35, 'gettone');
     expect(m.visti.has(C.POZZO)).toBe(true);
     expect(m.visti.has(M.MUSCHIO)).toBe(true);
     expect(quanti(m, M.MUSCHIO)).toBeGreaterThan(0);
   });
 
-  it('ciò che nel mondo nasce col tempo, sotto il Mestolo nasce subito: un germoglio sul terriccio bagnato', () => {
+  it('ciò che nel mondo nasce col tempo, portato sopra nasce subito: un germoglio sul terriccio bagnato', () => {
     const m = mondo();
     riempi(m, 10, 55, 50, 59, M.HUMUS);
-    riempi(m, 10, 54, 50, 54, M.ACQUA);
-    const nati = new Set<number>();
-    for (let k = 0; k < 20; k++) m.mescola(30, 54, 5, nati);
+    m.porta(M.ACQUA, 30, 55, 'gettone');
     expect(m.visti.has(M.PIANTA)).toBe(true);
     // È un germoglio vero, che cresce da sé: dopo un po' di piante ce ne sono di più.
     const subito = quanti(m, M.PIANTA) + quanti(m, M.LEGNO);
+    expect(subito).toBeGreaterThan(0);
     gira(m, 1500);
     expect(quanti(m, M.PIANTA) + quanti(m, M.LEGNO)).toBeGreaterThan(subito);
   });
 
-  it('il Mestolo si guadagna con le voci del Libro: le miscele non contano', () => {
+  it('le miscele non sono voci del Libro: non contano per le dodici voci', () => {
     const m = mondo();
     m.visti.add(M.SABBIA);
     for (const altra of [M.ACQUA, M.FUOCO, M.FANGO]) {
       m.visti.add(altra);
-      // Prima della dodicesima voce Unisci non mescola: le miscele le fa il Mestolo.
+      // Prima della dodicesima voce Unisci non mescola, e una miscela fatta nascere apposta non cambia il conto.
       expect(m.unisci(M.SABBIA, altra)).toBe(-1);
       const miscela = m.registra(M.SABBIA, altra);
       expect(miscela).toBeGreaterThanOrEqual(PRIMA_ID_MISCELA);
@@ -280,9 +281,8 @@ describe('Unisci conosce le reazioni del mondo', () => {
     // quattro elementi, sabbia, fango e tre miscele: nove scoperte, ma solo due voci nuove del Libro
     expect(m.visti.size).toBe(9);
     expect(vociTrovate(m.visti)).toBe(6);
-    expect(meritaIlMestolo(m.visti)).toBe(false);
     expect(m.unisci(M.TERRA, M.FUOCO)).toBe(M.LAVA);
-    expect(meritaIlMestolo(m.visti)).toBe(true);
+    expect(vociTrovate(m.visti)).toBe(7);
   });
 
   it('l’esempio che Unisci suggerisce è fatto di cose possedute, e porta a qualcosa di nuovo finché c’è', () => {

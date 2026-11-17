@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { C, CONSEGUENZE, E, ERE, vieDi } from '../src/motore/cose.js';
 import { erePronte } from '../src/motore/ere.js';
-import { siUnisce } from '../src/motore/esiti.js';
-import { M } from '../src/motore/materiali.js';
+import { M, N_BASE, OMINO, VILLAGGIO } from '../src/motore/materiali.js';
 import type { Mondo } from '../src/motore/mondo.js';
 import { fotografa, ripristina } from '../src/salvataggio.js';
 import { SCOPERTE } from '../src/scoperte.js';
@@ -76,7 +75,7 @@ describe('le ere arrivano in ordine', () => {
       const caso = dadi(seme);
       const m = mondo();
       // Tutti i materiali, gli omini e il villaggio: le invenzioni si fanno solo unendo.
-      for (const voce of SCOPERTE) if (siUnisce(voce.id) && voce.sezione !== 'cose') m.visti.add(voce.id);
+      for (const voce of SCOPERTE) if (voce.id < N_BASE || voce.id === OMINO || voce.id === VILLAGGIO) m.visti.add(voce.id);
       for (let mossa = 0; mossa < 200; mossa++) {
         const [a, b] = coppie[(caso() * coppie.length) | 0];
         if (!m.visti.has(a) || !m.visti.has(b)) continue;

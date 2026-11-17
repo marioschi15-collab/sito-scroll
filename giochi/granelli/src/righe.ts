@@ -26,7 +26,20 @@ export const NON_QUI: Record<PercheNo, string> = {
   soloSopra: 'Portala sopra un’altra cosa.',
   pieno: 'Qui non c’è più posto: prova un po’ più in là.',
   troppi: 'Gli omini sono già tanti: per ora non ne arrivano altri.',
+  acqua: 'Arriveranno vicino all’acqua.',
 };
+
+/** Quello che il pannello Unisci risponde, oltre alle scoperte: le coppie già provate, quelle «per ora», gli omini. */
+export const UNISCI = {
+  perOra: 'Queste due, per ora, non si uniscono.',
+  giaProvata: 'Già provata: niente',
+  giaFatta: 'Già fatta:',
+  arrivati: 'Sono arrivati due omini, vicino all’acqua.',
+  arriveranno: NON_QUI.acqua,
+} as const;
+
+/** Il saluto a chi aveva il Mestolo in una partita di prima: detto una volta sola, alla prima apertura. */
+export const ADDIO_MESTOLO = 'Il Mestolo non c’è più. Le cose si uniscono nel pannello Unisci, e presto anche portandole una sopra l’altra nel mondo.';
 
 /** Gli avvisi del mondo, detti una volta sola. */
 export const ANNUNCIO: Record<Annuncio, string> = {

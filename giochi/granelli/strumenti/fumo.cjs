@@ -81,13 +81,19 @@ const PASSI = [
     },
   },
   {
-    nome: 'in Unisci terra + acqua dà Fango',
+    nome: 'in Unisci terra + acqua dà Fango, e la seconda volta dice che è già fatta',
     fai: async (s) => {
       await s.page.locator('.tasto-unisci').tap();
       await s.page.locator('.scheda.unisci').waitFor();
-      for (const nome of ['Terra', 'Acqua']) await s.page.locator('.scaffale .gettone', { hasText: new RegExp(`^${nome}$`) }).tap();
+      const tocca = async (nome) => s.page.locator('.scaffale .gettone', { hasText: new RegExp(`^${nome}$`) }).tap();
+      for (const nome of ['Terra', 'Acqua']) await tocca(nome);
       const esito = (await s.page.locator('.esito strong').textContent()) ?? '';
       pretendi(esito === 'Fango', `in Unisci terra + acqua ha dato «${esito}» invece di «Fango»`);
+      for (const nome of ['Acqua', 'Terra']) await tocca(nome);
+      const titolo = (await s.page.locator('.esito .avviso-sopra').textContent()) ?? '';
+      pretendi(titolo === 'Già fatta:', `rifacendo acqua + terra il pannello dice «${titolo}» invece di «Già fatta:»`);
+      // Nessun Mestolo, né in tavolozza né nel pannello.
+      pretendi((await s.page.getByText(/mestolo/i).count()) === 0, 'da qualche parte c’è ancora scritto «Mestolo»');
       await s.page.locator('.scheda.unisci .scheda-testa .tasto', { hasText: 'Chiudi' }).tap();
       pretendi((await s.page.locator('.velo').count()) === 0, 'Unisci non si è chiuso');
     },
@@ -104,8 +110,6 @@ const PASSI = [
         return false;
       }, C.CAPANNA);
       pretendi(posata, 'il mondo ha rifiutato di posare la capanna in tutti i punti provati');
-      // Con la capanna le scoperte possono bastare per il Mestolo: la sua finestra arriva dopo un paio di secondi.
-      await s.page.waitForTimeout(2300);
       await chiudiFinestre(s.page);
       const cose = await s.page.evaluate(() => window.granelli().cose.map((c) => c.id));
       pretendi(cose.length === 1 && cose[0] === C.CAPANNA, 'la capanna posata non è tra le cose del mondo');
@@ -133,10 +137,15 @@ const PASSI = [
       const riga = (await s.page.locator('.riga').textContent()) ?? '';
       pretendi(riga.includes('già una costruzione'), `toccando sopra la capanna la riga dice «${riga}»`);
       pretendi((await s.page.evaluate(() => window.granelli().cose.length)) === 1, 'una seconda capanna è finita sopra la prima');
-      // Un punto libero e abbastanza piano, a destra della prima e ancora in vista: lì il tocco la posa.
+      // Un punto libero e abbastanza piano, accanto alla prima e ancora in vista (prima a destra, poi a sinistra):
+      // lì il tocco la posa. La terra versata col dito non cade mai uguale, e a volte a destra non c'è posto.
       const libero = await s.page.evaluate((id) => {
         const m = window.granelli();
-        for (let x = m.cose[0].x + 15; x < (m.w >> 1) + 44; x++) {
+        const prima = m.cose[0].x;
+        const punti = [];
+        for (let x = prima + 15; x < (m.w >> 1) + 44; x++) punti.push(x);
+        for (let x = prima - 6; x > (m.w >> 1) - 44; x--) punti.push(x);
+        for (const x of punti) {
           const dove = m.puoPosare(id, x, 20);
           if (dove.si) return [x, dove.y - 2];
         }
@@ -232,15 +241,17 @@ const PASSI = [
         for (let d = 0; d < m.w >> 1; d++) {
           for (const x of [(m.w >> 1) - d, (m.w >> 1) + d]) {
             if (nuda(x) && libera(x)) {
-              return m.porta(terra, x, m.suolo(x) - 1, 'gettone');
+              return { esito: m.porta(terra, x, m.suolo(x) - 1, 'gettone'), x };
             }
           }
         }
         return null;
       }, [M.TERRA, M.ROCCIA]);
-      pretendi(messa.genere === 'messa', `la terra portata sulla roccia non si è messa lì: ${JSON.stringify(messa)}`);
+      pretendi(messa && messa.esito.genere === 'messa', `la terra portata sulla roccia non si è messa lì: ${JSON.stringify(messa)}`);
       await s.page.waitForTimeout(800);
-      const r = await s.page.evaluate(([terra, acqua, fango]) => {
+      // L'acqua si porta sulla terra appena messa: si cerca lì intorno (il punto dipende da dove stanno capanne e
+      // omini, che dopo la ricarica possono arrivare da soli, quindi non è sempre vicino al mezzo del mondo).
+      const r = await s.page.evaluate(([terra, acqua, fango, cx]) => {
         const m = window.granelli();
         // Il fango intorno a un punto, entro cinque celle: deve crescere proprio dove si è portata l'acqua.
         const fangoVicino = (x, y) => {
@@ -248,9 +259,9 @@ const PASSI = [
           for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) if (m.leggi(x + dx, y + dy) === fango) n++;
           return n;
         };
-        // La cella di terra con il cielo libero sopra più vicina al mezzo: lì si porta il gettone dell'acqua.
-        for (let d = 0; d < 40; d++) {
-          for (const x of [(m.w >> 1) - d, (m.w >> 1) + d]) {
+        // La cella di terra con il cielo libero sopra più vicina a dove è stata messa: lì si porta il gettone dell'acqua.
+        for (let d = 0; d < 12; d++) {
+          for (const x of [cx - d, cx + d]) {
             const y = m.suolo(x);
             if (m.leggi(x, y) !== terra) continue;
             const prima = fangoVicino(x, y);
@@ -258,12 +269,64 @@ const PASSI = [
             return { esito, prima, dopo: fangoVicino(x, y), provata: m.giaProvata(terra, acqua) };
           }
         }
-        return null;
-      }, [M.TERRA, M.ACQUA, M.FANGO]);
-      pretendi(r, 'nel mondo non c’è una cella di terra scoperta su cui portare l’acqua');
+        // Niente terra in cima: si dice che cosa c'è, colonna per colonna (numero del materiale in cima / riga).
+        const intorno = [];
+        for (let x = cx - 12; x <= cx + 12; x++) intorno.push(`${x}:${m.leggi(x, m.suolo(x))}/${m.suolo(x)}`);
+        return { intorno: intorno.join(' ') };
+      }, [M.TERRA, M.ACQUA, M.FANGO, messa.x]);
+      pretendi(r.esito, `vicino alla terra appena messa (colonna ${messa.x}) non c’è terra scoperta su cui portare l’acqua: ${r.intorno}`);
       pretendi(r.esito.genere === 'unione' && r.esito.nato === M.FANGO, `portando l’acqua sulla terra è successo ${JSON.stringify(r.esito)}`);
       pretendi(r.dopo > r.prima, `il fango lì intorno non è cresciuto: prima ${r.prima} celle, dopo ${r.dopo}`);
       pretendi(r.provata, 'la coppia terra e acqua non risulta provata');
+    },
+  },
+  {
+    nome: '«Svuota il mondo» tiene il Libro e le coppie già provate',
+    fai: async (s) => {
+      await chiudiFinestre(s.page);
+      await s.page.locator('button', { hasText: /^Nuovo$/ }).tap();
+      await s.page.getByRole('button', { name: 'Svuota il mondo' }).tap();
+      await s.page.waitForTimeout(200);
+      const r = await s.page.evaluate(([terra, acqua, fango]) => {
+        const m = window.granelli();
+        return { cose: m.cose.length, fango: m.visti.has(fango), provata: m.giaProvata(acqua, terra) };
+      }, [M.TERRA, M.ACQUA, M.FANGO]);
+      pretendi(r.cose === 0, `dopo «Svuota il mondo» restano ${r.cose} costruzioni`);
+      pretendi(r.fango, 'dopo «Svuota il mondo» il Fango non è più nel Libro');
+      pretendi(r.provata, 'dopo «Svuota il mondo» la coppia terra e acqua non risulta più provata');
+    },
+  },
+  {
+    nome: 'una partita di prima con il Mestolo si apre con la Mano scelta e un saluto, una volta sola',
+    fai: async (s) => {
+      // La partita salvata diventa «di prima»: con il Mestolo tra i ricordi. Questa pagina smette di salvare
+      // (altrimenti chiudendosi riscriverebbe la partita), e la si riapre in una pagina nuova.
+      await s.page.evaluate(() => {
+        const chiave = Object.keys(localStorage).find((k) => localStorage.getItem(k).includes('"extra"'));
+        const dati = JSON.parse(localStorage.getItem(chiave));
+        dati.extra = { ...dati.extra, mestolo: true };
+        localStorage.setItem(chiave, JSON.stringify(dati));
+        Storage.prototype.setItem = () => {};
+      });
+      const apri = async () => {
+        const pagina = await s.ctx.newPage();
+        pagina.on('pageerror', (e) => s.errori.push(`errore nella pagina: ${e.message}`));
+        await pagina.goto(s.page.url());
+        await pagina.waitForFunction(() => typeof window.granelli === 'function');
+        return pagina;
+      };
+      const vecchia = await apri();
+      const saluto = vecchia.locator('.scheda.messaggio', { hasText: 'Il Mestolo non c’è più' });
+      pretendi((await saluto.count()) === 1, 'aprendo una partita con il Mestolo non compare il saluto');
+      const scelto = await vecchia.locator('.tavolozza .granello.attivo .nome').textContent();
+      pretendi(scelto === 'Mano', `aprendo una partita con il Mestolo è scelto «${scelto}» invece della Mano`);
+      pretendi((await vecchia.locator('.tavolozza').getByText(/mestolo/i).count()) === 0, 'nella tavolozza c’è ancora il Mestolo');
+      await vecchia.getByRole('button', { name: 'Ho capito' }).tap();
+      await vecchia.close();
+      // Riaperta ancora, il saluto non torna: la partita si è già ricordata senza il Mestolo.
+      const dopo = await apri();
+      pretendi((await dopo.locator('.scheda.messaggio', { hasText: 'Mestolo' }).count()) === 0, 'il saluto al Mestolo è tornato una seconda volta');
+      await dopo.close();
     },
   },
   {

@@ -1,8 +1,8 @@
 import { SCOPERTE } from '../scoperte.js';
-import { chiaveCoppia, unione } from './cose.js';
+import { INGREDIENTI, RISULTATI, chiaveCoppia, unione } from './cose.js';
 import { BASE, N_BASE, OMINO, PRIMA_ID_MISCELA, VILLAGGIO } from './materiali.js';
 import { idMiscela } from './miscele.js';
-import { COPPIE, DEL_MESTOLO, RESTA } from './ricette.js';
+import { CELLA_PER_CELLA, COPPIE, RESTA } from './ricette.js';
 
 /** Quello che `Mondo.unisci` risponde quando la coppia è la via di un fenomeno: succede solo nel mondo. */
 export const SOLO_NEL_MONDO = -2;
@@ -13,11 +13,11 @@ const MATERIA = new Map<number, number>();
 const FENOMENO = new Map<number, number>();
 
 /**
- * Le reazioni tra due celle che il Mestolo conosce: quelle di ricette.ts, più le vie a due ingredienti che il
- * Libro dà per un materiale (lì il primo ingrediente resta com'è e il secondo diventa la cosa nuova).
- * Chiave: primo * 256 + secondo.
+ * Le reazioni tra due celle che si toccano quando si porta una cosa sopra un'altra: quelle di ricette.ts, più le
+ * vie a due ingredienti che il Libro dà per un materiale (lì il primo ingrediente resta com'è e il secondo diventa
+ * la cosa nuova). Chiave: primo * 256 + secondo.
  */
-export const REAZIONI = new Map(DEL_MESTOLO);
+export const REAZIONI = new Map(CELLA_PER_CELLA);
 
 for (const [a, b, primo, secondo, inUnisci] of COPPIE) {
   const esito = inUnisci ?? (primo > 0 ? primo : secondo);
@@ -26,7 +26,9 @@ for (const [a, b, primo, secondo, inUnisci] of COPPIE) {
 }
 for (const voce of SCOPERTE) {
   // Le invenzioni hanno la loro tavola (cose.ts) e le ere arrivano da sole: qui contano materiali, vita e fenomeni.
-  if (voce.sezione === 'cose' || voce.sezione === 'ere') continue;
+  // Anche ciò che nasce da un'unione scritta (un mestiere, l'omino che arriva alla capanna) ha già la sua tavola:
+  // le sue vie non sono quelle di un fenomeno da guardare nel mondo.
+  if (voce.sezione === 'cose' || voce.sezione === 'ere' || RISULTATI.has(voce.id)) continue;
   for (const via of voce.nasce) {
     if (via.con.length !== 2 || via.con[0] === via.con[1]) continue;
     const [a, b] = via.con;
@@ -46,7 +48,7 @@ for (const voce of SCOPERTE) {
 
 /**
  * Il materiale (o la cosa viva) che nasce da due scoperte secondo le reazioni del mondo: terra e acqua fanno
- * fango, in Unisci come sotto il Mestolo. -1 se per quella coppia non c'è niente di scritto.
+ * fango, in Unisci come nel mondo. -1 se per quella coppia non c'è niente di scritto.
  */
 export function esitoNoto(a: number, b: number): number {
   return MATERIA.get(chiaveCoppia(a, b)) ?? -1;
@@ -110,11 +112,12 @@ export function esitoDi(a: number, b: number, voci: number): Esito {
   return { genere: 'miscela', id: idMiscela(a, b) };
 }
 
-const INVENZIONI = new Set(SCOPERTE.filter((s) => s.sezione === 'cose').map((s) => s.id));
-
-/** Una scoperta d'autore che in Unisci si può unire ad altro: i materiali, le invenzioni, gli omini e il villaggio. */
+/**
+ * Una scoperta d'autore che in Unisci si può unire ad altro: i materiali, gli omini, il villaggio, e tutto ciò che
+ * entra in un'unione scritta o ne nasce (le invenzioni, i mestieri, le cose nuove).
+ */
 export function siUnisce(id: number): boolean {
-  return (id > 0 && id < N_BASE) || id === OMINO || id === VILLAGGIO || INVENZIONI.has(id);
+  return (id > 0 && id < N_BASE) || id === OMINO || id === VILLAGGIO || INGREDIENTI.has(id) || RISULTATI.has(id);
 }
 
 /**

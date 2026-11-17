@@ -1,8 +1,9 @@
 import { ALTEZZA } from './cammino.js';
 import { PER_ID, vociTrovate } from '../scoperte.js';
-import { type Cosa, INGOMBRO, unione } from './cose.js';
+import { primiOmini } from './arrivi.js';
+import { type Cosa, INGOMBRO } from './cose.js';
 import { erePronte } from './ere.js';
-import { REAZIONI, SOGLIA_MISCELE, SOLO_NEL_MONDO, coppiaDAutore, esitoDi } from './esiti.js';
+import { SOGLIA_MISCELE, SOLO_NEL_MONDO, coppiaDAutore, esitoDi } from './esiti.js';
 import { fenomeni } from './fenomeni.js';
 import { Fonti } from './fonti.js';
 import {
@@ -100,13 +101,6 @@ for (const t of [M.VUOTO, M.PIANTA, M.CENERE, M.NEVE, M.FRUTTO, M.FUNGO, M.MUSCH
 
 /** Nel `dato` del carbone: è nato da legno sepolto. La brace del legno che gli brucia accanto non lo riaccende. */
 const NATO_SEPOLTO = 1;
-
-/** Segno che il Mestolo lascia tra le cose nate in un gesto: "in questo gesto una miscela nuova è già nata". */
-const UNA_NUOVA = -1;
-
-/** Ciò che il Mestolo non può fondere. */
-const NON_SI_MESCOLA = new Uint8Array(N_TIPI);
-for (const t of [M.VUOTO, M.ROCCIA, M.BRACE]) NON_SI_MESCOLA[t] = 1;
 
 /**
  * Il mondo: una griglia di celle in cui ogni materiale segue poche regole semplici.
@@ -402,14 +396,18 @@ export class Mondo {
    * SOLO_NEL_MONDO; due sostanze senza esito danno la loro miscela (solo da quando il Libro ha dodici voci);
    * altrimenti niente (-1). Si uniscono solo cose già scoperte. La coppia provata si ricorda, tranne i fenomeni e
    * le miscele che aspettano il Libro più pieno.
+   * Quando nasce l'Omino e nel mondo non c'è nessuno, ne arrivano due vicino all'acqua, il più vicino possibile alla
+   * colonna `x` (dove sta guardando chi gioca); se nel mondo non c'è acqua, l'Omino resta una scoperta.
    */
-  unisci(a: number, b: number): number {
+  unisci(a: number, b: number, x = this.w >> 1): number {
     if (a === b || !this.visti.has(a) || !this.visti.has(b)) return -1;
     const esito = esitoDi(a, b, this.voci());
     if (esito.genere === 'fenomeno') return SOLO_NEL_MONDO;
     if (esito.genere === 'niente' && esito.perOra) return -1;
     this.ricordaProvata(a, b);
     const nato = esito.genere === 'miscela' ? this.registra(a, b) : esito.id;
+    // Gli omini che arrivano si scoprono dove arrivano: lì il mondo fa festa.
+    if (nato === OMINO && this.omini.length === 0) primiOmini(this, Math.max(0, Math.min(this.w - 1, Math.round(x))), this.w);
     if (nato > 0) this.scopri(nato, this.w >> 1, this.h >> 1);
     return nato;
   }
@@ -1350,67 +1348,16 @@ export class Mondo {
   }
 
   /**
-   * Il Mestolo: dove passa, due cose diverse che si toccano si fondono. Se la coppia ha già un suo risultato
-   * succede quello, lo stesso che darebbe Unisci: una reazione del mondo (terra e acqua fanno fango) cambia le
-   * celle, un'invenzione (pietra e legno: l'utensile) viene scoperta lasciandole come sono, e dove la coppia è
-   * tutte e due le cose (pietra e acqua: muschio e pozzo) succedono entrambe. Altrimenti nasce una miscela nuova,
-   * che nessuno ha scritto.
-   * `nati` raccoglie ciò che nasce durante lo stesso gesto: non si rimescola finché il dito non si alza,
-   * altrimenti una sola passata fonderebbe tutto con tutto. E in un gesto nasce al più una miscela mai vista.
-   */
-  mescola(x: number, y: number, raggio: number, nati: Set<number>): void {
-    const { tipo, w } = this;
-    for (let dy = -raggio; dy <= raggio; dy++) {
-      for (let dx = -raggio; dx <= raggio; dx++) {
-        if (dx * dx + dy * dy > raggio * raggio || !this.dentro(x + dx, y + dy)) continue;
-        const cx = x + dx;
-        const cy = y + dy;
-        const i = cy * w + cx;
-        const a = tipo[i];
-        if (NON_SI_MESCOLA[a] || nati.has(a) || this.caso() < 0.5) continue;
-        const j = this.vicino(i, cx, cy);
-        if (j < 0) continue;
-        const b = tipo[j];
-        if (b === a || NON_SI_MESCOLA[b] || nati.has(b)) continue;
-        const idA = Math.min(this.idTipo[a], this.idTipo[b]);
-        const idB = Math.max(this.idTipo[a], this.idTipo[b]);
-        // L'invenzione che Unisci darebbe per questa coppia si scopre anche qui, sempre: anche dove le due cose nel
-        // mondo reagiscono (pietra e acqua fanno il muschio, e chi le rimesta scopre lo stesso il pozzo).
-        const invenzione = unione(idA, idB);
-        if (invenzione >= 0) this.scopri(invenzione, cx, cy);
-        const nota = REAZIONI.get(a * 256 + b);
-        if (nota) {
-          this.trasforma(i, nota[0], nati);
-          this.trasforma(j, nota[1], nati);
-          continue;
-        }
-        if (invenzione >= 0) continue;
-        // Una sola miscela mai vista per gesto: ogni scoperta merita il suo momento.
-        const nuova = !this.visti.has(idMiscela(idA, idB));
-        if (nuova && nati.has(UNA_NUOVA)) continue;
-        const id = this.registra(idA, idB);
-        const t = id < 0 ? -1 : this.tipoPer(id);
-        if (t < 0) continue;
-        if (nuova) nati.add(UNA_NUOVA);
-        nati.add(t);
-        this.metti(i, t);
-        this.metti(j, t);
-      }
-    }
-  }
-
-  /**
    * Cambia una cella come dice una reazione del mondo: resta com'è, prende fuoco, o diventa un'altra cosa (la pianta
-   * nasce come germoglio). `nati` è la raccolta del Mestolo per il gesto in corso.
+   * nasce come germoglio).
    */
-  trasforma(i: number, esito: number, nati?: Set<number>): void {
+  trasforma(i: number, esito: number): void {
     if (esito === RESTA) return;
     if (esito === ACCENDI) {
       this.accendi(i);
       return;
     }
-    nati?.add(esito);
-    // Una pianta fatta nascere dal Mestolo è un germoglio che poi cresce da sé, non una foglia ferma a mezz'aria.
+    // Una pianta fatta nascere da una reazione è un germoglio che poi cresce da sé, non una foglia ferma a mezz'aria.
     if (esito === M.PIANTA) this.germoglia(i, true);
     else this.metti(i, esito);
   }

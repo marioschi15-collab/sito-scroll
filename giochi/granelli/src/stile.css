@@ -683,11 +683,6 @@ button.voce:active {
 .indietro {
   align-self: flex-start;
 }
-/* Il Mestolo nella tavolozza: un vortice, perché mescola. */
-.pallino.mestolo {
-  background: conic-gradient(from 0deg, #ffd54a, #ff7a4a, #b06ce0, #5ab4ff, #6fdc6f, #ffd54a);
-  border-radius: 50%;
-}
 
 /* Sui telefoni la barra è stretta: i tasti si fanno più piccoli. */
 @media (max-width: 480px) {

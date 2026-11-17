@@ -1,8 +1,9 @@
 import { nomeDi, tondino } from './libro.js';
-import { SOLO_NEL_MONDO, coppiaDEsempio, fenomenoDi, siUnisce } from './motore/esiti.js';
+import { coppiaDEsempio, siUnisce } from './motore/esiti.js';
 import { PRIMA_ID_MISCELA } from './motore/materiali.js';
 import type { Mondo } from './motore/mondo.js';
 import { el } from './pagina.js';
+import { rispostaDiUnisci } from './risposta.js';
 
 /** Si può unire ad altro: i materiali, le miscele, le invenzioni, e anche gli omini e il villaggio. */
 function unibile(mondo: Mondo, id: number): boolean {
@@ -18,10 +19,12 @@ function invito(mondo: Mondo): string {
 
 /**
  * Il pannello Unisci: si scelgono due scoperte e si guarda cosa ne nasce, come nei giochi di alchimia.
- * Qui nascono le invenzioni (utensile, capanna, ruota…), i materiali che nel mondo nascerebbero dall'incontro
- * di quelle due cose (terra e acqua: fango) e, tra due sostanze rimaste senza un risultato loro, le miscele.
+ * Qui nascono le invenzioni (utensile, capanna, ruota…), i mestieri (un omino con la lancia), i materiali che nel
+ * mondo nascerebbero dall'incontro di quelle due cose (terra e acqua: fango) e, tra due sostanze rimaste senza un
+ * risultato loro, le miscele. Una coppia già provata lo dice. `colonna` dice dove sta guardando chi gioca: gli
+ * omini chiamati da un'unione arrivano lì vicino, se possono.
  */
-export function apriUnisci(app: HTMLElement, mondo: Mondo): void {
+export function apriUnisci(app: HTMLElement, mondo: Mondo, colonna: () => number): void {
   const velo = el('div', 'velo');
   const scheda = el('div', 'scheda libro unisci');
   velo.append(scheda);
@@ -87,16 +90,8 @@ export function apriUnisci(app: HTMLElement, mondo: Mondo): void {
     else scelte = [id];
     if (scelte.length === 2) {
       const [a, b] = scelte;
-      const nota = new Set(mondo.visti);
-      const nato = mondo.unisci(a, b);
-      const insieme = `${nomeDi(mondo, a)} + ${nomeDi(mondo, b)}`;
-      if (nato === SOLO_NEL_MONDO) {
-        // La via di un fenomeno: Unisci non lo regala. Se chi gioca lo ha già visto gli si dice quale, altrimenti resta un mistero.
-        const fenomeno = fenomenoDi(a, b);
-        mostra(insieme, mondo.visti.has(fenomeno) ? fenomeno : null, 'Questo succede solo nel mondo: guarda l’indizio nel Libro.', false);
-      } else if (nato < 0) mostra('Niente da fare', null, `${insieme}: queste due non si uniscono.`, false);
-      else if (nota.has(nato)) mostra('La conosci già', nato, insieme, false);
-      else mostra(nato >= PRIMA_ID_MISCELA ? 'Nuova miscela!' : 'Nuova scoperta!', nato, insieme, true);
+      const r = rispostaDiUnisci(mondo, a, b, colonna(), (id) => nomeDi(mondo, id));
+      mostra(r.titolo, r.id, r.sotto, r.nuova);
       scelte = [];
     }
     ridisegna();

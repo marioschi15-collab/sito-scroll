@@ -6,12 +6,13 @@ import { Mondo } from './motore/mondo.js';
 import { SUPERFICIE, terreno } from './motore/terreno.js';
 import { apriUnisci } from './unisci.js';
 import { costruisciPagina, el } from './pagina.js';
-import { ANNUNCIO, NON_SI_POSA, annuncioDiLutto } from './righe.js';
+import { ADDIO_MESTOLO, ANNUNCIO, NON_SI_POSA, annuncioDiLutto } from './righe.js';
+import { type Ricordi, leggiRicordi } from './ricordi.js';
 import { carica, extraDi, fotografa, ripristina, salva } from './salvataggio.js';
-import { INIZIALI, PER_ID, SCOPERTE, meritaIlMestolo, vociTrovate } from './scoperte.js';
+import { INIZIALI, PER_ID, SCOPERTE, vociTrovate } from './scoperte.js';
 
 const GOMMA = -1;
-const MESTOLO = -2;
+// Il -2 era il Mestolo, che non c'è più: il numero resta libero, così una partita di prima non lo confonde con altro.
 const MANO = -3;
 const ISTANTE = 1000 / 60;
 /** Quanto è grande un mondo nuovo, in celle: molto più della vista, che ci scorre sopra. */
@@ -21,12 +22,6 @@ const ALTO = 190;
 const IN_VISTA = 96;
 /** Quante cose stanno nella tavolozza: le ultime usate o scoperte. Tutte le altre si prendono dal Libro. */
 const POSTI = 14;
-
-/** Quello che la pagina ricorda insieme alla partita. */
-interface Ricordi {
-  recenti: number[];
-  mestolo: boolean;
-}
 
 /**
  * Costruisce la pagina e fa partire il gioco. `ripresa` è la fotografia di una partita interrotta, se c'è:
@@ -41,12 +36,9 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     foto = carica();
     salvato = ripristina(foto);
   }
-  const ricordati = (salvato ? extraDi(foto) : null) as Partial<Ricordi> | null;
-  const ricordi: Ricordi = {
-    recenti: Array.isArray(ricordati?.recenti) ? ricordati.recenti.filter((id) => typeof id === 'number') : [...INIZIALI],
-    mestolo: ricordati?.mestolo === true,
-  };
-  let scelto: number = M.TERRA;
+  const { ricordi, avevaIlMestolo } = leggiRicordi(salvato ? extraDi(foto) : null);
+  // Chi aveva il Mestolo in mano ritrova la Mano: lo strumento che sposta la vista, che non fa danni.
+  let scelto: number = avevaIlMestolo ? MANO : M.TERRA;
   let raggio = 3;
   let inPausa = false;
 
@@ -161,8 +153,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     if (id === GOMMA) {
       segno = el('span', 'pallino');
       segno.style.backgroundImage = 'repeating-linear-gradient(45deg,#fff 0 3px,#f48 3px 6px)';
-    } else if (id === MESTOLO) segno = el('span', 'pallino mestolo');
-    else if (id === MANO) segno = el('span', 'pallino mano', '✥');
+    } else if (id === MANO) segno = el('span', 'pallino mano', '✥');
     else segno = tondino(mondo, id);
     b.append(segno, el('span', 'nome', nome));
     b.addEventListener('click', () => scegli(id));
@@ -173,11 +164,6 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   function ridisegnaTavolozza(nuovi: readonly number[] = []): void {
     p.tavolozza.innerHTML = '';
     p.tavolozza.append(granello(MANO, 'Mano'), granello(GOMMA, 'Gomma'));
-    if (ricordi.mestolo) {
-      const b = granello(MESTOLO, 'Mestolo');
-      if (nuovi.includes(MESTOLO)) b.classList.add('nuovo');
-      p.tavolozza.append(b);
-    }
     ricordi.recenti = ricordi.recenti.filter((id) => mondo.visti.has(id) && versabile(id));
     if (ricordi.recenti.length === 0) ricordi.recenti = [...INIZIALI];
     for (const id of ricordi.recenti) {
@@ -187,7 +173,6 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     }
     p.tavolozza.scrollLeft = 0;
     if (scelto >= 0 && !ricordi.recenti.includes(scelto)) scelto = ricordi.recenti[0];
-    if (scelto === MESTOLO && !ricordi.mestolo) scelto = ricordi.recenti[0];
     scegli(scelto);
     const miscele = quanteMiscele();
     p.bLibro.textContent = `Libro ${quanteVoci()}/${SCOPERTE.length}${miscele ? ` +${miscele}` : ''}`;
@@ -196,7 +181,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
   ridisegnaTavolozza();
 
-  const daRicordare = (): Ricordi => ({ recenti: ricordi.recenti, mestolo: ricordi.mestolo });
+  const daRicordare = (): Ricordi => ({ recenti: ricordi.recenti });
   const salvaTutto = (): void => salva(mondo, daRicordare());
 
   // ── Il dito ──────────────────────────────────────────────────────────────────
@@ -205,8 +190,6 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     y: number;
     px: number;
     py: number;
-    /** Ciò che il Mestolo ha fatto nascere durante questo gesto (vedi `Mondo.mescola`). */
-    nati: Set<number>;
   }
   const dita = new Map<number, Dito>();
 
@@ -263,7 +246,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       }
       return;
     }
-    dita.set(e.pointerId, { x, y, px: x, py: y, nati: new Set() });
+    dita.set(e.pointerId, { x, y, px: x, py: y });
   });
   p.quadro.addEventListener('pointermove', (e) => {
     const presa = prese.get(e.pointerId);
@@ -312,7 +295,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   let ultimoLutto = -Infinity;
 
   let avvisatoPieno = false;
-  /** Versa (o cancella, o mescola) sotto ogni dito appoggiato, seguendo il tratto: anche un gesto veloce lascia una scia continua. */
+  /** Versa (o cancella) sotto ogni dito appoggiato, seguendo il tratto: anche un gesto veloce lascia una scia continua. */
   function versaDita(): void {
     if (dita.size === 0) return;
     const tipo = scelto > 0 ? mondo.tipoPer(scelto) : -1;
@@ -322,7 +305,6 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
         const x = Math.round(d.px + ((d.x - d.px) * k) / passi);
         const y = Math.round(d.py + ((d.y - d.py) * k) / passi);
         if (scelto === GOMMA) mondo.cancella(x, y, raggio + 1);
-        else if (scelto === MESTOLO) mondo.mescola(x, y, raggio + 1, d.nati);
         else if (tipo > 0) mondo.versa(x, y, raggio, tipo);
       }
       d.px = d.x;
@@ -408,11 +390,6 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     }
     mondo.novita = [];
     navigator.vibrate?.(25);
-    if (!ricordi.mestolo && meritaIlMestolo(mondo.visti)) {
-      ricordi.mestolo = true;
-      nuove.push(MESTOLO);
-      setTimeout(arrivaIlMestolo, 1800);
-    }
     ridisegnaTavolozza(nuove);
     salvaTutto();
     if (quanteVoci() === SCOPERTE.length || nuove.includes(VILLAGGIO)) setTimeout(festa, 1500);
@@ -424,7 +401,6 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       app,
       {
         mondo,
-        mestolo: ricordi.mestolo,
         usa: (id) => {
           inTavolozza(id);
           scelto = id;
@@ -447,21 +423,6 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     scheda.append(el('h2', '', titolo), ...righe.map((r) => el('p', '', r)));
     app.append(velo);
     return { scheda, chiudi };
-  }
-
-  function arrivaIlMestolo(): void {
-    const { scheda, chiudi } = messaggio('Hai il Mestolo!', [
-      'Strofinalo dove due cose diverse si toccano: si fondono in una cosa sola.',
-      'Se la coppia è di quelle che conosci succede subito quello che sai; altrimenti nasce una miscela che nessuno ha mai visto, con il suo nome e il suo carattere.',
-      'E le miscele si possono fondere ancora, tra loro e con tutto il resto. Non finiscono mai.',
-    ]);
-    const b = el('button', 'tasto pieno', 'Provo subito');
-    b.addEventListener('click', () => {
-      scelto = MESTOLO;
-      scegli(MESTOLO);
-      chiudi();
-    });
-    scheda.append(b);
   }
 
   function festa(): void {
@@ -495,12 +456,12 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     const riparti = (daZero: boolean): void => {
       const vecchio = mondo;
       mondo = mondoNuovo();
-      if (daZero) {
-        ricordi.recenti = [...INIZIALI];
-        ricordi.mestolo = false;
-      } else {
+      if (daZero) ricordi.recenti = [...INIZIALI];
+      else {
         for (const id of vecchio.visti) mondo.visti.add(id);
         for (const [id, ricetta] of vecchio.ricettario) mondo.ricettario.set(id, ricetta);
+        // Il Libro resta, e con lui le coppie già provate: Unisci deve continuare a dire «Già fatta» e «Già provata».
+        for (const coppia of vecchio.provate) mondo.provate.add(coppia);
       }
       pittore = nuovoPittore();
       dita.clear();
@@ -531,7 +492,8 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
 
   p.bLibro.addEventListener('click', () => libro());
-  p.bUnisci.addEventListener('click', () => apriUnisci(app, mondo));
+  // Gli omini chiamati da Unisci arrivano, se possono, vicino a dove sta guardando chi gioca.
+  p.bUnisci.addEventListener('click', () => apriUnisci(app, mondo, () => camX + vistaW / 2));
   p.bNuovo.addEventListener('click', chiediNuovo);
   p.bPausa.addEventListener('click', pausa);
   addEventListener('keydown', (e) => {
@@ -567,6 +529,14 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
 
   if (salvato) p.suggerimento.classList.add('via');
   else benvenuto();
+  if (avevaIlMestolo) {
+    const { scheda, chiudi } = messaggio('Una novità', [ADDIO_MESTOLO]);
+    const b = el('button', 'tasto pieno', 'Ho capito');
+    b.addEventListener('click', chiudi);
+    scheda.append(b);
+    // Da qui la partita si ricorda senza il Mestolo: il saluto non torna alla prossima apertura.
+    salvaTutto();
+  }
 
   // Per le prove automatiche: permette di guardare dentro il mondo dalla console.
   (window as unknown as { granelli: () => Mondo }).granelli = () => mondo;

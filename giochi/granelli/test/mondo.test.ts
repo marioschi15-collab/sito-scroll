@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { M, N_BASE, NASCOSTO } from '../src/motore/materiali.js';
 import { terreno } from '../src/motore/terreno.js';
-import { gira, mondo, quanti, riempi } from './aiuti.js';
+import { gira, libroDa12, mondo, quanti, riempi } from './aiuti.js';
 
 describe('il mondo appena nato', () => {
   it('ha un fondo di sola roccia, con il cielo libero sopra, e la roccia non è una scoperta', () => {
@@ -51,13 +51,14 @@ describe('il mondo appena nato', () => {
 
 describe('tenuta', () => {
   it('un minestrone di tutto, per migliaia di istanti, non rompe il mondo', () => {
-    const m = mondo(90, 70, 99);
+    const m = libroDa12(mondo(90, 70, 99));
     terreno(m);
     for (let giro = 0; giro < 6000; giro++) {
       if (giro % 5 === 0) {
         const t = 1 + ((m.caso() * (N_BASE - 1)) | 0);
         if (!NASCOSTO[t]) m.versa((m.caso() * m.w) | 0, (m.caso() * m.h) | 0, 4, t);
-        if (giro % 50 === 0) m.mescola((m.caso() * m.w) | 0, (m.caso() * m.h) | 0, 5, new Set());
+        // Ogni tanto una cosa portata sopra un'altra: reazioni, invenzioni posate, miscele (il Libro ha dodici voci).
+        if (giro % 50 === 0 && !NASCOSTO[t]) m.porta(t, (m.caso() * m.w) | 0, (m.caso() * m.h) | 0, 'gettone');
       }
       if (giro % 400 === 0) m.aggiungiOmino((m.caso() * m.w) | 0, 5);
       if (giro % 900 === 0) m.cancella((m.caso() * m.w) | 0, (m.caso() * m.h) | 0, 6);
