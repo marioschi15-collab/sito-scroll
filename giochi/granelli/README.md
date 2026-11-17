@@ -27,7 +27,10 @@ pnpm build        # produce dist/index.html: un solo file, si apre con un doppio
   mattoni; bevono, mangiano, nuotano, scappano dal fuoco, fanno figli.
 - `src/scoperte.ts`: le voci del Libro: nome, indizio, ricetta. Le frasi mostrate al giocatore stanno qui,
   in `src/gioco.ts` e in `src/pagina.ts`.
-- `src/disegno.ts`: i colori dei granelli, il bagliore di ciò che brucia e il disegno degli omini.
+- `src/disegno/`: tutto quello che si vede. `pittore.ts` colora i granelli con ombre e luci (di notte un fuoco
+  illumina ciò che ha intorno) e rende morbidi nuvole e fumo; `cielo.ts` fa scorrere il giorno e la notte, con sole,
+  luna, stelle e montagne; `particelle.ts` scintille, lucciole e la festa delle scoperte; `omini.ts` i personaggi
+  animati; `colori.ts` i colori di ogni materiale e i tondini della tavolozza.
 - `src/pagina.ts` e `src/stile.css`: lo scheletro e l'aspetto della pagina. `src/gioco.ts`: tavolozza, dito, libro,
   avvisi e il tempo che scorre. `src/main.ts`: la partenza.
 - `src/salvataggio.ts`: la partita salvata nel browser (e ripresa se la pagina viene aggiornata mentre si gioca).
@@ -39,5 +42,5 @@ Il carattere dei titoli è Pixelify Sans (licenza libera SIL OFL 1.1), preso dal
 
 1. Un numero nuovo in `materiali.ts` (e il suo stato in `STATO`).
 2. La regola che la fa nascere in `mondo.ts`, dentro `aggiorna`.
-3. La voce in `scoperte.ts` e il colore in `disegno.ts`.
+3. La voce in `scoperte.ts` e il colore in `disegno/colori.ts`.
 4. Una prova in `test/motore.test.ts` che la fa nascere davvero.

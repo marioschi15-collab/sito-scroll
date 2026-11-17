@@ -18,11 +18,16 @@ export function costruisciPagina(app: HTMLElement) {
 
   const cielo = el('main', 'cielo');
   const quadro = el('div', 'quadro');
-  const tela = el('canvas', 'tela');
-  const telaLuce = el('canvas', 'tela tela-luce');
-  const telaOmini = el('canvas', 'tela tela-omini');
-  const scintille = el('div', 'scintille');
-  quadro.append(tela, telaLuce, telaOmini, scintille);
+  // Le tele del mondo, dalla più lontana alla più vicina (vedi `Tele` in disegno/pittore.ts).
+  const tele = {
+    cielo: el('canvas', 'tela tela-liscia'),
+    granelli: el('canvas', 'tela'),
+    gas: el('canvas', 'tela tela-liscia tela-mezza'),
+    luce: el('canvas', 'tela tela-liscia tela-mezza tela-luce'),
+    sopra: el('canvas', 'tela tela-liscia'),
+  };
+  const bagliore = el('div', 'bagliore');
+  quadro.append(tele.cielo, tele.granelli, tele.gas, tele.luce, tele.sopra, bagliore);
   const suggerimento = el('p', 'suggerimento', 'Scegli un elemento qui sotto e trascina il dito nel cielo.');
   cielo.append(quadro, suggerimento);
 
@@ -34,5 +39,5 @@ export function costruisciPagina(app: HTMLElement) {
   const avvisi = el('div', 'avvisi');
   app.append(barra, cielo, piede, avvisi);
 
-  return { bLibro, bPausa, bNuovo, cielo, quadro, tela, telaLuce, telaOmini, scintille, suggerimento, pennelli, tavolozza, avvisi };
+  return { bLibro, bPausa, bNuovo, cielo, quadro, tele, suggerimento, pennelli, tavolozza, avvisi };
 }

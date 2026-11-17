@@ -1,4 +1,5 @@
-import { Pittore } from './disegno.js';
+import { campione } from './disegno/colori.js';
+import { Pittore } from './disegno/pittore.js';
 import { M, OMINO, VILLAGGIO } from './motore/materiali.js';
 import { Mondo } from './motore/mondo.js';
 import { terreno } from './motore/terreno.js';
@@ -40,12 +41,17 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     }
   }
 
-  function granello(id: number, nome: string, tinta: string): HTMLButtonElement {
+  /** Il tondino con la grana del materiale, uguale a come appare nel mondo. */
+  function pallino(id: number, classe = 'pallino'): HTMLSpanElement {
+    const e = el('span', classe);
+    e.style.backgroundImage = id === GOMMA ? 'repeating-linear-gradient(45deg,#fff 0 3px,#f48 3px 6px)' : `url(${campione(id)})`;
+    return e;
+  }
+
+  function granello(id: number, nome: string): HTMLButtonElement {
     const b = el('button', 'granello');
     b.dataset.id = String(id);
-    const pallino = el('span', 'pallino');
-    pallino.style.background = tinta;
-    b.append(pallino, el('span', 'nome', nome));
+    b.append(pallino(id), el('span', 'nome', nome));
     b.addEventListener('click', () => scegli(id));
     return b;
   }
@@ -54,11 +60,11 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   function ridisegnaTavolozza(nuovi: readonly number[] = []): void {
     const scorrimento = p.tavolozza.scrollLeft;
     p.tavolozza.innerHTML = '';
-    p.tavolozza.append(granello(GOMMA, 'Gomma', 'repeating-linear-gradient(45deg,#fff 0 3px,#f48 3px 6px)'));
+    p.tavolozza.append(granello(GOMMA, 'Gomma'));
     let daMostrare: HTMLButtonElement | null = null;
     for (const s of scoperte()) {
       if (!s.versabile) continue;
-      const b = granello(s.id, s.nome, s.colore);
+      const b = granello(s.id, s.nome);
       if (nuovi.includes(s.id)) {
         b.classList.add('nuovo');
         daMostrare = b;
@@ -111,7 +117,18 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
 
   let mondo = salvato ?? mondoNuovo(visti);
   visti = mondo.visti;
-  let pittore = new Pittore(p.tela, p.telaLuce, p.telaOmini, mondo);
+  /** Un fulmine illumina tutto per un istante e fa tremare il mondo. */
+  function lampo(): void {
+    p.quadro.classList.remove('lampo');
+    void p.quadro.offsetWidth;
+    p.quadro.classList.add('lampo');
+  }
+  function nuovoPittore(): Pittore {
+    const nuovo = new Pittore(p.tele, mondo);
+    nuovo.suLampo = lampo;
+    return nuovo;
+  }
+  let pittore = nuovoPittore();
 
   /** Fa stare il mondo intero nello spazio libero, senza deformarlo. */
   function adatta(): void {
@@ -188,14 +205,6 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
 
   // ── Scoperte: scintilla, avviso, libro ───────────────────────────────────────
-  function segno(classe: string, x: number, y: number, durata: number): void {
-    const s = el('span', classe);
-    s.style.left = `${((x + 0.5) / mondo.w) * 100}%`;
-    s.style.top = `${((y + 0.5) / mondo.h) * 100}%`;
-    p.scintille.append(s);
-    setTimeout(() => s.remove(), durata);
-  }
-
   /** Gli avvisi escono al massimo due alla volta: gli altri aspettano il loro turno. */
   const inCoda: Scoperta[] = [];
   function prossimoAvviso(): void {
@@ -203,11 +212,9 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     const s = inCoda.shift();
     if (!s) return;
     const a = el('button', 'avviso');
-    const pallino = el('span', 'pallino grande');
-    pallino.style.background = s.colore;
     const testi = el('span', 'avviso-testi');
     testi.append(el('span', 'avviso-sopra', 'Nuova scoperta'), el('strong', '', s.nome), el('span', 'avviso-sotto', s.ricetta));
-    a.append(pallino, testi);
+    a.append(pallino(s.id, 'pallino grande'), testi);
     const togli = (): void => {
       if (!a.isConnected) return;
       a.remove();
@@ -224,15 +231,17 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
 
   function leggiNovita(): void {
-    for (const c of mondo.caduti) segno('sbuffo', c.x, c.y, 1200);
+    for (const c of mondo.caduti) pittore.sbuffo(c.x, c.y);
     mondo.caduti.length = 0;
+    for (const n of mondo.nati) pittore.cuore(n.x, n.y);
+    mondo.nati.length = 0;
     if (mondo.novita.length === 0) return;
     const nuove = mondo.novita;
     mondo.novita = [];
     for (const n of nuove) {
       const s = PER_ID.get(n.id);
       if (!s) continue;
-      segno('scintilla', n.x, n.y, 1600);
+      pittore.scoppio(n.x, n.y);
       inCoda.push(s);
       prossimoAvviso();
     }
@@ -265,11 +274,9 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     for (const s of SCOPERTE) {
       const trovata = visti.has(s.id);
       const voce = el('div', trovata ? 'voce' : 'voce ignota');
-      const pallino = el('span', 'pallino grande', trovata ? '' : '?');
-      if (trovata) pallino.style.background = s.colore;
       const testi = el('div', 'voce-testi');
       testi.append(el('strong', '', trovata ? s.nome : '???'), el('span', '', trovata ? s.ricetta : s.indizio));
-      voce.append(pallino, testi);
+      voce.append(trovata ? pallino(s.id, 'pallino grande') : el('span', 'pallino grande', '?'), testi);
       pagine.append(voce);
     }
     scheda.append(testa, pagine);
@@ -311,7 +318,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     const riparti = (daZero: boolean): void => {
       mondo = mondoNuovo(daZero ? INIZIALI : visti);
       visti = mondo.visti;
-      pittore = new Pittore(p.tela, p.telaLuce, p.telaOmini, mondo);
+      pittore = nuovoPittore();
       dita.clear();
       inCoda.length = 0;
       adatta();
@@ -351,7 +358,8 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   let arretrato = 0;
   function fotogramma(ora: number): void {
     // Su un dispositivo lento il mondo rallenta un poco, ma il dito resta sempre pronto: mai più di due istanti per fotogramma.
-    arretrato = Math.min(arretrato + (ora - prima), ISTANTE * 2);
+    const passato = ora - prima;
+    arretrato = Math.min(arretrato + passato, ISTANTE * 2);
     prima = ora;
     versaDita();
     while (arretrato >= ISTANTE) {
@@ -359,7 +367,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       if (!inPausa) mondo.passo();
     }
     leggiNovita();
-    pittore.disegna();
+    pittore.disegna(Math.min(0.05, passato / 1000));
     requestAnimationFrame(fotogramma);
   }
   requestAnimationFrame(fotogramma);

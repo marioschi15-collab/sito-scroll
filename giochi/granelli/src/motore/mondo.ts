@@ -47,6 +47,8 @@ export class Mondo {
   novita: Novita[] = [];
   /** Dove sono morti degli omini dall'ultima volta che qualcuno ha guardato (in celle). */
   caduti: { x: number; y: number }[] = [];
+  /** Dove sono nati dei bambini dall'ultima volta che qualcuno ha guardato (in celle). */
+  nati: { x: number; y: number }[] = [];
   /** Quante celle ci sono di ogni materiale: aggiornato ogni due secondi circa. */
   readonly conta = new Uint32Array(N_MATERIALI);
   /** Tic in cui gli omini potranno (ri)comparire. */
@@ -95,7 +97,8 @@ export class Mondo {
       case M.NUVOLA:
         return 3 + ((this.caso() * 4) | 0);
       case M.FULMINE:
-        return 5;
+        // Resta nel cielo un attimo in più del necessario, perché l'occhio faccia in tempo a vederlo.
+        return 9;
       default:
         return 0;
     }

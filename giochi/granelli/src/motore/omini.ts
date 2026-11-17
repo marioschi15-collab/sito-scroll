@@ -17,7 +17,13 @@ export interface Omino {
   attesa: number;
   /** Un numero a caso da cui escono vestito, pelle e capelli. */
   aspetto: number;
+  /** Cosa sta facendo, per chi lo disegna: 0 cammina, 1 scappa, 2 nuota. */
+  stato: number;
 }
+
+export const CAMMINA = 0;
+export const SCAPPA = 1;
+export const NUOTA = 2;
 
 export const ALTEZZA = 3;
 /** Ogni quanti istanti del mondo un omino fa un passo e pensa. */
@@ -43,6 +49,7 @@ export function nuovoOmino(m: Mondo, x: number, y: number, attesa: number): Omin
     sepolto: 0,
     attesa,
     aspetto: (m.caso() * 256) | 0,
+    stato: CAMMINA,
   };
 }
 
@@ -160,6 +167,7 @@ function vivi(m: Mondo, o: Omino): boolean {
     if (++o.apnea > 40) return false;
   } else o.apnea = 0;
 
+  o.stato = m.leggi(o.x, o.y) === M.ACQUA ? NUOTA : CAMMINA;
   o.eta++;
   o.sete++;
   o.fame++;
@@ -178,6 +186,7 @@ function vivi(m: Mondo, o: Omino): boolean {
   const fuga = pericolo(m, o, 6);
   if (fuga !== 0) {
     o.dir = fuga === 1 ? -1 : 1;
+    o.stato = SCAPPA;
     cammina(m, o, true);
     cammina(m, o, true);
     return true;
@@ -205,6 +214,7 @@ function figli(m: Mondo): void {
     a.attesa = 600;
     b.attesa = 600;
     omini.push(nuovoOmino(m, a.x, a.y, 900));
+    m.nati.push({ x: a.x, y: a.y - 2 });
     return;
   }
 }
