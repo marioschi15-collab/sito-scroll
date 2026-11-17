@@ -1,4 +1,4 @@
-import { GAS, M, MORTALE, OMINO, STATO, VILLAGGIO } from './materiali.js';
+import { BAMBINO, GAS, M, OMINO, VILLAGGIO } from './materiali.js';
 import type { Mondo } from './mondo.js';
 
 /** Un abitante del mondo. È largo una cella e alto tre: (x, y) sono i piedi, (x, y-2) la testa. */
@@ -26,6 +26,8 @@ export const SCAPPA = 1;
 export const NUOTA = 2;
 
 export const ALTEZZA = 3;
+/** Al posto di un materiale preciso: qualsiasi cosa un omino possa mangiare (piante, frutti, funghi, miscele nutrienti). */
+const CIBO = -1;
 /** Ogni quanti istanti del mondo un omino fa un passo e pensa. */
 const RITMO = 8;
 const SETE_MAX = 900;
@@ -54,22 +56,23 @@ export function nuovoOmino(m: Mondo, x: number, y: number, attesa: number): Omin
 }
 
 /** Un omino può stare (o passare) in una cella vuota, nell'erba, nell'acqua e nei gas. */
-function libero(t: number): boolean {
-  return t === M.VUOTO || t === M.PIANTA || t === M.ACQUA || STATO[t] === GAS;
+function libero(m: Mondo, t: number): boolean {
+  return t === M.VUOTO || t === M.PIANTA || t === M.ACQUA || t === M.ALGA || t === M.FUNGO || t === M.FRUTTO || m.stato[t] === GAS;
 }
 
 /** C'è posto per un omino in piedi con i piedi in (x, y)? */
 function posto(m: Mondo, x: number, y: number): boolean {
-  for (let k = 0; k < ALTEZZA; k++) if (!libero(m.leggi(x, y - k))) return false;
+  for (let k = 0; k < ALTEZZA; k++) if (!libero(m, m.leggi(x, y - k))) return false;
   return true;
 }
 
 /** Da che parte si trova la cosa cercata, guardando fino a 40 celle di distanza: -1, 1, oppure 0 se non c'è. */
 function cerca(m: Mondo, o: Omino, cosa: number): -1 | 0 | 1 {
+  const e = (t: number): boolean => (cosa === CIBO ? m.cibo[t] === 1 : t === cosa);
   for (let dx = 1; dx <= 40; dx++) {
     for (let dy = -6; dy <= 6; dy++) {
-      if (m.leggi(o.x + dx, o.y + dy) === cosa) return 1;
-      if (m.leggi(o.x - dx, o.y + dy) === cosa) return -1;
+      if (e(m.leggi(o.x + dx, o.y + dy))) return 1;
+      if (e(m.leggi(o.x - dx, o.y + dy))) return -1;
     }
   }
   return 0;
@@ -79,7 +82,8 @@ function cerca(m: Mondo, o: Omino, cosa: number): -1 | 0 | 1 {
 function accanto(m: Mondo, o: Omino, cosa: number, raggio: number): number {
   for (let dy = -ALTEZZA; dy <= 1; dy++) {
     for (let dx = -raggio; dx <= raggio; dx++) {
-      if (m.leggi(o.x + dx, o.y + dy) === cosa) return (o.y + dy) * m.w + o.x + dx;
+      const t = m.leggi(o.x + dx, o.y + dy);
+      if (cosa === CIBO ? m.cibo[t] : t === cosa) return (o.y + dy) * m.w + o.x + dx;
     }
   }
   return -1;
@@ -89,8 +93,8 @@ function accanto(m: Mondo, o: Omino, cosa: number, raggio: number): number {
 function pericolo(m: Mondo, o: Omino, raggio: number): -1 | 0 | 1 {
   for (let dx = 0; dx <= raggio; dx++) {
     for (let dy = -ALTEZZA - 1; dy <= 2; dy++) {
-      if (MORTALE[m.leggi(o.x + dx, o.y + dy)]) return 1;
-      if (MORTALE[m.leggi(o.x - dx, o.y + dy)]) return -1;
+      if (m.mortale[m.leggi(o.x + dx, o.y + dy)]) return 1;
+      if (m.mortale[m.leggi(o.x - dx, o.y + dy)]) return -1;
     }
   }
   return 0;
@@ -99,7 +103,7 @@ function pericolo(m: Mondo, o: Omino, raggio: number): -1 | 0 | 1 {
 function tocca(m: Mondo, o: Omino): boolean {
   for (let dy = -ALTEZZA; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
-      if (MORTALE[m.leggi(o.x + dx, o.y + dy)]) return true;
+      if (m.mortale[m.leggi(o.x + dx, o.y + dy)]) return true;
     }
   }
   return false;
@@ -121,7 +125,7 @@ function cammina(m: Mondo, o: Omino, inFuga: boolean): void {
       let salto = 0;
       while (salto < 6) {
         const sotto = m.leggi(nx, o.y + 1 + salto);
-        if (!libero(sotto) || sotto === M.ACQUA) break;
+        if (!libero(m, sotto) || sotto === M.ACQUA) break;
         salto++;
       }
       if (salto >= 6) {
@@ -134,7 +138,7 @@ function cammina(m: Mondo, o: Omino, inFuga: boolean): void {
   }
   // Un gradino di una o due celle si scavalca, se c'è spazio sopra la testa.
   for (let su = 1; su <= 2; su++) {
-    if (!libero(m.leggi(o.x, o.y - ALTEZZA - su + 1))) break;
+    if (!libero(m, m.leggi(o.x, o.y - ALTEZZA - su + 1))) break;
     if (posto(m, nx, o.y - su)) {
       o.x = nx;
       o.y -= su;
@@ -163,7 +167,7 @@ function vivi(m: Mondo, o: Omino): boolean {
 
   if (m.leggi(o.x, o.y - ALTEZZA + 1) === M.ACQUA) {
     // Ha la testa sott'acqua: risale, e intanto trattiene il fiato.
-    if (libero(m.leggi(o.x, o.y - ALTEZZA))) o.y -= 1;
+    if (libero(m, m.leggi(o.x, o.y - ALTEZZA))) o.y -= 1;
     if (++o.apnea > 40) return false;
   } else o.apnea = 0;
 
@@ -176,10 +180,11 @@ function vivi(m: Mondo, o: Omino): boolean {
 
   if (o.sete > 60 && accanto(m, o, M.ACQUA, 2) >= 0) o.sete = 0;
   if (o.fame > 250) {
-    const cibo = accanto(m, o, M.PIANTA, 2);
+    const cibo = accanto(m, o, CIBO, 2);
     if (cibo >= 0) {
       o.fame = 0;
-      if (m.caso() < 0.3) m.svuota(cibo);
+      // Un frutto o un fungo si mangia intero; di una pianta si bruca solo qualche foglia.
+      if (m.tipo[cibo] !== M.PIANTA || m.caso() < 0.3) m.svuota(cibo);
     }
   }
 
@@ -195,7 +200,7 @@ function vivi(m: Mondo, o: Omino): boolean {
   if (o.eta % 4 === 0) {
     let verso: -1 | 0 | 1 = 0;
     if (o.sete > 300) verso = cerca(m, o, M.ACQUA);
-    if (verso === 0 && o.fame > 450) verso = cerca(m, o, M.PIANTA);
+    if (verso === 0 && o.fame > 450) verso = cerca(m, o, CIBO);
     if (verso !== 0) o.dir = verso;
     else if (m.caso() < 0.12) gira(o);
   }
@@ -215,6 +220,7 @@ function figli(m: Mondo): void {
     b.attesa = 600;
     omini.push(nuovoOmino(m, a.x, a.y, 900));
     m.nati.push({ x: a.x, y: a.y - 2 });
+    m.scopri(BAMBINO, a.x, a.y - 2);
     return;
   }
 }
@@ -233,7 +239,7 @@ function arrivo(m: Mondo): void {
     const x = (m.caso() * m.w) | 0;
     let y = ALTEZZA + ((m.caso() * (m.h - ALTEZZA)) | 0);
     if (m.leggi(x, y) !== M.PIANTA) continue;
-    while (y < m.h - 1 && libero(m.leggi(x, y + 1)) && m.leggi(x, y + 1) !== M.ACQUA) y++;
+    while (y < m.h - 1 && libero(m, m.leggi(x, y + 1)) && m.leggi(x, y + 1) !== M.ACQUA) y++;
     if (!posto(m, x, y)) continue;
     m.aggiungiOmino(x, y);
     m.aggiungiOmino(x, y);
@@ -245,7 +251,7 @@ function arrivo(m: Mondo): void {
 export function aggiornaOmini(m: Mondo): void {
   // La gravità vale a ogni istante (chi ha i piedi in acqua galleggia); camminare e pensare, più di rado.
   for (const o of m.omini) {
-    if (o.y < m.h - 1 && m.leggi(o.x, o.y) !== M.ACQUA && libero(m.leggi(o.x, o.y + 1))) o.y++;
+    if (o.y < m.h - 1 && m.leggi(o.x, o.y) !== M.ACQUA && libero(m, m.leggi(o.x, o.y + 1))) o.y++;
   }
   if (m.tic % RITMO === 0 && m.omini.length > 0) {
     m.omini = m.omini.filter((o) => {

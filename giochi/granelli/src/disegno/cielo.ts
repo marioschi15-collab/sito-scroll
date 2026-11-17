@@ -1,5 +1,4 @@
-/** Quanti istanti dura un giorno intero del mondo (quattro minuti). */
-export const DURATA_GIORNO = 14400;
+import { faseDelGiorno, luceDelGiorno } from '../motore/tempo.js';
 
 type Rgb = readonly [number, number, number];
 
@@ -17,11 +16,6 @@ export interface Ora {
 
 const mescola = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const css = (c: Rgb, a = 1): string => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
-const liscio = (da: number, a: number, x: number): number => {
-  const t = Math.max(0, Math.min(1, (x - da) / (a - da)));
-  return t * t * (3 - 2 * t);
-};
-
 const LUCE_NOTTE: Rgb = [0.5, 0.57, 0.88];
 const LUCE_GIORNO: Rgb = [1, 1, 1];
 const LUCE_TRAMONTO: Rgb = [1, 0.8, 0.66];
@@ -34,10 +28,8 @@ const ALTO_TRAMONTO: Rgb = [52, 44, 104];
 const BASSO_TRAMONTO: Rgb = [255, 150, 92];
 
 export function oraDelMondo(tic: number): Ora {
-  // Il mondo nasce di mattina: il giocatore vede subito i colori, e la prima notte arriva dopo un paio di minuti.
-  const fase = ((tic + DURATA_GIORNO * 0.1) % DURATA_GIORNO) / DURATA_GIORNO;
-  const sole = Math.sin(fase * Math.PI * 2) + 0.3;
-  const giorno = liscio(-0.3, 0.3, sole);
+  const fase = faseDelGiorno(tic);
+  const giorno = luceDelGiorno(tic);
   const crepuscolo = Math.pow(1 - Math.abs(giorno * 2 - 1), 1.4);
   const ambiente = mescola(mescola(LUCE_NOTTE, LUCE_GIORNO, giorno), LUCE_TRAMONTO, crepuscolo * 0.55);
   return { fase, giorno, crepuscolo, ambiente };
@@ -89,7 +81,7 @@ export class Cielo {
     }
   }
 
-  disegna(ora: Ora, tempo: number): void {
+  disegna(ora: Ora, tempo: number, arcobaleno = 0): void {
     const { ctx, tela } = this;
     const w = tela.width;
     const h = tela.height;
@@ -119,6 +111,24 @@ export class Cielo {
     const raggio = Math.max(10, Math.min(w, h) * 0.055);
     this.astro(w * (0.5 - 0.42 * Math.cos(giro)), orizzonte - Math.sin(giro) * h * 0.7, raggio, [255, 236, 170], [255, 190, 90], 1);
     this.astro(w * (0.5 + 0.42 * Math.cos(giro)), orizzonte + Math.sin(giro) * h * 0.7, raggio * 0.8, [232, 238, 255], [150, 170, 230], buio);
+
+    // Quando piove col sole, un arcobaleno attraversa il cielo dietro le montagne.
+    if (arcobaleno > 0.02) {
+      const cx = w * 0.5;
+      const cy = h * 0.92;
+      const raggioArco = Math.min(w * 0.62, h * 0.7);
+      const fascia = Math.max(2, raggioArco * 0.022);
+      const colori = ['#ff5a5a', '#ffa64d', '#ffe65a', '#6fdc6f', '#5ab4ff', '#7a6cf0', '#b06ce0'];
+      ctx.globalAlpha = 0.55 * arcobaleno;
+      ctx.lineWidth = fascia + 0.6;
+      colori.forEach((colore, n) => {
+        ctx.strokeStyle = colore;
+        ctx.beginPath();
+        ctx.arc(cx, cy, raggioArco - n * fascia, Math.PI, Math.PI * 2);
+        ctx.stroke();
+      });
+      ctx.globalAlpha = 1;
+    }
 
     const tinta: Rgb = [ora.ambiente[0] * 255, ora.ambiente[1] * 255, ora.ambiente[2] * 255];
     this.montagne(this.creste[0], css(mescola(mescola(basso, [70, 84, 130], 0.5), tinta, 0.12)), w, h);

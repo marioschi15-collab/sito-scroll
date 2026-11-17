@@ -1,7 +1,7 @@
-import { ALBERO, GAS, M, N_MATERIALI, STATO } from '../motore/materiali.js';
+import { ALBERO, GAS, LIQUIDO as STATO_LIQUIDO, M, N_TIPI, PRIMA_MISCELA, STATO } from '../motore/materiali.js';
 import type { Mondo } from '../motore/mondo.js';
 import { Cielo, oraDelMondo } from './cielo.js';
-import { FIORI, TA, TB, TG, TR } from './colori.js';
+import { FIORI, TA, TB, TG, TR, tinteMiscela } from './colori.js';
 import { Personaggi } from './omini.js';
 import { LUCCIOLA, Particelle, SCINTILLA } from './particelle.js';
 
@@ -29,9 +29,10 @@ const FUSO = 6;
 const LIQUIDO = 7;
 const VERDE = 8;
 const TRONCO = 9;
-const MODO = new Uint8Array(N_MATERIALI).fill(SOLIDO);
+const ALTRO_LIQUIDO = 10;
+const MODO = new Uint8Array(N_TIPI).fill(SOLIDO);
 MODO[M.VUOTO] = 0;
-for (let t = 0; t < N_MATERIALI; t++) if (STATO[t] === GAS) MODO[t] = SOFFICE;
+for (let t = 0; t < N_TIPI; t++) if (STATO[t] === GAS) MODO[t] = SOFFICE;
 MODO[M.FUOCO] = FIAMMA;
 MODO[M.FULMINE] = LAMPO;
 MODO[M.BRACE] = TIZZONE;
@@ -39,13 +40,27 @@ MODO[M.LAVA] = FUSO;
 MODO[M.ACQUA] = LIQUIDO;
 MODO[M.PIANTA] = VERDE;
 MODO[M.LEGNO] = TRONCO;
+MODO[M.ACIDO] = ALTRO_LIQUIDO;
+MODO[M.ALGA] = TRONCO;
+MODO[M.FUNGO] = TRONCO;
+MODO[M.FRUTTO] = TRONCO;
 
 /** Quanta luce manda ogni materiale su ciò che gli sta intorno. */
-const LUCE = new Float32Array(N_MATERIALI);
+const LUCE = new Float32Array(N_TIPI);
 LUCE[M.FUOCO] = 1;
 LUCE[M.BRACE] = 1.1;
 LUCE[M.LAVA] = 0.7;
 LUCE[M.FULMINE] = 8;
+/** Di che colore è quella luce (rosso, verde, blu, da 0 a 1). */
+const LUCE_R = new Float32Array(N_TIPI).fill(1);
+const LUCE_G = new Float32Array(N_TIPI).fill(0.55);
+const LUCE_B = new Float32Array(N_TIPI).fill(0.2);
+LUCE_R[M.FULMINE] = 0.8;
+LUCE_G[M.FULMINE] = 0.9;
+LUCE_B[M.FULMINE] = 1;
+/** Quanto un materiale si vede anche al buio, perché fa luce da sé. */
+const PROPRIA = new Float32Array(N_TIPI);
+PROPRIA[M.DIAMANTE] = 0.35;
 
 function colore(r: number, g: number, b: number, a = 255): number {
   return ((a << 24) | (b << 16) | (g << 8) | r) >>> 0;
@@ -115,6 +130,7 @@ export class Pittore {
   private eraLampo = false;
   private sporco = true;
   private forzaLuce = -1;
+  private versione = -1;
   /** Chiamata quando un fulmine attraversa il cielo. */
   suLampo: (() => void) | null = null;
 
@@ -156,6 +172,38 @@ export class Pittore {
     this.cielo = new Cielo(tele.cielo, w * 7919 + h);
   }
 
+  /** Ogni miscela presente nel mondo prende i suoi colori, il suo modo di essere disegnata e la sua luce. */
+  private aggiornaMiscele(): void {
+    const { sostanze, versioneTipi } = this.mondo;
+    for (let t = PRIMA_MISCELA; t < N_TIPI; t++) {
+      const s = sostanze[t];
+      LUCE[t] = 0;
+      PROPRIA[t] = 0;
+      if (!s) continue;
+      tinteMiscela(t, s);
+      MODO[t] = s.stato === GAS ? SOFFICE : s.stato === STATO_LIQUIDO ? ALTRO_LIQUIDO : SOLIDO;
+      if (s.luce > 0.5 || s.calore > 0.6) {
+        const forte = Math.max(s.colore[0], s.colore[1], s.colore[2], 1);
+        LUCE[t] = 0.35 + s.luce * 0.5;
+        LUCE_R[t] = s.colore[0] / forte;
+        LUCE_G[t] = s.colore[1] / forte;
+        LUCE_B[t] = s.colore[2] / forte;
+        PROPRIA[t] = 0.6;
+      }
+    }
+    this.versione = versioneTipi;
+  }
+
+  /** Un'esplosione: un lampo di scintille e sbuffi dove è avvenuta (in celle). */
+  botto(x: number, y: number, r: number): void {
+    for (let n = 0; n < 10 + r * 4; n++) {
+      const a = Math.random() * Math.PI * 2;
+      const v = 10 + Math.random() * 30;
+      this.particelle.aggiungi(SCINTILLA, x + 0.5, y + 0.5, Math.cos(a) * v, Math.sin(a) * v - 8, 0.4 + Math.random() * 0.7, 0.6);
+    }
+    this.particelle.sbuffo(x + 0.5, y + 0.5);
+  }
+
   /** Da chiamare quando cambia la grandezza del mondo sullo schermo (in pixel della pagina). */
   adatta(larghezza: number, altezza: number): void {
     // Omini e particelle si disegnano fitti (ma non oltre il doppio: di più non si vede e costa);
@@ -192,7 +240,8 @@ export class Pittore {
     const tempo = this.tempo;
     const ora = oraDelMondo(tic);
     // Il cielo cambia piano: basta ridisegnarlo qualche volta al secondo.
-    if (this.fotogrammi++ % 8 === 0) this.cielo.disegna(ora, tempo);
+    if (this.versione !== this.mondo.versioneTipi) this.aggiornaMiscele();
+    if (this.fotogrammi++ % 8 === 0) this.cielo.disegna(ora, tempo, this.mondo.arcobaleno);
 
     // Prima passata: chi manda luce e dove stanno i gas.
     lr.fill(0);
@@ -226,16 +275,17 @@ export class Pittore {
         const luce = LUCE[t];
         if (luce === 0) continue;
         const li = riga + (x >> 1);
+        lr[li] += luce * LUCE_R[t];
+        lg[li] += luce * LUCE_G[t];
+        lb[li] += luce * LUCE_B[t];
         if (modo === LAMPO) {
-          lr[li] += luce * 0.8;
-          lg[li] += luce * 0.9;
-          lb[li] += luce;
           puntiLuce[li] = colore(255, 250, 200, 255);
           lampi++;
+        } else if (t >= PRIMA_MISCELA) {
+          // Una miscela luminosa: un alone del suo colore, senza scintille.
+          puntiLuce[li] = colore(255 * LUCE_R[t], 255 * LUCE_G[t], 255 * LUCE_B[t], 110);
+          accese++;
         } else {
-          lr[li] += luce;
-          lg[li] += luce * 0.55;
-          lb[li] += luce * 0.2;
           puntiLuce[li] = modo === FUSO ? colore(255, 90, 20, 170) : colore(255, 130, 40, 150);
           accese++;
           // Ogni tanto una scintilla si stacca e sale.
@@ -336,6 +386,14 @@ export class Pittore {
             }
             break;
           }
+          case ALTRO_LIQUIDO: {
+            // Un liquido che non è acqua: il suo colore, più chiaro in superficie e più scuro in fondo.
+            const d = sopra[x];
+            sopra[x] = d < 250 ? d + 1 : d;
+            f = d === 0 ? 1.25 : 1 - (d > 14 ? 14 : d) * 0.03;
+            if (((c + i + (tic >> 3)) & 63) === 0) f += 0.3;
+            break;
+          }
           case VERDE: {
             sopra[x] = 0;
             const d = dato[i];
@@ -366,9 +424,10 @@ export class Pittore {
           }
         }
         const li = riga + (x >> 1);
-        const R = r * f * (aR + lr[li] * forza);
-        const G = g * f * (aG + lg[li] * forza);
-        const B = b * f * (aB + lb[li] * forza);
+        const sua = PROPRIA[t];
+        const R = r * f * (aR + lr[li] * forza + sua);
+        const G = g * f * (aG + lg[li] * forza + sua);
+        const B = b * f * (aB + lb[li] * forza + sua);
         punti[i] = ((a << 24) | ((B > 255 ? 255 : B) << 16) | ((G > 255 ? 255 : G) << 8) | (R > 255 ? 255 : R)) >>> 0;
       }
     }

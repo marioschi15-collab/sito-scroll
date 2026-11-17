@@ -1,16 +1,27 @@
-import { campione } from './disegno/colori.js';
 import { Pittore } from './disegno/pittore.js';
-import { M, OMINO, VILLAGGIO } from './motore/materiali.js';
+import { apriLibro, nomeDi, tondino } from './libro.js';
+import { M, OMINO, PRIMA_ID_MISCELA, VILLAGGIO } from './motore/materiali.js';
 import { Mondo } from './motore/mondo.js';
 import { terreno } from './motore/terreno.js';
 import { costruisciPagina, el } from './pagina.js';
-import { carica, fotografa, ripristina, salva } from './salvataggio.js';
-import { INIZIALI, PER_ID, SCOPERTE, type Scoperta } from './scoperte.js';
+import { carica, extraDi, fotografa, ripristina, salva } from './salvataggio.js';
+import { INIZIALI, PER_ID, SCOPERTE } from './scoperte.js';
 
 const GOMMA = -1;
+const MESTOLO = -2;
 const ISTANTE = 1000 / 60;
 /** Quante celle ha, più o meno, un mondo nuovo: abbastanza fini da sembrare sabbia, abbastanza poche per un telefono. */
 const CELLE = 30000;
+/** Quante cose stanno nella tavolozza: le ultime usate o scoperte. Tutte le altre si prendono dal Libro. */
+const POSTI = 14;
+/** Dopo quante scoperte (oltre ai quattro elementi) arriva il Mestolo. */
+const PER_IL_MESTOLO = 3;
+
+/** Quello che la pagina ricorda insieme alla partita. */
+interface Ricordi {
+  recenti: number[];
+  mestolo: boolean;
+}
 
 /**
  * Costruisce la pagina e fa partire il gioco. `ripresa` è la fotografia di una partita interrotta, se c'è:
@@ -19,71 +30,22 @@ const CELLE = 30000;
 export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => unknown } {
   const p = costruisciPagina(app);
 
-  const salvato = ripristina(ripresa) ?? carica();
-  /**
-   * Le scoperte del giocatore. All'avvio servono prima ancora del mondo: la tavolozza dà alla pagina la sua forma
-   * definitiva, e il mondo nuovo prende la forma dello spazio che resta.
-   */
-  let visti: ReadonlySet<number> = salvato ? salvato.visti : new Set(INIZIALI);
+  let foto = ripresa;
+  let salvato = ripristina(foto);
+  if (!salvato) {
+    foto = carica();
+    salvato = ripristina(foto);
+  }
+  const ricordati = (salvato ? extraDi(foto) : null) as Partial<Ricordi> | null;
+  const ricordi: Ricordi = {
+    recenti: Array.isArray(ricordati?.recenti) ? ricordati.recenti.filter((id) => typeof id === 'number') : [...INIZIALI],
+    mestolo: ricordati?.mestolo === true,
+  };
   let scelto: number = M.TERRA;
   let raggio = 3;
   let inPausa = false;
 
-  // ── Tavolozza e pennelli ─────────────────────────────────────────────────────
-  function scoperte(): Scoperta[] {
-    return SCOPERTE.filter((s) => visti.has(s.id));
-  }
-
-  function scegli(id: number): void {
-    scelto = id;
-    for (const b of p.tavolozza.querySelectorAll<HTMLButtonElement>('.granello')) {
-      b.classList.toggle('attivo', b.dataset.id === String(id));
-    }
-  }
-
-  /** Il tondino con la grana del materiale, uguale a come appare nel mondo. */
-  function pallino(id: number, classe = 'pallino'): HTMLSpanElement {
-    const e = el('span', classe);
-    e.style.backgroundImage = id === GOMMA ? 'repeating-linear-gradient(45deg,#fff 0 3px,#f48 3px 6px)' : `url(${campione(id)})`;
-    return e;
-  }
-
-  function granello(id: number, nome: string): HTMLButtonElement {
-    const b = el('button', 'granello');
-    b.dataset.id = String(id);
-    b.append(pallino(id), el('span', 'nome', nome));
-    b.addEventListener('click', () => scegli(id));
-    return b;
-  }
-
-  /** Ridisegna la tavolozza; i granelli appena scoperti (`nuovi`) si fanno notare e vengono portati in vista. */
-  function ridisegnaTavolozza(nuovi: readonly number[] = []): void {
-    const scorrimento = p.tavolozza.scrollLeft;
-    p.tavolozza.innerHTML = '';
-    p.tavolozza.append(granello(GOMMA, 'Gomma'));
-    let daMostrare: HTMLButtonElement | null = null;
-    for (const s of scoperte()) {
-      if (!s.versabile) continue;
-      const b = granello(s.id, s.nome);
-      if (nuovi.includes(s.id)) {
-        b.classList.add('nuovo');
-        daMostrare = b;
-      }
-      p.tavolozza.append(b);
-    }
-    p.tavolozza.scrollLeft = scorrimento;
-    if (daMostrare) {
-      // Scorre solo la tavolozza (mai la pagina che ospita il gioco) quanto basta per mostrare il granello nuovo.
-      const g = daMostrare.getBoundingClientRect();
-      const t = p.tavolozza.getBoundingClientRect();
-      const sposta = g.left < t.left ? g.left - t.left - 8 : g.right > t.right ? g.right - t.right + 8 : 0;
-      if (sposta !== 0) p.tavolozza.scrollBy({ left: sposta, behavior: 'smooth' });
-    }
-    if (scelto !== GOMMA && !visti.has(scelto)) scelto = M.TERRA;
-    scegli(scelto);
-    p.bLibro.textContent = `Libro ${scoperte().length}/${SCOPERTE.length}`;
-  }
-
+  // ── Pennelli (danno alla pagina la sua forma definitiva, insieme alla tavolozza) ─────────────────
   for (const [nome, r, lato] of [
     ['fine', 1, 6],
     ['medio', 3, 11],
@@ -101,23 +63,28 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     });
     p.pennelli.append(b);
   }
-  ridisegnaTavolozza();
+  // Due file di granelli finti, solo per dare al piede la sua altezza vera prima di misurare lo spazio del mondo.
+  for (let n = 0; n < 4; n++) {
+    const finto = el('button', 'granello');
+    finto.append(el('span', 'pallino'), el('span', 'nome', '…'));
+    p.tavolozza.append(finto);
+  }
 
   // ── Il mondo ─────────────────────────────────────────────────────────────────
-  /** Un mondo di sola roccia, con la forma dello spazio libero sullo schermo e le scoperte già fatte. */
-  function mondoNuovo(giaScoperti: Iterable<number>): Mondo {
+  /** Un mondo di sola roccia, con la forma dello spazio libero sullo schermo. */
+  function mondoNuovo(): Mondo {
     const r = p.cielo.getBoundingClientRect();
     const forma = Math.max(0.4, Math.min(2.5, r.width / Math.max(1, r.height)));
     const w = Math.round(Math.sqrt(CELLE * forma));
     const m = new Mondo(w, Math.round(w / forma), (Date.now() & 0x7fffffff) || 1);
-    for (const id of giaScoperti) m.visti.add(id);
+    for (const id of INIZIALI) m.visti.add(id);
     terreno(m);
     return m;
   }
 
-  let mondo = salvato ?? mondoNuovo(visti);
-  visti = mondo.visti;
-  /** Un fulmine illumina tutto per un istante e fa tremare il mondo. */
+  let mondo = salvato ?? mondoNuovo();
+
+  /** Un fulmine o un'esplosione: tutto si schiarisce per un istante e il mondo trema. */
   function lampo(): void {
     p.quadro.classList.remove('lampo');
     void p.quadro.offsetWidth;
@@ -143,12 +110,75 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   new ResizeObserver(adatta).observe(p.cielo);
   adatta();
 
+  // ── Tavolozza ────────────────────────────────────────────────────────────────
+  const eMiscela = (id: number): boolean => id >= PRIMA_ID_MISCELA;
+  /** Si può versare col dito: i materiali del libro che lo permettono, e tutte le miscele. */
+  const versabile = (id: number): boolean => (eMiscela(id) ? mondo.ricettario.has(id) : PER_ID.get(id)?.versabile === true);
+  const quanteVoci = (): number => SCOPERTE.filter((s) => mondo.visti.has(s.id)).length;
+  const quanteMiscele = (): number => [...mondo.visti].filter(eMiscela).length;
+
+  function scegli(id: number): void {
+    scelto = id;
+    for (const b of p.tavolozza.querySelectorAll<HTMLButtonElement>('.granello')) {
+      b.classList.toggle('attivo', b.dataset.id === String(id));
+    }
+  }
+
+  /** Porta una cosa in cima alla tavolozza: la più recente sta davanti, la più vecchia esce. */
+  function inTavolozza(id: number): void {
+    ricordi.recenti = [id, ...ricordi.recenti.filter((altro) => altro !== id)].slice(0, POSTI);
+  }
+
+  function granello(id: number, nome: string): HTMLButtonElement {
+    const b = el('button', 'granello');
+    b.dataset.id = String(id);
+    let segno: HTMLSpanElement;
+    if (id === GOMMA) {
+      segno = el('span', 'pallino');
+      segno.style.backgroundImage = 'repeating-linear-gradient(45deg,#fff 0 3px,#f48 3px 6px)';
+    } else if (id === MESTOLO) segno = el('span', 'pallino mestolo');
+    else segno = tondino(mondo, id);
+    b.append(segno, el('span', 'nome', nome));
+    b.addEventListener('click', () => scegli(id));
+    return b;
+  }
+
+  /** Ridisegna la tavolozza; i granelli appena arrivati (`nuovi`) si fanno notare. */
+  function ridisegnaTavolozza(nuovi: readonly number[] = []): void {
+    p.tavolozza.innerHTML = '';
+    p.tavolozza.append(granello(GOMMA, 'Gomma'));
+    if (ricordi.mestolo) {
+      const b = granello(MESTOLO, 'Mestolo');
+      if (nuovi.includes(MESTOLO)) b.classList.add('nuovo');
+      p.tavolozza.append(b);
+    }
+    ricordi.recenti = ricordi.recenti.filter((id) => mondo.visti.has(id) && versabile(id));
+    if (ricordi.recenti.length === 0) ricordi.recenti = [...INIZIALI];
+    for (const id of ricordi.recenti) {
+      const b = granello(id, nomeDi(mondo, id));
+      if (nuovi.includes(id)) b.classList.add('nuovo');
+      p.tavolozza.append(b);
+    }
+    p.tavolozza.scrollLeft = 0;
+    if (scelto >= 0 && !ricordi.recenti.includes(scelto)) scelto = ricordi.recenti[0];
+    if (scelto === MESTOLO && !ricordi.mestolo) scelto = ricordi.recenti[0];
+    scegli(scelto);
+    const miscele = quanteMiscele();
+    p.bLibro.textContent = `Libro ${quanteVoci()}/${SCOPERTE.length}${miscele ? ` +${miscele}` : ''}`;
+  }
+  ridisegnaTavolozza();
+
+  const daRicordare = (): Ricordi => ({ recenti: ricordi.recenti, mestolo: ricordi.mestolo });
+  const salvaTutto = (): void => salva(mondo, daRicordare());
+
   // ── Il dito ──────────────────────────────────────────────────────────────────
   interface Dito {
     x: number;
     y: number;
     px: number;
     py: number;
+    /** Ciò che il Mestolo ha fatto nascere durante questo gesto (vedi `Mondo.mescola`). */
+    nati: Set<number>;
   }
   const dita = new Map<number, Dito>();
 
@@ -173,7 +203,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       mondo.fulmine(Math.max(0, Math.min(mondo.w - 1, x)), 0);
       return;
     }
-    dita.set(e.pointerId, { x, y, px: x, py: y });
+    dita.set(e.pointerId, { x, y, px: x, py: y, nati: new Set() });
   });
   p.quadro.addEventListener('pointermove', (e) => {
     const d = dita.get(e.pointerId);
@@ -189,32 +219,60 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   p.quadro.addEventListener('pointercancel', alza);
   p.quadro.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  /** Versa sotto ogni dito appoggiato, seguendo il tratto: anche un gesto veloce lascia una scia continua. */
+  let avvisatoPieno = false;
+  /** Versa (o cancella, o mescola) sotto ogni dito appoggiato, seguendo il tratto: anche un gesto veloce lascia una scia continua. */
   function versaDita(): void {
+    if (dita.size === 0) return;
+    const tipo = scelto > 0 ? mondo.tipoPer(scelto) : -1;
     for (const d of dita.values()) {
       const passi = Math.max(1, Math.ceil(Math.hypot(d.x - d.px, d.y - d.py) / Math.max(1, raggio)));
       for (let k = 1; k <= passi; k++) {
         const x = Math.round(d.px + ((d.x - d.px) * k) / passi);
         const y = Math.round(d.py + ((d.y - d.py) * k) / passi);
         if (scelto === GOMMA) mondo.cancella(x, y, raggio + 1);
-        else mondo.versa(x, y, raggio, scelto);
+        else if (scelto === MESTOLO) mondo.mescola(x, y, raggio + 1, d.nati);
+        else if (tipo > 0) mondo.versa(x, y, raggio, tipo);
       }
       d.px = d.x;
       d.py = d.y;
     }
+    if (mondo.pieno && !avvisatoPieno) {
+      avvisatoPieno = true;
+      const { scheda, chiudi } = messaggio('Troppe miscele insieme', [
+        'In questo mondo ci sono già 192 miscele diverse, e non c’è posto per un’altra.',
+        'Cancellane qualcuna con la Gomma: nel Libro restano tutte, e potrai versarle di nuovo quando vuoi.',
+      ]);
+      const b = el('button', 'tasto pieno', 'Ho capito');
+      b.addEventListener('click', chiudi);
+      scheda.append(b);
+    }
+    if (!mondo.pieno) avvisatoPieno = false;
   }
 
-  // ── Scoperte: scintilla, avviso, libro ───────────────────────────────────────
+  // ── Scoperte: festa nel mondo, avviso, tavolozza ─────────────────────────────
+  /** Come è nata una scoperta, in poche parole: per l'avviso che compare in alto. */
+  function comeNasce(id: number): string {
+    const ricetta = mondo.ricettario.get(id);
+    if (ricetta) return `${nomeDi(mondo, ricetta.a)} + ${nomeDi(mondo, ricetta.b)}`;
+    const via = PER_ID.get(id)?.nasce[0];
+    if (!via) return '';
+    return via.con.map((ingrediente) => nomeDi(mondo, ingrediente)).join(' + ') + (via.nota ? `, ${via.nota}` : '');
+  }
+
   /** Gli avvisi escono al massimo due alla volta: gli altri aspettano il loro turno. */
-  const inCoda: Scoperta[] = [];
+  const inCoda: number[] = [];
   function prossimoAvviso(): void {
     if (p.avvisi.childElementCount >= 2) return;
-    const s = inCoda.shift();
-    if (!s) return;
+    const id = inCoda.shift();
+    if (id === undefined) return;
     const a = el('button', 'avviso');
     const testi = el('span', 'avviso-testi');
-    testi.append(el('span', 'avviso-sopra', 'Nuova scoperta'), el('strong', '', s.nome), el('span', 'avviso-sotto', s.ricetta));
-    a.append(pallino(s.id, 'pallino grande'), testi);
+    testi.append(
+      el('span', 'avviso-sopra', eMiscela(id) ? 'Nuova miscela' : 'Nuova scoperta'),
+      el('strong', '', nomeDi(mondo, id)),
+      el('span', 'avviso-sotto', comeNasce(id)),
+    );
+    a.append(tondino(mondo, id, 'pallino grande'), testi);
     const togli = (): void => {
       if (!a.isConnected) return;
       a.remove();
@@ -222,7 +280,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     };
     a.addEventListener('click', () => {
       togli();
-      apriLibro();
+      libro(id);
     });
     p.avvisi.append(a);
     const fretta = inCoda.length > 0;
@@ -235,64 +293,80 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     mondo.caduti.length = 0;
     for (const n of mondo.nati) pittore.cuore(n.x, n.y);
     mondo.nati.length = 0;
+    for (const b of mondo.botti) pittore.botto(b.x, b.y, b.r);
+    if (mondo.botti.length > 0) lampo();
+    mondo.botti.length = 0;
     if (mondo.novita.length === 0) return;
-    const nuove = mondo.novita;
-    mondo.novita = [];
-    for (const n of nuove) {
-      const s = PER_ID.get(n.id);
-      if (!s) continue;
+    const nuove = mondo.novita.map((n) => n.id);
+    for (const n of mondo.novita) {
       pittore.scoppio(n.x, n.y);
-      inCoda.push(s);
+      inCoda.push(n.id);
       prossimoAvviso();
+      if (versabile(n.id)) inTavolozza(n.id);
     }
+    mondo.novita = [];
     navigator.vibrate?.(25);
-    ridisegnaTavolozza(nuove.map((n) => n.id));
-    salva(mondo);
-    if (scoperte().length === SCOPERTE.length || nuove.some((n) => n.id === VILLAGGIO)) setTimeout(festa, 1500);
+    if (!ricordi.mestolo && mondo.visti.size >= INIZIALI.length + PER_IL_MESTOLO) {
+      ricordi.mestolo = true;
+      nuove.push(MESTOLO);
+      setTimeout(arrivaIlMestolo, 1800);
+    }
+    ridisegnaTavolozza(nuove);
+    salvaTutto();
+    if (quanteVoci() === SCOPERTE.length || nuove.includes(VILLAGGIO)) setTimeout(festa, 1500);
   }
 
   // ── Finestre: libro e messaggi ───────────────────────────────────────────────
-  function finestra(classe: string): { scheda: HTMLDivElement; chiudi: () => void } {
+  function libro(voce?: number): void {
+    apriLibro(
+      app,
+      {
+        mondo,
+        mestolo: ricordi.mestolo,
+        usa: (id) => {
+          inTavolozza(id);
+          scelto = id;
+          ridisegnaTavolozza();
+          salvaTutto();
+        },
+      },
+      voce,
+    );
+  }
+
+  function messaggio(titolo: string, righe: readonly string[]): { scheda: HTMLDivElement; chiudi: () => void } {
     const velo = el('div', 'velo');
-    const scheda = el('div', `scheda ${classe}`);
+    const scheda = el('div', 'scheda messaggio');
     velo.append(scheda);
     const chiudi = (): void => velo.remove();
     velo.addEventListener('click', (e) => {
       if (e.target === velo) chiudi();
     });
+    scheda.append(el('h2', '', titolo), ...righe.map((r) => el('p', '', r)));
     app.append(velo);
     return { scheda, chiudi };
   }
 
-  function apriLibro(): void {
-    const { scheda, chiudi } = finestra('libro');
-    const testa = el('div', 'scheda-testa');
-    const x = el('button', 'tasto', 'Chiudi');
-    x.addEventListener('click', chiudi);
-    testa.append(el('h2', '', `Libro delle scoperte · ${scoperte().length}/${SCOPERTE.length}`), x);
-    const pagine = el('div', 'pagine');
-    for (const s of SCOPERTE) {
-      const trovata = visti.has(s.id);
-      const voce = el('div', trovata ? 'voce' : 'voce ignota');
-      const testi = el('div', 'voce-testi');
-      testi.append(el('strong', '', trovata ? s.nome : '???'), el('span', '', trovata ? s.ricetta : s.indizio));
-      voce.append(trovata ? pallino(s.id, 'pallino grande') : el('span', 'pallino grande', '?'), testi);
-      pagine.append(voce);
-    }
-    scheda.append(testa, pagine);
-  }
-
-  function messaggio(titolo: string, righe: readonly string[]): { scheda: HTMLDivElement; chiudi: () => void } {
-    const f = finestra('messaggio');
-    f.scheda.append(el('h2', '', titolo), ...righe.map((r) => el('p', '', r)));
-    return f;
+  function arrivaIlMestolo(): void {
+    const { scheda, chiudi } = messaggio('Hai il Mestolo!', [
+      'Strofinalo dove due cose diverse si toccano: si fondono in una cosa sola.',
+      'Se la coppia è di quelle che conosci succede subito quello che sai; altrimenti nasce una miscela che nessuno ha mai visto, con il suo nome e il suo carattere.',
+      'E le miscele si possono fondere ancora, tra loro e con tutto il resto. Non finiscono mai.',
+    ]);
+    const b = el('button', 'tasto pieno', 'Provo subito');
+    b.addEventListener('click', () => {
+      scelto = MESTOLO;
+      scegli(MESTOLO);
+      chiudi();
+    });
+    scheda.append(b);
   }
 
   function festa(): void {
-    const tutto = scoperte().length === SCOPERTE.length;
+    const tutto = quanteVoci() === SCOPERTE.length;
     const { scheda, chiudi } = messaggio(tutto ? 'Hai scoperto tutto!' : 'È nato un villaggio!', [
       tutto
-        ? 'Da quattro granelli a un mondo intero. Adesso è tuo: fanne quello che vuoi.'
+        ? 'Tutte le voci del Libro sono tue. Restano le miscele: quelle non finiscono mai.'
         : 'Da quattro granelli a un paese abitato. Proteggili, oppure no: il mondo è tuo.',
     ]);
     const b = el('button', 'tasto pieno', 'Continua');
@@ -303,7 +377,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   function benvenuto(): void {
     const { scheda, chiudi } = messaggio('Granelli', [
       'Sotto il cielo c’è solo roccia nuda. Tu hai quattro elementi: terra, acqua, fuoco e aria.',
-      'Versali col dito e falli incontrare. Ogni cosa nuova che nasce entra nella tua tavolozza.',
+      'Versali col dito e falli incontrare. Ogni cosa nuova che nasce entra nella tua tavolozza e nel Libro.',
       'Se ti blocchi, apri il Libro: ci sono gli indizi.',
     ]);
     const b = el('button', 'tasto pieno', 'Inizia');
@@ -313,17 +387,24 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
 
   function chiediNuovo(): void {
     const { scheda, chiudi } = messaggio('Ricominciare?', [
-      'Puoi svuotare solo il mondo e tenere le scoperte, oppure ripartire dai quattro elementi.',
+      'Puoi svuotare solo il mondo e tenere il Libro con tutte le scoperte, oppure ripartire dai quattro elementi.',
     ]);
     const riparti = (daZero: boolean): void => {
-      mondo = mondoNuovo(daZero ? INIZIALI : visti);
-      visti = mondo.visti;
+      const vecchio = mondo;
+      mondo = mondoNuovo();
+      if (daZero) {
+        ricordi.recenti = [...INIZIALI];
+        ricordi.mestolo = false;
+      } else {
+        for (const id of vecchio.visti) mondo.visti.add(id);
+        for (const [id, ricetta] of vecchio.ricettario) mondo.ricettario.set(id, ricetta);
+      }
       pittore = nuovoPittore();
       dita.clear();
       inCoda.length = 0;
       adatta();
       ridisegnaTavolozza();
-      salva(mondo);
+      salvaTutto();
       chiudi();
     };
     const fila = el('div', 'fila');
@@ -345,7 +426,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     p.bPausa.classList.toggle('attivo', inPausa);
   }
 
-  p.bLibro.addEventListener('click', apriLibro);
+  p.bLibro.addEventListener('click', () => libro());
   p.bNuovo.addEventListener('click', chiediNuovo);
   p.bPausa.addEventListener('click', pausa);
   addEventListener('keydown', (e) => {
@@ -372,10 +453,10 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
   requestAnimationFrame(fotogramma);
 
-  setInterval(() => salva(mondo), 10000);
-  addEventListener('pagehide', () => salva(mondo));
+  setInterval(salvaTutto, 10000);
+  addEventListener('pagehide', salvaTutto);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) salva(mondo);
+    if (document.hidden) salvaTutto();
     else prima = performance.now();
   });
 
@@ -385,5 +466,5 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   // Per le prove automatiche: permette di guardare dentro il mondo dalla console.
   (window as unknown as { granelli: () => Mondo }).granelli = () => mondo;
 
-  return { fotografa: () => fotografa(mondo) };
+  return { fotografa: () => fotografa(mondo, daRicordare()) };
 }
