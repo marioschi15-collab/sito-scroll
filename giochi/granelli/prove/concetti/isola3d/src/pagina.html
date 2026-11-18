@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7cc6ee">
+<title>La tua isola</title>
+<style>
+:root{--f:ui-rounded,"SF Pro Rounded","Nunito","Varela Round",system-ui,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;--ink:#3b3346;--alto:max(12px,env(safe-area-inset-top));--basso:max(10px,env(safe-area-inset-bottom))}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#7cc6ee;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;font-family:var(--f);color:var(--ink)}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
+button{font:inherit;color:inherit}
+#hud{position:fixed;top:var(--alto);left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:5}
+#hud>*{pointer-events:auto}
+.vetrino{background:rgba(255,255,255,.84);-webkit-backdrop-filter:blur(12px) saturate(1.3);backdrop-filter:blur(12px) saturate(1.3);box-shadow:0 8px 22px rgba(40,30,70,.2),inset 0 1px 0 rgba(255,255,255,.9)}
+#contatore{display:flex;align-items:center;gap:10px;padding:7px 16px 7px 7px;border:0;border-radius:24px;cursor:pointer}
+#contatore .stella{width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe58a,#ff9a1c 80%);display:grid;place-items:center;box-shadow:inset 0 -3px 0 rgba(0,0,0,.12),inset 0 2px 0 rgba(255,255,255,.5)}
+#contatore .stella svg{width:22px;height:22px;color:#fff;filter:drop-shadow(0 1px 0 rgba(0,0,0,.15))}
+#contatore .testi{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+#contatore .riga{font-size:13px;font-weight:700;display:flex;align-items:baseline;gap:6px}
+#contatore #num{font-size:17px;font-weight:900}
+#contatore .bar{width:100px;height:6px;border-radius:3px;background:rgba(59,51,70,.12);overflow:hidden}
+#barra{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffd04a,#ff7b3d);border-radius:3px;transition:width .8s cubic-bezier(.3,1.6,.5,1)}
+#contatore.salta{animation:salta .7s}
+@keyframes salta{30%{transform:scale(1.16) rotate(-3deg)}60%{transform:scale(.96)}}
+.dx{display:flex;gap:8px}
+.tondo{width:46px;height:46px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;padding:0}
+.tondo svg{width:24px;height:24px}
+#btnTempo{color:#5c6fae} body.notte #btnTempo{color:#f2a52a}
+#btnSuono{color:#7a8bb0}
+#vassoio{position:fixed;left:10px;right:10px;bottom:var(--basso);z-index:5;border-radius:30px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+#vassoio::-webkit-scrollbar{display:none}
+#gettoni{display:flex;gap:2px;padding:12px 8px 10px;width:max-content;margin:0 auto}
+.gettone{position:relative;flex:0 0 auto;width:74px;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:0;cursor:grab;touch-action:none}
+.gettone .disco{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;box-shadow:0 6px 10px rgba(40,30,70,.22),inset 0 -5px 0 rgba(0,0,0,.14),inset 0 3px 0 rgba(255,255,255,.55);transition:transform .25s cubic-bezier(.3,1.6,.5,1),opacity .2s}
+.gettone svg{width:33px;height:33px;filter:drop-shadow(0 2px 0 rgba(0,0,0,.13))}
+.gettone span{font-size:12.5px;font-weight:800;letter-spacing:.01em}
+.gettone:active .disco{transform:scale(.92)}
+.gettone.preso .disco{opacity:.3;transform:scale(.82)}
+.gettone.appena .disco{animation:nasce .9s cubic-bezier(.3,1.6,.5,1),luccica 1.2s .9s 2}
+.gettone.appena::after{content:'nuovo';position:absolute;top:-6px;right:2px;background:linear-gradient(#ff7b6b,#ff4f7b);color:#fff;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:9px;box-shadow:0 3px 6px rgba(255,79,123,.4)}
+.gettone.balla .disco{animation:balla .5s}
+@keyframes nasce{0%{transform:scale(0) rotate(-40deg)}100%{transform:scale(1)}}
+@keyframes luccica{50%{box-shadow:0 0 0 6px rgba(255,214,90,.55),0 6px 10px rgba(40,30,70,.22),inset 0 -5px 0 rgba(0,0,0,.14)}}
+@keyframes balla{20%{transform:translateY(-8px) rotate(-8deg)}50%{transform:translateY(0) rotate(6deg)}75%{transform:rotate(-3deg)}}
+#fantasma{position:fixed;left:0;top:0;z-index:20;pointer-events:none;opacity:0;transition:opacity .15s}
+#fantasma.su{opacity:1}
+#fantasma .perno{position:absolute;left:-1.5px;top:-64px;width:3px;height:56px;border-radius:2px;background:linear-gradient(rgba(255,255,255,.95),rgba(255,255,255,0))}
+#fantasma .disco{position:absolute;left:-36px;top:-138px;width:72px;height:72px;border-radius:50%;display:grid;place-items:center;box-shadow:0 18px 26px rgba(40,30,70,.35),inset 0 -5px 0 rgba(0,0,0,.13),inset 0 3px 0 rgba(255,255,255,.55);animation:galleggia 1.1s ease-in-out infinite}
+#fantasma .disco svg{width:40px;height:40px;filter:drop-shadow(0 2px 0 rgba(0,0,0,.13))}
+#fantasma .tag{position:absolute;left:0;top:-146px;transform:translate(-50%,-100%);white-space:nowrap;background:rgba(40,30,70,.82);color:#fff;font-weight:800;font-size:13px;padding:6px 12px;border-radius:14px}
+#fantasma.no .disco{filter:saturate(.3) brightness(1.05)}
+#fantasma.no .perno{opacity:0}
+@keyframes galleggia{50%{transform:translateY(-5px)}}
+#etichette{position:fixed;inset:0;pointer-events:none;z-index:12;overflow:hidden}
+.scoperta{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;animation:sale 3.8s cubic-bezier(.2,.8,.3,1) forwards;transform:translate(-50%,-100%)}
+.scoperta .nuova{font-weight:900;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#fff;background:linear-gradient(#ffcf4a,#ff9f1c);padding:5px 12px;border-radius:12px;box-shadow:0 4px 12px rgba(255,150,30,.45)}
+.scoperta .medaglia{width:66px;height:66px;border-radius:50%;display:grid;place-items:center;margin-top:4px;box-shadow:0 0 0 5px rgba(255,255,255,.9),0 0 34px 8px rgba(255,230,140,.85),inset 0 -5px 0 rgba(0,0,0,.14)}
+.scoperta .medaglia svg{width:38px;height:38px}
+.scoperta .nome{font-weight:900;font-size:36px;line-height:1.05;color:#fff;text-shadow:0 3px 0 rgba(60,40,90,.35),0 0 22px rgba(255,210,110,.95),0 0 4px rgba(60,40,90,.4)}
+.scoperta .frase{font-weight:700;font-size:13.5px;color:#fff;background:rgba(40,30,70,.6);padding:6px 12px;border-radius:12px;white-space:nowrap}
+@keyframes sale{0%{opacity:0;transform:translate(-50%,-70%) scale(.3)}12%{opacity:1;transform:translate(-50%,-100%) scale(1.12)}20%{transform:translate(-50%,-100%) scale(1)}78%{opacity:1;transform:translate(-50%,-128%)}100%{opacity:0;transform:translate(-50%,-150%) scale(.96)}}
+.bolla{position:absolute;transform:translate(-50%,-50%);font-weight:900;font-size:17px;color:#fff;white-space:nowrap;text-shadow:0 2px 0 rgba(40,30,70,.45),0 0 10px rgba(40,30,70,.35);animation:bolla 1.8s ease-out forwards}
+@keyframes bolla{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}15%{opacity:1;transform:translate(-50%,-60%) scale(1.08)}100%{opacity:0;transform:translate(-50%,-240%) scale(1)}}
+#catena{position:fixed;top:calc(var(--alto) + 64px);left:50%;transform:translate(-50%,-16px) scale(.7);opacity:0;z-index:6;display:flex;gap:8px;align-items:center;padding:8px 18px;border-radius:22px;background:linear-gradient(135deg,#ff9a3d,#ff4f7b);color:#fff;font-weight:900;font-size:15px;box-shadow:0 10px 24px rgba(255,80,100,.45),inset 0 1px 0 rgba(255,255,255,.4);transition:.4s cubic-bezier(.3,1.6,.5,1);pointer-events:none;white-space:nowrap}
+#catena.su{opacity:1;transform:translate(-50%,0) scale(1)}
+#catena b{font-size:21px}
+#catena.pulsa b{display:inline-block;animation:pulsa .5s}
+@keyframes pulsa{40%{transform:scale(1.5)}}
+#idea{position:fixed;left:50%;bottom:calc(var(--basso) + 112px);transform:translate(-50%,16px);opacity:0;z-index:6;background:rgba(40,30,70,.8);color:#fff;padding:10px 16px;border-radius:18px;font-weight:700;font-size:14.5px;max-width:88vw;text-align:center;transition:.35s cubic-bezier(.3,1.4,.5,1);pointer-events:none;white-space:nowrap}
+#idea b{color:#ffd36a;margin-right:6px}
+#idea.su{opacity:1;transform:translate(-50%,0)}
+#mano{position:fixed;left:0;top:0;z-index:15;pointer-events:none;opacity:0}
+#mano.su{animation:mano 2.8s ease-in-out infinite}
+#mano .g{position:absolute;left:-28px;top:-28px;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;box-shadow:0 10px 18px rgba(40,30,70,.3),inset 0 -4px 0 rgba(0,0,0,.13)}
+#mano .g svg{width:30px;height:30px}
+#mano>svg{position:absolute;left:-4px;top:2px;width:48px;height:48px;color:#fff;filter:drop-shadow(0 4px 6px rgba(0,0,0,.3))}
+@keyframes mano{0%{transform:translate(var(--x0),var(--y0)) scale(.9);opacity:0}10%{opacity:1;transform:translate(var(--x0),var(--y0)) scale(1)}55%{transform:translate(var(--x1),var(--y1));opacity:1}72%{transform:translate(var(--x1),var(--y1)) scale(.85);opacity:0}100%{opacity:0;transform:translate(var(--x1),var(--y1))}}
+#lampo{position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;background:radial-gradient(circle at 50% 45%,rgba(255,250,225,.75),rgba(255,240,200,.15) 60%,rgba(255,240,200,0))}
+#lampo.via{animation:lampo .7s ease-out}
+@keyframes lampo{0%{opacity:1}100%{opacity:0}}
+#libro{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(30,22,50,.45);opacity:0;pointer-events:none;transition:opacity .25s}
+#libro.su{opacity:1;pointer-events:auto}
+#libro .foglio{width:min(92vw,440px);max-height:82vh;overflow:auto;background:#fffaf2;border-radius:28px;padding:20px 16px 18px;box-shadow:0 20px 50px rgba(0,0,0,.3);transform:translateY(20px) scale(.96);transition:transform .35s cubic-bezier(.3,1.5,.5,1)}
+#libro.su .foglio{transform:none}
+#libro h2{margin:2px 6px 14px;font-size:19px;font-weight:900}
+#libro .griglia{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 6px}
+#libro .voce{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:12px;font-weight:800}
+#libro .voce .disco{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;box-shadow:0 4px 8px rgba(40,30,70,.18),inset 0 -4px 0 rgba(0,0,0,.12)}
+#libro .voce svg{width:30px;height:30px}
+#libro .ignota .disco{background:#ece4d8;color:#b9ad9c;font-size:24px;font-weight:900;box-shadow:inset 0 3px 6px rgba(0,0,0,.08)}
+#libro .ignota span{color:#b9ad9c}
+#libro .chiudi{display:block;margin:18px auto 0;border:0;border-radius:18px;padding:12px 30px;font-weight:900;font-size:15px;background:linear-gradient(#ffcf4a,#ff9f1c);color:#fff;box-shadow:0 6px 14px rgba(255,150,30,.4);cursor:pointer}
+@media (min-width:700px){#vassoio{left:50%;right:auto;transform:translateX(-50%);max-width:calc(100vw - 20px)}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="lampo"></div>
+<div id="hud">
+  <button id="contatore" class="vetrino" aria-label="Le tue scoperte">
+    <span class="stella"><svg viewBox="0 0 40 40" fill="currentColor"><path d="M20 3l5 11 12 1.3-9 8 2.8 12L20 29l-10.8 6.3 2.8-12-9-8L15 14z"/></svg></span>
+    <span class="testi"><span class="riga">Scoperte <b id="num">0/20</b></span><span class="bar"><i id="barra"></i></span></span>
+  </button>
+  <div class="dx"><button id="btnTempo" class="tondo vetrino" aria-label="Giorno e notte"></button><button id="btnSuono" class="tondo vetrino" aria-label="Suono"></button></div>
+</div>
+<div id="catena"></div>
+<div id="etichette"></div>
+<div id="idea"></div>
+<div id="mano"></div>
+<div id="vassoio" class="vetrino"><div id="gettoni"></div></div>
+<div id="fantasma"><div class="tag"></div><div class="disco"></div><div class="perno"></div></div>
+<div id="libro"><div class="foglio"><h2>Le tue scoperte</h2><div class="griglia"></div><button class="chiudi">Torna all’isola</button></div></div>
+<script>/*CODICE*/</script>
+</body>
+</html>

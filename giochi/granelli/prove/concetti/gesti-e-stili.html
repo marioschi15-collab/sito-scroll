@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#2a1f3d">
+<title>Granelli — prova dei gesti</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+body{--bg:#2a1f3d;--bg2:#3d2c5c;--ink:#fff3dc;--muted:#cdbce8;--accent:#ffc94a;--accInk:#3a2614;--card:#f4e2bd;--cardInk:#3a2614;--edge:#140d20;--rad:3px;--bw:3px;
+ --font:"Courier New",ui-monospace,monospace;--shadow:inset 0 -4px 0 rgba(0,0,0,.28),inset 0 3px 0 rgba(255,255,255,.4);--wshadow:0 0 0 3px #140d20}
+body.s-morbido{--bg:#f1e8f3;--bg2:#ffffff;--ink:#5b4b66;--muted:#9a88a8;--accent:#ffb0c0;--accInk:#5b3046;--card:#ffffff;--cardInk:#5b4b66;--edge:transparent;--rad:18px;--bw:0px;
+ --font:ui-rounded,"SF Pro Rounded","Nunito","Varela Round","Quicksand",system-ui,sans-serif;--shadow:0 4px 14px rgba(120,90,140,.2);--wshadow:0 8px 24px rgba(120,90,140,.25)}
+body.s-cartoon{--bg:#ffd23f;--bg2:#ffffff;--ink:#1d1d1d;--muted:#4d3b00;--accent:#ff4f6d;--accInk:#ffffff;--card:#ffffff;--cardInk:#1d1d1d;--edge:#1d1d1d;--rad:14px;--bw:3px;
+ --font:"Comic Sans MS","Chalkboard SE","Comic Neue","Trebuchet MS",system-ui,sans-serif;--shadow:3px 3px 0 #1d1d1d;--wshadow:0 0 0 3px #1d1d1d,5px 5px 0 3px #1d1d1d}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font);transition:background .3s}
+body.s-cartoon{background:var(--bg) radial-gradient(circle,rgba(255,255,255,.35) 2px,transparent 2.5px) 0 0/16px 16px}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;max-width:560px;margin:0 auto;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+.bott{background:var(--bg2);color:var(--ink);border:var(--bw) solid var(--edge);border-radius:var(--rad);box-shadow:var(--shadow);font-weight:700}
+.bott:active{transform:translateY(1px)}
+header{height:50px;display:flex;align-items:stretch;gap:6px;padding:6px 8px 4px}
+#bAlbum{flex:1.5;display:flex;align-items:center;gap:7px;padding:0 9px;text-align:left;min-width:0}
+#bAlbum .stella{font-size:20px;color:var(--accent);text-shadow:0 1px 0 rgba(0,0,0,.35)}
+body.s-cartoon #bAlbum .stella{-webkit-text-stroke:1.5px #1d1d1d}
+#bAlbum .testo{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+#nScop{font-size:15px;white-space:nowrap}
+.barra{display:block;height:6px;border-radius:var(--rad);background:rgba(0,0,0,.18);overflow:hidden}
+#barraPiena{display:block;height:100%;width:16%;background:var(--accent);transition:width .6s cubic-bezier(.3,1.6,.5,1)}
+#bAlbum.salta{animation:salta .6s}
+@keyframes salta{30%{transform:scale(1.12) rotate(-2deg)}60%{transform:scale(.97)}}
+#bStile,#bRicomincia{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;padding:0 4px;min-width:0}
+#bStile small,#bRicomincia small{font-size:10px;opacity:.75;font-weight:700}
+#bStile b{font-size:13px;white-space:nowrap}
+#bRicomincia b{font-size:13px}
+nav{display:flex;gap:5px;padding:2px 8px 0;height:44px}
+.linguetta{flex:1;border:var(--bw) solid var(--edge);border-radius:var(--rad) var(--rad) 0 0;background:var(--bg2);color:var(--muted);font-weight:800;font-size:15px;box-shadow:var(--shadow);opacity:.85}
+.linguetta.attiva{background:var(--accent);color:var(--accInk);opacity:1;transform:translateY(-2px)}
+body.s-morbido .linguetta{border-radius:16px}
+#spiega{height:38px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.2;padding:0 12px;font-weight:700;color:var(--ink)}
+#mondoBox{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}
+#mondo{display:block;touch-action:none;border-radius:calc(var(--rad) * .6);box-shadow:var(--wshadow);image-rendering:pixelated;image-rendering:crisp-edges}
+body.s-morbido #mondo{image-rendering:auto;border-radius:20px}
+body.s-cartoon #mondo{border-radius:12px;image-rendering:auto}
+#feste{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.scoppio{position:absolute;width:240px;text-align:center;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;animation:sale 2.6s cubic-bezier(.2,.9,.3,1) forwards;pointer-events:none}
+.scoppio .dentro{display:flex;flex-direction:column;align-items:center;transition:opacity .3s}
+.scoppio canvas{width:56px;height:56px;filter:drop-shadow(0 3px 0 rgba(0,0,0,.3))}
+.scoppio .nuova{font-size:11px;font-weight:800;background:var(--accent);color:var(--accInk);padding:2px 8px;border-radius:99px;margin-top:2px;border:2px solid var(--edge)}
+.scoppio b{font-size:22px;color:#fff;text-shadow:0 2px 0 #000,0 0 8px rgba(0,0,0,.6),2px 0 0 #000,-2px 0 0 #000,0 -2px 0 #000}
+.scoppio span{font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 0 #000,0 0 5px #000;margin-top:1px}
+body.s-morbido .scoppio b{color:#fff;text-shadow:0 2px 10px rgba(90,60,110,.8)}
+body.s-cartoon .scoppio b{font-size:26px;color:#ffe14d;-webkit-text-stroke:2px #1d1d1d;text-shadow:3px 3px 0 #1d1d1d}
+@keyframes sale{0%{opacity:0;transform:translate(-50%,-60%) scale(.3)}12%{opacity:1;transform:translate(-50%,-110%) scale(1.15)}22%{transform:translate(-50%,-105%) scale(1)}60%{opacity:1}85%{opacity:0;transform:translate(-50%,-170%) scale(.95)}100%{opacity:0;transform:translate(-50%,-180%)}}
+body.s-cartoon .scoppio{animation-name:saleBuffo}
+@keyframes saleBuffo{0%{opacity:0;transform:translate(-50%,-60%) scale(.2) rotate(-25deg)}10%{opacity:1;transform:translate(-50%,-115%) scale(1.45,0.8) rotate(8deg)}18%{transform:translate(-50%,-108%) scale(.85,1.2) rotate(-5deg)}26%{transform:translate(-50%,-110%) scale(1.05) rotate(2deg)}32%{transform:translate(-50%,-110%) scale(1) rotate(0)}60%{opacity:1}85%{opacity:0;transform:translate(-50%,-170%)}100%{opacity:0}}
+#mondo.scossa{animation:scossa .4s}
+@keyframes scossa{20%{transform:translate(-4px,2px) rotate(-.6deg)}40%{transform:translate(4px,-2px) rotate(.6deg)}60%{transform:translate(-3px,1px)}80%{transform:translate(2px,0)}}
+#avviso{position:absolute;left:50%;top:12px;transform:translate(-50%,-20px);max-width:92%;background:var(--bg2);color:var(--ink);border:var(--bw) solid var(--edge);border-radius:var(--rad);box-shadow:var(--shadow);padding:8px 12px;font-size:13px;font-weight:700;text-align:center;opacity:0;transition:all .3s;pointer-events:none}
+#avviso.vedi{opacity:1;transform:translate(-50%,0)}
+#vassoio{height:160px;display:flex;align-items:stretch;gap:4px;padding:6px 4px 8px}
+.freccia{width:28px;flex:none;border:var(--bw) solid var(--edge);border-radius:var(--rad);background:var(--bg2);color:var(--ink);font-size:24px;font-weight:900;box-shadow:var(--shadow)}
+#scorri{flex:1;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;touch-action:pan-x}
+#scorri::-webkit-scrollbar{display:none}
+#carte{display:grid;grid-template-rows:repeat(2,68px);grid-auto-flow:column;grid-auto-columns:64px;gap:6px;padding:2px 4px;height:100%}
+.carta{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:var(--card);color:var(--cardInk);border:var(--bw) solid var(--edge);border-radius:var(--rad);box-shadow:var(--shadow);touch-action:none;cursor:grab;transition:transform .15s}
+body.modo-versa .carta{touch-action:pan-x}
+.carta canvas{width:42px;height:42px;pointer-events:none}
+.carta b{font-size:11px;font-weight:800;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
+body.s-pixel .carta{background:var(--card) linear-gradient(135deg,rgba(255,255,255,.25) 0 30%,transparent 30%)}
+.carta.scelta{outline:3px solid var(--accent);outline-offset:1px;transform:translateY(-3px)}
+body.s-pixel .carta.scelta{outline-color:#ffef7a}
+.carta.sopra{transform:scale(1.12);outline:3px dashed var(--accent)}
+.carta.preso{opacity:.35}
+.carta.nuova::after{content:"";position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:#ff5a5a;border:2px solid #fff;animation:pulsa 1s infinite}
+.carta.arriva{animation:arriva .7s cubic-bezier(.3,1.7,.5,1)}
+.carta.trema{animation:trema .4s}
+@keyframes pulsa{50%{transform:scale(1.3)}}
+@keyframes arriva{0%{transform:scale(0) rotate(-20deg)}100%{transform:scale(1)}}
+@keyframes trema{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+#fantasma{position:fixed;left:0;top:0;pointer-events:none;z-index:50;display:none;will-change:transform}
+#fantasma .carta{width:64px;height:68px;transform:scale(1.15) rotate(-4deg);box-shadow:0 10px 20px rgba(0,0,0,.35)}
+#fantasma .punta{display:none;width:0;height:0;margin:2px auto 0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:16px solid var(--accent);filter:drop-shadow(0 2px 0 var(--edge))}
+#fantasma.con-punta .punta{display:block}
+.velo{position:fixed;inset:0;z-index:80;background:rgba(20,10,30,.55);display:flex;align-items:center;justify-content:center;padding:14px}
+.velo[hidden]{display:none}
+.pannello{background:var(--bg2);color:var(--ink);border:var(--bw) solid var(--edge);border-radius:calc(var(--rad) + 4px);box-shadow:var(--shadow),0 20px 50px rgba(0,0,0,.4);width:100%;max-width:460px;max-height:100%;display:flex;flex-direction:column;padding:14px}
+.pannello h2{font-size:21px;text-align:center}
+.pannello p{font-size:14px;line-height:1.35;text-align:center;margin-top:6px}
+#griglia{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:min-content;gap:7px;overflow-y:auto;margin:12px 0;padding:2px}
+.casella{background:var(--card);color:var(--cardInk);border:var(--bw) solid var(--edge);border-radius:var(--rad);padding:6px 3px;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:100px;overflow:hidden}
+.casella canvas{width:40px;height:40px}
+.casella b{font-size:11px;margin-top:3px}
+.casella.vuota{opacity:.8;background:rgba(0,0,0,.08);border-style:dashed}
+.casella.vuota .punto{width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:rgba(0,0,0,.4)}
+.casella i{font-size:10px;font-style:normal;line-height:1.15;margin-top:3px;opacity:.85}
+.grande{padding:12px 18px;font-size:17px;font-weight:800;background:var(--accent);color:var(--accInk);border:var(--bw) solid var(--edge);border-radius:var(--rad);box-shadow:var(--shadow);margin-top:6px}
+@media (min-width:820px) and (min-aspect-ratio:5/4){
+ #app{max-width:1040px;display:grid;grid-template-columns:1fr 304px;grid-template-rows:50px 44px 38px 1fr;grid-template-areas:"h h" "n n" "s s" "m v"}
+ header{grid-area:h} nav{grid-area:n} #spiega{grid-area:s} #mondoBox{grid-area:m} #vassoio{grid-area:v;height:auto;padding:8px}
+ .freccia{display:none}
+ #scorri{overflow-y:auto;overflow-x:hidden;touch-action:pan-y}
+ #carte{grid-template-rows:none;grid-auto-flow:row;grid-template-columns:repeat(4,64px);grid-auto-rows:68px;height:auto}
+}
+.pannello ul{list-style:none;margin:12px 0 6px;display:flex;flex-direction:column;gap:8px}
+.pannello li{font-size:14px;line-height:1.3;padding-left:26px;position:relative}
+.pannello li::before{content:"★";position:absolute;left:4px;color:var(--accent)}
+</style>
+</head>
+<body class="s-pixel modo-carte">
+<div id="app">
+ <header>
+  <button id="bAlbum" class="bott"><span class="stella">★</span><span class="testo"><b id="nScop">Scoperte 4/25</b><i class="barra"><i id="barraPiena"></i></i></span></button>
+  <button id="bStile" class="bott"><small>Stile</small><b id="nomeStile">Pixel ricco</b></button>
+  <button id="bRicomincia" class="bott"><b>↺</b><small>Ricomincia</small></button>
+ </header>
+ <nav id="linguette">
+  <button class="linguetta attiva" data-modo="carte">Carte</button>
+  <button class="linguetta" data-modo="versa">Versa</button>
+  <button class="linguetta" data-modo="porta">Porta e lascia</button>
+ </nav>
+ <p id="spiega"></p>
+ <div id="mondoBox"><canvas id="mondo"></canvas><div id="feste"></div><div id="avviso"></div></div>
+ <div id="vassoio"><button id="sx" class="freccia" aria-label="indietro">‹</button><div id="scorri"><div id="carte"></div></div><button id="dx" class="freccia" aria-label="avanti">›</button></div>
+</div>
+<div id="fantasma"><div class="punta"></div></div>
+<div id="album" class="velo" hidden><div class="pannello">
+ <h2>Il tuo album</h2><p id="albumConto"></p>
+ <div id="griglia"></div>
+ <button id="chiudiAlbum" class="grande">Torna a giocare</button>
+</div></div>
+<div id="benvenuto" class="velo"><div class="pannello">
+ <h2>Un piccolo mondo tutto tuo</h2>
+ <p>Qui sotto c'è un pezzetto di terra con una conca. Mescola terra, acqua, fuoco e aria e guarda cosa succede.</p>
+ <ul>
+  <li>In alto ci sono <b>tre modi di unire</b>: provali tutti e tre.</li>
+  <li>Il tasto <b>Stile</b> cambia il disegno: guarda quale ti piace di più.</li>
+  <li>Ogni cosa nuova finisce nell'<b>album</b>. Ne puoi trovare 25.</li>
+ </ul>
+ <button id="via" class="grande">Giochiamo!</button>
+</div></div>
+<script>
+'use strict';
+// ===================== DATI: materiali, scoperte, unioni =====================
+const W = 70, H = 90, N = W * H, S = 4; // mondo in celle; S = quadretti per cella nel disegno
+// Materiali del mondo (numeri piccoli per gli array tipizzati)
+const VUOTO=0, ROCCIA=1, TERRA=2, ACQUA=3, FIAMMA=4, ARIA=5, FANGO=6, ARGILLA=7, MATTONE=8, LAVA=9, PIETRA=10,
+  VAPORE=11, NUVOLA=12, SABBIA=13, VETRO=14, STELO=15, FOGLIA=16, TRONCO=17, LEGNA=18, BRACE=19, CENERE=20,
+  TERRICCIO=21, MURO=22, TETTO=23, FINESTRA=24, PORTA=25, NMAT = 32;
+// Comportamento: 0 niente, 1 fermo, 2 polvere, 3 liquido, 4 gas, 5 blocco che cade dritto
+const GENERE = new Uint8Array(NMAT), DENS = new Uint8Array(NMAT), APERTO = new Uint8Array(NMAT),
+  SCIVOLA = new Float32Array(NMAT), BRUCIA = new Float32Array(NMAT), REGGE = new Uint8Array(NMAT);
+function defMat(t, genere, dens, scivola, brucia) { GENERE[t] = genere; DENS[t] = dens; SCIVOLA[t] = scivola || 0; BRUCIA[t] = brucia || 0; }
+defMat(ROCCIA,1,9); defMat(TERRA,2,6,.75); defMat(ACQUA,3,3); defMat(FIAMMA,4,0); defMat(ARIA,4,0);
+defMat(FANGO,2,7,.25); defMat(ARGILLA,2,7,.18); defMat(MATTONE,5,9); defMat(LAVA,3,5); defMat(PIETRA,5,9);
+defMat(VAPORE,4,0); defMat(NUVOLA,4,0); defMat(SABBIA,2,6,1); defMat(VETRO,5,9); defMat(STELO,1,9,0,.10);
+defMat(FOGLIA,1,9,0,.12); defMat(TRONCO,1,9,0,.035); defMat(LEGNA,2,6,.5,.06); defMat(BRACE,1,9);
+defMat(CENERE,2,2,1); defMat(TERRICCIO,2,6,.6); defMat(MURO,1,9); defMat(TETTO,1,9); defMat(FINESTRA,1,9); defMat(PORTA,1,9);
+APERTO[VUOTO] = APERTO[FIAMMA] = APERTO[ARIA] = APERTO[VAPORE] = APERTO[NUVOLA] = 1;
+// cose su cui un omino può stare in piedi
+[ROCCIA,TERRA,FANGO,ARGILLA,MATTONE,PIETRA,SABBIA,VETRO,TRONCO,LEGNA,CENERE,TERRICCIO,MURO,TETTO,FINESTRA,BRACE].forEach(t => REGGE[t] = 1);
+const NOME_MAT = ['', 'Roccia', 'Terra', 'Acqua', 'Fuoco', 'Aria', 'Fango', 'Argilla', 'Mattone', 'Lava', 'Pietra', 'Vapore',
+  'Nuvola', 'Sabbia', 'Vetro', 'Pianta', 'Foglie', 'Albero', 'Legno', 'Fuoco', 'Cenere', 'Terriccio', 'Casa', 'Casa', 'Casa', 'Casa'];
+const MAT_SCOPERTA = { 2:'terra',3:'acqua',4:'fuoco',5:'aria',6:'fango',7:'argilla',8:'mattone',9:'lava',10:'pietra',11:'vapore',
+  12:'nuvola',13:'sabbia',14:'vetro',18:'legno',19:'fuoco',20:'cenere',21:'terriccio' };
+
+// Le 25 scoperte: id, nome, indizio per l'album, cosa fa (frase della festa), materiale da versare
+const SCOPERTE = [
+  ['terra','Terra','', 'Si ammucchia e fa colline', TERRA],
+  ['acqua','Acqua','', 'Scorre e riempie le conche', ACQUA],
+  ['fuoco','Fuoco','', 'Scalda, brucia e sale', FIAMMA],
+  ['aria','Aria','', 'Soffia e spinge le cose', ARIA],
+  ['fango','Fango','Terra che beve acqua', 'Molle e pesante, scivola piano', FANGO],
+  ['sabbia','Sabbia','Terra spazzata dal vento', 'Fine fine, scorre come l\'acqua', SABBIA],
+  ['lava','Lava','Terra scaldata tanto tanto', 'Scorre rovente e brucia tutto', LAVA],
+  ['vapore','Vapore','Acqua sopra il fuoco', 'Sale su verso il cielo', VAPORE],
+  ['pietra','Pietra','Lava che incontra l\'acqua', 'Dura e pesante', PIETRA],
+  ['argilla','Argilla','Fango asciugato dal vento', 'Si modella e sta su', ARGILLA],
+  ['mattone','Mattone','Argilla cotta nel fuoco', 'Per costruire', MATTONE],
+  ['vetro','Vetro','Sabbia nel fuoco', 'Trasparente e lucido', VETRO],
+  ['nuvola','Nuvola','Vapore che arriva in alto', 'Galleggia e si gonfia d\'acqua', NUVOLA],
+  ['pioggia','Pioggia','Una nuvola piena d\'acqua', 'Bagna tutto e fa crescere', -1],
+  ['fulmine','Fulmine','Una nuvola enorme… o nuvola e fuoco', 'Colpisce e accende', -1],
+  ['germoglio','Germoglio','Fango bagnato, sotto il cielo', 'Sta per crescere!', -1],
+  ['pianta','Pianta','Un germoglio con un po\' d\'acqua', 'Cresce verso il sole', -1],
+  ['albero','Albero','Una pianta che continua a crescere', 'Grande, verde e fa ombra', -1],
+  ['legno','Legno','Una pietra contro un albero', 'Brucia bene e serve per le case', LEGNA],
+  ['incendio','Incendio','Fuoco su un albero', 'Divampa e salta di albero in albero', -1],
+  ['cenere','Cenere','Quello che resta dopo il fuoco', 'Leggera, rende fertile la terra', CENERE],
+  ['terriccio','Terriccio','Cenere mescolata alla terra', 'Qui le piante crescono il doppio', TERRICCIO],
+  ['omino','Omino','Fango sopra un albero', 'Cammina, beve e scappa dal fuoco', -1],
+  ['casa','Casa','Mattoni e legno insieme', 'Gli omini ci entrano a riposare', -1],
+  ['villaggio','Villaggio','Più case e più omini', 'Il mondo cresce da solo', -1],
+];
+const IDX = {}; SCOPERTE.forEach((s, k) => IDX[s[0]] = k);
+const NOME = id => SCOPERTE[IDX[id]][1];
+
+// Unioni (valgono per Carte e per "Porta e lascia" sopra una cosa viva)
+const UNIONI = {};
+[
+  ['terra','acqua','fango'], ['terra','aria','sabbia'], ['terra','fuoco','lava'], ['acqua','fuoco','vapore'],
+  ['lava','acqua','pietra'], ['pietra','fuoco','lava'], ['fango','aria','argilla'], ['fango','fuoco','argilla'],
+  ['argilla','fuoco','mattone'], ['sabbia','fuoco','vetro'], ['vapore','aria','nuvola'], ['nuvola','acqua','pioggia'],
+  ['nuvola','fuoco','fulmine'], ['sabbia','fulmine','vetro'], ['fango','pioggia','germoglio'], ['terriccio','acqua','germoglio'],
+  ['terriccio','pioggia','germoglio'], ['germoglio','acqua','pianta'], ['germoglio','pioggia','pianta'],
+  ['pianta','acqua','albero'], ['pianta','pioggia','albero'], ['pianta','terriccio','albero'], ['albero','pietra','legno'],
+  ['albero','fuoco','incendio'], ['albero','fulmine','incendio'], ['legno','fuoco','cenere'], ['incendio','aria','cenere'],
+  ['cenere','terra','terriccio'], ['albero','fango','omino'], ['mattone','legno','casa'], ['casa','omino','villaggio'],
+].forEach(([a, b, r]) => { UNIONI[a + '+' + b] = r; UNIONI[b + '+' + a] = r; });
+const unisci = (a, b) => UNIONI[a + '+' + b] || null;
+
+const MODI = {
+  carte: 'Trascina una figurina sopra un\'altra per unirle. Puoi anche lasciarla nel mondo.',
+  versa: 'Tocca una figurina, poi passa il dito sul mondo: ne cade un po\' dove tocchi.',
+  porta: 'Porta la figurina sul mondo e lasciala: cade sotto la punta. Su un albero o un omino si unisce!',
+};
+const STILI = ['Pixel ricco', 'Morbido', 'Cartoon'];
+
+// Numeri casuali veloci
+let seme = 1234567;
+function R() { seme ^= seme << 13; seme ^= seme >>> 17; seme ^= seme << 5; return (seme >>> 0) / 4294967296; }
+const RT = new Uint8Array(4096); for (let k = 0; k < 4096; k++) RT[k] = (Math.random() * 256) | 0;
+
+// ===================== FISICA A GRANELLI =====================
+const tipo = new Uint8Array(N), vita = new Uint8Array(N), calore = new Uint8Array(N), varia = new Uint8Array(N), mosso = new Uint8Array(N);
+const conteggi = new Int32Array(NMAT);
+let tick = 1, fot = 0, vento = 1, ultimoFuoco = 0, cicloLuce = 0.08;
+const DX4 = [0, 1, 0, -1], DY4 = [-1, 0, 1, 0];
+
+function metti(i, t, v) { tipo[i] = t; vita[i] = v || 0; calore[i] = 0; varia[i] = (R() * 4) | 0; mosso[i] = tick; }
+function scambia(i, j) {
+  let a = tipo[i]; tipo[i] = tipo[j]; tipo[j] = a;
+  a = vita[i]; vita[i] = vita[j]; vita[j] = a;
+  a = calore[i]; calore[i] = calore[j]; calore[j] = a;
+  a = varia[i]; varia[i] = varia[j]; varia[j] = a;
+  mosso[i] = tick; mosso[j] = tick;
+}
+// vicino a caso tra i quattro, -1 se fuori dal mondo
+function vicino(x, y) {
+  const r = (R() * 4) | 0, nx = x + DX4[r], ny = y + DY4[r];
+  if (nx < 0 || nx >= W || ny < 0 || ny >= H) return -1;
+  return ny * W + nx;
+}
+function entra(dove, t) { const g = GENERE[dove]; return dove === VUOTO || (g === 4 && dove !== NUVOLA) || (g === 3 && DENS[dove] < DENS[t]); }
+function scalda(i, q) { const c = calore[i] + q; calore[i] = c > 255 ? 255 : c; }
+
+function accendi(n) {
+  const t = tipo[n];
+  vita[n] = (t === TRONCO ? 200 : t === LEGNA ? 150 : t === FOGLIA ? 45 : 35) + ((R() * 40) | 0);
+  tipo[n] = BRACE; mosso[n] = tick; ultimoFuoco = n;
+}
+
+// ---------- il terreno di partenza: roccia, una conca, un po' di terra ----------
+function terrenoIniziale() {
+  tipo.fill(0); vita.fill(0); calore.fill(0); mosso.fill(0);
+  for (let i = 0; i < N; i++) varia[i] = (R() * 4) | 0;
+  for (let x = 0; x < W; x++) {
+    // altezza della roccia: altopiano a sinistra, conca al centro, colle a destra
+    let r;
+    if (x < 13) r = 58 + ((x * 7) % 3 === 0 ? 1 : 0);
+    else if (x < 22) r = 58 + (x - 13) * 2.5;
+    else if (x < 40) r = 81 + Math.sin((x - 22) / 18 * Math.PI) * 1.5;
+    else if (x < 48) r = 80 - (x - 40) * 2.4;
+    else r = 61 - Math.sin((x - 48) / 22 * Math.PI) * 3;
+    r = Math.round(r);
+    const terra = x < 13 ? 4 : x < 22 ? 3 : x < 40 ? 3 : x < 48 ? 3 : 4 + Math.round(Math.max(0, Math.sin((x - 50) / 20 * Math.PI)) * 5);
+    for (let y = 0; y < H; y++) {
+      const i = y * W + x;
+      if (y >= r) tipo[i] = ROCCIA;
+      else if (y >= r - terra) tipo[i] = TERRA;
+    }
+  }
+  // qualche sasso sporgente
+  for (let k = 0; k < 6; k++) { const x = 24 + k * 3, y = 80 + (k % 2); tipo[y * W + x] = ROCCIA; }
+}
+
+// ---------- un passo di fisica ----------
+function passo() {
+  tick = tick >= 255 ? 1 : tick + 1; fot++;
+  conteggi.fill(0);
+  if (fot % 900 === 0) vento = R() < 0.5 ? -1 : 1;
+  if (fot % 45 === 0) derivaNuvole();
+  const lr = tick & 1;
+  for (let y = H - 1; y >= 0; y--) {
+    const riga = y * W;
+    for (let k = 0; k < W; k++) {
+      const x = lr ? k : W - 1 - k, i = riga + x, t = tipo[i];
+      const c = calore[i];
+      if (c) calore[i] = c > 3 ? c - 3 : 0;
+      if (t === VUOTO) continue;
+      conteggi[t]++;
+      if (mosso[i] === tick) continue;
+      switch (t) {
+        case TERRA: case SABBIA: case FANGO: case ARGILLA: case CENERE: case TERRICCIO: case LEGNA:
+          polvere(i, x, y, t); break;
+        case PIETRA: case MATTONE: case VETRO: blocco(i, x, y, t); break;
+        case ACQUA: acqua(i, x, y); break;
+        case LAVA: lava(i, x, y); break;
+        case FIAMMA: fiamma(i, x, y); break;
+        case BRACE: brace(i, x, y); break;
+        case VAPORE: vapore(i, x, y); break;
+        case NUVOLA: nuvola(i, x, y); break;
+        case ARIA: aria(i, x, y); break;
+        case FOGLIA: case STELO: case TRONCO: if (calore[i] > 130) accendi(i); break;
+      }
+    }
+  }
+}
+
+function cadi(i, x, y, t, scivola) {
+  if (y >= H - 1) return i;
+  const b = i + W;
+  if (entra(tipo[b], t)) { scambia(i, b); return b; }
+  if (scivola > 0 && R() < scivola) {
+    const d = R() < 0.5 ? -1 : 1;
+    if (x + d >= 0 && x + d < W && entra(tipo[b + d], t) && entra(tipo[i + d], t)) { scambia(i, b + d); return b + d; }
+    if (x - d >= 0 && x - d < W && entra(tipo[b - d], t) && entra(tipo[i - d], t)) { scambia(i, b - d); return b - d; }
+  }
+  return i;
+}
+
+function polvere(i, x, y, t) {
+  // le reazioni prima del movimento
+  const c = calore[i];
+  if (t === TERRA && c > 225) { tipo[i] = LAVA; vita[i] = 0; scopri('lava', x, y); return; }
+  if (t === SABBIA && c > 150) { tipo[i] = VETRO; scopri('vetro', x, y); return; }
+  if (t === FANGO && c > 105) { tipo[i] = ARGILLA; scopri('argilla', x, y); return; }
+  if (t === ARGILLA && c > 135) { tipo[i] = MATTONE; scopri('mattone', x, y); return; }
+  if (t === LEGNA && c > 140) { accendi(i); return; }
+  const n = vicino(x, y);
+  if (n >= 0) {
+    const tn = tipo[n];
+    if (t === TERRA) {
+      if (tn === ACQUA && R() < 0.22) { tipo[i] = FANGO; if (R() < 0.45) tipo[n] = VUOTO; scopri('fango', x, y); return; }
+      if (tn === ARIA && R() < 0.4) { tipo[i] = SABBIA; scopri('sabbia', x, y); return; }
+      if (tn === CENERE && R() < 0.08) { tipo[i] = TERRICCIO; if (R() < 0.5) tipo[n] = VUOTO; scopri('terriccio', x, y); return; }
+    } else if (t === FANGO) {
+      if (tn === ARIA && R() < 0.4) { tipo[i] = ARGILLA; scopri('argilla', x, y); return; }
+      if ((tn === TRONCO || tn === FOGLIA) && R() < 0.08 && omini.length < 6 && fot - ultimoOmino > 150) { const p = piantaIn(n % W, (n / W) | 0); if (p && p.fase >= 2 && y < p.y - 1 && nasciOmino(p.x + (x < p.x ? -2 : 2), p.y - 2, true)) { tipo[i] = VUOTO; return; } }
+      if (tn === ACQUA && y > 0 && tipo[i - W] === VUOTO && R() < 0.004 && cieloAperto(x, y - 1)) germoglia(x, y - 1);
+    } else if (t === CENERE) {
+      if (tn === TERRA && R() < 0.08) { tipo[n] = TERRICCIO; tipo[i] = VUOTO; scopri('terriccio', x, y); return; }
+    } else if (t === TERRICCIO) {
+      if (tn === ACQUA && y > 0 && tipo[i - W] === VUOTO && R() < 0.01 && cieloAperto(x, y - 1)) germoglia(x, y - 1);
+    } else if (t === LEGNA) {
+      if (tn === MATTONE && R() < 0.3) { costruisciCasa(x, y); return; }
+    }
+  }
+  if (y > 0) { const su = tipo[i - W]; if (su === STELO || su === TRONCO) return; } // le radici tengono ferma la terra
+  cadi(i, x, y, t, SCIVOLA[t]);
+}
+
+function blocco(i, x, y, t) {
+  const n = vicino(x, y);
+  if (n >= 0) {
+    const tn = tipo[n];
+    if (t === PIETRA && (tn === TRONCO || tn === FOGLIA || tn === STELO) && R() < 0.5) { abbattiIn(n); }
+    else if (t === MATTONE && tn === LEGNA && R() < 0.3) { costruisciCasa(x, y); return; }
+  }
+  cadi(i, x, y, t, 0);
+}
+
+function acqua(i, x, y) {
+  if (calore[i] > 110) { metti(i, VAPORE, 140); scopri('vapore', x, y); return; }
+  const n = vicino(x, y);
+  if (n >= 0 && tipo[n] === CENERE && R() < 0.02) tipo[n] = VUOTO; // la cenere si scioglie
+  let j = i;
+  if (y < H - 1) {
+    const b = i + W, tb = tipo[b];
+    if (tb === VUOTO || (GENERE[tb] === 4 && tb !== NUVOLA)) { scambia(i, b); return; }
+    // goccia di pioggia che tocca terra
+    if (vita[i] === 1) {
+      vita[i] = 0;
+      if ((tb === FANGO && R() < 0.3) || (tb === TERRICCIO && R() < 0.45)) { if (germoglia(x, y)) return; }
+      if (tb === FOGLIA || tb === STELO) bagnaPianta(x, y);
+    }
+    const d = R() < 0.5 ? -1 : 1;
+    if (x + d >= 0 && x + d < W && tipo[b + d] === VUOTO && tipo[i + d] === VUOTO) { scambia(i, b + d); return; }
+    if (x - d >= 0 && x - d < W && tipo[b - d] === VUOTO && tipo[i - d] === VUOTO) { scambia(i, b - d); return; }
+  }
+  // scorre di lato fino a tre celle
+  const d = R() < 0.5 ? -1 : 1;
+  for (let s = 1; s <= 3; s++) { const nx = x + d * s; if (nx < 0 || nx >= W) break; const tt = tipo[i + d * s]; if (tt === VUOTO || tt === ARIA) j = i + d * s; else break; }
+  if (j !== i) scambia(i, j);
+}
+
+function lava(i, x, y) {
+  calore[i] = 255;
+  const n = vicino(x, y);
+  if (n >= 0) {
+    const tn = tipo[n];
+    if (tn === ACQUA) { tipo[i] = PIETRA; vita[i] = 0; calore[i] = 0; metti(n, VAPORE, 150); scopri('pietra', x, y); scopri('vapore', n % W, (n / W) | 0); scintille(x, y, 3, 2); return; }
+    if (BRUCIA[tn] > 0 && R() < 0.25) accendi(n);
+    else if (tn === SABBIA) scalda(n, 12);
+    else if (tn === FANGO || tn === ARGILLA) scalda(n, 3);
+    else if (tn === TERRA || tn === TERRICCIO) scalda(n, 3);
+    else if (tn === VUOTO && n < i && R() < 0.004) metti(n, FIAMMA, 12);
+  }
+  if (R() < 0.00025) { tipo[i] = PIETRA; calore[i] = 0; return; }
+  if (R() < 0.55) return; // la lava è lenta
+  if (y < H - 1) {
+    const b = i + W;
+    if (entra(tipo[b], LAVA)) { scambia(i, b); return; }
+    const d = R() < 0.5 ? -1 : 1;
+    if (x + d >= 0 && x + d < W && tipo[b + d] === VUOTO && tipo[i + d] === VUOTO) { scambia(i, b + d); return; }
+  }
+  const d = R() < 0.5 ? -1 : 1, nx = x + d;
+  if (nx >= 0 && nx < W && (tipo[i + d] === VUOTO || APERTO[tipo[i + d]])) scambia(i, i + d);
+}
+
+function fiamma(i, x, y) {
+  const v = vita[i];
+  if (v <= 1) { tipo[i] = VUOTO; if (R() < 0.06) fumo(x, y); return; }
+  vita[i] = v - 1;
+  for (let r = 0; r < 4; r++) {
+    const nx = x + DX4[r], ny = y + DY4[r];
+    if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+    const n = ny * W + nx, tn = tipo[n];
+    if (tn === VUOTO) continue;
+    scalda(n, 13);
+    if (BRUCIA[tn] > 0 && R() < BRUCIA[tn]) accendi(n);
+    else if (tn === ACQUA && R() < 0.3) { metti(n, VAPORE, 140); tipo[i] = VUOTO; scopri('vapore', nx, ny); return; }
+    else if (tn === ARIA && R() < 0.5) { vita[i] = v + 8 > 60 ? 60 : v + 8; const k = vicino(x, y); if (k >= 0 && tipo[k] === VUOTO) metti(k, FIAMMA, 30); }
+    else if (tn === NUVOLA && R() < 0.02 && conteggi[NUVOLA] > 8) { fulmine(nx, true); }
+  }
+  if (y > 0 && R() < 0.55) {
+    const d = R() < 0.3 ? (R() < 0.5 ? -1 : 1) : 0, nx = x + d;
+    if (nx >= 0 && nx < W) { const u = i - W + d; if (tipo[u] === VUOTO) scambia(i, u); }
+  }
+}
+
+function brace(i, x, y) {
+  const v = vita[i];
+  if (v <= 1) { tipo[i] = R() < 0.7 ? CENERE : VUOTO; vita[i] = 0; if (tipo[i] === CENERE) scopri('cenere', x, y); return; }
+  vita[i] = v - 1;
+  if (y > 0 && R() < 0.22 && tipo[i - W] === VUOTO) metti(i - W, FIAMMA, 14 + ((R() * 16) | 0));
+  const n = vicino(x, y);
+  if (n < 0) return;
+  const tn = tipo[n];
+  scalda(n, 7);
+  if (BRUCIA[tn] > 0 && R() < BRUCIA[tn] * 0.7) accendi(n);
+  else if (tn === ACQUA) { tipo[i] = CENERE; vita[i] = 0; metti(n, VAPORE, 140); scopri('vapore', x, y); }
+  else if (tn === ARIA) { vita[i] = v > 20 ? v - 10 : v; if (y > 0 && tipo[i - W] === VUOTO) metti(i - W, FIAMMA, 30); }
+}
+
+function vapore(i, x, y) {
+  const v = vita[i];
+  if (v <= 1) { tipo[i] = VUOTO; return; }
+  vita[i] = v - 1;
+  if (y <= 6 + ((x * 13) % 5)) { if (R() < 0.5) { tipo[i] = VUOTO; return; } tipo[i] = NUVOLA; vita[i] = 60; scopri('nuvola', x, y); return; }
+  if (y > 0) {
+    const u = i - W, tu = tipo[u];
+    if (tu === NUVOLA) { tipo[i] = NUVOLA; vita[i] = 60; scopri('nuvola', x, y); return; }
+    if (tu === ARIA) { tipo[i] = NUVOLA; vita[i] = 60; tipo[u] = VUOTO; scopri('nuvola', x, y); return; }
+    if ((tu === VUOTO || GENERE[tu] === 3) && R() < 0.85) {
+      const d = R() < 0.35 ? (R() < 0.5 ? -1 : 1) : 0, nx = x + d;
+      const j = nx >= 0 && nx < W && (tipo[u + d] === VUOTO || GENERE[tipo[u + d]] === 3) ? u + d : u;
+      scambia(i, j); return;
+    }
+  }
+  const d = R() < 0.5 ? -1 : 1;
+  if (x + d >= 0 && x + d < W && tipo[i + d] === VUOTO) scambia(i, i + d);
+}
+
+function nuvola(i, x, y) {
+  const v = vita[i];
+  // pioggia
+  if (v > 14 && y < H - 1 && tipo[i + W] === VUOTO && R() < 0.0035 + v * 0.00012) {
+    metti(i + W, ACQUA, 1); vita[i] = v - 7; scopri('pioggia', x, y + 1);
+    if (vita[i] <= 8) { tipo[i] = VUOTO; return; }
+  }
+  if (R() < 0.0015) { if (v <= 8) { tipo[i] = VUOTO; return; } vita[i] = v - 1; }
+  if (y > 16 && R() < 0.4 && tipo[i - W] === VUOTO) { scambia(i, i - W); return; }
+}
+// tutte le nuvole si spostano insieme col vento, partendo dal bordo davanti
+function derivaNuvole() {
+  for (let y = 0; y < 30; y++) {
+    const riga = y * W;
+    for (let k = 0; k < W; k++) {
+      const x = vento > 0 ? W - 1 - k : k, i = riga + x;
+      if (tipo[i] !== NUVOLA) continue;
+      const nx = x + vento;
+      if (nx < 0 || nx >= W) { if (R() < 0.3) tipo[i] = VUOTO; continue; }
+      if (tipo[i + vento] === VUOTO) scambia(i, i + vento);
+    }
+  }
+}
+
+// l'aria: un soffio che corre in una direzione e spinge le cose leggere
+function aria(i, x, y) {
+  const v = vita[i];
+  if (v <= 1) { tipo[i] = VUOTO; return; }
+  vita[i] = v - 1;
+  const dx = ((varia[i] >> 2) & 3) - 1, dy = ((varia[i] >> 4) & 3) - 1;
+  const nx = x + dx, ny = y + dy;
+  if (nx < 0 || nx >= W || ny < 0 || ny >= H) { tipo[i] = VUOTO; return; }
+  const j = ny * W + nx, tj = tipo[j];
+  if (tj === VUOTO) { scambia(i, j); return; }
+  if (tj === TERRA && R() < 0.4) { tipo[j] = SABBIA; scopri('sabbia', nx, ny); }
+  else if (tj === FANGO && R() < 0.4) { tipo[j] = ARGILLA; scopri('argilla', nx, ny); }
+  else if (tj === VAPORE) { tipo[j] = NUVOLA; vita[j] = 60; scopri('nuvola', nx, ny); }
+  if ((tj === SABBIA || tj === CENERE || tj === ACQUA || tj === TERRA) && R() < 0.7) {
+    const kx = nx + dx, ky = ny + dy - (dy === 0 && R() < 0.4 ? 1 : 0);
+    if (kx >= 0 && kx < W && ky >= 0 && ky < H) { const k = ky * W + kx; if (tipo[k] === VUOTO) { scambia(j, k); scambia(i, j); return; } }
+  }
+  if (tj !== FIAMMA && tj !== BRACE) vita[i] = v > 4 ? v - 4 : 1;
+}
+
+// controlla se sopra una cella si vede il cielo
+function cieloAperto(x, y) {
+  for (let yy = y - 1; yy >= 0; yy--) { const t = tipo[yy * W + x]; if (!APERTO[t] && GENERE[t] !== 3) return false; }
+  return true;
+}
+// cima del terreno in una colonna (prima cella non aperta e non liquida); restituisce H se non c'è
+function cimaVera(x, daY) {
+  for (let y = daY || 0; y < H; y++) { const i = y * W + x, t = tipo[i]; if (!APERTO[t] && !(t === ACQUA && vita[i] === 1)) return y; }
+  return H;
+}
+function cima(x, daY) {
+  for (let y = daY || 0; y < H; y++) { const t = tipo[y * W + x]; if (!APERTO[t]) return y; }
+  return H;
+}
+
+// ===================== COSE VIVE: piante, omini, case, fulmini =====================
+const piante = [], omini = [], case_ = [], lampi = [];
+let ultimoOmino = -999, ultimaCasa = -999, ultimoLampo = -999, arrivoT = 0, lampoSchermo = 0;
+
+function libera(i) { const t = tipo[i]; return t === VUOTO || t === ARIA || t === VAPORE || (t === ACQUA && vita[i] === 1); }
+function posa(x, y, t) { if (x < 0 || x >= W || y < 0 || y >= H) return false; const i = y * W + x; if (!libera(i)) return false; metti(i, t); return true; }
+const FERTILE = new Uint8Array(NMAT); [TERRA, FANGO, TERRICCIO, SABBIA, ARGILLA, CENERE].forEach(t => FERTILE[t] = 1);
+
+// ---------- piante ----------
+function germoglia(x, y, spinta, albero) {
+  if (x < 1 || x >= W - 1 || y < 3 || y >= H - 1) return false;
+  let vive = 0;
+  for (const p of piante) { if (p.morta) continue; vive++; if (Math.abs(p.x - x) < 4 && Math.abs(p.y - y) < 14) return false; }
+  if (vive >= 24) return false;
+  const i = y * W + x;
+  if (!libera(i) || tipo[i] === ACQUA || tipo[i - W] === ACQUA) return false;
+  const suolo = tipo[i + W];
+  if (!FERTILE[suolo] || y + 2 >= H || APERTO[tipo[i + 2 * W]] || GENERE[tipo[i + 2 * W]] === 3) return false;
+  metti(i, STELO);
+  const p = { x, y, fase: 0, h: 1, maxH: 7 + ((R() * 6) | 0), r: 0, maxR: 3 + ((R() * 3) | 0), t: 0, acqua: 0, eta: 0, morta: false,
+    fert: suolo === TERRICCIO ? 2.4 : suolo === FANGO ? 1.2 : suolo === SABBIA ? 0.6 : 1, spinta: spinta || 1, albero: !!albero };
+  piante.push(p);
+  scopri('germoglio', x, y);
+  scintille(x, y, 6, 4);
+  return p;
+}
+function crescePiante() {
+  for (let k = piante.length - 1; k >= 0; k--) {
+    const p = piante[k], tb = tipo[p.y * W + p.x];
+    if (p.morta || (tb !== STELO && tb !== TRONCO)) { piante.splice(k, 1); continue; }
+    p.eta++;
+    if ((p.eta & 31) === 0) { const sotto = tipo[(p.y + 1) * W + p.x]; if (APERTO[sotto] || GENERE[sotto] === 3) { sradica(p); continue; } }
+    if (p.acqua > 0) p.acqua--;
+    if (p.fase === 3) { if (R() < 0.0005) semina(p); continue; }
+    p.t += p.fert * p.spinta * (p.acqua > 0 ? 1.5 : 1);
+    if (p.t < 40) continue;
+    p.t = 0;
+    crescita(p);
+  }
+}
+function crescita(p) {
+  const x = p.x;
+  if (p.fase < 2) {
+    if (p.fase === 1 && p.h >= 5) { if (p.acqua > 0 || p.fert > 1.3 || p.eta > 420 || p.albero) diventaAlbero(p); return; }
+    const ny = p.y - p.h;
+    if (ny < 4 || !posa(x, ny, STELO)) { diventaAlbero(p); return; }
+    p.h++;
+    if (p.h % 2 === 0) posa(x + (p.h % 4 === 0 ? 1 : -1), ny, FOGLIA);
+    if (p.fase === 0 && p.h >= 3) { p.fase = 1; scopri('pianta', x, ny); foglie(x, ny, 4); if (!p.albero) p.spinta = 1; }
+    return;
+  }
+  if (p.fase === 2) {
+    if (p.h < p.maxH) { const ny = p.y - p.h; if (ny > 6 && posa(x, ny, TRONCO)) { p.h++; return; } }
+    p.r++;
+    const cy = p.y - p.h - (p.r > 1 ? 1 : 0), rx = p.r + 1.2, ry = p.r * 0.8 + 0.8;
+    for (let dy = -Math.ceil(ry); dy <= Math.ceil(ry * 0.6); dy++) for (let dx = -Math.ceil(rx); dx <= Math.ceil(rx); dx++) {
+      if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1) posa(x + dx, cy + dy, FOGLIA);
+    }
+    foglie(x, cy, 3);
+    if (p.r >= p.maxR) { p.fase = 3; p.spinta = 1; }
+  }
+}
+function diventaAlbero(p) {
+  if (p.fase >= 2) return;
+  p.fase = 2;
+  for (let k = 0; k < p.h; k++) { const i = (p.y - k) * W + p.x; if (tipo[i] === STELO) tipo[i] = TRONCO; }
+  if (p.maxH < p.h + 2) p.maxH = p.h + 2;
+  scopri('albero', p.x, p.y - p.h - 2);
+}
+function semina(p) {
+  const nx = p.x + (R() < 0.5 ? -1 : 1) * (5 + ((R() * 7) | 0));
+  if (nx < 2 || nx > W - 3) return;
+  const y0 = cima(nx, 8);
+  if (y0 < H && FERTILE[tipo[y0 * W + nx]]) germoglia(nx, y0 - 1);
+}
+function piantaIn(x, y) {
+  for (const p of piante) {
+    if (p.morta) continue;
+    const top = p.y - p.h - p.r - 2, half = (p.fase >= 2 ? p.r + 2 : 1.5);
+    if (x >= p.x - half && x <= p.x + half && y >= top && y <= p.y) return p;
+  }
+  return null;
+}
+function bagnaPianta(x, y) { const p = piantaIn(x, y); if (p) p.acqua = 300; }
+function abbattiIn(n) { const p = piantaIn(n % W, (n / W) | 0); if (p) abbatti(p); }
+function abbatti(p) {
+  if (p.morta) return;
+  p.morta = true;
+  const top = p.y - p.h - p.r - 3, half = p.r + 3;
+  for (let y = Math.max(0, top); y <= p.y; y++) for (let x = Math.max(0, p.x - half); x <= Math.min(W - 1, p.x + half); x++) {
+    const i = y * W + x, t = tipo[i];
+    if (t === FOGLIA) { tipo[i] = VUOTO; if (R() < 0.15) foglie(x, y, 1); }
+    else if ((t === TRONCO || t === STELO) && x === p.x) { metti(i, LEGNA); }
+  }
+  scopri('legno', p.x, p.y - 2);
+  suona('toc');
+}
+function sradica(p) {
+  p.morta = true;
+  const top = p.y - p.h - p.r - 3, half = p.r + 3;
+  for (let y = Math.max(0, top); y <= p.y; y++) for (let x = Math.max(0, p.x - half); x <= Math.min(W - 1, p.x + half); x++) {
+    const i = y * W + x, t = tipo[i];
+    if (t === FOGLIA || t === STELO) { tipo[i] = VUOTO; if (R() < 0.2) foglie(x, y, 1); } else if (t === TRONCO && x === p.x) metti(i, LEGNA);
+  }
+}
+function accendiPianta(p) {
+  const top = p.y - p.h - p.r - 2;
+  for (let y = Math.max(0, top); y <= p.y; y++) for (let x = p.x - p.r - 2; x <= p.x + p.r + 2; x++) {
+    if (x < 0 || x >= W) continue; const i = y * W + x;
+    if (BRUCIA[tipo[i]] > 0 && R() < 0.35) accendi(i);
+  }
+  accendi(p.y * W + p.x);
+}
+const alberi = () => { let n = 0; for (const p of piante) if (!p.morta && p.fase >= 2) n++; return n; };
+
+// ---------- omini ----------
+function nasciOmino(x, y, daFango) {
+  if (omini.length >= 14) return false;
+  if (daFango && fot - ultimoOmino < 60) return false;
+  ultimoOmino = fot;
+  x = Math.max(1, Math.min(W - 2, x | 0));
+  let yy = Math.max(4, y | 0);
+  while (yy > 4 && REGGE[tipo[yy * W + x]]) yy--;
+  while (yy < H - 2 && !REGGE[tipo[(yy + 1) * W + x]] && GENERE[tipo[(yy + 1) * W + x]] !== 3) yy++;
+  const o = { x: x + 0.5, y: yy, dir: R() < 0.5 ? -1 : 1, stato: 0, t: 0, sete: (R() * 400) | 0, passo: 0, bolla: 0, bollaT: 0,
+    colore: omini.length % 6, meta: -1, casa: null, cade: 0, nuovo: 30 };
+  omini.push(o);
+  scopri('omino', x, yy - 3);
+  polvere_(x, yy, 8);
+  return true;
+}
+function pericolo(fx, y) {
+  let best = 99, bdx = 0;
+  for (let yy = Math.max(0, y - 6); yy <= Math.min(H - 1, y + 3); yy++) {
+    const riga = yy * W;
+    for (let xx = Math.max(0, fx - 8); xx <= Math.min(W - 1, fx + 8); xx++) {
+      const t = tipo[riga + xx];
+      if (t === FIAMMA || t === BRACE || t === LAVA) { const d = Math.abs(xx - fx); if (d < best) { best = d; bdx = xx - fx || 1; } }
+    }
+  }
+  return bdx;
+}
+function bolla(o, b, t) { o.bolla = b; o.bollaT = t; }
+function aggiornaOmini() {
+  for (const o of omini) {
+    if (o.nuovo > 0) o.nuovo--;
+    if (o.bollaT > 0) o.bollaT--;
+    if (o.stato === 3) { if (--o.t <= 0) esci(o); continue; }
+    let fx = o.x | 0;
+    let tries = 0;
+    while (o.y > 3 && REGGE[tipo[o.y * W + fx]] && tries++ < 3) o.y--;
+    const qui = tipo[o.y * W + fx];
+    if (qui === LAVA || qui === FIAMMA || qui === BRACE) { o.y = Math.max(3, o.y - 2); o.stato = 2; o.t = 80; bolla(o, 1, 60); }
+    if (GENERE[qui] === 3 && qui !== LAVA) { if (fot % 4 === 0 && o.y > 3) o.y--; }
+    else {
+      const ts = o.y + 1 < H ? tipo[(o.y + 1) * W + fx] : ROCCIA;
+      if (!REGGE[ts] && ts !== ACQUA) { o.cade += 0.4; if (o.cade >= 1) { o.y += 1; o.cade -= 1; } if (o.y > H - 2) o.y = H - 2; continue; }
+      o.cade = 0;
+    }
+    if (fot % 12 === (o.colore * 2) % 12) {
+      const pd = pericolo(fx, o.y);
+      if (pd) { if (o.stato !== 2) { bolla(o, 1, 50); suona('oh'); } o.stato = 2; o.t = 100; o.dir = pd > 0 ? -1 : 1; o.meta = -1; }
+    }
+    o.sete++;
+    if (o.stato === 1 || o.stato === 4) { if (--o.t <= 0) o.stato = 0; continue; }
+    if (o.stato === 2 && --o.t <= 0) o.stato = 0;
+    if (o.stato === 0) {
+      if (R() < 0.003) { o.stato = 4; o.t = 50 + ((R() * 80) | 0); continue; }
+      if (o.meta < 0 && case_.length && R() < 0.004) { const c = case_[(R() * case_.length) | 0]; o.meta = c.porta.x; o.casa = c; }
+      if (scoperto.villaggio && R() < 0.0012 && FERTILE[tipo[(o.y + 1) * W + fx]]) { if (germoglia(fx, o.y)) bolla(o, 3, 50); }
+    }
+    if (o.meta >= 0) {
+      if (Math.abs(o.x - (o.meta + 0.5)) < 0.3) {
+        const c = o.casa;
+        if (c && Math.abs(o.y - c.porta.y) <= 1 && case_.indexOf(c) >= 0) { o.stato = 3; o.t = 160 + ((R() * 200) | 0); c.dentro++; o.meta = -1; continue; }
+        o.meta = -1;
+      } else o.dir = o.meta + 0.5 > o.x ? 1 : -1;
+    }
+    const vel = o.stato === 2 ? 0.17 : 0.055, nx = o.x + o.dir * vel, nfx = nx | 0;
+    if (nfx < 1 || nfx > W - 2) { o.dir = -o.dir; o.meta = -1; continue; }
+    o.passo += vel;
+    if (nfx === fx) { o.x = nx; continue; }
+    const d = o.y * W + nfx, tD = tipo[d], tS = tipo[d + W];
+    if (tD === FIAMMA || tD === BRACE || tD === LAVA || tS === LAVA) { o.dir = -o.dir; continue; }
+    if (REGGE[tD]) {
+      let su = 1; while (su < 3 && REGGE[tipo[(o.y - su) * W + nfx]]) su++;
+      const ny = o.y - su;
+      if (su <= 2 && ny > 3 && !REGGE[tipo[(ny - 1) * W + nfx]] && !REGGE[tipo[(ny - 2) * W + nfx]]) { o.y = ny; o.x = nx; }
+      else { o.dir = -o.dir; o.meta = -1; }
+      continue;
+    }
+    if (tS === ACQUA && GENERE[tipo[(o.y + 1) * W + fx]] !== 3) {
+      if (o.sete > 500) { o.stato = 1; o.t = 90; o.sete = 0; bolla(o, 2, 80); suona('glu'); }
+      else { o.dir = -o.dir; o.meta = -1; }
+      continue;
+    }
+    o.x = nx;
+  }
+}
+function esci(o) {
+  const c = o.casa;
+  o.stato = 0; o.dir = R() < 0.5 ? -1 : 1;
+  if (c && case_.indexOf(c) >= 0) {
+    c.dentro = Math.max(0, c.dentro - 1); o.x = c.porta.x + 0.5; o.y = c.porta.y;
+    if (omini.length < 3 + case_.length * 2 && R() < 0.5) { if (nasciOmino(c.porta.x, c.porta.y)) { bolla(omini[omini.length - 1], 3, 70); suona('pop'); } }
+  }
+  o.casa = null;
+}
+
+// ---------- case ----------
+const DISEGNO_CASA = ['...TTTM..', '..TTTTT..', '.TTTTTTT.', 'TTTTTTTTT', '.MMMMMMM.', '.MFFMMMM.', '.MFFMMPM.', '.MMMMMPM.'];
+function costruisciCasa(x, y) {
+  if (fot - ultimaCasa < 90 || case_.length >= 7) return false;
+  let x0 = Math.max(1, Math.min(W - 10, (x | 0) - 4));
+  for (const c of case_) if (Math.abs(c.x0 - x0) < 10) { x0 = c.x0 + (x0 < c.x0 ? -10 : 10); if (x0 < 1 || x0 > W - 10) return false; }
+  for (const c of case_) if (Math.abs(c.x0 - x0) < 10) return false;
+  // il materiale usato sparisce dentro la casa
+  for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+    const xx = x + dx, yy = y + dy; if (xx < 0 || xx >= W || yy < 0 || yy >= H) continue;
+    const i = yy * W + xx; if (tipo[i] === MATTONE || tipo[i] === LEGNA) tipo[i] = VUOTO;
+  }
+  const da = Math.max(0, y - 14);
+  let base = H, tops = [];
+  for (let c = 0; c < 9; c++) { let t = da; while (t < H && !REGGE[tipo[t * W + x0 + c]] && GENERE[tipo[t * W + x0 + c]] !== 3) t++; tops.push(t); if (t < base) base = t; }
+  if (base - 9 < 3) return false;
+  ultimaCasa = fot;
+  for (let c = 0; c < 9; c++) for (let y2 = base; y2 < Math.min(tops[c], base + 6); y2++) { const i = y2 * W + x0 + c; if (tipo[i] !== ROCCIA) metti(i, ROCCIA); }
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 9; c++) {
+    const ch = DISEGNO_CASA[r][c]; if (ch === '.') continue;
+    const i = (base - 8 + r) * W + x0 + c;
+    metti(i, ch === 'T' ? TETTO : ch === 'F' ? FINESTRA : ch === 'P' ? PORTA : MURO);
+  }
+  const casa = { x0, y0: base - 8, porta: { x: x0 + 6, y: base - 1 }, dentro: 0 };
+  case_.push(casa);
+  scopri('casa', x0 + 4, base - 6);
+  polvere_(x0 + 4, base - 1, 18);
+  suona('tum');
+  return casa;
+}
+function casaIn(x, y) { for (const c of case_) if (x >= c.x0 && x < c.x0 + 9 && y >= c.y0 && y < c.y0 + 8) return c; return null; }
+function controllaCase() {
+  for (let k = case_.length - 1; k >= 0; k--) { const c = case_[k]; if (tipo[(c.y0 + 4) * W + c.x0 + 4] !== MURO) case_.splice(k, 1); }
+}
+function omineIn(x, y) { for (const o of omini) if (o.stato !== 3 && Math.abs(o.x - x) < 2 && y <= o.y + 1 && y >= o.y - 5) return o; return null; }
+
+// ---------- fulmine ----------
+function fulmine(x, forzato) {
+  if (fot - ultimoLampo < 25 && !forzato) return;
+  ultimoLampo = fot;
+  x = Math.max(1, Math.min(W - 2, x | 0));
+  let y = 0;
+  while (y < 30 && tipo[y * W + x] !== NUVOLA) y++;
+  if (y >= 30) y = 0;
+  while (y < H - 1 && tipo[y * W + x] === NUVOLA) y++;
+  const pts = [x + 0.5, Math.max(0, y - 2)];
+  let cx = x;
+  while (y < H - 1) {
+    const t = tipo[y * W + cx];
+    if (!APERTO[t] && t !== NUVOLA && !(t === ACQUA && vita[y * W + cx] === 1)) break;
+    y++;
+    if (y % 3 === 0) { const nx = cx + (R() < 0.5 ? -1 : 1); if (nx > 0 && nx < W - 1) cx = nx; pts.push(cx + 0.5, y); }
+  }
+  pts.push(cx + 0.5, y);
+  lampi.push({ pts, t: 16 });
+  lampoSchermo = 1;
+  const t = tipo[y * W + cx];
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+    const xx = cx + dx, yy = y + dy; if (xx < 0 || xx >= W || yy < 0 || yy >= H) continue;
+    const i = yy * W + xx, ti = tipo[i];
+    if (BRUCIA[ti] > 0) accendi(i);
+    else if (ti === SABBIA) { tipo[i] = VETRO; scopri('vetro', xx, yy); }
+    else if (ti === ACQUA && R() < 0.5) metti(i, VAPORE, 140);
+    else if (ti === TERRA || ti === FANGO || ti === ARGILLA) scalda(i, 240);
+    else if (ti === VUOTO && dy < 0 && R() < 0.5) metti(i, FIAMMA, 30);
+  }
+  if (t === TRONCO || t === FOGLIA || t === STELO) { const p = piantaIn(cx, y); if (p) accendiPianta(p); }
+  scintille(cx, y, 14, 5);
+  scopri('fulmine', cx, y - 4);
+  suona('tuono');
+}
+
+// ---------- eventi che partono da soli ----------
+function eventi() {
+  if (conteggi[BRACE] >= 10) scopri('incendio', ultimoFuoco % W, (ultimoFuoco / W) | 0);
+  // le nuvole grosse fanno i fulmini
+  if (conteggi[NUVOLA] > 110 && R() < 0.003) {
+    // i fulmini cercano le cose alte: spesso un albero
+    const alti = piante.filter(p => !p.morta && p.fase >= 2);
+    if (alti.length && R() < 0.6) fulmine(alti[(R() * alti.length) | 0].x);
+    else
+    for (let k = 0; k < 40; k++) { const i = (R() * W * 22) | 0; if (tipo[i] === NUVOLA) { const cx = i % W; let bx = cx, by = H; for (let x = Math.max(1, cx - 9); x <= Math.min(W - 2, cx + 9); x++) { const c = cimaVera(x, 22); if (c < by) { by = c; bx = x; } } fulmine(bx); break; } }
+  }
+  if (fot % 30 === 0) {
+    controllaCase();
+    // con acqua e alberi arrivano due omini
+    if (omini.length === 0 && conteggi[ACQUA] >= 20 && alberi() > 0) {
+      if (++arrivoT >= 5) {
+        arrivoT = 0;
+        let px = W / 2; for (const p of piante) if (!p.morta && p.fase >= 2) { px = p.x; break; }
+        const ex = px < W / 2 ? 2 : W - 3;
+        nasciOmino(ex, cima(ex, 6) - 1); nasciOmino(ex, cima(ex, 6) - 1);
+        for (const o of omini) o.dir = ex < W / 2 ? 1 : -1;
+      }
+    } else arrivoT = 0;
+    if (!scoperto.villaggio && case_.length >= 2 && omini.length >= 3) {
+      const a = case_[0], b = case_[1];
+      scopri('villaggio', ((a.x0 + b.x0) >> 1) + 4, Math.min(a.y0, b.y0) - 2);
+    }
+  }
+}
+
+// ===================== COLORI E DISEGNO DEL MONDO (un quadretto alla volta) =====================
+let stile = 0; // 0 pixel ricco, 1 morbido, 2 cartoon
+function rgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function u32(c, a) { return ((((a === undefined ? 255 : a) & 255) << 24) | (c[2] << 16) | (c[1] << 8) | c[0]) >>> 0; }
+function schiari(c, k) { return k >= 0 ? c.map(v => Math.round(v + (255 - v) * k)) : c.map(v => Math.round(v * (1 + k))); }
+// base per stile: [pixel ricco, morbido, cartoon]
+const BASE = {
+  [ROCCIA]: ['#5d5670', '#aaa2bc', '#6c5b7b'], [TERRA]: ['#8a5a33', '#c9a27e', '#b0612a'], [ACQUA]: ['#3b8fd9', '#8ec9f0', '#1fa2ff'],
+  [FANGO]: ['#5e4128', '#a78b74', '#6b3e1f'], [ARGILLA]: ['#c27a4e', '#e8b090', '#e0773a'], [MATTONE]: ['#b5482e', '#e8958a', '#d93a2b'],
+  [PIETRA]: ['#8d8f9a', '#c2c2d0', '#9a9aa8'], [SABBIA]: ['#e8c872', '#f7e3ad', '#ffd84d'], [VETRO]: ['#bfeaf5', '#dcf5fb', '#b0f4ff'],
+  [STELO]: ['#6abf4b', '#b5e3a0', '#66dd33'], [FOGLIA]: ['#4a9e3f', '#a3dba0', '#2ecc40'], [TRONCO]: ['#7b4f2c', '#bf9a7a', '#8b4513'],
+  [LEGNA]: ['#a0703d', '#dcb48c', '#c97a32'], [CENERE]: ['#a29d98', '#d8d3cf', '#b3b3b3'], [TERRICCIO]: ['#4a3426', '#8f7a6a', '#4d2c16'],
+  [MURO]: ['#e0c49a', '#fbecd9', '#ffe8b0'], [TETTO]: ['#c0392b', '#f2a3a3', '#ff3b3b'], [PORTA]: ['#7a4a26', '#c79b7a', '#a0522d'],
+  [NUVOLA]: ['#ffffff', '#ffffff', '#ffffff'], [VAPORE]: ['#ffffff', '#ffffff', '#ffffff'], [ARIA]: ['#ffffff', '#ffffff', '#ffffff'],
+};
+const ALFA = { [ACQUA]: [205, 190, 215], [VETRO]: [150, 160, 170], [NUVOLA]: [240, 235, 250], [VAPORE]: [120, 110, 140], [ARIA]: [90, 80, 120] };
+const CALDI = { // fuoco, lava, brace, finestra: [scuro, base, chiaro, ..., accento]
+  [FIAMMA]: [['#c62d1f', '#ff7b1c', '#ffc93a', '#fff6c8'], ['#ff8a8a', '#ffb08a', '#ffe08a', '#fff8dc'], ['#ff2a00', '#ff8c00', '#ffe600', '#ffffff']],
+  [LAVA]: [['#7a1a0c', '#e5501b', '#ffb43a', '#fff0a0'], ['#d0707a', '#ff9f80', '#ffd28a', '#fff4c8'], ['#a01000', '#ff4d00', '#ffd000', '#ffffa0']],
+  [BRACE]: [['#2e1610', '#c0391b', '#ff8a1c', '#ffd27a'], ['#7a5a5a', '#ff9f8a', '#ffd08a', '#fff0c0'], ['#2a0a00', '#ff3300', '#ffaa00', '#ffee55']],
+  [FINESTRA]: [['#5a3a22', '#7ec8e3', '#ffd86b', '#fff2b0'], ['#c79b7a', '#bfe3f5', '#ffe9a8', '#fffbe0'], ['#1d1d1d', '#6fd3ff', '#ffee00', '#ffffff']],
+};
+const CONTRASTO = [[-0.2, 0.14, -0.48, 0.3], [-0.07, 0.07, -0.16, 0.25], [-0.12, 0.1, -1, 0.45]];
+const PAL = [new Uint32Array(NMAT * 8), new Uint32Array(NMAT * 8), new Uint32Array(NMAT * 8)];
+const PAL1 = [new Uint32Array(NMAT * 8), new Uint32Array(NMAT * 8), new Uint32Array(NMAT * 8)], PAL2 = [new Uint32Array(NMAT * 8), new Uint32Array(NMAT * 8), new Uint32Array(NMAT * 8)];
+const SCURO = [[0.9, 0.8], [0.94, 0.87], [0.95, 0.95]];
+function scurisci(c, k) { const a = c >>> 24, b = (c >> 16) & 255, g = (c >> 8) & 255, r = c & 255; return ((a << 24) | (Math.round(b * k) << 16) | (Math.round(g * k) << 8) | Math.round(r * k)) >>> 0; }
+function costruisciPalette() {
+  for (let s = 0; s < 3; s++) {
+    const P = PAL[s], [kd, kl, ke, kh] = CONTRASTO[s];
+    for (const t in BASE) {
+      const c = rgb(BASE[t][s]), a = ALFA[t] ? ALFA[t][s] : 255, o = t * 8;
+      P[o] = u32(schiari(c, kd), a); P[o + 1] = u32(c, a); P[o + 2] = u32(schiari(c, kl), a);
+      P[o + 3] = s === 2 && GENERE[t] !== 4 ? u32([29, 29, 29], 255) : u32(schiari(c, ke), Math.min(255, a + 40));
+      P[o + 4] = u32(schiari(c, kh), Math.min(255, a + 30)); P[o + 5] = u32(schiari(c, 0.5), a); P[o + 6] = u32(schiari(c, -0.35), a); P[o + 7] = 0;
+    }
+    for (const t in CALDI) { const q = CALDI[t][s], o = t * 8; for (let k = 0; k < 4; k++) P[o + k] = u32(rgb(q[k])); P[o + 5] = u32(rgb(q[3])); P[o + 4] = u32(rgb(q[2])); }
+    // dettagli
+    P[MATTONE * 8 + 5] = u32(rgb(['#d9c3a0', '#fff1e6', '#ffe8c8'][s]));
+    P[MURO * 8 + 5] = u32(schiari(rgb(BASE[MURO][s]), -0.18));
+    P[PORTA * 8 + 5] = u32(rgb('#ffd36b'));
+    P[NUVOLA * 8 + 0] = u32(rgb(['#cfd8e6', '#e6e9f5', '#c8d6ff'][s]), 245);
+    P[NUVOLA * 8 + 6] = u32(rgb(['#7d8499', '#a9adc4', '#6b7a99'][s]), 245);
+    P[NUVOLA * 8 + 3] = s === 2 ? u32([29, 29, 29]) : P[NUVOLA * 8];
+    P[ACQUA * 8 + 4] = u32(rgb(['#d6f0ff', '#f0faff', '#ffffff'][s]), 235);
+    P[ACQUA * 8 + 0] = u32(schiari(rgb(BASE[ACQUA][s]), -0.25), 225);
+    P[VETRO * 8 + 2] = u32([255, 255, 255], 230);
+    for (let k = 0; k < P.length; k++) { PAL1[s][k] = scurisci(P[k], SCURO[s][0]); PAL2[s][k] = scurisci(P[k], SCURO[s][1]); }
+  }
+}
+// trame: per ogni stile, per ogni trama, 4 varianti da 16 quadretti -> slot della tavolozza
+const TR_LISCIO = 0, TR_GRANA = 1, TR_MATTONI = 2, TR_VENE = 3, TR_FOGLIE = 4, TR_ROCCIA = 5, TR_TETTO = 6, TR_FINESTRA = 7, TR_PORTA = 8;
+const TRAMA = new Uint8Array(NMAT);
+TRAMA[TERRA] = TRAMA[SABBIA] = TRAMA[FANGO] = TRAMA[ARGILLA] = TRAMA[CENERE] = TRAMA[TERRICCIO] = TRAMA[PIETRA] = TR_GRANA;
+TRAMA[ROCCIA] = TR_ROCCIA; TRAMA[MATTONE] = TRAMA[MURO] = TR_MATTONI; TRAMA[TRONCO] = TRAMA[LEGNA] = TRAMA[STELO] = TR_VENE;
+TRAMA[FOGLIA] = TR_FOGLIE; TRAMA[TETTO] = TR_TETTO; TRAMA[FINESTRA] = TR_FINESTRA; TRAMA[PORTA] = TR_PORTA;
+const TRAME = [new Uint8Array(9 * 64), new Uint8Array(9 * 64), new Uint8Array(9 * 64)];
+function costruisciTrame() {
+  let h = 99;
+  const rnd = () => { h = (h * 1103515245 + 12345) & 0x7fffffff; return h / 0x7fffffff; };
+  for (let s = 0; s < 3; s++) {
+    const T = TRAME[s], scuro = [0.2, 0.05, 0.08][s], chiaro = [0.14, 0.05, 0.04][s];
+    for (let v = 0; v < 4; v++) for (let k = 0; k < 16; k++) {
+      const sx = k & 3, sy = k >> 2, r = rnd(), o = v * 16 + k;
+      T[TR_LISCIO * 64 + o] = 1;
+      T[TR_GRANA * 64 + o] = r < scuro ? 0 : r < scuro + chiaro ? 2 : 1;
+      T[TR_ROCCIA * 64 + o] = (s !== 1 && ((sx + sy + v) % 5 === 0 && v < 2)) ? 0 : r < scuro * 0.8 ? 0 : r > 1 - chiaro ? 2 : 1;
+      T[TR_MATTONI * 64 + o] = sy === 3 || (sx === 3 && (v & 1) && sy < 3) ? 5 : sy === 0 && s !== 1 ? 2 : 1;
+      T[TR_VENE * 64 + o] = sx === (v & 3) && s !== 1 ? 0 : (sx === ((v + 2) & 3) && r < 0.5 ? 2 : 1);
+      T[TR_FOGLIE * 64 + o] = (sx + sy < 2) ? 2 : (sx + sy > 4) ? 0 : (r < 0.15 ? 2 : 1);
+      T[TR_TETTO * 64 + o] = sy === 3 ? 0 : sy === 0 ? 2 : (sx === ((v & 1) * 2) && sy > 0 && s !== 1 ? 0 : 1);
+      T[TR_FINESTRA * 64 + o] = (sx === 0 || sy === 0) ? 0 : 1;
+      T[TR_PORTA * 64 + o] = sx === 0 ? 0 : (sx === 2 && s !== 1 ? 6 : 1);
+      if (s === 1) { T[TR_GRANA * 64 + o] = T[TR_ROCCIA * 64 + o] = r < 0.06 ? 2 : 1; T[TR_MATTONI * 64 + o] = sy === 3 && (v & 1) && sx < 3 ? 0 : 1; T[TR_VENE * 64 + o] = 1; }
+    }
+  }
+}
+// bordo: 1 se la cella t "si vede" verso il vicino n
+const BORDO = new Uint8Array(NMAT * NMAT);
+function costruisciBordi() {
+  for (let t = 1; t < NMAT; t++) for (let n = 0; n < NMAT; n++) {
+    const g = GENERE[t];
+    let e = 0;
+    if (g === 3) e = APERTO[n];
+    else if (g === 4) e = n === VUOTO || (GENERE[n] !== 4) ? 1 : 0;
+    else e = (APERTO[n] || GENERE[n] === 3) ? 1 : 0;
+    if (t === n) e = 0;
+    BORDO[t * NMAT + n] = e;
+  }
+}
+const BW_ = W * S, BH_ = H * S;
+const tela = document.createElement('canvas'); tela.width = BW_; tela.height = BH_;
+const tctx = tela.getContext('2d');
+const immagine = tctx.createImageData(BW_, BH_);
+const qp = new Uint32Array(immagine.data.buffer);
+const OMBRA = [0, u32([60, 40, 70], 38), u32([20, 20, 20], 70)];
+let finestreAccese = false;
+const maschera = new Uint8Array(BW_ * BH_), TONDO = new Uint8Array(NMAT); let usaMaschera = false;
+const nubi = new Uint8Array(BW_ * BH_), prof = new Uint8Array(W), GROSSO = new Uint8Array(NMAT);
+const PIENO = new Uint8Array(NMAT); for (let t = 1; t < NMAT; t++) { PIENO[t] = (GENERE[t] === 2 || GENERE[t] === 5 || t === ROCCIA) ? 1 : 0; GROSSO[t] = PIENO[t] || t === FOGLIA || t === TETTO ? 1 : 0; TONDO[t] = (PIENO[t] && GENERE[t] !== 5) || t === FOGLIA ? 1 : 0; }
+
+function disegnaGranelli() {
+  qp.fill(0); nubi.fill(0); prof.fill(0);
+  const P1 = PAL1[stile], P2 = PAL2[stile];
+  let nyMin = BH_, nyMax = -1;
+  const P = PAL[stile], T = TRAME[stile], st = stile, f = fot;
+  const oCol = st === 0 ? 3 : st === 2 ? 3 : 0;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x, t = tipo[i];
+      const o = y * S * BW_ + x * S;
+      if (t === VUOTO) {
+        // ombra morbida o netta sotto le cose
+        if (st && y > 0) { const su = tipo[i - W]; if (su && GENERE[su] !== 4 && GENERE[su] !== 3) { const c = OMBRA[st]; qp[o] = qp[o + 1] = qp[o + 2] = qp[o + 3] = c; if (st === 1) { const r = o + BW_; qp[r] = qp[r + 1] = qp[r + 2] = qp[r + 3] = c; } } }
+        if (st === 2 && x > 0 && x < W - 1 && y < H - 1) {
+          const D = tipo[i + W];
+          if (PIENO[D]) {
+            const sl = tipo[i - 1] === D, sr = tipo[i + 1] === D;
+            if (sl || sr) {
+              const cb = P[D * 8 + 1], ce = P[D * 8 + (st === 2 ? 3 : 4)], r2 = o + 2 * BW_, r3 = o + 3 * BW_;
+              if (sl) { qp[r3] = cb; qp[r3 + 1] = ce; qp[r2] = ce; }
+              if (sr) { qp[r3 + 3] = cb; qp[r3 + 2] = ce; qp[r2 + 3] = ce; }
+            }
+          }
+        }
+        continue;
+      }
+      if (t === NUVOLA) {
+        // le nuvole si disegnano come sbuffi rotondi che si fondono
+        const cx = x * S + 2, cy = y * S + 2, rr = 5 + (varia[i] & 1), r2 = rr * rr, pes = vita[i] > 42 ? 2 : 1;
+        const y0 = Math.max(0, cy - rr), y1 = Math.min(BH_ - 1, cy + rr), x0 = Math.max(0, cx - rr), x1 = Math.min(BW_ - 1, cx + rr);
+        if (y0 < nyMin) nyMin = y0; if (y1 > nyMax) nyMax = y1;
+        for (let py = y0; py <= y1; py++) { const dy = py - cy, rb = py * BW_; for (let px = x0; px <= x1; px++) { const dx = px - cx; if (dx * dx + dy * dy <= r2 && nubi[rb + px] < pes) nubi[rb + px] = pes; } }
+        continue;
+      }
+      const up = y > 0 ? tipo[i - W] : VUOTO, dn = y < H - 1 ? tipo[i + W] : ROCCIA;
+      const lf = x > 0 ? tipo[i - 1] : t, rt = x < W - 1 ? tipo[i + 1] : t;
+      const b = t * NMAT, eU = BORDO[b + up], eD = BORDO[b + dn], eL = BORDO[b + lf], eR = BORDO[b + rt];
+      const pb = t * 8, v = varia[i] & 3, g = GENERE[t];
+      let Pc = P;
+      if (PIENO[t]) { const d = PIENO[up] ? (prof[x] < 250 ? prof[x] + 1 : 250) : 0; prof[x] = d; const j = RT[(i * 7) & 4095] & 3; if (st !== 2 || d > 6) Pc = d > 8 + j ? P2 : d > 2 + j ? P1 : P; } else prof[x] = 0;
+      if (st === 1 && TONDO[t]) {
+        const lv = Pc === P2 ? 2 : Pc === P1 ? 1 : 0, val = t | (lv << 6);
+        if (eU || eD || eL || eR) {
+          const cx = x * S + 2, cy = y * S + 2;
+          for (let dy = -4; dy <= 3; dy++) { const py = cy + dy; if (py < 0 || py >= BH_) continue; const rb = py * BW_, ddy = dy + 0.5; for (let dx = -4; dx <= 3; dx++) { const px = cx + dx, ddx = dx + 0.5; if (px >= 0 && px < BW_ && ddx * ddx + ddy * ddy <= 13.5 && (!maschera[rb + px] || ddx * ddx + ddy * ddy <= 4.5)) maschera[rb + px] = val; } }
+        } else { for (let sy = 0; sy < 4; sy++) { const rb = o + sy * BW_; maschera[rb] = maschera[rb + 1] = maschera[rb + 2] = maschera[rb + 3] = val; } }
+        usaMaschera = true;
+        continue;
+      }
+      for (let sy = 0; sy < 4; sy++) {
+        const r = o + sy * BW_;
+        for (let sx = 0; sx < 4; sx++) {
+          const k = sy * 4 + sx;
+          let slot;
+          if (t === FIAMMA) {
+            const q = RT[(i * 16 + k + f * 37) & 4095], vv = vita[i] + (q >> 4) - 8;
+            if (st === 2 && ((eL && sx === 0) || (eR && sx === 3) || (eU && sy === 0))) { if (vv > 14) { qp[r + sx] = 0xff1d1d1d; continue; } }
+            slot = vv > 30 ? 3 : vv > 20 ? 2 : vv > 10 ? 1 : 0;
+            if (vv < 4 && (q & 1)) continue;
+            if (st === 1 && ((eU && sy === 0 && (sx === 0 || sx === 3)))) continue;
+          } else if (t === LAVA) {
+            const q = RT[(i * 7 + k * 13 + (f >> 2) * 31) & 4095];
+            slot = q < 38 ? 2 : q < 46 ? 3 : q > 225 ? 0 : 1;
+            if (eU && sy === 0) slot = st === 2 ? 0 : 2;
+          } else if (t === BRACE) {
+            const q = RT[(i * 11 + k * 5 + (f >> 1) * 17) & 4095];
+            slot = q < 70 ? 2 : q < 140 ? 1 : 0;
+          } else if (t === FINESTRA) {
+            slot = T[TR_FINESTRA * 64 + v * 16 + k];
+            if (slot === 1 && finestreAccese) slot = 2;
+          } else if (g === 3) { // acqua
+            slot = 1;
+            if (y > 3 && tipo[i - 3 * W] === ACQUA && tipo[i - 2 * W] === ACQUA) slot = 0;
+            if (eU) { if (sy === 0) slot = 4; else if (sy === 1 && st !== 1) slot = 2; }
+            else if (sy === 2 && ((x * 3 + y * 7 + (f >> 4)) & 15) === 0 && sx > 0) slot = 2;
+            if (st === 2 && eU && sy === 0) slot = 3;
+            if (st === 1 && eU && ((eL && sx === 0) || (eR && sx === 3)) && sy === 0) continue;
+          } else if (t === NUVOLA) {
+            slot = vita[i] > 42 ? (sy > 1 ? 6 : 0) : 1;
+            if (eD && sy >= 2) slot = vita[i] > 42 ? 6 : 0;
+            if (st === 2 && ((eU && sy === 0) || (eD && sy === 3) || (eL && sx === 0) || (eR && sx === 3))) slot = 3;
+            if (st !== 0 && ((eU && eL && sx === 0 && sy === 0) || (eU && eR && sx === 3 && sy === 0) || (eD && eL && sx === 0 && sy === 3) || (eD && eR && sx === 3 && sy === 3))) continue;
+          } else if (t === VAPORE) {
+            if (((sx + sy + (f >> 3) + v) & 1) === 0) continue;
+            slot = 1;
+          } else if (t === ARIA) {
+            if (sy !== v || sx === 3) continue;
+            slot = (f >> 2) & 1 ? 1 : 2;
+          } else {
+            slot = T[TRAMA[t] * 64 + v * 16 + k];
+            if (t === PORTA && sy === 2 && sx === 2 && up !== PORTA) slot = 5;
+            if (t === VETRO && sx === sy) slot = 2;
+            if (st === 0) {
+              if (eU && sy === 0) slot = (eL && sx === 0) || (eR && sx === 3) ? 3 : 4;
+              else if ((eD && sy === 3) || (eL && sx === 0) || (eR && sx === 3)) slot = 3;
+            } else if (st === 1) {
+              if ((eU && eL && sx + sy <= 1) || (eU && eR && 3 - sx + sy <= 1) || (eD && eL && sx + 3 - sy <= 1) || (eD && eR && 6 - sx - sy <= 1)) continue;
+              if (eU && sy === 0) slot = 4; else if (eU && sy === 1 && PIENO[t]) slot = 2; else if (eD && sy === 3) slot = 0;
+            } else {
+              if ((eU && (sy === 0 || (sy === 1 && GROSSO[t]))) || (eD && sy === 3) || (eL && sx === 0) || (eR && sx === 3)) slot = oCol;
+              else if (eU && sy === 2 && (sx === 1 || sx === 2) && v < 2 && GROSSO[t]) slot = 4;
+            }
+            qp[r + sx] = Pc[pb + slot]; continue;
+          }
+          qp[r + sx] = P[pb + slot];
+        }
+      }
+    }
+  }
+  if (usaMaschera) {
+    usaMaschera = false;
+    const PL = [P, P1, P2];
+    for (let p = 2 * BW_; p < BW_ * BH_ - 2 * BW_; p++) {
+      const m = maschera[p]; if (!m) continue;
+      maschera[p] = 0;
+      const t = m & 63, pal = PL[m >> 6];
+      let slot = 1;
+      if (!maschera[p - BW_] || !maschera[p - 2 * BW_]) slot = 2; else if (!maschera[p + 2 * BW_] && maschera[p + BW_]) slot = 0;
+      if (t === FOGLIA && slot === 1 && ((p * 7 + (p / BW_ | 0) * 3) % 23 === 0)) slot = 2;
+      qp[p] = pal[t * 8 + slot];
+    }
+    for (let p = 0; p < 2 * BW_; p++) maschera[p] = 0;
+    for (let p = BW_ * BH_ - 2 * BW_; p < BW_ * BH_; p++) maschera[p] = 0;
+  }
+  if (nyMax >= 0) {
+    const pb = NUVOLA * 8;
+    for (let py = Math.max(1, nyMin); py <= Math.min(BH_ - 4, nyMax); py++) {
+      const rb = py * BW_;
+      for (let px = 1; px < BW_ - 1; px++) {
+        const n = nubi[rb + px]; if (!n) continue;
+        const sotto = nubi[rb + px + 3 * BW_], sopra = nubi[rb + px - BW_];
+        let slot = n === 2 ? (sotto ? 0 : 6) : (sotto ? 1 : 0);
+        if (!sopra && st !== 2) slot = n === 2 ? 0 : 1;
+        if (st === 2 && (!sopra || !nubi[rb + px + BW_] || !nubi[rb + px - 1] || !nubi[rb + px + 1])) slot = 3;
+        else if (st === 0 && !nubi[rb + px + BW_]) slot = 6;
+        qp[rb + px] = P[pb + slot];
+      }
+    }
+  }
+  tctx.putImageData(immagine, 0, 0);
+}
+
+// ===================== SCENA: cielo, colline, omini, effetti =====================
+const cv = document.getElementById('mondo'), ctx = cv.getContext('2d');
+let cw = 0, ch = 0, cs = 1, dpr = 1;
+const fondo = document.createElement('canvas'), fctx = fondo.getContext('2d');
+const STELLE = []; for (let k = 0; k < 34; k++) STELLE.push([Math.random(), Math.random() * 0.42, Math.random()]);
+
+function onde(x, a, b, c, d) { return Math.sin(x * a + b) * c + Math.sin(x * a * 2.7 + b * 1.7) * d; }
+function disegnaFondo() {
+  fondo.width = cw; fondo.height = ch;
+  const c = fctx;
+  if (stile === 0) {
+    const lw = W * 2, lh = H * 2, p = document.createElement('canvas'); p.width = lw; p.height = lh;
+    const q = p.getContext('2d');
+    const cielo = ['#3d62a8', '#4a74b8', '#5b88c6', '#719fd3', '#8db8df', '#abcfe8', '#cbe3ec', '#ead9bc', '#f6cf9c'];
+    const bh = Math.ceil(lh * 0.66 / cielo.length);
+    cielo.forEach((col, k) => { q.fillStyle = col; q.fillRect(0, k * bh, lw, bh + 1); });
+    cielo.forEach((col, k) => { if (!k) return; q.fillStyle = col; for (let x = 0; x < lw; x += 2) q.fillRect(x + ((k & 1) ? 1 : 0), k * bh - 1, 1, 1); });
+    q.fillStyle = cielo[cielo.length - 1]; q.fillRect(0, bh * cielo.length, lw, lh);
+    // sole a quadretti con alone
+    const sx = (lw * 0.8) | 0, sy = (lh * 0.12) | 0;
+    for (let y = -12; y <= 12; y++) for (let x = -12; x <= 12; x++) {
+      const d = x * x + y * y;
+      if (d <= 36) { q.fillStyle = d <= 12 ? '#fff6c4' : '#ffe27a'; q.fillRect(sx + x, sy + y, 1, 1); }
+      else if (d <= 72 && ((x + y) & 1)) { q.fillStyle = '#ffeaa8'; q.fillRect(sx + x, sy + y, 1, 1); }
+    }
+    const nuv = (x, y, w) => { q.fillStyle = '#ffffff'; q.fillRect(x + 2, y, w - 6, 2); q.fillRect(x, y + 2, w, 3); q.fillStyle = '#d5e2f0'; q.fillRect(x + 1, y + 5, w - 2, 1); };
+    nuv(10, 20, 22); nuv(60, 12, 18); nuv(95, 34, 26); nuv(30, 44, 14);
+    for (let x = 0; x < lw; x++) {
+      const h1 = (lh * 0.37 + onde(x, 0.06, 1, 7, 3)) | 0, h2 = (lh * 0.48 + onde(x, 0.09, 3, 6, 2.5)) | 0;
+      q.fillStyle = '#8f88c8'; q.fillRect(x, h1, 1, lh); q.fillStyle = '#aaa4dc'; q.fillRect(x, h1, 1, 1);
+      q.fillStyle = '#5f9e4a'; q.fillRect(x, h2, 1, lh); q.fillStyle = '#93d36c'; q.fillRect(x, h2, 1, 1);
+      if (x & 1) { q.fillStyle = '#528c3f'; q.fillRect(x, h2 + 4, 1, 1); q.fillRect(x, h2 + 7, 1, 1); }
+      if (x % 19 === 7) { q.fillStyle = '#4a3020'; q.fillRect(x, h2 - 2, 1, 2); q.fillStyle = '#3f7d34'; q.fillRect(x - 1, h2 - 5, 3, 3); q.fillStyle = '#5aa64a'; q.fillRect(x - 1, h2 - 5, 2, 1); }
+    }
+    for (let y = (lh * 0.56) | 0; y < lh; y++) { const a = Math.min(0.62, (y - lh * 0.56) / (lh * 0.3) * 0.62); q.fillStyle = 'rgba(34,22,54,' + a.toFixed(2) + ')'; q.fillRect(0, y, lw, 1); }
+    c.imageSmoothingEnabled = false; c.drawImage(p, 0, 0, cw, ch);
+  } else if (stile === 1) {
+    const g = c.createLinearGradient(0, 0, 0, ch);
+    g.addColorStop(0, '#a9d4f5'); g.addColorStop(0.45, '#dcedf8'); g.addColorStop(0.72, '#fde3ec'); g.addColorStop(1, '#fbe9dc');
+    c.fillStyle = g; c.fillRect(0, 0, cw, ch);
+    const sx = cw * 0.8, sy = ch * 0.13, rg = c.createRadialGradient(sx, sy, 0, sx, sy, cw * 0.2);
+    rg.addColorStop(0, 'rgba(255,248,215,1)'); rg.addColorStop(0.25, 'rgba(255,240,200,.9)'); rg.addColorStop(0.26, 'rgba(255,236,200,.45)'); rg.addColorStop(1, 'rgba(255,236,220,0)');
+    c.fillStyle = rg; c.fillRect(0, 0, cw, ch);
+    c.save(); c.shadowColor = 'rgba(150,120,190,.25)'; c.shadowBlur = 14 * dpr; c.shadowOffsetY = 4 * dpr; c.fillStyle = 'rgba(255,255,255,.92)';
+    [[0.18, 0.2, 1], [0.55, 0.12, 0.8], [0.4, 0.33, 0.7]].forEach(([x, y, k]) => { const r = cw * 0.05 * k; c.beginPath(); c.arc(cw * x, ch * y, r, 0, 7); c.arc(cw * x + r * 1.2, ch * y - r * 0.4, r * 1.3, 0, 7); c.arc(cw * x + r * 2.4, ch * y, r, 0, 7); c.fill(); });
+    c.restore();
+    [['#d8cbf0', 0.37, 0.012, 1, 0.05], ['#c2e5d2', 0.45, 0.018, 3, 0.04], ['#a9dcbd', 0.52, 0.024, 5, 0.035]].forEach(([col, base, f, ph, amp]) => {
+      c.beginPath(); c.moveTo(0, ch);
+      for (let x = 0; x <= cw; x += 4 * dpr) c.lineTo(x, ch * base + Math.sin(x / dpr * f + ph) * ch * amp + Math.sin(x / dpr * f * 0.43 + ph * 2) * ch * amp * 0.6);
+      c.lineTo(cw, ch); c.closePath(); c.fillStyle = col; c.fill();
+    });
+    const gg = c.createLinearGradient(0, ch * 0.56, 0, ch); gg.addColorStop(0, 'rgba(120,90,150,0)'); gg.addColorStop(1, 'rgba(110,80,140,.45)'); c.fillStyle = gg; c.fillRect(0, ch * 0.56, cw, ch);
+  } else {
+    const g = c.createLinearGradient(0, 0, 0, ch);
+    g.addColorStop(0, '#0f9dff'); g.addColorStop(0.5, '#6fdcff'); g.addColorStop(0.75, '#d9fbff'); g.addColorStop(1, '#fff6c2');
+    c.fillStyle = g; c.fillRect(0, 0, cw, ch);
+    const lw = 3 * dpr, sx = cw * 0.8, sy = ch * 0.13, r = cw * 0.065;
+    c.lineJoin = 'round'; c.strokeStyle = '#1d1d1d'; c.lineWidth = lw;
+    for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; c.beginPath(); c.moveTo(sx + Math.cos(a - 0.15) * r * 1.2, sy + Math.sin(a - 0.15) * r * 1.2); c.lineTo(sx + Math.cos(a) * r * 1.85, sy + Math.sin(a) * r * 1.85); c.lineTo(sx + Math.cos(a + 0.15) * r * 1.2, sy + Math.sin(a + 0.15) * r * 1.2); c.closePath(); c.fillStyle = '#ff9500'; c.fill(); c.stroke(); }
+    c.beginPath(); c.arc(sx, sy, r, 0, 7); c.fillStyle = '#ffe600'; c.fill(); c.stroke();
+    c.fillStyle = '#1d1d1d'; c.beginPath(); c.arc(sx - r * 0.3, sy - r * 0.1, r * 0.1, 0, 7); c.arc(sx + r * 0.3, sy - r * 0.1, r * 0.1, 0, 7); c.fill();
+    c.beginPath(); c.arc(sx, sy + r * 0.1, r * 0.4, 0.2, Math.PI - 0.2); c.stroke();
+    const nuv = (x, y, k) => { const rr = cw * 0.045 * k, cc = [[0, 0, 1], [1.1, -0.5, 1.3], [2.3, 0, 1]]; c.lineWidth = lw * 2; cc.forEach(([a, b, s]) => { c.beginPath(); c.arc(x + a * rr, y + b * rr, rr * s, 0, 7); c.stroke(); }); c.fillStyle = '#fff'; cc.forEach(([a, b, s]) => { c.beginPath(); c.arc(x + a * rr, y + b * rr, rr * s, 0, 7); c.fill(); }); };
+    nuv(cw * 0.12, ch * 0.18, 1); nuv(cw * 0.5, ch * 0.1, 0.8); c.lineWidth = lw;
+    [['#a77bff', 0.37, 0.014, 1, 0.06], ['#3ddc6a', 0.48, 0.02, 4, 0.04]].forEach(([col, base, f, ph, amp]) => {
+      c.beginPath(); c.moveTo(-10, ch + 10);
+      for (let x = -10; x <= cw + 10; x += 4 * dpr) c.lineTo(x, ch * base + Math.sin(x / dpr * f + ph) * ch * amp + Math.sin(x / dpr * f * 0.4) * ch * amp);
+      c.lineTo(cw + 10, ch + 10); c.closePath(); c.fillStyle = col; c.fill(); c.lineWidth = lw; c.stroke();
+    });
+    for (let k = 0; k < 5; k++) { const x = cw * (0.1 + k * 0.21), y = ch * 0.48 + Math.sin(x / dpr * 0.02 + 4) * ch * 0.04 + Math.sin(x / dpr * 0.008) * ch * 0.04; c.fillStyle = '#8b4513'; c.fillRect(x - 2 * dpr, y - 10 * dpr, 4 * dpr, 10 * dpr); c.strokeRect(x - 2 * dpr, y - 10 * dpr, 4 * dpr, 10 * dpr); c.beginPath(); c.arc(x, y - 14 * dpr, 7 * dpr, 0, 7); c.fillStyle = '#1fb84a'; c.fill(); c.stroke(); }
+    const gg = c.createLinearGradient(0, ch * 0.56, 0, ch); gg.addColorStop(0, 'rgba(60,20,110,0)'); gg.addColorStop(1, 'rgba(60,20,110,.45)'); c.fillStyle = gg; c.fillRect(0, ch * 0.56, cw, ch);
+  }
+}
+
+// ---------- omini già disegnati (uno per colore, passo e verso) ----------
+const MAGLIE = [['#e94f37', '#3f88c5', '#f6ae2d', '#44af69', '#a05cc9', '#ff7eb6'], ['#ffb3ba', '#a9d4ff', '#ffe2a8', '#b7f0c6', '#d9c2ff', '#ffc8e6'], ['#ff2d55', '#007aff', '#ffcc00', '#34c759', '#af52de', '#ff9500']];
+const CAPELLI = ['#5a3a22', '#2b2b2b', '#c46b2b', '#e8c060', '#7a4a26', '#3b2a5a'];
+let SPRITE = [];
+const OM_PIX = ['.hhhh.', 'hhhhhh', 'hsssss', 'hssese', '.ssss.', '..bb..', '.bbbb.', 'sbbbbs', '.bbbb.', '.pppp.'];
+const OM_GAMBE = [['.p..p.', 'oo..oo'], ['..pp..', '..oo..']];
+function preparaSprite() {
+  SPRITE = [];
+  const sw = Math.ceil(cs * 3), sh = Math.ceil(cs * 5.6);
+  for (let col = 0; col < 6; col++) {
+    const per = [];
+    for (let fr = 0; fr < 2; fr++) for (let dir = 0; dir < 2; dir++) {
+      const c = document.createElement('canvas'); c.width = sw; c.height = sh;
+      const q = c.getContext('2d');
+      if (dir === 0) { q.translate(sw, 0); q.scale(-1, 1); }
+      disegnaOmino(q, sw, sh, col, fr);
+      per.push(c);
+    }
+    SPRITE.push(per);
+  }
+}
+function disegnaOmino(q, sw, sh, col, fr) {
+  const maglia = MAGLIE[stile][col], cx = sw / 2;
+  if (stile === 0) {
+    const righe = OM_PIX.concat(OM_GAMBE[fr]), u = Math.max(2, Math.round(cs * 0.36)), ox = Math.round(cx - 3 * u), oy = sh - 12 * u - u;
+    const COL = { h: CAPELLI[col], s: '#f5c29a', e: '#2a1a2e', b: maglia, p: '#3b3b6d', o: '#2a1a2e' };
+    const pieno = (x, y) => y >= 0 && y < 12 && x >= 0 && x < 6 && righe[y][x] !== '.';
+    q.fillStyle = '#21162b';
+    for (let y = -1; y <= 12; y++) for (let x = -1; x <= 6; x++) if (!pieno(x, y) && (pieno(x - 1, y) || pieno(x + 1, y) || pieno(x, y - 1) || pieno(x, y + 1))) q.fillRect(ox + x * u, oy + y * u, u, u);
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 6; x++) { const ch_ = righe[y][x]; if (ch_ === '.') continue; q.fillStyle = COL[ch_]; q.fillRect(ox + x * u, oy + y * u, u, u); }
+    q.fillStyle = 'rgba(255,255,255,.35)'; q.fillRect(ox + 1 * u, oy + 6 * u, u, u);
+  } else if (stile === 1) {
+    const u = cs, fy = sh - 0.3 * u;
+    q.fillStyle = 'rgba(90,60,110,.18)'; q.beginPath(); q.ellipse(cx, fy, u * 1.1, u * 0.3, 0, 0, 7); q.fill();
+    q.strokeStyle = '#8a7a9e'; q.lineCap = 'round'; q.lineWidth = u * 0.42;
+    const pa = fr ? 0.3 : -0.3;
+    q.beginPath(); q.moveTo(cx - 0.35 * u, fy - 1.5 * u); q.lineTo(cx - 0.35 * u + pa * u, fy - 0.25 * u); q.moveTo(cx + 0.35 * u, fy - 1.5 * u); q.lineTo(cx + 0.35 * u - pa * u, fy - 0.25 * u); q.stroke();
+    q.fillStyle = maglia; q.beginPath(); q.roundRect(cx - 0.8 * u, fy - 3.1 * u, 1.6 * u, 1.85 * u, 0.7 * u); q.fill();
+    q.fillStyle = '#ffdcc7'; q.beginPath(); q.arc(cx, fy - 3.85 * u, 0.88 * u, 0, 7); q.fill();
+    q.fillStyle = CAPELLI[col] + 'bb'; q.beginPath(); q.arc(cx, fy - 3.95 * u, 0.9 * u, Math.PI * 1.05, Math.PI * 1.95); q.fill();
+    q.fillStyle = '#5b4b66'; q.beginPath(); q.arc(cx + 0.05 * u, fy - 3.75 * u, 0.12 * u, 0, 7); q.arc(cx + 0.5 * u, fy - 3.75 * u, 0.12 * u, 0, 7); q.fill();
+    q.fillStyle = 'rgba(255,140,160,.5)'; q.beginPath(); q.arc(cx + 0.65 * u, fy - 3.45 * u, 0.16 * u, 0, 7); q.fill();
+  } else {
+    const u = cs, fy = sh - 0.25 * u, lw = Math.max(1.5, u * 0.22);
+    q.lineJoin = q.lineCap = 'round'; q.strokeStyle = '#1d1d1d';
+    const pa = fr ? 0.35 : -0.35;
+    q.lineWidth = u * 0.36;
+    q.beginPath(); q.moveTo(cx - 0.3 * u, fy - 1.5 * u); q.lineTo(cx - 0.3 * u + pa * u, fy - 0.3 * u); q.moveTo(cx + 0.3 * u, fy - 1.5 * u); q.lineTo(cx + 0.3 * u - pa * u, fy - 0.3 * u); q.stroke();
+    q.fillStyle = '#1d1d1d'; q.beginPath(); q.ellipse(cx - 0.3 * u + pa * u + 0.1 * u, fy - 0.2 * u, 0.35 * u, 0.2 * u, 0, 0, 7); q.ellipse(cx + 0.3 * u - pa * u + 0.1 * u, fy - 0.2 * u, 0.35 * u, 0.2 * u, 0, 0, 7); q.fill();
+    q.lineWidth = lw; q.fillStyle = maglia;
+    q.beginPath(); q.moveTo(cx - 0.55 * u, fy - 2.9 * u); q.lineTo(cx + 0.55 * u, fy - 2.9 * u); q.lineTo(cx + 0.85 * u, fy - 1.3 * u); q.lineTo(cx - 0.85 * u, fy - 1.3 * u); q.closePath(); q.fill(); q.stroke();
+    q.fillStyle = '#ffcc99'; q.beginPath(); q.arc(cx, fy - 3.85 * u, 1.0 * u, 0, 7); q.fill(); q.stroke();
+    q.fillStyle = CAPELLI[col]; q.beginPath(); q.moveTo(cx - 0.8 * u, fy - 4.4 * u); q.lineTo(cx - 0.3 * u, fy - 5.2 * u); q.lineTo(cx, fy - 4.6 * u); q.lineTo(cx + 0.4 * u, fy - 5.3 * u); q.lineTo(cx + 0.85 * u, fy - 4.4 * u); q.closePath(); q.fill(); q.stroke();
+    q.fillStyle = '#fff'; q.lineWidth = lw * 0.7;
+    q.beginPath(); q.ellipse(cx + 0.1 * u, fy - 3.95 * u, 0.28 * u, 0.36 * u, 0, 0, 7); q.fill(); q.stroke();
+    q.beginPath(); q.ellipse(cx + 0.68 * u, fy - 3.95 * u, 0.28 * u, 0.36 * u, 0, 0, 7); q.fill(); q.stroke();
+    q.fillStyle = '#1d1d1d'; q.beginPath(); q.arc(cx + 0.2 * u, fy - 3.9 * u, 0.13 * u, 0, 7); q.arc(cx + 0.78 * u, fy - 3.9 * u, 0.13 * u, 0, 7); q.fill();
+    q.lineWidth = lw * 0.7; q.beginPath(); q.arc(cx + 0.4 * u, fy - 3.5 * u, 0.3 * u, 0.3, Math.PI - 0.6); q.stroke();
+  }
+}
+
+// ---------- particelle (vasetti tipizzati, nessun oggetto per fotogramma) ----------
+const MAXP = 600, pX = new Float32Array(MAXP), pY = new Float32Array(MAXP), pVX = new Float32Array(MAXP), pVY = new Float32Array(MAXP),
+  pV = new Float32Array(MAXP), pVM = new Float32Array(MAXP), pK = new Uint8Array(MAXP), pS = new Float32Array(MAXP);
+let nP = 0;
+const COL_PART = [
+  ['#ffd23a', '#ff7b1c', '#8f8a94', '#5aa64a', '#b08350', '#ffffff', '#7ec8ff', '#ff6fa0', '#ffe27a'],
+  ['#ffe08a', '#ffb08a', '#cfc8d8', '#a3dba0', '#d8bfa0', '#ffffff', '#b8e0ff', '#ffb3c8', '#fff0b0'],
+  ['#ffe600', '#ff6a00', '#9a9a9a', '#2ecc40', '#c9822d', '#ffffff', '#1fa2ff', '#ff2d8a', '#ffe600'],
+];
+function particella(x, y, vx, vy, v, k, s) {
+  if (nP >= MAXP) return;
+  pX[nP] = x; pY[nP] = y; pVX[nP] = vx; pVY[nP] = vy; pV[nP] = v; pVM[nP] = v; pK[nP] = k; pS[nP] = s; nP++;
+}
+function scintille(x, y, n, f) { for (let k = 0; k < n; k++) particella(x + 0.5, y + 0.5, (R() - 0.5) * 0.5 * f, -R() * 0.4 * f, 20 + R() * 20, R() < 0.5 ? 0 : 1, 0.5 + R() * 0.4); }
+function fumo(x, y) { particella(x + 0.5, y, (R() - 0.5) * 0.06, -0.08 - R() * 0.05, 60 + R() * 40, 2, 0.8); }
+function foglie(x, y, n) { for (let k = 0; k < n; k++) particella(x + 0.5, y, (R() - 0.5) * 0.3, -R() * 0.25, 40 + R() * 30, 3, 0.6); }
+function polvere_(x, y, n) { for (let k = 0; k < n; k++) particella(x + (R() - 0.5) * 6, y, (R() - 0.5) * 0.5, -R() * 0.3, 25 + R() * 20, 4, 0.7); }
+function stelline(x, y, n) { for (let k = 0; k < n; k++) { const a = R() * 6.283, v = 0.25 + R() * 0.45; particella(x, y, Math.cos(a) * v, Math.sin(a) * v - 0.15, 40 + R() * 30, k % 3 === 0 ? 7 : 8, 0.7 + R() * 0.6); } }
+function muoviParticelle() {
+  for (let k = 0; k < nP; k++) {
+    pV[k] -= 1;
+    if (pV[k] <= 0) { nP--; pX[k] = pX[nP]; pY[k] = pY[nP]; pVX[k] = pVX[nP]; pVY[k] = pVY[nP]; pV[k] = pV[nP]; pVM[k] = pVM[nP]; pK[k] = pK[nP]; pS[k] = pS[nP]; k--; continue; }
+    const kk = pK[k];
+    if (kk === 2) { pS[k] += 0.02; pVX[k] += vento * 0.002; }
+    else if (kk === 3) { pVY[k] = Math.min(pVY[k] + 0.01, 0.12); pVX[k] = Math.sin(pV[k] * 0.2) * 0.12; }
+    else if (kk === 7 || kk === 8) { pVX[k] *= 0.94; pVY[k] = pVY[k] * 0.94 + 0.006; }
+    else pVY[k] += 0.02;
+    pX[k] += pVX[k]; pY[k] += pVY[k];
+  }
+}
+function disegnaParticelle() {
+  const cols = COL_PART[stile];
+  let ultimo = -1;
+  for (let k = 0; k < nP; k++) {
+    const kk = pK[k], a = pV[k] / pVM[k];
+    if (kk !== ultimo) { ctx.fillStyle = cols[kk === 7 ? 7 : kk === 8 ? 8 : kk]; ultimo = kk; }
+    ctx.globalAlpha = kk === 2 ? a * 0.55 : Math.min(1, a * 1.6);
+    const s = pS[k] * cs * (kk >= 7 ? (0.6 + a * 0.6) : 1), x = pX[k] * cs, y = pY[k] * cs;
+    if (stile === 0) { const q = Math.max(2, Math.round(s)); ctx.fillRect(Math.round(x / q) * q, Math.round(y / q) * q, q, q); }
+    else { ctx.beginPath(); ctx.arc(x, y, s * 0.6, 0, 6.283); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---------- anelli della festa ----------
+const anelli = [];
+function anello(x, y) { anelli.push({ x: x + 0.5, y: y + 0.5, t: 0 }); }
+function disegnaAnelli() {
+  for (let k = anelli.length - 1; k >= 0; k--) {
+    const a = anelli[k]; a.t++;
+    if (a.t > 45) { anelli.splice(k, 1); continue; }
+    const p = a.t / 45, r = (2 + p * 14) * cs, x = a.x * cs, y = a.y * cs;
+    ctx.globalAlpha = 1 - p;
+    if (a.t < 8) { ctx.fillStyle = stile === 1 ? 'rgba(255,240,250,.9)' : '#ffffff'; ctx.beginPath(); ctx.arc(x, y, (8 - a.t) * cs * 0.9, 0, 6.283); ctx.fill(); }
+    if (stile === 0) {
+      ctx.fillStyle = '#ffe27a'; const q = Math.max(2, Math.round(cs * 0.5));
+      for (let s = 0; s < 16; s++) { const ang = s / 16 * 6.283; ctx.fillRect(Math.round((x + Math.cos(ang) * r) / q) * q, Math.round((y + Math.sin(ang) * r) / q) * q, q * 1.5, q * 1.5); }
+    } else if (stile === 1) {
+      ctx.strokeStyle = 'rgba(255,170,200,.9)'; ctx.lineWidth = cs * 1.2 * (1 - p); ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.stroke();
+      ctx.strokeStyle = 'rgba(180,220,255,.8)'; ctx.beginPath(); ctx.arc(x, y, r * 0.7, 0, 6.283); ctx.stroke();
+    } else {
+      ctx.lineJoin = 'round'; ctx.beginPath();
+      for (let s = 0; s <= 20; s++) { const ang = s / 20 * 6.283, rr = s & 1 ? r * 0.7 : r; ctx.lineTo(x + Math.cos(ang) * rr, y + Math.sin(ang) * rr); }
+      ctx.fillStyle = 'rgba(255,230,0,.35)'; ctx.fill(); ctx.strokeStyle = '#1d1d1d'; ctx.lineWidth = cs * 0.5; ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ---------- luce del fuoco ----------
+const LW = Math.ceil(W / 4), LH = Math.ceil(H / 4), luce = new Float32Array(LW * LH), LUCE_MAT = new Float32Array(NMAT);
+LUCE_MAT[FIAMMA] = 1; LUCE_MAT[LAVA] = 0.7; LUCE_MAT[BRACE] = 0.9;
+const alone = document.createElement('canvas'); alone.width = alone.height = 64;
+{ const q = alone.getContext('2d'), g = q.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,190,90,.8)'); g.addColorStop(0.4, 'rgba(255,120,40,.3)'); g.addColorStop(1, 'rgba(255,80,20,0)'); q.fillStyle = g; q.fillRect(0, 0, 64, 64); }
+function calcolaLuce() {
+  luce.fill(0);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const l = LUCE_MAT[tipo[y * W + x]]; if (l) luce[(y >> 2) * LW + (x >> 2)] += l; }
+}
+function disegnaLuce(notte) {
+  ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < luce.length; k++) {
+    const l = luce[k]; if (l < 0.5) continue;
+    const s = cs * (5 + Math.min(12, Math.sqrt(l) * 2.4)), x = ((k % LW) * 4 + 2) * cs, y = (((k / LW) | 0) * 4 + 2) * cs;
+    ctx.globalAlpha = Math.min(1, 0.25 + l * 0.05) * (0.35 + 0.65 * notte);
+    ctx.drawImage(alone, x - s / 2, y - s / 2, s, s);
+  }
+  if (finestreAccese) for (const c of case_) { const s = cs * 9; ctx.globalAlpha = 0.55 * notte + 0.15; ctx.drawImage(alone, (c.x0 + 2.5) * cs - s / 2, (c.y0 + 5.5) * cs - s / 2, s, s); }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+}
+
+// ===================== ICONE DELLE FIGURINE (disegnate dal codice, tre stili) =====================
+const ICONE = [{}, {}, {}];
+function tinta(h, st) { if (st !== 1) return h; const c = rgb(h); return 'rgb(' + schiari(c, 0.35).join(',') + ')'; }
+function glifo(c, id, st) {
+  // si disegna su una griglia 16x16
+  const ink = '#1d1d1d';
+  const f = (col, path) => { if (st === 2) { c.strokeStyle = ink; c.lineWidth = 2; c.lineJoin = 'round'; c.stroke(path); } c.fillStyle = tinta(col, st); c.fill(path); };
+  const l = (col, path, w) => { c.lineCap = c.lineJoin = 'round'; if (st === 2) { c.strokeStyle = ink; c.lineWidth = w + 1.4; c.stroke(path); } c.strokeStyle = tinta(col, st); c.lineWidth = w; c.stroke(path); };
+  const P = d => new Path2D(d);
+  const cerchio = (x, y, r) => { const p = new Path2D(); p.arc(x, y, r, 0, 6.283); return p; };
+  const unione = (...cc) => { const p = new Path2D(); cc.forEach(([x, y, r]) => { p.moveTo(x + r, y); p.arc(x, y, r, 0, 6.283); }); return p; };
+  const brillo = (x, y, r) => { c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.ellipse(x, y, r, r * 0.6, -0.6, 0, 6.283); c.fill(); };
+  const mucchio = (col, punti) => { f(col, P('M1,14 Q8,2 15,14 Z')); c.fillStyle = tinta(punti, st); [[6, 11], [10, 10], [8, 13], [11, 12.5]].forEach(([x, y]) => { c.beginPath(); c.arc(x, y, 0.8, 0, 6.283); c.fill(); }); };
+  const nuvola = (col, y) => f(col, unione([5, y + 2, 3], [8.5, y, 4], [12, y + 2.3, 3], [8, y + 3, 3.4]));
+  const albero = (foglie, tronco) => { f(tronco, P('M7,9 H9.4 V15 H7 Z')); f(foglie, unione([8, 6, 4.6], [4.6, 8.4, 3], [11.4, 8.4, 3])); };
+  const fiamma = (x, y, k) => { c.save(); c.translate(x, y); c.scale(k, k); f('#ff7b1c', P('M0,-7 C4,-3 6,0 5,3 A5,4.5 0 0 1 -5,3 C-6,0 -3,-1 -2,-4 C-1,-2 0,-2 0,-7 Z')); f('#ffd23a', P('M0,-2 C2,0 3,2 2.5,3.5 A2.6,2.4 0 0 1 -2.5,3.5 C-3,2 -1,1 0,-2 Z')); c.restore(); };
+  const casetta = (x, y, k, tetto) => { c.save(); c.translate(x, y); c.scale(k, k); f('#e8c79a', P('M-5,0 H5 V7 H-5 Z')); f(tetto, P('M-6.5,0.5 L0,-6 L6.5,0.5 Z')); f('#7a4a26', P('M1.5,3 H3.8 V7 H1.5 Z')); f('#7ec8e3', P('M-3.8,2 H-0.8 V4.6 H-3.8 Z')); c.restore(); };
+  switch (id) {
+    case 'terra': mucchio('#8a5a33', '#5c3a1e'); break;
+    case 'sabbia': mucchio('#e8c872', '#b8923a'); c.fillStyle = tinta('#e8c872', st); [[3, 5], [5, 3], [12, 4]].forEach(([x, y]) => c.fillRect(x, y, 1, 1)); break;
+    case 'acqua': f('#3b8fd9', P('M8,1 C8,1 3,8 3,10.5 A5,5 0 0 0 13,10.5 C13,8 8,1 8,1 Z')); brillo(6, 10, 1.3); break;
+    case 'fuoco': fiamma(8, 9, 1.05); break;
+    case 'aria': l('#7cc4f2', P('M2,5 H10 A2.2,2.2 0 1 0 8,2.6'), 1.5); l('#9fd8fa', P('M1,9 H12.5 A2.2,2.2 0 1 1 10.5,11.6'), 1.5); l('#7cc4f2', P('M3,13 H8'), 1.5); break;
+    case 'fango': f('#5e4128', P('M1,12.5 Q2,9 5,9 Q6,6 9,7 Q13,7 13,10 Q15,11 15,12.5 Q8,15 1,12.5 Z')); brillo(9, 8.6, 1.2); c.strokeStyle = tinta('#a07850', st); c.lineWidth = 0.7; c.beginPath(); c.arc(12, 4, 1.2, 0, 6.283); c.stroke(); break;
+    case 'lava': f('#e5501b', P('M1,14 Q2,9 5,9 Q6,4 9,6 Q10,2 12,5 Q15,8 15,14 Z')); l('#ffd23a', P('M5,12 L7,10 L8,12 L11,9'), 1); break;
+    case 'vapore': l('#b9c6d8', P('M4,14 C2,11 6,9 4,6 C3,4 5,3 4,1'), 1.4); l('#cfd8e6', P('M8,14 C6,11 10,9 8,6 C7,4 9,3 8,1'), 1.4); l('#b9c6d8', P('M12,14 C10,11 14,9 12,6 C11,4 13,3 12,1'), 1.4); break;
+    case 'pietra': f('#8d8f9a', P('M2,13 L4,6 L8,3 L12,5 L14,11 L12,14 L5,14 Z')); f('#6b6d78', P('M8,3 L12,5 L14,11 L9,9 Z')); brillo(5.5, 7, 1.2); break;
+    case 'argilla': f('#c27a4e', P('M5,2 H11 V4 Q14,6 14,10 Q14,15 8,15 Q2,15 2,10 Q2,6 5,4 Z')); f('#a85f36', P('M4,9 H12 V10.5 H4 Z')); brillo(5, 7, 1.2); break;
+    case 'mattone': f('#b5482e', P('M1,3 H15 V8 H1 Z')); f('#b5482e', P('M1,9.5 H7.3 V14.5 H1 Z')); f('#c4583c', P('M8.7,9.5 H15 V14.5 H8.7 Z')); c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(2, 4, 12, 1); break;
+    case 'vetro': f('#bfeaf5', P('M3,1.5 H13 V14.5 H3 Z')); l('#ffffff', P('M5,6 L8,3 M5,10 L11,4'), 1); if (st !== 2) { c.strokeStyle = tinta('#6aa6ba', st); c.lineWidth = 0.8; c.strokeRect(3, 1.5, 10, 13); } break;
+    case 'nuvola': nuvola(st === 0 ? '#f4f8ff' : '#eef3fb', 6); c.fillStyle = st === 1 ? 'rgba(170,190,220,.5)' : '#c9d6ea'; c.fillRect(3.5, 10.5, 9, 1.2); break;
+    case 'pioggia': l('#3b8fd9', P('M4,11 L3,14 M8,11 L7,15 M12,11 L11,14'), 1.3); nuvola('#aebbd0', 2.5); break;
+    case 'fulmine': f('#ffd23a', P('M9.5,0.5 L3,9 L7,9 L5,15.5 L13.5,6 L9.5,6 L12,0.5 Z')); break;
+    case 'germoglio': f('#6b4a2e', P('M2,15 Q8,10 14,15 Z')); l('#4caf50', P('M8,13 V8'), 1.3); f('#6abf4b', P('M8,9 Q3,9 3,5 Q7,5 8,9 Z')); f('#82cf5f', P('M8,8 Q13,8 13,4 Q9,4 8,8 Z')); break;
+    case 'pianta': f('#6b4a2e', P('M2,15.5 Q8,12 14,15.5 Z')); l('#4caf50', P('M8,14 V3'), 1.3); [[8, 11, -1], [8, 8, 1], [8, 5, -1]].forEach(([x, y, d]) => f('#6abf4b', P(`M${x},${y} Q${x + 5 * d},${y} ${x + 5 * d},${y - 3} Q${x + d},${y - 3} ${x},${y} Z`))); break;
+    case 'albero': albero('#4a9e3f', '#7b4f2c'); brillo(6.5, 4.5, 1.4); break;
+    case 'legno': f('#a0703d', P('M2,6 H13 V12 H2 Q0.5,9 2,6 Z')); f('#e0b47a', cerchio(13, 9, 3)); c.strokeStyle = tinta('#a0703d', st); c.lineWidth = 0.7; c.beginPath(); c.arc(13, 9, 1.5, 0, 6.283); c.stroke(); break;
+    case 'incendio': albero('#3f6e2e', '#5a3a1e'); fiamma(5, 7, 0.75); fiamma(11, 6, 0.85); fiamma(8, 4, 0.6); break;
+    case 'cenere': f('#a29d98', P('M1,14.5 Q8,6 15,14.5 Z')); l('#c8c4c0', P('M6,7 C4,5 7,4 6,2 M10,7 C8,5 11,4 10,2'), 1); break;
+    case 'terriccio': f('#4a3426', P('M1,14.5 Q8,4 15,14.5 Z')); c.fillStyle = tinta('#8a6a50', st); [[5, 12], [9, 10], [11, 13], [7, 13.5]].forEach(([x, y]) => c.fillRect(x, y, 1, 1)); l('#5cb85c', P('M8,8 V4'), 1.1); f('#6abf4b', P('M8,5 Q11,5 11,2.5 Q8.5,2.5 8,5 Z')); break;
+    case 'omino': f('#3b3b6d', P('M5.5,12 H7.5 V15.5 H5.5 Z M8.5,12 H10.5 V15.5 H8.5 Z')); f('#e94f37', P('M4.5,7.5 Q8,6.5 11.5,7.5 L11,12.5 H5 Z')); f('#f5c29a', cerchio(8, 4.2, 3)); c.fillStyle = '#2a1a2e'; c.fillRect(6.6, 3.8, 0.9, 1); c.fillRect(8.8, 3.8, 0.9, 1); f('#5a3a22', P('M5,3.6 Q8,-0.4 11,3.6 Q8,2.2 5,3.6 Z')); break;
+    case 'casa': casetta(8, 8, 1.15, '#c0392b'); break;
+    case 'villaggio': casetta(5, 9, 0.75, '#c0392b'); casetta(11.5, 10, 0.75, '#3f88c5'); l('#7b4f2c', P('M8,9 V1.5'), 0.7); f('#ffd23a', P('M8,1.5 L12,3 L8,4.5 Z')); break;
+  }
+}
+function icona(id, st) {
+  const cache = ICONE[st]; if (cache[id]) return cache[id];
+  const out = document.createElement('canvas');
+  if (st === 0) {
+    const p = document.createElement('canvas'); p.width = p.height = 20;
+    const q = p.getContext('2d'); q.translate(2, 2); glifo(q, id, 0);
+    const d = q.getImageData(0, 0, 20, 20), a = d.data, pieno = new Uint8Array(400);
+    for (let k = 0; k < 400; k++) { if (a[k * 4 + 3] >= 120) { pieno[k] = 1; a[k * 4 + 3] = 255; } else a[k * 4 + 3] = 0; }
+    for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) {
+      const k = y * 20 + x;
+      if (pieno[k]) { if (y > 0 && !pieno[k - 20]) { a[k * 4] = Math.min(255, a[k * 4] + 60); a[k * 4 + 1] = Math.min(255, a[k * 4 + 1] + 60); a[k * 4 + 2] = Math.min(255, a[k * 4 + 2] + 60); } continue; }
+      if ((x > 0 && pieno[k - 1]) || (x < 19 && pieno[k + 1]) || (y > 0 && pieno[k - 20]) || (y < 19 && pieno[k + 20])) { a[k * 4] = 36; a[k * 4 + 1] = 22; a[k * 4 + 2] = 44; a[k * 4 + 3] = 255; }
+    }
+    q.setTransform(1, 0, 0, 1, 0, 0); q.putImageData(d, 0, 0);
+    out.width = out.height = 80; const o = out.getContext('2d'); o.imageSmoothingEnabled = false; o.drawImage(p, 0, 0, 80, 80);
+  } else {
+    out.width = out.height = 96; const o = out.getContext('2d');
+    if (st === 1) { o.fillStyle = 'rgba(255,214,228,.55)'; o.beginPath(); o.arc(48, 50, 44, 0, 6.283); o.fill(); o.fillStyle = 'rgba(255,255,255,.6)'; o.beginPath(); o.arc(38, 36, 16, 0, 6.283); o.fill(); }
+    o.save(); o.translate(10, 10); o.scale(76 / 16, 76 / 16);
+    if (st === 1) { o.shadowColor = 'rgba(110,80,140,.3)'; o.shadowBlur = 6; o.shadowOffsetY = 3; }
+    glifo(o, id, st); o.restore();
+  }
+  cache[id] = out; return out;
+}
+function disegnaIcona(canvas, id) {
+  const px = Math.round(parseFloat(canvas.dataset.lato || 42) * Math.min(2, window.devicePixelRatio || 1));
+  canvas.width = canvas.height = px;
+  const q = canvas.getContext('2d'); q.imageSmoothingEnabled = stile !== 0; q.clearRect(0, 0, px, px);
+  q.drawImage(icona(id, stile), 0, 0, px, px);
+}
+
+// ===================== AZIONI: cosa succede quando si unisce, si versa, si lascia =====================
+const scoperto = {}; let nScoperte = 0, ultimaScoperta = 0;
+const codaFeste = [];
+function scopri(id, x, y) {
+  if (scoperto[id]) return false;
+  scoperto[id] = true; nScoperte++; ultimaScoperta = performance.now();
+  codaFeste.push([id, x, y]);
+  aggiungiCarta(id, true); aggiornaConto(true);
+  return true;
+}
+const limita = (v, a, b) => v < a ? a : v > b ? b : v;
+
+// mette una manciata di materiale in un cerchio
+function manciata(t, x, y, r, n, v) {
+  let messi = 0;
+  for (let k = 0; k < n * 3 && messi < n; k++) {
+    const a = R() * 6.283, d = Math.sqrt(R()) * r, xx = Math.round(x + Math.cos(a) * d), yy = Math.round(y + Math.sin(a) * d);
+    if (xx < 0 || xx >= W || yy < 0 || yy >= H) continue;
+    const i = yy * W + xx;
+    if (!libera(i)) continue;
+    metti(i, t, v === undefined ? (t === FIAMMA ? 25 + ((R() * 25) | 0) : t === NUVOLA ? 55 : t === VAPORE ? 150 : 0) : v);
+    messi++;
+  }
+  return messi;
+}
+function scaldaZona(x, y, r, q) {
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    const xx = x + dx, yy = y + dy; if (xx < 0 || xx >= W || yy < 0 || yy >= H || dx * dx + dy * dy > r * r + 1) continue;
+    const i = yy * W + xx; if (tipo[i] !== VUOTO) scalda(i, q);
+  }
+}
+function soffi(x, y, dx, dy, n, radiale) {
+  for (let k = 0; k < n; k++) {
+    const a = R() * 6.283, d = Math.sqrt(R()) * 2.5, xx = Math.round(x + Math.cos(a) * d), yy = Math.round(y + Math.sin(a) * d);
+    if (xx < 0 || xx >= W || yy < 0 || yy >= H) continue;
+    const i = yy * W + xx; if (tipo[i] !== VUOTO) continue;
+    let ddx = dx, ddy = dy;
+    if (radiale) { ddx = Math.sign(Math.round(Math.cos(a) * 1.4)); ddy = Math.sign(Math.round(Math.sin(a) * 1.4)); if (!ddx && !ddy) ddx = 1; }
+    metti(i, ARIA, 26 + ((R() * 14) | 0));
+    varia[i] = (varia[i] & 3) | ((ddx + 1) << 2) | ((ddy + 1) << 4);
+  }
+}
+function nuvolaQui(x, y, acqua) {
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -7; dx <= 7; dx++) {
+    if ((dx * dx) / 49 + (dy * dy) / 5 > 1 || R() < 0.12) continue;
+    const xx = x + dx, yy = y + dy; if (xx < 0 || xx >= W || yy < 0) continue;
+    const i = yy * W + xx; if (libera(i) || tipo[i] === NUVOLA) metti(i, NUVOLA, acqua);
+  }
+}
+function piantaQui(x, y, spinta, albero) {
+  for (let d = 0; d < 14; d++) for (const s of [1, -1]) {
+    const xx = x + d * s; if (xx < 2 || xx > W - 3) continue;
+    const top = cima(xx, Math.max(0, Math.min(y, 40) - 20));
+    if (top >= H || !FERTILE[tipo[top * W + xx]] || !libera((top - 1) * W + xx)) continue;
+    const p = germoglia(xx, top - 1, spinta, albero); if (p) return [xx, top - 2];
+  }
+  // nessun posto adatto: un mucchietto di terriccio e via
+  const top = cima(x, 4);
+  manciata(TERRICCIO, x, top - 2, 2, 10);
+  for (let k = 0; k < 6; k++) passo();
+  const t2 = cima(x, 4); germoglia(x, t2 - 1, spinta, albero);
+  return [x, t2 - 2];
+}
+function incendioQui(x, y) {
+  let best = null, bd = 99;
+  for (const p of piante) if (!p.morta && p.fase >= 1) { const d = Math.abs(p.x - x); if (d < bd) { bd = d; best = p; } }
+  if (best && bd < 30) { accendiPianta(best); return [best.x, best.y - best.h]; }
+  const top = cima(x, 6);
+  manciata(LEGNA, x, top - 3, 3, 14);
+  for (let dy = -6; dy < 0; dy++) for (let dx = -3; dx <= 3; dx++) { const i = (top + dy) * W + x + dx; if (tipo[i] === LEGNA) accendi(i); }
+  return [x, top - 4];
+}
+function villaggioQui(x) {
+  ultimaCasa = -999; costruisciCasa(x - 7, 30); ultimaCasa = -999; costruisciCasa(x + 7, 30);
+  for (let k = 0; k < 3; k++) { ultimoOmino = -999; nasciOmino(x - 3 + k * 3, 20); }
+  return [x, cima(x, 10) - 6];
+}
+// fa comparire una scoperta nel mondo e la fa vivere; restituisce dove
+function materializza(id, x, y) {
+  x = limita(x | 0, 3, W - 4); y = limita(y | 0, 3, H - 4);
+  const m = SCOPERTE[IDX[id]][4];
+  switch (id) {
+    case 'fuoco': manciata(FIAMMA, x, y, 3, 26); scaldaZona(x, y, 3, 210); scaldaZona(x, y + 2, 2, 120); return [x, y];
+    case 'aria': soffi(x, y, 0, 0, 40, true); return [x, y];
+    case 'nuvola': nuvolaQui(x, Math.min(y, 6), 50); return [x, 6];
+    case 'pioggia': nuvolaQui(x, Math.min(y, 5), 75); return [x, 7];
+    case 'vapore': manciata(VAPORE, x, y, 3, 30); return [x, y];
+    case 'fulmine': nuvolaQui(x, 4, 40); fulmine(x, true); return [x, 10];
+    case 'germoglio': return piantaQui(x, y, 1.5, false);
+    case 'pianta': return piantaQui(x, y, 4, false);
+    case 'albero': return piantaQui(x, y, 7, true);
+    case 'incendio': return incendioQui(x, y);
+    case 'omino': ultimoOmino = -999; nasciOmino(x - 1, y); ultimoOmino = -999; nasciOmino(x + 2, y); return [x, cima(x, Math.max(0, y - 10)) - 4];
+    case 'casa': { ultimaCasa = -999; const c = costruisciCasa(x, y); return c ? [c.x0 + 4, c.y0 + 2] : [x, y]; }
+    case 'villaggio': return villaggioQui(x);
+    default:
+      if (m > 0) { manciata(m, x, y, 3, m === ACQUA ? 46 : 34); return [x, y]; }
+  }
+  return [x, y];
+}
+// in Carte la cosa nuova compare al centro, un po' sopra il terreno, e cade
+function compariAlCentro(id) {
+  const x = (W / 2 + (R() * 18 - 9)) | 0, top = cima(x, 6);
+  let y = Math.max(8, top - 10);
+  if (id === 'lava' || id === 'acqua' || id === 'fango') y = Math.max(8, top - 6);
+  return materializza(id, x, y);
+}
+
+// cosa c'è sotto la punta (per "Porta e lascia")
+function cosaSotto(x, y) {
+  if (x < 0 || x >= W || y < 0 || y >= H) return null;
+  const o = omineIn(x, y); if (o) return { id: 'omino', ref: o, nome: 'Omino', box: [o.x - 1.5, o.y - 4.5, 3, 5.5] };
+  const c = casaIn(x, y); if (c) return { id: 'casa', ref: c, nome: 'Casa', box: [c.x0 - 0.5, c.y0 - 0.5, 10, 9] };
+  const t = tipo[y * W + x];
+  if (t === STELO || t === FOGLIA || t === TRONCO) {
+    const p = piantaIn(x, y);
+    if (p) { const id = p.fase >= 2 ? 'albero' : p.fase === 1 ? 'pianta' : 'germoglio'; const hw = p.fase >= 2 ? p.r + 2 : 1.5, top = p.y - p.h - p.r - 1.5; return { id, ref: p, nome: NOME(id), box: [p.x - hw + 0.5, top, hw * 2, p.y - top + 1] }; }
+  }
+  if (t === VUOTO) return null;
+  return { id: MAT_SCOPERTA[t] || null, ref: null, nome: NOME_MAT[t] || '', box: null };
+}
+function lascia(id, x, y) {
+  const sotto = cosaSotto(x, y);
+  if (sotto && sotto.ref) {
+    const r = unisci(id, sotto.id);
+    if (r) { const dove = applicaSu(r, sotto) || [x, y]; if (!scopri(r, dove[0], dove[1])) anello(dove[0], dove[1]); return; }
+  }
+  const m = SCOPERTE[IDX[id]][4];
+  if (m > 0 && id !== 'fuoco' && id !== 'aria' && id !== 'nuvola') manciata(m, x, y, 3, m === ACQUA ? 40 : 30);
+  else materializza(id, x, y);
+  polvere_(x, y, 4);
+}
+function applicaSu(r, s) {
+  const p = s.ref;
+  switch (r) {
+    case 'pianta': if (p.fase === 0) { p.spinta = 5; } manciata(ACQUA, p.x, p.y - p.h - 3, 2, 6, 1); return [p.x, p.y - 3];
+    case 'albero': p.albero = true; p.spinta = 6; p.acqua = 300; if (p.h >= 3) diventaAlbero(p); manciata(ACQUA, p.x, p.y - p.h - 3, 2, 6, 1); return [p.x, p.y - p.h];
+    case 'omino': ultimoOmino = -999; nasciOmino(p.x - 3, p.y); ultimoOmino = -999; nasciOmino(p.x + 3, p.y); return [p.x, p.y - 4];
+    case 'legno': abbatti(p); return [p.x, p.y - 3];
+    case 'incendio': accendiPianta(p); return [p.x, p.y - p.h];
+    case 'villaggio': { const c = s.id === 'casa' ? p : null, x = c ? c.x0 + 4 : (p.x | 0); ultimaCasa = -999; costruisciCasa(x + (x < W / 2 ? 11 : -11), 30); ultimoOmino = -999; nasciOmino(x + 2, 20); ultimoOmino = -999; nasciOmino(x - 2, 20); return [x, (c ? c.y0 : p.y) - 2]; }
+  }
+  return materializza(r, p.x | 0, (p.y | 0) - 3);
+}
+
+// "Versa": cade dal dito, un pochino per volta
+let ultimoSpeciale = 0;
+const RITMO = { germoglio: 350, pianta: 450, albero: 600, omino: 700, casa: 900, villaggio: 2000, fulmine: 600, incendio: 500 };
+function versaPunto(id, x, y, ddx, ddy, ora) {
+  if (x < 0 || x >= W || y < 0 || y >= H) return;
+  const m = SCOPERTE[IDX[id]][4];
+  if (id === 'fuoco') { manciata(FIAMMA, x, y, 2, 3); scaldaZona(x, y, 2, 30); return; }
+  if (id === 'aria') { const l = Math.hypot(ddx, ddy); soffi(x, y, l > 0.3 ? Math.round(ddx / l) : vento, l > 0.3 ? Math.round(ddy / l) : 0, 4); return; }
+  if (id === 'pioggia') { manciata(ACQUA, x, y, 3, 2, 1); return; }
+  if (id === 'nuvola') { manciata(NUVOLA, x, y, 2, 3, 50); return; }
+  if (m > 0) { manciata(m, x, y, 2, R() < 0.5 ? 2 : 1); return; }
+  if (ora - ultimoSpeciale < (RITMO[id] || 500)) return;
+  ultimoSpeciale = ora;
+  materializza(id, x, y);
+}
+
+// ===================== SUONI (WebAudio, solo dopo il primo tocco) =====================
+let AC = null, uscita = null, rumore = null, ultimoSuono = {};
+function sveglia() {
+  if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
+  const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+  try {
+    AC = new C(); uscita = AC.createGain(); uscita.gain.value = 0.5; uscita.connect(AC.destination);
+    rumore = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const d = rumore.getChannelData(0);
+    for (let k = 0; k < d.length; k++) d[k] = Math.random() * 2 - 1;
+  } catch (e) { AC = null; }
+}
+function tono(f, dur, onda, vol, dopo, f2) {
+  const t = AC.currentTime + (dopo || 0), o = AC.createOscillator(), g = AC.createGain();
+  o.type = onda || 'sine'; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(uscita); o.start(t); o.stop(t + dur + 0.05);
+}
+function fruscio(dur, freq, vol, filtro) {
+  const t = AC.currentTime, s = AC.createBufferSource(), b = AC.createBiquadFilter(), g = AC.createGain();
+  s.buffer = rumore; b.type = filtro || 'lowpass'; b.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(b); b.connect(g); g.connect(uscita); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
+}
+const SCALA = [0, 2, 4, 7, 9, 12, 14, 16];
+function suona(n, k) {
+  if (!AC || AC.state !== 'running') return;
+  const ora = AC.currentTime;
+  if (n !== 'scoperta' && ultimoSuono[n] && ora - ultimoSuono[n] < 0.07) return;
+  ultimoSuono[n] = ora;
+  switch (n) {
+    case 'scoperta': { const b = 392 * Math.pow(2, SCALA[(k || 0) % 8] / 12); tono(b, 0.5, 'triangle', 0.16); tono(b * 1.26, 0.5, 'triangle', 0.13, 0.09); tono(b * 1.5, 0.8, 'sine', 0.13, 0.18); tono(b * 2, 1.1, 'sine', 0.06, 0.18); break; }
+    case 'no': tono(260, 0.18, 'sine', 0.12, 0, 200); tono(200, 0.28, 'sine', 0.1, 0.13, 160); break;
+    case 'prendi': tono(700, 0.07, 'sine', 0.07, 0, 900); break;
+    case 'pop': tono(480, 0.14, 'sine', 0.12, 0, 950); break;
+    case 'toc': tono(170, 0.12, 'square', 0.05, 0, 90); fruscio(0.15, 500, 0.2); break;
+    case 'tum': tono(110, 0.35, 'sine', 0.3, 0, 55); fruscio(0.3, 350, 0.25); break;
+    case 'oh': tono(560, 0.16, 'triangle', 0.05, 0, 820); break;
+    case 'glu': tono(300, 0.08, 'sine', 0.08, 0, 620); tono(340, 0.08, 'sine', 0.08, 0.1, 720); break;
+    case 'tuono': fruscio(1.8, 160, 0.7); tono(55, 1.1, 'sine', 0.3, 0, 32); break;
+    case 'acqua': tono(800 + Math.random() * 600, 0.05, 'sine', 0.035, 0, 1700); break;
+    case 'grani': fruscio(0.08, 2500, 0.05, 'highpass'); break;
+    case 'fuoco': fruscio(0.06, 1400, 0.07, 'bandpass'); break;
+    case 'soffio': fruscio(0.2, 700, 0.06, 'bandpass'); break;
+  }
+}
+
+// ===================== FINESTRA: figurine, album, gesti =====================
+const $ = s => document.getElementById(s);
+const elCarte = $('carte'), elScorri = $('scorri'), elFantasma = $('fantasma'), elFeste = $('feste'), elBox = $('mondoBox');
+let modo = 'carte', scelta = 'acqua', ultimoAvviso = 0, ordineCarte = 0;
+const BASE4 = ['terra', 'acqua', 'fuoco', 'aria'];
+
+function creaCarta(id) {
+  const d = document.createElement('div'); d.className = 'carta'; d.dataset.id = id;
+  const c = document.createElement('canvas'); c.dataset.lato = 42; d.appendChild(c);
+  const b = document.createElement('b'); b.textContent = NOME(id); d.appendChild(b);
+  disegnaIcona(c, id);
+  return d;
+}
+function aggiungiCarta(id, nuova) {
+  if (elCarte.querySelector('[data-id="' + id + '"]')) return;
+  const d = creaCarta(id);
+  // le nuove vanno subito dopo i quattro elementi, così si vedono
+  const dopo = elCarte.children[3];
+  if (nuova && dopo) dopo.after(d); else elCarte.appendChild(d);
+  if (nuova) { d.classList.add('nuova', 'arriva'); setTimeout(() => d.classList.remove('arriva'), 800); if (!tr) elScorri.scrollTo({ left: 0, top: 0, behavior: 'smooth' }); }
+  if (id === scelta && modo === 'versa') d.classList.add('scelta');
+}
+function rifaiCarte() {
+  elCarte.innerHTML = '';
+  BASE4.forEach(id => aggiungiCarta(id, false));
+  segnaScelta();
+}
+function segnaScelta() { for (const c of elCarte.children) c.classList.toggle('scelta', modo === 'versa' && c.dataset.id === scelta); }
+function aggiornaConto(salta) {
+  $('nScop').textContent = 'Scoperte ' + nScoperte + '/' + SCOPERTE.length;
+  $('barraPiena').style.width = (nScoperte / SCOPERTE.length * 100) + '%';
+  if (salta) { const b = $('bAlbum'); b.classList.remove('salta'); void b.offsetWidth; b.classList.add('salta'); }
+}
+function avviso(t, ms) {
+  const a = $('avviso'); a.textContent = t; a.classList.add('vedi'); ultimoAvviso = performance.now();
+  clearTimeout(avviso.h); avviso.h = setTimeout(() => a.classList.remove('vedi'), ms || 3200);
+}
+function apriAlbum() {
+  const g = $('griglia'); g.innerHTML = '';
+  $('albumConto').textContent = 'Hai trovato ' + nScoperte + ' cose su ' + SCOPERTE.length + '. Le caselle vuote hanno un indizio.';
+  for (const s of SCOPERTE) {
+    const d = document.createElement('div');
+    if (scoperto[s[0]]) {
+      d.className = 'casella'; const c = document.createElement('canvas'); c.dataset.lato = 40; d.appendChild(c); disegnaIcona(c, s[0]);
+      const b = document.createElement('b'); b.textContent = s[1]; d.appendChild(b);
+      const i = document.createElement('i'); i.textContent = s[3]; d.appendChild(i);
+    } else {
+      d.className = 'casella vuota'; d.innerHTML = '<span class="punto">?</span><b>???</b>';
+      const i = document.createElement('i'); i.textContent = s[2]; d.appendChild(i);
+    }
+    g.appendChild(d);
+  }
+  $('album').hidden = false;
+}
+function cambiaModo(m) {
+  modo = m;
+  document.body.classList.remove('modo-carte', 'modo-versa', 'modo-porta'); document.body.classList.add('modo-' + m);
+  for (const b of document.querySelectorAll('.linguetta')) b.classList.toggle('attiva', b.dataset.modo === m);
+  $('spiega').textContent = MODI[m];
+  segnaScelta();
+}
+function cambiaStile() {
+  stile = (stile + 1) % 3;
+  document.body.classList.remove('s-pixel', 's-morbido', 's-cartoon');
+  document.body.classList.add(['s-pixel', 's-morbido', 's-cartoon'][stile]);
+  $('nomeStile').textContent = STILI[stile];
+  dimensiona();
+  for (const c of document.querySelectorAll('.carta canvas')) disegnaIcona(c, c.parentNode.dataset.id);
+}
+
+// ---------- la festa della scoperta ----------
+function festa(id, x, y) {
+  anello(x, y); stelline(x + 0.5, y + 0.5, stile === 2 ? 50 : 34);
+  if (stile === 2) { cv.classList.remove('scossa'); void cv.offsetWidth; cv.classList.add('scossa'); }
+  suona('scoperta', nScoperte);
+  const r = cv.getBoundingClientRect(), rb = elBox.getBoundingClientRect();
+  const px = limita(r.left - rb.left + (x + 0.5) * r.width / W, 122, rb.width - 122), py = limita(r.top - rb.top + y * r.height / H, 120, rb.height - 10);
+  for (const v of elFeste.querySelectorAll('.dentro')) v.style.opacity = '0';
+  const d = document.createElement('div'); d.className = 'scoppio'; d.style.left = px + 'px'; d.style.top = py + 'px';
+  const w = document.createElement('div'); w.className = 'dentro'; d.appendChild(w);
+  const c = document.createElement('canvas'); c.dataset.lato = 56; disegnaIcona(c, id); w.appendChild(c);
+  const n = document.createElement('div'); n.className = 'nuova'; n.textContent = 'Nuova scoperta!'; w.appendChild(n);
+  const b = document.createElement('b'); b.textContent = NOME(id); w.appendChild(b);
+  const s = document.createElement('span'); s.textContent = SCOPERTE[IDX[id]][3]; w.appendChild(s);
+  elFeste.appendChild(d); setTimeout(() => d.remove(), 2700);
+}
+let prossimaFesta = 0;
+function gestisciFeste(ora) {
+  if (codaFeste.length && ora >= prossimaFesta) { const [id, x, y] = codaFeste.shift(); festa(id, x, y); prossimaFesta = ora + 1500; }
+}
+function consiglio(ora) {
+  if (ora - ultimaScoperta < 26000 || ora - ultimoAvviso < 26000 || !$('benvenuto').hidden || !$('album').hidden) return;
+  for (const k in UNIONI) {
+    const [a, b] = k.split('+'), r = UNIONI[k];
+    if (!scoperto[r] && scoperto[a] && scoperto[b] && a < b) {
+      const verbo = modo === 'carte' ? 'unire ' + NOME(a) + ' e ' + NOME(b) : modo === 'versa' ? 'versare ' + NOME(a) + ' sopra ' + NOME(b) : 'portare ' + NOME(a) + ' sopra ' + NOME(b);
+      avviso('Un\'idea: prova a ' + verbo.toLowerCase() + '!', 5000); return;
+    }
+  }
+}
+
+// ---------- coordinate ----------
+function inCella(cx, cy) { const r = cv.getBoundingClientRect(); return [Math.floor((cx - r.left) / r.width * W), Math.floor((cy - r.top) / r.height * H), cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom]; }
+const PUNTA = 62; // la punta della figurina in volo sta sopra il dito
+
+// ---------- trascinare le figurine ----------
+let tr = null, mira = null, cartaSopra = null;
+elCarte.addEventListener('pointerdown', e => {
+  const el = e.target.closest('.carta'); if (!el) return;
+  sveglia();
+  tr = { id: el.dataset.id, el, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, mosso: false, pid: e.pointerId };
+  if (modo !== 'versa') e.preventDefault();
+});
+window.addEventListener('pointermove', e => {
+  if (!tr || e.pointerId !== tr.pid) return;
+  tr.x = e.clientX; tr.y = e.clientY;
+  if (!tr.mosso && Math.hypot(tr.x - tr.x0, tr.y - tr.y0) > 8) {
+    if (modo === 'versa') return;
+    tr.mosso = true; tr.el.classList.add('preso'); suona('prendi');
+    elFantasma.innerHTML = ''; const c = creaCarta(tr.id); c.classList.remove('nuova'); elFantasma.appendChild(c);
+    const p = document.createElement('div'); p.className = 'punta'; elFantasma.appendChild(p);
+    elFantasma.classList.toggle('con-punta', modo === 'porta'); elFantasma.style.display = 'block';
+  }
+  if (tr.mosso) muoviFantasma();
+}, { passive: true });
+function muoviFantasma() {
+  const fw = 64, fh = 68;
+  let gx, gy;
+  if (modo === 'porta') { gx = tr.x - fw / 2; gy = tr.y - PUNTA - fh - 18; } else { gx = tr.x - fw / 2; gy = tr.y - fh - 14; }
+  elFantasma.style.transform = 'translate(' + gx + 'px,' + gy + 'px)';
+  const ty = modo === 'porta' ? tr.y - PUNTA : tr.y;
+  const [x, y, dentro] = inCella(tr.x, ty);
+  if (cartaSopra) { cartaSopra.classList.remove('sopra'); cartaSopra = null; }
+  mira = null;
+  if (dentro) {
+    const s = modo === 'porta' ? cosaSotto(x, y) : null;
+    mira = { x, y, s };
+  } else if (modo === 'carte') {
+    const el = document.elementFromPoint(tr.x, tr.y), c = el && el.closest('.carta');
+    if (c && c !== tr.el && c.parentNode === elCarte) { cartaSopra = c; c.classList.add('sopra'); }
+  }
+  // scorre il vassoio se si tiene il dito sul bordo
+  const rs = elScorri.getBoundingClientRect();
+  if (Math.abs(tr.x - tr.x0) > 40 && tr.y > rs.top && tr.y < rs.bottom) { if (tr.x < rs.left + 24) elScorri.scrollLeft -= 8; else if (tr.x > rs.right - 24) elScorri.scrollLeft += 8; }
+}
+function fineTrascina(e) {
+  if (!tr || e.pointerId !== tr.pid) return;
+  const t = tr; tr = null;
+  elFantasma.style.display = 'none'; t.el.classList.remove('preso');
+  if (cartaSopra) cartaSopra.classList.remove('sopra');
+  const sopra = cartaSopra; cartaSopra = null; const m = mira; mira = null;
+  if (e.type === 'pointercancel' && !t.mosso) return;
+  t.el.classList.remove('nuova');
+  if (!t.mosso) {
+    if (modo === 'versa') { scelta = t.id; segnaScelta(); suona('prendi'); avviso(NOME(t.id) + ' in mano: ora passa il dito sul mondo', 1800); }
+    else if (modo === 'carte') avviso('Tieni premuta la figurina e trascinala sopra un\'altra');
+    else avviso('Tieni premuta la figurina e portala sopra il mondo');
+    return;
+  }
+  if (modo === 'carte' && sopra) return unisciCarte(t.id, sopra);
+  if (m) {
+    if (modo === 'porta') lascia(t.id, m.x, m.y);
+    else { const dove = materializza(t.id, m.x, m.y); anello(dove[0], dove[1]); }
+  }
+}
+window.addEventListener('pointerup', fineTrascina);
+window.addEventListener('pointercancel', fineTrascina);
+function unisciCarte(a, cartaB) {
+  const b = cartaB.dataset.id, r = unisci(a, b);
+  if (!r) { cartaB.classList.remove('trema'); void cartaB.offsetWidth; cartaB.classList.add('trema'); suona('no'); avviso(NOME(a) + ' e ' + NOME(b) + ' non si uniscono. Prova un\'altra coppia!'); return; }
+  const dove = compariAlCentro(r);
+  if (!scopri(r, dove[0], dove[1])) {
+    anello(dove[0], dove[1]); suona('pop');
+    const c = elCarte.querySelector('[data-id="' + r + '"]'); if (c) { c.classList.remove('arriva'); void c.offsetWidth; c.classList.add('arriva'); }
+  }
+}
+
+// ---------- versare sul mondo ----------
+let dito = null;
+cv.addEventListener('pointerdown', e => {
+  sveglia();
+  if (modo !== 'versa') { avviso(modo === 'carte' ? 'Trascina una figurina qui sopra per metterla nel mondo' : 'Porta qui una figurina: la punta indica dove cade', 2400); return; }
+  cv.setPointerCapture(e.pointerId);
+  const [x, y] = inCella(e.clientX, e.clientY);
+  dito = { x, y, lx: x, ly: y, dx: 0, dy: 0, pid: e.pointerId };
+  versaPunto(scelta, x, y, 0, 0, performance.now());
+});
+cv.addEventListener('pointermove', e => {
+  if (!dito || e.pointerId !== dito.pid) return;
+  const [x, y] = inCella(e.clientX, e.clientY), ora = performance.now();
+  const ddx = x - dito.x, ddy = y - dito.y, passi = Math.ceil(Math.hypot(ddx, ddy) / 1.5);
+  for (let k = 1; k <= passi; k++) versaPunto(scelta, Math.round(dito.x + ddx * k / passi), Math.round(dito.y + ddy * k / passi), ddx, ddy, ora);
+  if (passi) { dito.dx = ddx; dito.dy = ddy; }
+  dito.x = x; dito.y = y;
+});
+const fineDito = e => { if (dito && e.pointerId === dito.pid) dito = null; };
+cv.addEventListener('pointerup', fineDito); cv.addEventListener('pointercancel', fineDito);
+function versaContinua(ora) {
+  if (!dito) return;
+  versaPunto(scelta, dito.x, dito.y, dito.dx * 0.5, dito.dy * 0.5, ora);
+  const m = SCOPERTE[IDX[scelta]][4];
+  if (fot % 6 === 0) suona(m === ACQUA || scelta === 'pioggia' ? 'acqua' : m === FIAMMA ? 'fuoco' : m === ARIA ? 'soffio' : 'grani');
+}
+
+// ---------- tasti ----------
+for (const b of document.querySelectorAll('.linguetta')) b.addEventListener('click', () => { sveglia(); cambiaModo(b.dataset.modo); });
+$('bStile').addEventListener('click', () => { sveglia(); cambiaStile(); });
+$('bAlbum').addEventListener('click', () => { sveglia(); apriAlbum(); });
+$('chiudiAlbum').addEventListener('click', () => $('album').hidden = true);
+$('album').addEventListener('click', e => { if (e.target.id === 'album') $('album').hidden = true; });
+$('bRicomincia').addEventListener('click', () => { sveglia(); ricomincia(); avviso('Un mondo nuovo, tutto da scoprire!'); });
+$('via').addEventListener('click', () => { sveglia(); $('benvenuto').hidden = true; ultimaScoperta = performance.now(); });
+$('sx').addEventListener('click', () => elScorri.scrollBy({ left: -210, behavior: 'smooth' }));
+$('dx').addEventListener('click', () => elScorri.scrollBy({ left: 210, behavior: 'smooth' }));
+elScorri.addEventListener('wheel', e => { if (elScorri.scrollHeight > elScorri.clientHeight + 2) return; elScorri.scrollLeft += e.deltaY + e.deltaX; e.preventDefault(); }, { passive: false });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('contextmenu', e => { if (e.target.closest('.carta')) e.preventDefault(); });
+
+function ricomincia() {
+  terrenoIniziale();
+  piante.length = omini.length = case_.length = lampi.length = anelli.length = codaFeste.length = 0; nP = 0;
+  for (const s of SCOPERTE) scoperto[s[0]] = false;
+  BASE4.forEach(id => scoperto[id] = true); nScoperte = 4;
+  cicloLuce = 0.06; ultimaScoperta = performance.now(); elFeste.innerHTML = '';
+  rifaiCarte(); aggiornaConto(false);
+}
+
+// ===================== MISURE, DISEGNO DI OGNI FOTOGRAMMA, AVVIO =====================
+function dimensiona() {
+  const r = elBox.getBoundingClientRect(), bordo = stile === 1 ? 0 : 3;
+  const lato = Math.max(1, Math.min((r.width - 16 - bordo * 2) / W, (r.height - 8 - bordo * 2) / H));
+  const cssW = Math.floor(lato * W), cssH = Math.floor(lato * H);
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.style.width = cssW + 'px'; cv.style.height = cssH + 'px';
+  cw = cv.width = Math.round(cssW * dpr); ch = cv.height = Math.round(cssH * dpr); cs = cw / W;
+  disegnaFondo(); preparaSprite();
+}
+const liscio = (a, b, x) => { const t = limita((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+function disegnaOmini() {
+  for (const o of omini) {
+    if (o.stato === 3) continue;
+    const fr = o.stato === 1 || o.stato === 4 ? 0 : ((o.passo * 2.2) | 0) & 1;
+    const spr = SPRITE[o.colore][fr * 2 + (o.dir > 0 ? 1 : 0)];
+    let x = o.x * cs - spr.width / 2, y = (o.y + 1) * cs - spr.height;
+    if (o.stato === 2) y -= Math.abs(Math.sin(o.passo * 3)) * cs * 0.8;
+    if (o.stato === 1) y += cs * 0.4;
+    const inAcqua = tipo[Math.min(H - 1, o.y + 1) * W + (o.x | 0)] === ACQUA;
+    if (inAcqua && o.nuovo <= 0) {
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, cw, (o.y + 1.3) * cs); ctx.clip();
+      ctx.drawImage(spr, Math.round(x), Math.round(y + cs * 2)); ctx.restore();
+      if (o.bollaT > 0) disegnaBolla(o.x * cs + cs * 1.4, (o.y - 2.6) * cs, o.bolla);
+      continue;
+    }
+    if (o.nuovo > 0) { const k = 1 - o.nuovo / 30, s = 0.3 + 0.7 * k + Math.sin(k * 3.14) * 0.3; ctx.save(); ctx.translate(o.x * cs, (o.y + 1) * cs); ctx.scale(s, s); ctx.drawImage(spr, -spr.width / 2, -spr.height); ctx.restore(); }
+    else ctx.drawImage(spr, Math.round(x), Math.round(y));
+    if (o.bollaT > 0) disegnaBolla(o.x * cs + cs * 1.4, (o.y - 4.6) * cs, o.bolla);
+  }
+}
+function disegnaBolla(x, y, b) {
+  const r = cs * 1.3;
+  ctx.fillStyle = '#fff'; ctx.strokeStyle = stile === 2 ? '#1d1d1d' : 'rgba(0,0,0,.4)'; ctx.lineWidth = Math.max(1, cs * 0.18);
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill(); ctx.stroke();
+  ctx.font = '900 ' + Math.round(r * 1.5) + 'px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (b === 1) { ctx.fillStyle = '#e8352b'; ctx.fillText('!', x, y + r * 0.08); }
+  else if (b === 3) { ctx.fillStyle = '#ff5a8a'; ctx.fillText('♥', x, y + r * 0.1); }
+  else { ctx.fillStyle = '#3b8fd9'; ctx.beginPath(); ctx.moveTo(x, y - r * 0.7); ctx.quadraticCurveTo(x + r * 0.6, y + r * 0.1, x, y + r * 0.6); ctx.quadraticCurveTo(x - r * 0.6, y + r * 0.1, x, y - r * 0.7); ctx.fill(); }
+}
+let lunaTela = null;
+function luna(mr) {
+  if (lunaTela && lunaTela._r === mr && lunaTela._s === stile) return lunaTela;
+  const c = document.createElement('canvas'); c.width = c.height = Math.ceil(mr * 2 + 8); const q = c.getContext('2d'), m = mr + 4;
+  q.fillStyle = '#fff4c8'; q.beginPath(); q.arc(m, m, mr, 0, 6.283); q.fill();
+  if (stile === 2) { q.strokeStyle = '#1d1d1d'; q.lineWidth = 3 * dpr; q.stroke(); }
+  q.globalCompositeOperation = 'destination-out'; q.beginPath(); q.arc(m + mr * 0.5, m - mr * 0.25, mr * 0.82, 0, 6.283); q.fill();
+  c._r = mr; c._s = stile; lunaTela = c; return c;
+}
+const COLORI_LUCI = ['#ff5a5a', '#ffd23a', '#5ad1ff', '#7dff6a', '#ff8ad8'];
+function disegnaGhirlande(notte) {
+  if (!scoperto.villaggio || case_.length < 2) return;
+  const cc = case_.slice().sort((a, b) => a.x0 - b.x0);
+  for (let k = 0; k + 1 < cc.length; k++) {
+    const a = cc[k], b = cc[k + 1]; if (b.x0 - a.x0 > 30) continue;
+    const x1 = (a.x0 + 8.6) * cs, y1 = (a.y0 + 4.2) * cs, x2 = (b.x0 + 0.4) * cs, y2 = (b.y0 + 4.2) * cs, mx = (x1 + x2) / 2, my = Math.max(y1, y2) + cs * 3;
+    ctx.strokeStyle = stile === 2 ? '#1d1d1d' : '#4a3a3a'; ctx.lineWidth = Math.max(1, cs * 0.15);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
+    for (let s = 1; s < 8; s++) {
+      const t = s / 8, x = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * mx + t * t * x2, y = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * my + t * t * y2;
+      ctx.fillStyle = COLORI_LUCI[s % 5]; ctx.beginPath(); ctx.arc(x, y + cs * 0.4, cs * 0.45, 0, 6.283); ctx.fill();
+      if (notte > 0.2) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = notte * 0.6; const z = cs * 4; ctx.drawImage(alone, x - z / 2, y - z / 2, z, z); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
+    }
+  }
+}
+function disegnaLampi() {
+  for (let k = lampi.length - 1; k >= 0; k--) {
+    const l = lampi[k]; if (--l.t <= 0) { lampi.splice(k, 1); continue; }
+    if (l.t % 4 === 1) continue;
+    const tracc = (w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineJoin = 'round'; ctx.beginPath(); for (let p = 0; p < l.pts.length; p += 2) ctx.lineTo(l.pts[p] * cs, l.pts[p + 1] * cs); ctx.stroke(); };
+    if (stile === 2) { tracc(cs * 1.6, '#1d1d1d'); tracc(cs * 0.9, '#ffe600'); }
+    else { tracc(cs * 1.8, 'rgba(255,250,190,.45)'); tracc(cs * 0.6, '#ffffff'); }
+  }
+}
+function disegnaMira() {
+  if (!mira) return;
+  const x = (mira.x + 0.5) * cs, y = (mira.y + 0.5) * cs, pul = 1 + Math.sin(fot * 0.25) * 0.15;
+  ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.beginPath(); ctx.arc(x, y, cs * 3.2 * pul, 0, 6.283); ctx.fill();
+  ctx.strokeStyle = stile === 2 ? '#1d1d1d' : '#fff'; ctx.lineWidth = Math.max(2, cs * 0.35); ctx.stroke();
+  const s = mira.s;
+  if (s && s.box) {
+    ctx.save(); ctx.setLineDash([cs * 0.8, cs * 0.5]); ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = Math.max(2, cs * 0.4);
+    ctx.beginPath(); ctx.roundRect(s.box[0] * cs, s.box[1] * cs, s.box[2] * cs, s.box[3] * cs, cs); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = 'rgba(255,240,150,.18)'; ctx.fillRect(s.box[0] * cs, s.box[1] * cs, s.box[2] * cs, s.box[3] * cs);
+  }
+  if (s && s.nome) {
+    ctx.font = '800 ' + Math.round(13 * dpr) + 'px ' + getComputedStyle(document.body).fontFamily;
+    const tw = ctx.measureText(s.nome).width + 14 * dpr, th = 22 * dpr;
+    let lx = x + cs * 4, ly = y - th / 2; if (lx + tw > cw) lx = x - cs * 4 - tw;
+    ctx.fillStyle = 'rgba(30,20,40,.82)'; ctx.beginPath(); ctx.roundRect(lx, ly, tw, th, 8 * dpr); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(s.nome, lx + 7 * dpr, ly + th / 2 + 1);
+  }
+}
+function disegna() {
+  const p = cicloLuce, tram = liscio(0.5, 0.6, p) * (1 - liscio(0.62, 0.72, p)), notte = liscio(0.62, 0.72, p) * (1 - liscio(0.9, 0.98, p)), alba = liscio(0.9, 0.95, p) * (1 - liscio(0.95, 1, p));
+  let dentro = false; for (const c of case_) if (c.dentro) dentro = true;
+  finestreAccese = notte > 0.3 || dentro;
+  disegnaGranelli();
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(fondo, 0, 0);
+  ctx.imageSmoothingEnabled = stile === 1; ctx.drawImage(tela, 0, 0, cw, ch);
+  ctx.imageSmoothingEnabled = true;
+  disegnaOmini();
+  if (tram > 0.01) { ctx.fillStyle = 'rgba(255,110,60,' + (0.2 * tram).toFixed(3) + ')'; ctx.fillRect(0, 0, cw, ch); }
+  if (alba > 0.01) { ctx.fillStyle = 'rgba(255,160,200,' + (0.15 * alba).toFixed(3) + ')'; ctx.fillRect(0, 0, cw, ch); }
+  if (notte > 0.01) {
+    ctx.fillStyle = 'rgba(20,24,80,' + (0.42 * notte).toFixed(3) + ')'; ctx.fillRect(0, 0, cw, ch);
+    ctx.fillStyle = '#fffbe0';
+    for (const s of STELLE) { ctx.globalAlpha = notte * (0.5 + 0.5 * Math.sin(fot * 0.05 + s[2] * 9)); const z = Math.max(1.5, cs * 0.3); ctx.fillRect(s[0] * cw, s[1] * ch, z, z); }
+    // la luna prende il posto del sole
+    const mx = cw * 0.8, my = ch * (stile === 0 ? 0.12 : 0.13), mr = cw * (stile === 2 ? 0.075 : 0.06);
+    ctx.globalAlpha = Math.min(1, notte * 1.2);
+    const g = ctx.createRadialGradient(mx, my, mr * 0.6, mx, my, mr * 2.6); g.addColorStop(0, 'rgba(40,42,96,.97)'); g.addColorStop(0.55, 'rgba(40,42,96,.75)'); g.addColorStop(1, 'rgba(40,42,96,0)');
+    ctx.fillStyle = g; ctx.fillRect(mx - mr * 2.6, my - mr * 2.6, mr * 5.2, mr * 5.2);
+    ctx.drawImage(luna(mr), mx - mr - 4, my - mr - 4);
+    ctx.globalAlpha = 1;
+  }
+  calcolaLuce(); disegnaLuce(notte); disegnaGhirlande(notte);
+  disegnaParticelle(); disegnaAnelli(); disegnaLampi(); disegnaMira();
+  if (lampoSchermo > 0) { ctx.fillStyle = 'rgba(255,255,240,' + (lampoSchermo * 0.55).toFixed(3) + ')'; ctx.fillRect(0, 0, cw, ch); lampoSchermo -= 0.12; }
+}
+function simula(ora) {
+  passo(); crescePiante(); aggiornaOmini(); eventi(); muoviParticelle(); versaContinua(ora);
+  cicloLuce += 1 / (60 * 140); if (cicloLuce >= 1) cicloLuce -= 1;
+  if (fot % 20 === 0) for (const c of case_) if (c.dentro) fumo(c.x0 + 6, c.y0 - 1);
+  if (conteggi[FIAMMA] + conteggi[BRACE] > 25 && fot % 5 === 0 && R() < 0.5) suona('fuoco');
+}
+const misure = { lavoro: [], intervalli: [] };
+let ultimo = performance.now(), accumulo = 0;
+function fotogramma(ora) {
+  requestAnimationFrame(fotogramma);
+  let dt = ora - ultimo; ultimo = ora; if (dt > 100) dt = 100;
+  accumulo += dt;
+  const t0 = performance.now();
+  let passi = 0;
+  while (accumulo >= 16.6 && passi < 2) { simula(ora); accumulo -= 16.6; passi++; }
+  if (passi === 2) accumulo = Math.min(accumulo, 16.6);
+  if (passi) disegna();
+  gestisciFeste(ora); consiglio(ora);
+  misure.lavoro.push(performance.now() - t0); misure.intervalli.push(dt);
+  if (misure.lavoro.length > 600) { misure.lavoro.shift(); misure.intervalli.shift(); }
+}
+
+// per le prove automatiche
+window.__prova = {
+  stato: () => ({ scoperte: SCOPERTE.filter(s => scoperto[s[0]]).map(s => s[0]), omini: omini.length, piante: piante.filter(p => !p.morta).map(p => p.fase), case: case_.length, conteggi: Array.from(conteggi), fot }),
+  cellaInPx: (x, y) => { const r = cv.getBoundingClientRect(); return [r.left + (x + 0.5) * r.width / W, r.top + (y + 0.5) * r.height / H]; },
+  carta: id => { const c = elCarte.querySelector('[data-id="' + id + '"]'); if (!c) return null; let r = c.getBoundingClientRect(); const rs = elScorri.getBoundingClientRect(); if (r.left < rs.left || r.right > rs.right) { c.scrollIntoView({ inline: 'nearest', block: 'nearest' }); r = c.getBoundingClientRect(); } return [r.left + r.width / 2, r.top + r.height / 2]; },
+  cima: x => cima(x, 4), tipo: (x, y) => tipo[y * W + x], misure, avanti: n => { for (let k = 0; k < n; k++) simula(performance.now()); },
+  luce: v => { cicloLuce = v; }, dove: id => { for (let i = 0; i < N; i++) if (tipo[i] === id) return [i % W, (i / W) | 0]; return null; },
+  piante: () => piante.filter(p => !p.morta).map(p => ({ x: p.x, y: p.y, fase: p.fase, h: p.h })),
+};
+
+costruisciPalette(); costruisciTrame(); costruisciBordi();
+ricomincia(); cambiaModo('carte'); dimensiona();
+window.addEventListener('resize', dimensiona);
+requestAnimationFrame(fotogramma);
+</script>
+</body>
+</html>
