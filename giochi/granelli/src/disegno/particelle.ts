@@ -6,6 +6,11 @@ export const SBUFFO = 3;
 export const CUORE = 4;
 export const ANELLO = 5;
 export const SPRUZZO = 6;
+/** Una stellina colorata: la festa delle miscele leggendarie ha tutti i colori dell'arcobaleno. */
+export const COLORATA = 7;
+
+/** I colori delle stelline della festa leggendaria (rosso, arancio, giallo, verde, azzurro, viola). */
+const ARCOBALENO = ['255,90,90', '255,160,60', '255,230,90', '120,230,110', '110,190,255', '200,130,255'];
 
 interface Particella {
   tipo: number;
@@ -53,6 +58,22 @@ export class Particelle {
     }
   }
 
+  /**
+   * La festa di una miscela rara (forza 2) o leggendaria (forza 3): più anelli e più stelline di una scoperta
+   * qualsiasi, e per la leggendaria stelline di tutti i colori che volano più lontano.
+   */
+  festa(x: number, y: number, forza: 2 | 3): void {
+    const grande = forza === 3;
+    const anelli = grande ? 4 : 2;
+    for (let k = 0; k < anelli; k++) this.aggiungi(ANELLO, x, y, 0, 0, 1.2 + k * 0.45, grande ? 1 + k * 0.6 : 0.6 + k * 0.35);
+    const n = grande ? 90 : 40;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + Math.random() * 0.3;
+      const v = 10 + Math.random() * (grande ? 40 : 18);
+      this.aggiungi(grande ? COLORATA : STELLINA, x, y, Math.cos(a) * v, Math.sin(a) * v - 5, 0.9 + Math.random() * (grande ? 1.4 : 0.9), (grande ? 1.2 : 0.9) + Math.random());
+    }
+  }
+
   sbuffo(x: number, y: number): void {
     for (let i = 0; i < 12; i++) {
       this.aggiungi(SBUFFO, x + Math.random() - 0.5, y + Math.random() * 2 - 1, (Math.random() - 0.5) * 6, -2 - Math.random() * 5, 0.6 + Math.random() * 0.6, 0.7 + Math.random());
@@ -83,6 +104,7 @@ export class Particelle {
           p.vy = Math.cos(p.eta * 1.7 + p.seme * 2) * 1.4 - 0.3;
           break;
         case STELLINA:
+        case COLORATA:
           p.vx *= 1 - 3 * dt;
           p.vy = p.vy * (1 - 3 * dt) + 14 * dt;
           break;
@@ -121,6 +143,13 @@ export class Particelle {
           ctx.globalCompositeOperation = 'lighter';
           const l = lato * (1 - k * 0.6) * (0.7 + 0.3 * Math.sin(p.eta * 30 + p.seme));
           ctx.fillStyle = `rgba(255,214,90,${1 - k * k})`;
+          ctx.fillRect(x - l / 2, y - l / 2, l, l);
+          break;
+        }
+        case COLORATA: {
+          ctx.globalCompositeOperation = 'lighter';
+          const l = lato * (1 - k * 0.5) * (0.7 + 0.3 * Math.sin(p.eta * 30 + p.seme));
+          ctx.fillStyle = `rgba(${ARCOBALENO[(p.seme | 0) % ARCOBALENO.length]},${1 - k * k})`;
           ctx.fillRect(x - l / 2, y - l / 2, l, l);
           break;
         }

@@ -237,6 +237,11 @@ export class Pittore {
     this.particelle.scoppio(x + 0.5, y + 0.5);
   }
 
+  /** La festa più grande, per una miscela rara (2) o leggendaria (3). */
+  festa(x: number, y: number, forza: 2 | 3): void {
+    this.particelle.festa(x + 0.5, y + 0.5, forza);
+  }
+
   sbuffo(x: number, y: number): void {
     this.particelle.sbuffo(x + 0.5, y + 0.5);
   }

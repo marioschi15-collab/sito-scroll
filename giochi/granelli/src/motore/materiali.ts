@@ -112,10 +112,31 @@ export interface Sostanza {
   nutre: number;
   esplode: number;
   corrode: number;
+  /** Più leggera dell'aria: una polvere o un liquido che sale verso il cielo invece di cadere. */
+  vola: number;
+  /** Appiccicosa: una polvere o un liquido che resta attaccato alle pareti e ai soffitti. */
+  appiccica: number;
+  /** Fa sbocciare i fiori sull'erba che tocca. */
+  fiorisce: number;
+  /** Un liquido che dà il suo colore all'acqua che tocca. */
+  tinge: number;
+  /** Fa presa: la terra, la sabbia e il fango che tocca diventano pietra, e lei con loro. */
+  indurisce: number;
+  /** Un gas che si fa nuvola, e la nuvola porta pioggia. */
+  piove: number;
+  /**
+   * Il materiale da cui una miscela prende la radice del nome («di fango», «di brace»): per un materiale è lui
+   * stesso, per una miscela quello del genitore che conta di più.
+   */
+  radice: number;
 }
 
 /** I tratti che si ereditano mescolando (oltre a stato, colore, peso e scorrevolezza). */
-export const TRATTI = ['calore', 'brucia', 'luce', 'fertile', 'vivo', 'veleno', 'nutre', 'esplode', 'corrode'] as const;
+export const TRATTI = [
+  'calore', 'brucia', 'luce', 'fertile', 'vivo', 'veleno', 'nutre', 'esplode', 'corrode',
+  'vola', 'appiccica', 'fiorisce', 'tinge', 'indurisce', 'piove',
+] as const;
+export type Tratto = (typeof TRATTI)[number];
 
 export const STATO = new Uint8Array(N_TIPI);
 /** Il carattere dei materiali scritti a mano (null per quelli che non si possono mescolare). */
@@ -123,7 +144,10 @@ export const BASE: (Sostanza | null)[] = new Array<Sostanza | null>(N_BASE).fill
 
 function base(t: number, stato: number, colore: [number, number, number], tratti: Partial<Sostanza> = {}): void {
   STATO[t] = stato;
-  BASE[t] = { stato, colore, peso: 0.5, scorre: 0.5, calore: 0, brucia: 0, luce: 0, fertile: 0, vivo: 0, veleno: 0, nutre: 0, esplode: 0, corrode: 0, ...tratti };
+  BASE[t] = {
+    stato, colore, peso: 0.5, scorre: 0.5, calore: 0, brucia: 0, luce: 0, fertile: 0, vivo: 0, veleno: 0, nutre: 0, esplode: 0, corrode: 0,
+    vola: 0, appiccica: 0, fiorisce: 0, tinge: 0, indurisce: 0, piove: 0, radice: t, ...tratti,
+  };
 }
 base(M.TERRA, POLVERE, [150, 98, 64], { peso: 0.6, scorre: 0.35, fertile: 0.35 });
 base(M.ACQUA, LIQUIDO, [58, 140, 230], { peso: 0.5, scorre: 0.9, calore: -0.15 });
@@ -186,3 +210,7 @@ export const ALBERO = 100;
  * passano davanti; e una costruzione non ci si appoggia sopra. Il legno versato da chi gioca (dato 0) resta un muro.
  */
 export const TRONCO = 1;
+
+/** Ciò che nemmeno l'acido (o una miscela corrosiva) riesce a intaccare. */
+export const RESISTE = new Uint8Array(N_TIPI);
+for (const t of [M.VUOTO, M.ROCCIA, M.VETRO, M.DIAMANTE, M.OSSIDIANA, M.BRACE]) RESISTE[t] = 1;

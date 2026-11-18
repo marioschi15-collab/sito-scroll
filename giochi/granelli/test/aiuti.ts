@@ -93,6 +93,29 @@ export function primaGenerazione(m: Mondo): Miscela[] {
   return tutte;
 }
 
+/**
+ * La prima miscela di seconda generazione (una di prima generazione con un materiale) che va bene ad `adatta`:
+ * si fanno nascere una alla volta, finché se ne trova una.
+ */
+export function secondaGenerazione(m: Mondo, adatta: (x: Miscela) => boolean): Miscela | undefined {
+  for (const p of primaGenerazione(m)) {
+    for (let b = 1; b < N_BASE; b++) {
+      const id = m.registra(p.id, b);
+      if (id < 0) continue;
+      const x = { id, a: Math.min(p.id, b), b: Math.max(p.id, b), s: m.sostanzaDi(id)! };
+      if (adatta(x)) return x;
+    }
+  }
+  return undefined;
+}
+
+/** La prima miscela con un certo carattere (di prima generazione, se c'è), e il numero con cui sta nelle celle. */
+export function cercaMiscela(m: Mondo, adatta: (x: Miscela) => boolean): { x: Miscela; t: number } {
+  const x = primaGenerazione(m).find(adatta) ?? secondaGenerazione(m, adatta);
+  if (!x) throw new Error('nessuna miscela di prima o seconda generazione ha questo carattere');
+  return { x, t: m.tipoPer(x.id) };
+}
+
 // ── Mondi veri: grandi come quello del gioco, con il suo terreno ─────────────────
 
 /** Quanti istanti dura un giorno del mondo (lo stesso numero di src/motore/tempo.ts). */

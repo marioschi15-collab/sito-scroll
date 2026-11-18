@@ -1,8 +1,8 @@
 import { SOLO_NEL_MONDO, esitoDi, fenomenoDi } from './motore/esiti.js';
-import { OMINO, PRIMA_ID_MISCELA } from './motore/materiali.js';
+import { OMINO } from './motore/materiali.js';
 import type { Mondo } from './motore/mondo.js';
 import { rigaDelNiente } from './indizi.js';
-import { UNISCI } from './righe.js';
+import { MISCELA, UNISCI } from './righe.js';
 
 /** Quello che il pannello Unisci mostra dopo un'unione: un titolo, la cosa nata (se c'è), una riga sotto, e se è nuova. */
 export interface Risposta {
@@ -12,6 +12,8 @@ export interface Risposta {
   nuova: boolean;
   /** Le due cose non hanno dato niente (anche «per ora»): conta per l'indizio che arriva dopo tre «niente» di fila. */
   niente?: true;
+  /** È nata una miscela nuova rara o leggendaria: il pannello la festeggia di più. */
+  rara?: 'rara' | 'leggendaria';
 }
 
 /**
@@ -44,6 +46,10 @@ export function rispostaDiUnisci(mondo: Mondo, a: number, b: number, colonna: nu
     const sotto = mondo.omini.length > 0 ? UNISCI.arrivati : UNISCI.arriveranno;
     return { titolo: nuova ? 'Nuova scoperta!' : insieme, id: nato, sotto, nuova };
   }
-  if (nuova) return { titolo: nato >= PRIMA_ID_MISCELA ? 'Nuova miscela!' : 'Nuova scoperta!', id: nato, sotto: insieme, nuova: true };
+  if (nuova) {
+    const rara = mondo.rarita(nato);
+    if (rara === 'rara' || rara === 'leggendaria') return { titolo: MISCELA[rara], id: nato, sotto: insieme, nuova: true, rara };
+    return { titolo: rara ? `${MISCELA.comune}!` : 'Nuova scoperta!', id: nato, sotto: insieme, nuova: true };
+  }
   return { titolo: provata ? UNISCI.giaFatta : 'La conosci già', id: nato, sotto: insieme, nuova: false };
 }

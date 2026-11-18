@@ -41,6 +41,20 @@ export const UNISCI = {
   arriveranno: NON_QUI.acqua,
 } as const;
 
+/**
+ * Le parole delle miscele: la parola sopra il nome quando ne nasce una (più festosa se è rara o leggendaria), il
+ * timbro nel Libro, e il nome delle miscele d'autore, quelle con la stellina.
+ */
+export const MISCELA = {
+  comune: 'Nuova miscela',
+  rara: 'Miscela rara!',
+  leggendaria: 'Miscela leggendaria!',
+  timbro: { rara: 'Rara', leggendaria: 'Leggendaria' },
+  autore: '★ Miscela d’autore',
+  semplice: 'Miscela',
+  premessa: 'Le più fortunate sono rare, e qualcuna leggendaria. Quelle con la stellina hanno un nome scritto apposta.',
+} as const;
+
 /** Il saluto a chi aveva il Mestolo in una partita di prima: detto una volta sola, alla prima apertura. */
 export const ADDIO_MESTOLO = 'Il Mestolo non c’è più. Le cose si uniscono nel pannello Unisci, e presto anche portandole una sopra l’altra nel mondo.';
 

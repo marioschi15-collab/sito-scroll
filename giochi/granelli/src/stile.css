@@ -24,6 +24,9 @@
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  /* Il carattere a quadretti unisce «fi» e «fl» in un segno solo che si legge «R»: «di fiamma» diventava «di Ramma».
+     Serve !important perché ogni `font:` scritto per esteso rimetterebbe le legature. */
+  font-variant-ligatures: none !important;
 }
 
 html,
@@ -934,4 +937,68 @@ button.voce:active {
 /* Nella testa di Unisci il tasto Indizio sta accanto a «Chiudi», non in mezzo. */
 .scheda-testa .tasto-indizio {
   margin-left: auto;
+}
+
+/* ── Miscele rare e leggendarie: un bordo azzurro, o di tutti i colori che girano; il timbro nel Libro ── */
+.avviso.rara,
+.esito.nuova.rara,
+.voce.rara {
+  border: 2px solid #7fd4ff;
+  box-shadow: 0 8px 30px #000a, 0 0 26px #7fd4ff55;
+}
+.avviso.rara .avviso-sopra,
+.esito.nuova.rara .avviso-sopra {
+  color: #7fd4ff;
+}
+.avviso.leggendaria,
+.esito.nuova.leggendaria,
+.voce.leggendaria {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(#1b2340, #1b2340) padding-box,
+    linear-gradient(90deg, #ff5a5a, #ffa03c, #ffe65a, #78e66e, #6ebeff, #c882ff) border-box;
+  animation: arcobaleno 2.4s linear infinite;
+}
+.avviso.leggendaria .avviso-sopra,
+.esito.nuova.leggendaria .avviso-sopra {
+  color: #ffe65a;
+}
+@keyframes arcobaleno {
+  0% {
+    box-shadow: 0 8px 30px #000a, 0 0 26px #ff5a5a66;
+  }
+  33% {
+    box-shadow: 0 8px 30px #000a, 0 0 30px #ffe65a77;
+  }
+  66% {
+    box-shadow: 0 8px 30px #000a, 0 0 30px #6ebeff77;
+  }
+  100% {
+    box-shadow: 0 8px 30px #000a, 0 0 26px #ff5a5a66;
+  }
+}
+.timbro {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 1px 8px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  transform: rotate(-4deg);
+  font: 600 13px/1.3 var(--titoli);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.timbro.rara {
+  color: #7fd4ff;
+}
+.timbro.leggendaria {
+  color: #ffe65a;
+  text-shadow: 0 0 8px #ff8ad8;
+}
+@media (prefers-reduced-motion: reduce) {
+  .avviso.leggendaria,
+  .esito.nuova.leggendaria,
+  .voce.leggendaria {
+    animation: none;
+  }
 }

@@ -25,8 +25,11 @@ export interface Salvato {
   tinta: string;
   omini: Omino[];
   tic: number;
-  /** Le miscele conosciute: numero, i due ingredienti, il nome. */
-  ricette?: [number, number, number, string][];
+  /**
+   * Le miscele conosciute: numero, i due ingredienti, il nome, e 2 per quelle nate con le regole di adesso (nomi
+   * parlanti e caratteri nuovi). Senza il 2 è una miscela delle partite di prima, che tiene le regole di allora.
+   */
+  ricette?: ([number, number, number, string] | [number, number, number, string, 2])[];
   /** Quale miscela occupa quale posto nelle celle di questo mondo. */
   posti?: [number, number][];
   /**
@@ -92,7 +95,7 @@ export function fotografa(m: Mondo, extra?: unknown): Salvato {
     tinta: inTesto(m.tinta),
     omini: m.omini.map((o) => ({ ...o })),
     tic: m.tic,
-    ricette: [...m.ricettario].map(([id, r]) => [id, r.a, r.b, r.nome]),
+    ricette: [...m.ricettario].map(([id, r]) => (r.prima ? [id, r.a, r.b, r.nome] : [id, r.a, r.b, r.nome, 2])),
     posti,
     cose: m.cose.map((c) => (c.sa ? { id: c.id, x: c.x, y: c.y, n: c.n, sa: [...c.sa] } : { id: c.id, x: c.x, y: c.y, n: c.n })),
     creature: m.creature.map((c) => ({ id: c.id, x: c.x, y: c.y, dir: c.dir })),
@@ -112,13 +115,14 @@ export function fotografa(m: Mondo, extra?: unknown): Salvato {
  * chiamano a vicenda non rompono niente. Restituisce quante ricette sono rimaste fuori.
  */
 export function ricopiaRicette(m: Mondo, ricette: readonly unknown[]): number {
-  const buone: [number, number, number, string][] = [];
+  const buone: [number, number, number, string, boolean][] = [];
   for (const r of ricette) {
-    if (!Array.isArray(r) || r.length !== 4) continue;
+    // Quattro voci: una miscela delle partite di prima; cinque, con il 2 in fondo: una nata con le regole di adesso.
+    if (!Array.isArray(r) || (r.length !== 4 && (r.length !== 5 || r[4] !== 2))) continue;
     const [id, a, b, nome] = r as unknown[];
     if (!Number.isInteger(id) || (id as number) < PRIMA_ID_MISCELA || !Number.isInteger(a) || !Number.isInteger(b)) continue;
     if (typeof nome !== 'string') continue;
-    buone.push([id as number, a as number, b as number, nome]);
+    buone.push([id as number, a as number, b as number, nome, r.length === 4]);
   }
   const noto = (id: number): boolean => (id >= PRIMA_ID_MISCELA ? m.ricettario.has(id) : id >= 0 && id < N_BASE);
   // Si ripassa la lista finché entra qualcosa: un figlio scritto prima dei genitori entra al giro dopo.
@@ -129,7 +133,7 @@ export function ricopiaRicette(m: Mondo, ricette: readonly unknown[]): number {
     entrate = 0;
     for (const r of resto) {
       if (!m.ricettario.has(r[0]) && noto(r[1]) && noto(r[2])) {
-        m.ricettario.set(r[0], { a: r[1], b: r[2], nome: r[3] });
+        m.ricettario.set(r[0], r[4] ? { a: r[1], b: r[2], nome: r[3], prima: true } : { a: r[1], b: r[2], nome: r[3] });
         entrate++;
       } else ancora.push(r);
     }

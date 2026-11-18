@@ -5,6 +5,7 @@ import type { Mondo } from './motore/mondo.js';
 import { descriviMiscela, etichette } from './motore/nomi.js';
 import type { Finestre } from './finestre.js';
 import { el } from './pagina.js';
+import { MISCELA } from './righe.js';
 import { INIZIALI, type Voce, capitoli, voce as voceDi, voci, vociDelCapitolo } from './contenuti/registro.js';
 
 /** Quello che il libro deve sapere del gioco per mostrarsi. */
@@ -102,8 +103,12 @@ function riempiLibro(scheda: HTMLDivElement, chiudi: () => void, dati: PerIlLibr
     indietro.addEventListener('click', () => elenco());
     const intestazione = el('div', 'voce-testa');
     const titoli2 = el('div', 'voce-titoli');
-    const capitoloNome = ricetta ? 'Miscela' : (capitoli().find(([chiave]) => chiave === voce?.famiglia)?.[1] ?? '');
+    const firmata = mondo.firmata(id);
+    const capitoloNome = ricetta ? (firmata ? MISCELA.autore : MISCELA.semplice) : (capitoli().find(([chiave]) => chiave === voce?.famiglia)?.[1] ?? '');
     titoli2.append(el('span', 'voce-capitolo', capitoloNome), el('h2', '', nomeDi(mondo, id)));
+    // Il timbro delle miscele rare e leggendarie, accanto al nome: si vede appena si apre la pagina.
+    const rara = mondo.rarita(id);
+    if (rara === 'rara' || rara === 'leggendaria') titoli2.append(el('span', `timbro ${rara}`, MISCELA.timbro[rara]));
     const cartellini = el('div', 'cartellini');
     if (sostanza) for (const parola of etichette(sostanza)) cartellini.append(el('span', 'cartellino', parola));
     if (ricetta) cartellini.append(el('span', 'cartellino', `Generazione ${mondo.generazione(id)}`));
@@ -111,7 +116,7 @@ function riempiLibro(scheda: HTMLDivElement, chiudi: () => void, dati: PerIlLibr
     intestazione.append(tondino(mondo, id, 'pallino enorme'), titoli2);
     corpo.append(indietro, intestazione);
 
-    corpo.append(el('p', 'voce-racconto', voce ? voce.descrizione : sostanza ? descriviMiscela(sostanza) : ''));
+    corpo.append(el('p', 'voce-racconto', voce ? voce.descrizione : sostanza ? descriviMiscela(sostanza, firmata) : ''));
 
     if (ricetta) corpo.append(blocco('Nasce da', fila([ricetta.a, ricetta.b], '+'), el('p', 'nota', 'Nata unendo queste due cose.')));
     else if (voce && voce.nasce.length > 0) {
@@ -170,7 +175,11 @@ function riempiLibro(scheda: HTMLDivElement, chiudi: () => void, dati: PerIlLibr
   function cartella(id: number, trovata: boolean, sotto: string): HTMLElement {
     const b = el(trovata ? 'button' : 'div', trovata ? 'voce' : 'voce ignota');
     const testi = el('span', 'voce-testi');
-    testi.append(el('strong', '', trovata ? nomeDi(mondo, id) : '???'), el('span', '', sotto));
+    // Le miscele d'autore hanno la stellina davanti al nome; le rare e le leggendarie il bordo del loro timbro.
+    const rara = trovata ? mondo.rarita(id) : null;
+    if (rara === 'rara' || rara === 'leggendaria') b.classList.add(rara);
+    const nome = trovata ? `${mondo.firmata(id) ? '★ ' : ''}${nomeDi(mondo, id)}` : '???';
+    testi.append(el('strong', '', nome), el('span', '', sotto));
     b.append(trovata ? tondino(mondo, id, 'pallino grande') : el('span', 'pallino grande', '?'), testi);
     if (trovata) b.addEventListener('click', () => pagina(id));
     return b;
@@ -198,7 +207,7 @@ function riempiLibro(scheda: HTMLDivElement, chiudi: () => void, dati: PerIlLibr
           'p',
           'libro-premessa',
           siMescola
-            ? 'Unisci due cose che non hanno una ricetta: nasce una miscela nuova, con il suo nome e il suo carattere. Poi unisci le miscele tra loro. Non finiscono mai.'
+            ? `Unisci due cose che non hanno una ricetta: nasce una miscela nuova, con il suo nome e il suo carattere. Poi unisci le miscele tra loro. Non finiscono mai. ${MISCELA.premessa}`
             : 'Questo capitolo si apre quando il Libro avrà dodici voci: da lì anche le cose senza una ricetta si uniscono, e nasce una miscela nuova.',
         ),
       );

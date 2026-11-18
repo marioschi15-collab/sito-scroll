@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { C } from '../src/motore/cose.js';
 import { ESPLOSIONE, GAS, LIQUIDO, M, N_BASE, POLVERE, PRIMA_ID_MISCELA, PRIMA_MISCELA, SOLIDO } from '../src/motore/materiali.js';
 import { SOGLIA, faMale, idMiscela, siMangia, tratti } from '../src/motore/miscele.js';
-import type { Mondo } from '../src/motore/mondo.js';
 import { descriviMiscela, etichette } from '../src/motore/nomi.js';
-import { type Miscela, conca, gira, libroDa12, mondo, primaGenerazione, quanti, riempi, versaPer } from './aiuti.js';
+import { type Miscela, cercaMiscela, conca, gira, libroDa12, mondo, primaGenerazione, quanti, riempi, versaPer } from './aiuti.js';
 
 describe('le miscele', () => {
   it('una coppia già nota dà il suo risultato, mai una miscela: terra e acqua, fango; pietra e acqua, muschio', () => {
@@ -135,15 +134,11 @@ describe('le miscele', () => {
 });
 
 describe('ogni etichetta di una miscela è un effetto vero nel mondo', () => {
-  /** La prima miscela di prima generazione con un certo carattere, e il numero con cui sta nelle celle. */
-  function cerca(m: Mondo, adatta: (x: Miscela) => boolean): { x: Miscela; t: number } {
-    const x = primaGenerazione(m).find(adatta);
-    if (!x) throw new Error('nessuna miscela di prima generazione ha questo carattere');
-    return { x, t: m.tipoPer(x.id) };
-  }
+  const cerca = cercaMiscela;
   /** Una miscela tranquilla: non fa male, non si allarga, non brucia e non esplode. */
   const quieta = (x: Miscela): boolean => !faMale(x.s) && x.s.vivo <= SOGLIA.vivo && x.s.brucia <= SOGLIA.brucia && x.s.esplode <= SOGLIA.esplode;
-  const ferma = (x: Miscela): boolean => x.s.stato === SOLIDO || x.s.stato === POLVERE;
+  /** Sta dove la metti: un solido, o una polvere che non vola via. */
+  const ferma = (x: Miscela): boolean => x.s.stato === SOLIDO || (x.s.stato === POLVERE && !tratti(x.s).includes('vola'));
 
   it('per tutte le miscele di prima generazione, etichette e comportamento hanno le stesse soglie', () => {
     const m = mondo(20, 20);
@@ -200,7 +195,8 @@ describe('ogni etichetta di una miscela è un effetto vero nel mondo', () => {
 
   it('«Esplode» e «Scotta» insieme: non salta da sola, aspetta una fiamma vera', () => {
     const m = mondo();
-    const { t } = cerca(m, (c) => c.s.stato !== GAS && c.s.esplode > SOGLIA.esplode && c.s.calore > SOGLIA.calore && c.s.vivo <= SOGLIA.vivo && c.s.corrode <= SOGLIA.corrode);
+    // Non fertile: sopra una miscela fertile spunta l'erba, che lei stessa accenderebbe (e allora il botto è giusto).
+    const { t } = cerca(m, (c) => ferma(c) && c.s.esplode > SOGLIA.esplode && c.s.calore > SOGLIA.calore && c.s.vivo <= SOGLIA.vivo && c.s.corrode <= SOGLIA.corrode && c.s.fertile <= SOGLIA.fertile);
     riempi(m, 0, 55, 59, 59, M.ROCCIA);
     riempi(m, 20, 51, 39, 54, t);
     gira(m, 600);

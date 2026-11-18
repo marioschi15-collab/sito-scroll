@@ -75,9 +75,9 @@ function riempiUnisci(scheda: HTMLDivElement, chiudi: () => void, mondo: Mondo, 
     return b;
   }
 
-  function mostra(titolo: string, id: number | null, sotto: string, nuova: boolean): void {
+  function mostra(titolo: string, id: number | null, sotto: string, nuova: boolean, rara?: 'rara' | 'leggendaria'): void {
     esito.innerHTML = '';
-    esito.className = nuova ? 'esito nuova' : 'esito';
+    esito.className = nuova ? `esito nuova${rara ? ` ${rara}` : ''}` : 'esito';
     const testi = el('span', 'avviso-testi');
     testi.append(el('span', 'avviso-sopra', titolo));
     if (id !== null) testi.append(el('strong', '', nomeDi(mondo, id)));
@@ -110,7 +110,7 @@ function riempiUnisci(scheda: HTMLDivElement, chiudi: () => void, mondo: Mondo, 
     if (scelte.length === 2) {
       const [a, b] = scelte;
       const r = rispostaDiUnisci(mondo, a, b, colonna(), (id) => nomeDi(mondo, id), suggeritore.nienteInTutto);
-      mostra(r.titolo, r.id, r.sotto, r.nuova);
+      mostra(r.titolo, r.id, r.sotto, r.nuova, r.rara);
       // Al terzo «niente» di fila arriva un indizio da solo, su una delle cose appena provate se si può.
       consiglia(suggeritore.dopo(a, b, r.niente === true, mondo.visti, performance.now()));
       scelte = [];

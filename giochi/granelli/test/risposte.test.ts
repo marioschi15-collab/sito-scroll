@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { INIZIALI, idDi, voce } from '../src/contenuti/registro.js';
 import { C } from '../src/motore/cose.js';
 import { M, OMINO } from '../src/motore/materiali.js';
+import { rarita } from '../src/motore/miscele.js';
 import type { Mondo } from '../src/motore/mondo.js';
 import { NIENTE } from '../src/indizi.js';
-import { ADDIO_MESTOLO, UNISCI } from '../src/righe.js';
+import { ADDIO_MESTOLO, MISCELA, UNISCI } from '../src/righe.js';
 import { leggiRicordi } from '../src/ricordi.js';
 import { rispostaDiUnisci } from '../src/risposta.js';
-import { libroDa12, mondo, riempi } from './aiuti.js';
+import { libroDa12, mondo, primaGenerazione, riempi } from './aiuti.js';
 
 /** Il nome di una scoperta, come lo scrive il pannello (le miscele qui non servono). */
 const nome = (id: number): string => voce(id)?.nome ?? '???';
@@ -47,6 +48,19 @@ describe('il pannello Unisci dice com’è andata', () => {
     libroDa12(m);
     expect(unisci(m, M.SABBIA, M.LEGNO)).toMatchObject({ titolo: 'Nuova miscela!', nuova: true });
     expect(unisci(m, M.LEGNO, M.SABBIA)).toMatchObject({ titolo: 'Già fatta:', nuova: false });
+  });
+
+  it('una miscela rara o leggendaria lo dice, e il pannello sa che deve festeggiarla di più', () => {
+    for (const quale of ['rara', 'leggendaria'] as const) {
+      const prova = libroDa12();
+      // La prima coppia di materiali che dà una miscela di quella rarità (la rarità dipende solo dalla coppia).
+      const coppia = primaGenerazione(mondo(20, 20)).find((x) => rarita(x.s) === quale)!;
+      prova.visti.add(coppia.a).add(coppia.b);
+      const r = unisci(prova, coppia.a, coppia.b);
+      expect(r).toMatchObject({ titolo: MISCELA[quale], id: coppia.id, nuova: true, rara: quale });
+      expect(unisci(prova, coppia.b, coppia.a).rara).toBeUndefined();
+    }
+    expect([MISCELA.rara, MISCELA.leggendaria]).toEqual(['Miscela rara!', 'Miscela leggendaria!']);
   });
 
   it('un mestiere: un omino con la lancia fa il cacciatore', () => {

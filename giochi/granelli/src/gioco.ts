@@ -18,6 +18,7 @@ import {
   ADDIO_MESTOLO,
   ANNUNCIO,
   ARRIVA,
+  MISCELA,
   UNISCI,
   NON_QUI,
   NON_SALVATA,
@@ -447,8 +448,11 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     if (id === undefined) return;
     const a = el('button', 'avviso');
     const testi = el('span', 'avviso-testi');
+    // Una miscela rara o leggendaria lo dice, e il suo avviso ha il bordo azzurro (o di tutti i colori).
+    const rara = mondo.rarita(id);
+    if (rara && rara !== 'comune') a.classList.add(rara);
     testi.append(
-      el('span', 'avviso-sopra', eMiscela(id) ? 'Nuova miscela' : 'Nuova scoperta'),
+      el('span', 'avviso-sopra', rara ? MISCELA[rara] : 'Nuova scoperta'),
       el('strong', '', nomeDi(mondo, id)),
       el('span', 'avviso-sotto', comeNasce(id)),
     );
@@ -493,15 +497,22 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     mondo.botti.length = 0;
     if (mondo.novita.length === 0) return;
     const nuove = mondo.novita.map((n) => n.id);
+    // Una miscela leggendaria scuote il telefono più a lungo di una scoperta qualsiasi.
+    let scossa = 25;
     for (const n of mondo.novita) {
-      pittore.scoppio(n.x, n.y);
+      const rara = mondo.rarita(n.id);
+      if (rara === 'leggendaria') {
+        pittore.festa(n.x, n.y, 3);
+        scossa = 120;
+      } else if (rara === 'rara') pittore.festa(n.x, n.y, 2);
+      else pittore.scoppio(n.x, n.y);
       inCoda.push(n.id);
       prossimoAvviso();
       if (versabile(n.id)) inTavolozza(n.id);
       if (tipoDi(n.id) === 'era') annunciaEra(n.id);
     }
     mondo.novita = [];
-    vibra(25);
+    vibra(scossa);
     ridisegnaTavolozza(nuove);
     salvaTutto();
     // Il Libro completo si festeggia una volta sola: quando arriva l'ultima voce, non a ogni miscela dopo.

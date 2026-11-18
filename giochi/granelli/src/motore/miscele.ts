@@ -1,4 +1,4 @@
-import { GAS, LIQUIDO, POLVERE, PRIMA_ID_MISCELA, SOLIDO, type Sostanza, TRATTI } from './materiali.js';
+import { GAS, LIQUIDO, POLVERE, PRIMA_ID_MISCELA, type Sostanza } from './materiali.js';
 
 /**
  * Il numero di una miscela dipende solo dai suoi due ingredienti (in qualsiasi ordine): la stessa coppia dà
@@ -28,14 +28,30 @@ export function dado(seme: number): () => number {
   };
 }
 
-const stringi = (v: number, da = 0, a = 1): number => Math.max(da, Math.min(a, v));
+export const stringi = (v: number, da = 0, a = 1): number => Math.max(da, Math.min(a, v));
 
 /**
  * Da che valore in su un tratto del carattere conta davvero. Le stesse soglie decidono le etichette che il Libro
- * mostra e quello che la miscela fa nel mondo (mondo.ts): un'etichetta senza effetto sarebbe una bugia.
- * Per il calore la soglia vale nei due versi: sopra scotta, sotto il suo opposto gela.
+ * mostra e quello che la miscela fa nel mondo (mondo.ts, miscele-vive.ts): un'etichetta senza effetto sarebbe una
+ * bugia. Per il calore la soglia vale nei due versi: sopra scotta, sotto il suo opposto gela.
  */
-export const SOGLIA = { calore: 0.5, luce: 0.5, brucia: 0.55, esplode: 0.6, fertile: 0.6, vivo: 0.6, veleno: 0.55, nutre: 0.6, corrode: 0.6 } as const;
+export const SOGLIA = {
+  calore: 0.5,
+  luce: 0.5,
+  brucia: 0.55,
+  esplode: 0.6,
+  fertile: 0.6,
+  vivo: 0.6,
+  veleno: 0.55,
+  nutre: 0.6,
+  corrode: 0.6,
+  vola: 0.5,
+  appiccica: 0.5,
+  fiorisce: 0.5,
+  tinge: 0.5,
+  indurisce: 0.5,
+  piove: 0.5,
+} as const;
 
 /** Fa male a chi la tocca: scotta, avvelena o corrode. Gli omini le stanno alla larga, e se la toccano muoiono. */
 export function faMale(s: Sostanza): boolean {
@@ -47,33 +63,78 @@ export function siMangia(s: Sostanza): boolean {
   return s.nutre > SOGLIA.nutre && !faMale(s);
 }
 
-/** I tratti che una sostanza mostra davvero (quelli abbastanza forti da vedersi nel mondo). */
-export function tratti(s: Sostanza): string[] {
-  const t: string[] = [];
-  if (s.calore > SOGLIA.calore) t.push('caldo');
-  if (s.calore < -SOGLIA.calore) t.push('freddo');
-  if (s.luce > SOGLIA.luce) t.push('luce');
-  if (s.brucia > SOGLIA.brucia) t.push('brucia');
-  if (s.esplode > SOGLIA.esplode) t.push('esplode');
-  if (s.fertile > SOGLIA.fertile) t.push('fertile');
-  if (s.vivo > SOGLIA.vivo) t.push('vivo');
-  if (s.veleno > SOGLIA.veleno) t.push('veleno');
-  if (siMangia(s)) t.push('nutre');
-  if (s.corrode > SOGLIA.corrode) t.push('corrode');
+/** Il nome di un carattere che una sostanza può mostrare (le etichette del Libro ne sono la traduzione). */
+export type Carattere =
+  | 'caldo' | 'freddo' | 'luce' | 'brucia' | 'esplode' | 'fertile' | 'vivo' | 'veleno' | 'nutre' | 'corrode'
+  | 'vola' | 'appiccica' | 'fiorisce' | 'tinge' | 'indurisce' | 'piove';
+
+/**
+ * Vero se un carattere ha un effetto nel mondo per una sostanza in quello stato: volare e attaccarsi sono cose da
+ * polveri e liquidi (un solido sta fermo, un gas sale già), tingere l'acqua è da liquidi, farsi nuvola da gas;
+ * un gas non si allarga come una cosa viva e non fa presa.
+ */
+export function funziona(c: Carattere, stato: number): boolean {
+  switch (c) {
+    case 'vola':
+    case 'appiccica':
+      return stato === POLVERE || stato === LIQUIDO;
+    case 'tinge':
+      return stato === LIQUIDO;
+    case 'piove':
+      return stato === GAS;
+    case 'vivo':
+    case 'indurisce':
+      return stato !== GAS;
+    default:
+      return true;
+  }
+}
+
+/** Quanto un carattere supera la sua soglia (negativo se non la supera). */
+export function margine(s: Sostanza, c: Carattere): number {
+  switch (c) {
+    case 'caldo':
+      return s.calore - SOGLIA.calore;
+    case 'freddo':
+      return -s.calore - SOGLIA.calore;
+    case 'nutre':
+      return siMangia(s) ? s.nutre - SOGLIA.nutre : -1;
+    default:
+      return s[c] - SOGLIA[c];
+  }
+}
+
+/** Tutti i caratteri, nell'ordine in cui il Libro li elenca. */
+export const CARATTERI: readonly Carattere[] = [
+  'caldo', 'freddo', 'luce', 'brucia', 'esplode', 'fertile', 'vivo', 'veleno', 'nutre', 'corrode',
+  'vola', 'appiccica', 'fiorisce', 'tinge', 'indurisce', 'piove',
+];
+
+/** I tratti che una sostanza mostra davvero: abbastanza forti, e con un effetto nel mondo per il suo stato. */
+export function tratti(s: Sostanza): Carattere[] {
+  const t: Carattere[] = [];
+  for (const c of CARATTERI) if (margine(s, c) > 0 && funziona(c, s.stato)) t.push(c);
   return t;
 }
 
-function statoFiglio(a: number, b: number, r: () => number): number {
-  const tiro = r();
-  if (a === b) return tiro < 0.88 ? a : [POLVERE, LIQUIDO, SOLIDO, GAS][(r() * 4) | 0];
-  const ha = (s: number): boolean => a === s || b === s;
-  if (ha(POLVERE) && ha(LIQUIDO)) return tiro < 0.55 ? LIQUIDO : POLVERE;
-  if (ha(POLVERE) && ha(SOLIDO)) return tiro < 0.6 ? POLVERE : SOLIDO;
-  if (ha(POLVERE) && ha(GAS)) return tiro < 0.6 ? POLVERE : GAS;
-  if (ha(LIQUIDO) && ha(SOLIDO)) return tiro < 0.5 ? LIQUIDO : SOLIDO;
-  if (ha(LIQUIDO) && ha(GAS)) return tiro < 0.5 ? LIQUIDO : GAS;
-  return tiro < 0.5 ? SOLIDO : POLVERE;
+/** Quanto è rara una miscela: lo dice il suo carattere, quindi è la stessa in ogni partita. */
+export type Rarita = 'comune' | 'rara' | 'leggendaria';
+
+/** I caratteri che valgono di più: fanno cose che si vedono da lontano o che cambiano il mondo intorno. */
+const PREZIOSI = new Set<Carattere>(['luce', 'esplode', 'vivo', 'corrode', 'vola', 'piove', 'fiorisce', 'tinge']);
+
+/**
+ * Comune, rara o leggendaria, contando i caratteri (quelli preziosi valgono una volta e mezza). Con le regole di
+ * oggi, tra le miscele di due materiali circa una su cinque è rara e una su quaranta leggendaria; più avanti, con
+ * genitori che hanno già tanti caratteri, le rare e le leggendarie si fanno più frequenti.
+ */
+export function rarita(s: Sostanza): Rarita {
+  let punti = 0;
+  for (const c of tratti(s)) punti += PREZIOSI.has(c) ? 1.5 : 1;
+  return punti >= 4.5 ? 'leggendaria' : punti >= 3 ? 'rara' : 'comune';
 }
+
+// ── Colori: a metà tra i genitori, girati un poco lungo l'arcobaleno ──────────────
 
 function inHsl(r: number, g: number, b: number): [number, number, number] {
   r /= 255;
@@ -100,68 +161,17 @@ function daHsl(h: number, s: number, l: number): [number, number, number] {
   return [canale(h + 1 / 3), canale(h), canale(h - 1 / 3)];
 }
 
-/** I tratti pericolosi compaiono dal nulla più di rado degli altri: un mondo divorato per caso non è divertente. */
-const RARO: Record<string, number> = { vivo: 0.05, corrode: 0.05, esplode: 0.07 };
-
 /**
- * Fonde due sostanze in una nuova. Il figlio prende un po' dell'una e un po' dell'altra, e ogni tanto tira fuori
- * un carattere che nessuno dei due genitori aveva: è così che dalle miscele nascono le sorprese.
+ * Il colore di una miscela: tra quelli dei genitori (`quanto` è il peso del primo), poi spostato un po' lungo
+ * l'arcobaleno, più vivo e mai troppo scuro; una miscela che scotta tira al rosso, una gelida all'azzurro.
  */
-export function fondi(a: Sostanza, b: Sostanza, id: number): Sostanza {
-  const r = dado(id);
-  const tra = (x: number, y: number): number => x + (y - x) * r();
-  const figlio: Sostanza = {
-    stato: statoFiglio(a.stato, b.stato, r),
-    colore: [0, 0, 0],
-    peso: tra(a.peso, b.peso),
-    scorre: tra(a.scorre, b.scorre),
-    calore: tra(a.calore, b.calore),
-    brucia: tra(a.brucia, b.brucia),
-    luce: tra(a.luce, b.luce),
-    fertile: tra(a.fertile, b.fertile),
-    vivo: tra(a.vivo, b.vivo),
-    veleno: tra(a.veleno, b.veleno),
-    nutre: tra(a.nutre, b.nutre),
-    esplode: tra(a.esplode, b.esplode),
-    corrode: tra(a.corrode, b.corrode),
-  };
-  for (const k of TRATTI) {
-    if (r() >= (RARO[k] ?? 0.13)) continue;
-    const salto = 0.3 + r() * 0.6;
-    if (k === 'calore') figlio.calore = stringi(figlio.calore + (r() < 0.5 ? -salto : salto), -1);
-    else figlio[k] = stringi(figlio[k] + salto);
-  }
-  if (figlio.calore > 0.6) figlio.luce = Math.max(figlio.luce, 0.55);
-  if (figlio.stato === GAS) {
-    figlio.peso = Math.min(figlio.peso, 0.12);
-    figlio.vivo = 0;
-    figlio.fertile = 0;
-  } else if (figlio.stato === LIQUIDO) {
-    figlio.peso = stringi(figlio.peso, 0.25, 0.95);
-    figlio.scorre = Math.max(figlio.scorre, 0.15);
-  } else if (figlio.stato === SOLIDO) {
-    figlio.scorre = 0;
-  }
-
-  // Nessuna miscela è anonima: se non ha preso nessun carattere, gliene tocca uno in sorte.
-  if (tratti(figlio).length === 0) {
-    const sorte = (r() * 7) | 0;
-    if (sorte === 0) figlio.luce = 0.6 + r() * 0.3;
-    else if (sorte === 1) figlio.fertile = 0.65 + r() * 0.3;
-    else if (sorte === 2) figlio.nutre = 0.65 + r() * 0.3;
-    else if (sorte === 3) figlio.brucia = 0.6 + r() * 0.3;
-    else if (sorte === 4) figlio.calore = 0.55 + r() * 0.3;
-    else if (sorte === 5) figlio.calore = -0.55 - r() * 0.3;
-    else figlio.veleno = 0.6 + r() * 0.3;
-  }
-
-  // Il colore: a metà tra i genitori, poi spostato un po' lungo l'arcobaleno, più vivo e mai troppo scuro.
-  const [h, s, l] = inHsl((a.colore[0] + b.colore[0]) / 2, (a.colore[1] + b.colore[1]) / 2, (a.colore[2] + b.colore[2]) / 2);
+export function coloreFiglio(a: Sostanza, b: Sostanza, figlio: Sostanza, r: () => number, quanto = 0.5): [number, number, number] {
+  const mezzo = (k: number): number => a.colore[k] * quanto + b.colore[k] * (1 - quanto);
+  const [h, s, l] = inHsl(mezzo(0), mezzo(1), mezzo(2));
   let tono = h + (r() - 0.5) * 0.22;
   if (figlio.calore > 0.5) tono = tono * 0.6 + 0.05 * 0.4;
   if (figlio.calore < -0.5) tono = tono * 0.6 + 0.56 * 0.4;
   const vivezza = stringi(s * 0.8 + 0.18 + r() * 0.3, 0.2, 0.9);
   const chiaro = stringi(l * 0.8 + 0.1 + (figlio.luce > 0.5 ? 0.15 : 0) + (r() - 0.5) * 0.2, 0.28, 0.8);
-  figlio.colore = daHsl(tono, vivezza, chiaro);
-  return figlio;
+  return daHsl(tono, vivezza, chiaro);
 }

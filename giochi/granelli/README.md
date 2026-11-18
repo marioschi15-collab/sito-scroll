@@ -13,6 +13,20 @@ nome, colore e comportamento decisi dal carattere dei due ingredienti (e le misc
 finiscono mai). Le miscele arrivano solo da quando il Libro ha dodici voci: prima quelle coppie «per ora» non si
 uniscono, e alla dodicesima una riga lo annuncia. Ciò che è un fenomeno (un'esplosione, un temporale) Unisci non lo
 regala: «succede solo nel mondo». Una coppia già provata lo dice («Già fatta: Fango», «Già provata: niente»).
+
+**Le miscele hanno una logica.** Il nome dice da dove vengono: la forma (che cos'è), la radice del genitore che conta
+di più e il carattere venuto dall'altro («Grandine di neve viva»: la neve gela, il muschio vive). Quattro volte su
+cinque il carattere si indovina dai genitori, la quinta c'è una sorpresa. Oltre ai caratteri di prima (scotta, gela,
+fa luce, brucia, esplode, fertile, si allarga, velenosa, si mangia, corrode) ce ne sono sei nuovi, ognuno con il suo
+effetto nel mondo: **vola** (sale fino alle nuvole e lì resta sospesa), **si attacca** (resta appesa a pareti e
+soffitti), **fa fiorire** l'erba che tocca, **tinge l'acqua**, **fa pietra** (la terra, la sabbia e il fango che tocca
+fanno presa, e lei con loro), **fa piovere** (un gas che si fa nuvola). Due miscele dal carattere opposto reagiscono da
+sole: calda contro gelida fa nebbia, calda contro esplosiva il botto, velenosa contro viva lascia cenere; niente cresce
+senza fine. Dal carattere viene la **rarità**: rara (bordo azzurro) o **leggendaria**, con una festa di tutti i
+colori, l'avviso dal bordo d'arcobaleno e il timbro nel Libro. Cinquantadue coppie naturali danno una **miscela
+d'autore**, con nome e racconto scritti a mano e la stellina («Terra nera», «Polvere di stelle», «Malta»,
+«Inchiostro»). Le miscele delle partite salvate prima restano com'erano, con il loro nome e il loro carattere.
+
 Una capanna e un frutto chiamano i **primi omini**: ne arrivano due, vicino all'acqua più vicina a dove si sta
 guardando (se l'acqua non c'è, «arriveranno vicino all'acqua»). Lo strumento dei primi giorni che rimestava le cose non
 c'è più: chi lo aveva in una partita salvata ritrova la Mano e un saluto, una volta sola.
@@ -97,7 +111,7 @@ gioco parte lo stesso, lo dice nel benvenuto e con un segno fisso. «Nuovo» off
 ```powershell
 pnpm install
 pnpm dev          # il gioco in sviluppo, si aggiorna mentre si modifica
-pnpm test         # le prove (materiali, acqua, miscele, Unisci, unioni, portare, ere, omini, paesi, costruzioni, salvataggio, schede, creature, eventi, cortesia, suggerimenti, indizi)
+pnpm test         # le prove (materiali, acqua, miscele con nomi, caratteri, rarità e partite di prima, Unisci, unioni, portare, ere, omini, paesi, costruzioni, salvataggio, schede, creature, eventi, cortesia, suggerimenti, indizi)
 pnpm typecheck
 pnpm build        # produce dist/index.html: un solo file, si apre con un doppio clic
 node strumenti/contenuti.cjs                # controllo delle scoperte: tutte raggiungibili, nessun doppione
@@ -126,9 +140,14 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
   chiamata. `controllo.ts` è il controllo automatico che usano `strumenti/contenuti.cjs` e le prove.
 - `src/motore/materiali.ts`: l'elenco dei materiali, dei fenomeni e il carattere di ogni sostanza.
 - `src/motore/mondo.ts`: la griglia e le regole. Ogni materiale ha poche regole; pioggia, incendi, boschi e
-  temporali nascono dal loro incontro. Qui sta anche il comportamento delle miscele.
-- `src/motore/miscele.ts`: come due sostanze si fondono in una terza, e le soglie del loro carattere (le stesse per
-  le etichette del Libro e per il comportamento nel mondo). `nomi.ts`: come si chiama e come si racconta una miscela.
+  temporali nascono dal loro incontro. Le miscele si comportano secondo `miscele-vive.ts`.
+- `src/motore/miscele.ts`: il numero di una miscela, le soglie del carattere (le stesse per le etichette del Libro e
+  per il comportamento nel mondo), i caratteri che una sostanza mostra (`tratti`, `funziona`) e la rarità (`rarita`).
+  `fusione.ts`: come due sostanze si fondono in una terza (`fondi`), con la dote che ogni materiale porta
+  (`perFondere`, `doteDi`); `fusione-di-prima.ts`: le regole di prima, solo per le miscele delle partite salvate allora
+  (nel ricettario hanno `prima`, nel salvataggio quattro voci invece di cinque). `firmate.ts`: le miscele d'autore.
+  `nomi.ts` e `radici.ts`: come si chiama e come si racconta una miscela. `miscele-vive.ts`: come si comporta nel
+  mondo (i caratteri, i caratteri nuovi e le reazioni tra miscele).
 - `src/motore/ricette.ts`: le reazioni del mondo, coppia per coppia (cosa diventa ogni cella quando si porta una
   cosa sopra l'altra).
   `esiti.ts`: da quelle e dalle vie a due ingredienti del Libro, l'esito di ogni coppia in Unisci (`esitoNoto`),

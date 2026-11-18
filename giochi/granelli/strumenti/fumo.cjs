@@ -40,6 +40,14 @@ async function versa(s, nome, x, y, ms) {
 /** Due voci scritte come schede (src/contenuti/paese.ts), con i loro numeri di numeri.ts. */
 const SCHEDE = { CACCIATORE: 230, ACCAMPAMENTO: 274, FIACCOLA: 261, UCCELLO: 502, PESCE: 503, PECORA: 505 };
 
+/** I nomi dei materiali, con il loro numero (src/motore/materiali.ts): per toccarne i gettoni in Unisci. */
+const MATERIALI = {
+  1: 'Terra', 2: 'Acqua', 3: 'Fuoco', 4: 'Aria', 5: 'Vapore', 6: 'Fango', 7: 'Sabbia', 8: 'Lava', 9: 'Pietra', 10: 'Nuvola',
+  11: 'Fulmine', 12: 'Vetro', 13: 'Argilla', 14: 'Mattone', 15: 'Pianta', 16: 'Legno', 17: 'Cenere', 18: 'Fumo', 19: 'Neve',
+  20: 'Ghiaccio', 21: 'Terriccio', 22: 'Ossidiana', 25: 'Carbone', 26: 'Metallo', 27: 'Ruggine', 28: 'Zolfo', 29: 'Polvere nera',
+  30: 'Acido', 31: 'Diamante', 32: 'Muschio', 33: 'Alga', 34: 'Fungo', 35: 'Frutto',
+};
+
 /** Le chiavi del salvataggio nel browser (src/salvataggio.ts) e il numero dell'Età della pietra (src/motore/cose.ts). */
 const CHIAVE = 'granelli-v1';
 const RISERVA = 'granelli-v1-riserva';
@@ -693,6 +701,68 @@ const PASSI = [
       pretendi(/indizio/i.test(consiglio) && consiglio.length > 30, `l’indizio in Unisci dice «${consiglio}»`);
       await s.page.locator('.scheda.unisci .scheda-testa .tasto', { hasText: 'Chiudi' }).tap();
       await s.page.locator('.barra .tasto', { hasText: 'Riprendi' }).tap();
+    },
+  },
+  {
+    nome: 'una miscela leggendaria in Unisci si festeggia di più e ha il timbro nel Libro; una d’autore ha la stellina',
+    fai: async (s) => {
+      await chiudiFinestre(s.page);
+      await s.page.waitForFunction(() => document.querySelector('.avvisi').childElementCount === 0, null, { timeout: 12000 });
+      // La prima coppia di materiali che dà una leggendaria (la rarità dipende solo dalla coppia): la si fa conoscere.
+      const coppia = await s.page.evaluate(() => {
+        const m = window.granelli();
+        for (let a = 1; a < 36; a++) {
+          for (let b = a + 1; b < 36; b++) {
+            const id = m.registra(a, b);
+            if (id > 0 && !m.visti.has(id) && m.rarita(id) === 'leggendaria') {
+              m.visti.add(a).add(b);
+              return { a, b, id, nome: m.ricettario.get(id).nome };
+            }
+          }
+        }
+        return null;
+      });
+      pretendi(coppia !== null && MATERIALI[coppia.a] && MATERIALI[coppia.b], 'nessuna coppia di materiali dà una miscela leggendaria');
+      await s.page.locator('.tasto-unisci').tap();
+      await s.page.locator('.scheda.unisci').waitFor();
+      const tocca = async (nome) => s.page.locator('.scaffale .gettone', { hasText: new RegExp(`^${nome}$`) }).tap();
+      await tocca(MATERIALI[coppia.a]);
+      await tocca(MATERIALI[coppia.b]);
+      const titolo = (await s.page.locator('.esito .avviso-sopra').textContent()) ?? '';
+      pretendi(titolo === 'Miscela leggendaria!', `una miscela leggendaria in Unisci dice «${titolo}»`);
+      pretendi((await s.page.locator('.esito.nuova.leggendaria').count()) === 1, 'l’esito di una leggendaria non ha il bordo di tutti i colori');
+      await s.page.locator('.scheda.unisci .scheda-testa .tasto', { hasText: 'Chiudi' }).tap();
+      // Nel mondo l'avviso della scoperta è quello delle leggendarie; toccato, apre la sua pagina con il timbro.
+      const avviso = s.page.locator('.avvisi .avviso.leggendaria');
+      await avviso.waitFor({ timeout: 6000 });
+      pretendi(((await avviso.locator('.avviso-sopra').textContent()) ?? '') === 'Miscela leggendaria!', 'l’avviso della leggendaria non lo dice');
+      await avviso.tap();
+      await s.page.locator('.scheda.libro').waitFor();
+      const timbro = (await s.page.locator('.scheda.libro .timbro.leggendaria').textContent()) ?? '';
+      pretendi(timbro === 'Leggendaria', `nella pagina della leggendaria il timbro dice «${timbro}»`);
+      const nome = (await s.page.locator('.scheda.libro .voce-titoli h2').textContent()) ?? '';
+      pretendi(nome === coppia.nome, `la pagina aperta dall’avviso è «${nome}» invece di «${coppia.nome}»`);
+      // Il carattere a quadretti unirebbe «fi» in un segno che si legge «R» («di fiamma» diventava «di Ramma»).
+      const legature = await s.page.evaluate(() => getComputedStyle(document.querySelector('.scheda.libro .voce-titoli h2')).fontVariantLigatures);
+      pretendi(legature === 'none', `il nome nella pagina del Libro ha le legature accese (${legature}): «fi» si legge «R»`);
+      await s.page.locator('.scheda.libro .scheda-testa .tasto', { hasText: 'Chiudi' }).tap();
+      // Terra e carbone: la Terra nera, una miscela d'autore, con la stellina nell'elenco e il suo racconto.
+      await s.page.evaluate(() => {
+        const m = window.granelli();
+        m.visti.add(25);
+        m.unisci(1, 25);
+      });
+      await chiudiFinestre(s.page);
+      await s.page.waitForFunction(() => document.querySelector('.avvisi').childElementCount === 0, null, { timeout: 12000 });
+      await s.page.locator('.tasto-libro').tap();
+      await s.page.locator('.scheda.libro').waitFor();
+      await s.page.locator('.linguetta', { hasText: 'Miscele' }).tap();
+      await s.page.locator('.scheda.libro .voce strong', { hasText: '★ Terra nera' }).tap();
+      const sopra = (await s.page.locator('.scheda.libro .voce-capitolo').textContent()) ?? '';
+      pretendi(sopra === '★ Miscela d’autore', `la pagina della Terra nera dice «${sopra}» sopra il nome`);
+      const racconto = (await s.page.locator('.scheda.libro .voce-racconto').textContent()) ?? '';
+      pretendi(/carbone/.test(racconto), `il racconto della Terra nera è «${racconto}»`);
+      await s.page.locator('.scheda.libro .scheda-testa .tasto', { hasText: 'Chiudi' }).tap();
     },
   },
   {

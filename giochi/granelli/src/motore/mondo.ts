@@ -28,13 +28,18 @@ import {
   POLVERE,
   PRIMA_ID_MISCELA,
   PRIMA_MISCELA,
+  RESISTE,
   SOLIDO,
   STATO,
   type Sostanza,
   TEMPORALE,
   TRONCO,
 } from './materiali.js';
-import { SOGLIA, faMale, fondi, idMiscela, siMangia } from './miscele.js';
+import { type Firmata, firmataDi } from './firmate.js';
+import { fondiDiPrima } from './fusione-di-prima.js';
+import { fondi, perFondere } from './fusione.js';
+import { type Rarita, SOGLIA, faMale, idMiscela, rarita, siMangia } from './miscele.js';
+import { agisce, aggiornaMiscela, dotiDi } from './miscele-vive.js';
 import { nomeMiscela } from './nomi.js';
 import { type Fatto, type Omino, POPOLAZIONE_MAX, aggiornaOmini, nuovoOmino } from './omini.js';
 import { type Posto, assestaCose, puoPosare, sgombra, sottoUnaCosa } from './posa.js';
@@ -62,11 +67,12 @@ export interface Ricetta {
   a: number;
   b: number;
   nome: string;
+  /**
+   * Nata con le regole di prima dei nomi parlanti (in una partita salvata allora): tiene il carattere e il nome di
+   * allora (vedi fusione-di-prima.ts). Le miscele nate dopo non hanno questo segno.
+   */
+  prima?: true;
 }
-
-/** Ciò che nemmeno l'acido (o una miscela corrosiva) riesce a intaccare. */
-const RESISTE = new Uint8Array(N_TIPI);
-for (const t of [M.VUOTO, M.ROCCIA, M.VETRO, M.DIAMANTE, M.OSSIDIANA, M.BRACE]) RESISTE[t] = 1;
 
 /** Ciò che non fa mai niente da solo: in un mondo grande è quasi tutto, e saltarlo fa andare veloce il resto. */
 const FERMO = new Uint8Array(N_TIPI);
@@ -81,21 +87,8 @@ for (let t = 0; t < N_BASE; t++) QUIETA[t] = STATO[t] === POLVERE || STATO[t] ==
 for (const t of [M.TERRA, M.ZOLFO, M.PIETRA, M.METALLO, M.BRACE]) QUIETA[t] = 0;
 QUIETA[M.ACQUA] = 1;
 
-/** Il suolo su cui una cosa viva può allargarsi e una miscela fertile può far spuntare un germoglio. */
-const SUOLO = new Uint8Array(N_TIPI);
-for (const t of [M.TERRA, M.FANGO, M.HUMUS]) SUOLO[t] = 1;
-
-/**
- * Una miscela viva si allarga a catena, e la catena è corta. Ogni cella porta un'età (nel suo `dato`): ogni volta
- * che prova ad allargarsi invecchia di uno; se ci riesce figlia una volta sola e poi resta com'è, e la figlia nasce
- * con l'età della madre più uno. Arrivata a questa età una cella non ci prova più: da un granello versato ne
- * nascono al più altrettanti, e dopo qualche minuto tutto è fermo, anche se la miscela è un liquido che scorrendo
- * troverebbe sempre posto nuovo.
- */
-const STERILE = 8;
-
 /** Le soglie del carattere di una miscela: le stesse che decidono le etichette mostrate nel Libro (vedi miscele.ts). */
-const { calore: CALDO, veleno: VELENO, corrode: CORRODE, vivo: VIVO, fertile: FERTILE, esplode: ESPLODE, brucia: BRUCIA_BENE } = SOGLIA;
+const { esplode: ESPLODE, brucia: BRUCIA_BENE } = SOGLIA;
 
 /** Ciò che anche ammucchiato lascia passare l'aria: sotto le foglie, la cenere o la neve il fuoco respira ancora. */
 const ARIOSO = new Uint8Array(N_TIPI);
@@ -121,7 +114,7 @@ export class Mondo {
   /** Il seme dei numeri casuali, in una casella da 32 bit: tenuto in un campo normale, ogni tiro di dado lascerebbe un numero da buttare. */
   private readonly semi = new Int32Array(1);
   /** A che quota, al più, galleggiano le nuvole (in celle dalla cima del mondo). */
-  private readonly fasciaNuvole: number;
+  readonly fasciaNuvole: number;
 
   tic = 0;
   /** Direzione in cui il vento spinge le nuvole: cambia ogni tanto. */
@@ -179,6 +172,8 @@ export class Mondo {
   pieno = false;
   private readonly tipoDiId = new Map<number, number>();
   private readonly ricordo = new Map<number, Sostanza>();
+  private readonly nomiPresi = new Set<string>();
+  private nomiContati = -1;
 
   // ── Il carattere di ogni tipo di cella: copie per questo mondo, perché le miscele cambiano da mondo a mondo ──
   readonly stato = STATO.slice();
@@ -194,6 +189,10 @@ export class Mondo {
   readonly veleno = new Float32Array(N_TIPI);
   readonly esplode = new Float32Array(N_TIPI);
   readonly corrode = new Float32Array(N_TIPI);
+  /** I caratteri nuovi di una miscela che si vedono nel mondo, uno per bit (vedi miscele-vive.ts). */
+  readonly doti = new Uint8Array(N_TIPI);
+  /** 1 se la miscela fa qualcosa a chi le sta accanto (vedi `agisce` in miscele-vive.ts). */
+  readonly agisce = new Uint8Array(N_TIPI);
 
   constructor(w: number, h: number, seme = 12345) {
     this.w = w;
@@ -245,12 +244,36 @@ export class Mondo {
     if (pronta) return pronta;
     const ricetta = this.ricettario.get(id);
     if (!ricetta) return null;
-    const a = this.sostanzaDi(ricetta.a);
-    const b = this.sostanzaDi(ricetta.b);
-    if (!a || !b) return null;
-    const s = fondi(a, b, id);
-    this.ricordo.set(id, s);
+    const s = this.fusione(ricetta.a, ricetta.b, id, ricetta.prima === true);
+    if (s) this.ricordo.set(id, s);
     return s;
+  }
+
+  /**
+   * Fonde due scoperte nella miscela `id`: con le regole di adesso (i materiali portano la loro dote, e una coppia
+   * d'autore ha il carattere scritto a mano), oppure con quelle di prima per le miscele delle partite salvate allora.
+   */
+  private fusione(a: number, b: number, id: number, prima: boolean): Sostanza | null {
+    if (prima) {
+      const sa = this.sostanzaDi(a);
+      const sb = this.sostanzaDi(b);
+      return sa && sb ? fondiDiPrima(sa, sb, id) : null;
+    }
+    const sa = a < PRIMA_ID_MISCELA ? perFondere(a) : this.sostanzaDi(a);
+    const sb = b < PRIMA_ID_MISCELA ? perFondere(b) : this.sostanzaDi(b);
+    return sa && sb ? fondi(sa, sb, id, firmataDi(a, b)) : null;
+  }
+
+  /** La miscela d'autore che una scoperta è (con il suo nome e il suo racconto scritti a mano); undefined se non lo è. */
+  firmata(id: number): Firmata | undefined {
+    const ricetta = this.ricettario.get(id);
+    return ricetta && !ricetta.prima ? firmataDi(ricetta.a, ricetta.b) : undefined;
+  }
+
+  /** Quanto è rara una miscela (vedi miscele.ts); null per ciò che non è una miscela conosciuta. */
+  rarita(id: number): Rarita | null {
+    const s = id >= PRIMA_ID_MISCELA ? this.sostanzaDi(id) : null;
+    return s ? rarita(s) : null;
   }
 
   /** Di quante fusioni è figlia una scoperta: 0 per i materiali, 1 per la miscela di due materiali, e così via. */
@@ -267,15 +290,20 @@ export class Mondo {
     const b = Math.max(primo, secondo);
     // Una coppia che ha già un esito scritto a mano dà quello, mai una miscela: terra e acqua fanno fango e basta.
     if (coppiaDAutore(a, b)) return -1;
-    const sa = this.sostanzaDi(a);
-    const sb = this.sostanzaDi(b);
-    if (!sa || !sb) return -1;
     const id = idMiscela(a, b);
-    if (!this.ricettario.has(id)) {
-      const presi = new Set<string>();
-      for (const r of this.ricettario.values()) presi.add(r.nome);
-      this.ricettario.set(id, { a, b, nome: nomeMiscela(fondi(sa, sb, id), id, (n) => presi.has(n)) });
+    if (this.ricettario.has(id)) return id;
+    const s = this.fusione(a, b, id, false);
+    if (!s) return -1;
+    // I nomi già presi: si rifanno solo se il ricettario è cambiato da fuori (una partita ricaricata, una copia).
+    if (this.nomiContati !== this.ricettario.size) {
+      this.nomiPresi.clear();
+      for (const r of this.ricettario.values()) this.nomiPresi.add(r.nome);
     }
+    const nome = nomeMiscela(s, id, (n) => this.nomiPresi.has(n), firmataDi(a, b));
+    this.ricettario.set(id, { a, b, nome });
+    this.nomiPresi.add(nome);
+    this.nomiContati = this.ricettario.size;
+    this.ricordo.set(id, s);
     return id;
   }
 
@@ -336,6 +364,8 @@ export class Mondo {
     this.veleno[t] = s.veleno;
     this.esplode[t] = s.esplode;
     this.corrode[t] = s.corrode;
+    this.doti[t] = dotiDi(s);
+    this.agisce[t] = agisce(s, this.doti[t]) ? 1 : 0;
     this.versioneTipi++;
     return true;
   }
@@ -484,7 +514,7 @@ export class Mondo {
   }
 
   /** Una delle quattro celle accanto, scelta a caso; -1 se cade fuori dal mondo. */
-  private vicino(i: number, x: number, y: number): number {
+  vicino(i: number, x: number, y: number): number {
     const r = (this.caso() * 4) | 0;
     if (r === 0) return y > 0 ? i - this.w : -1;
     if (r === 1) return y < this.h - 1 ? i + this.w : -1;
@@ -507,7 +537,7 @@ export class Mondo {
   }
 
   /** Cade; se non può, scivola di lato con probabilità `scorre` (la sabbia scorre, il fango quasi no). */
-  private muoviPolvere(i: number, x: number, y: number, scorre: number, t: number): boolean {
+  muoviPolvere(i: number, x: number, y: number, scorre: number, t: number): boolean {
     if (y >= this.h - 1) return false;
     const giu = i + this.w;
     if (x > 0 && x < this.w - 1) {
@@ -542,7 +572,7 @@ export class Mondo {
   }
 
   /** Cade, scivola in diagonale, oppure si allarga di lato fino a `spinta` celle per livellarsi. */
-  private muoviLiquido(i: number, x: number, y: number, spinta: number, t: number): boolean {
+  muoviLiquido(i: number, x: number, y: number, spinta: number, t: number): boolean {
     const w = this.w;
     if (y < this.h - 1) {
       const giu = i + w;
@@ -580,7 +610,7 @@ export class Mondo {
   }
 
   /** Sale con probabilità `su`, altrimenti ondeggia di lato. */
-  private muoviGas(i: number, x: number, y: number, su: number): boolean {
+  muoviGas(i: number, x: number, y: number, su: number): boolean {
     const r = this.caso();
     if (r < su) {
       if (y > 0) {
@@ -664,7 +694,7 @@ export class Mondo {
   }
 
   /** Fa nascere un germoglio: erba bassa, oppure (più di rado) un albero. Sotto una cosa posata non spunta niente. */
-  private germoglia(j: number, fertile: boolean): void {
+  germoglia(j: number, fertile: boolean): void {
     if (sottoUnaCosa(this, j % this.w, (j / this.w) | 0)) return;
     const albero = this.caso() < (fertile ? 0.35 : 0.15);
     this.metti(j, M.PIANTA, albero ? ALBERO + 6 + ((this.caso() * 8) | 0) : 1 + ((this.caso() * 4) | 0));
@@ -1219,94 +1249,8 @@ export class Mondo {
       }
 
       default:
-        if (t >= PRIMA_MISCELA) this.aggiornaMiscela(i, x, y, t);
+        if (t >= PRIMA_MISCELA) aggiornaMiscela(this, i, x, y, t);
     }
-  }
-
-  /**
-   * Come si comporta una miscela: non ha regole scritte apposta, segue il suo carattere. Se scotta accende e fa
-   * evaporare, se è gelida ghiaccia, se è viva si allarga, se corrode mangia quello che tocca, e così via.
-   * Le soglie sono quelle delle etichette del Libro: ciò che l'etichetta promette, qui succede.
-   */
-  private aggiornaMiscela(i: number, x: number, y: number, t: number): void {
-    const { tipo, dato, w } = this;
-    const stato = this.stato[t];
-    const j = this.vicino(i, x, y);
-    if (j >= 0) {
-      const v = tipo[j];
-      const calore = this.calore[t];
-      if (calore > CALDO) {
-        // Accende quello che tocca (non sé stessa: una miscela rovente che brucia o esplode aspetta una fiamma vera).
-        if (this.brucia[v]) {
-          if (v !== t && this.caso() < 0.3) this.accendi(j);
-        } else if (v === M.ACQUA) {
-          if (this.caso() < 0.2) {
-            this.metti(j, M.VAPORE);
-            // Far bollire l'acqua costa: ogni tanto la miscela si spegne in uno sbuffo di fumo. Così nessuno
-            // stagno bolle per sempre, e il temporale che ne nasce prima o poi finisce.
-            if (this.caso() < 0.15) {
-              this.metti(i, M.FUMO);
-              return;
-            }
-          }
-        } else if (v === M.NEVE || v === M.GHIACCIO) this.metti(j, M.ACQUA);
-      } else if (calore < -CALDO) {
-        if (v === M.ACQUA) {
-          if (this.caso() < 0.03) this.metti(j, M.GHIACCIO);
-        } else if (v === M.FUOCO) this.svuota(j);
-        else if (v === M.LAVA && this.caso() < 0.1) this.metti(j, M.PIETRA);
-      }
-      if (this.veleno[t] > VELENO && (v === M.PIANTA || v === M.ALGA || v === M.MUSCHIO || v === M.FUNGO) && this.caso() < 0.1) {
-        this.svuota(j);
-      }
-      if (this.corrode[t] > CORRODE && v !== t && !RESISTE[v] && (this.stato[v] === POLVERE || this.stato[v] === SOLIDO) && this.caso() < 0.04) {
-        this.svuota(j);
-        if (this.caso() < 0.5) {
-          this.svuota(i);
-          return;
-        }
-      }
-      if (stato !== GAS && this.vivo[t] > VIVO && dato[i] < STERILE && this.caso() < 0.004) {
-        // Si allarga come una cosa viva: sulla terra che tocca, o sul vuoto che ha qualcosa sotto su cui posarsi.
-        // Chi ha figliato non figlia più, e chi ci prova a vuoto invecchia (vedi STERILE): la catena si ferma da sola.
-        if (SUOLO[v] || (v === M.VUOTO && j + w < tipo.length && tipo[j + w] !== M.VUOTO && this.stato[tipo[j + w]] !== GAS)) {
-          this.metti(j, t, dato[i] + 1);
-          dato[i] = STERILE;
-        } else dato[i]++;
-      }
-    }
-    const fertile = this.fertile[t] > FERTILE;
-    if (stato === POLVERE) {
-      if (this.muoviPolvere(i, x, y, this.scorre[t], t)) return;
-    } else if (stato === LIQUIDO) {
-      if (fertile && this.germogliaSulSuolo(i, y)) return;
-      if (this.caso() < 0.3 + 0.7 * this.scorre[t]) this.muoviLiquido(i, x, y, 1 + Math.round(this.scorre[t] * 4), t);
-      return;
-    } else if (stato === GAS) {
-      if (dato[i] <= 1) {
-        this.svuota(i);
-        return;
-      }
-      dato[i]--;
-      if (fertile && this.germogliaSulSuolo(i, y)) return;
-      this.muoviGas(i, x, y, 0.75 - this.peso[t] * 4);
-      return;
-    }
-    // Su una miscela fertile che sta ferma, come sul terriccio, spuntano le piante.
-    if (fertile && y > 1 && tipo[i - w] === M.VUOTO && tipo[i - 2 * w] === M.VUOTO && this.caso() < 0.0005) {
-      this.germoglia(i - w, true);
-    }
-  }
-
-  /**
-   * Una miscela fertile che scorre o che vola non fa da terreno: bagna (o sfiora) la terra che ha sotto e, a cielo
-   * aperto, ci lascia un germoglio al proprio posto. Vero se è successo.
-   */
-  private germogliaSulSuolo(i: number, y: number): boolean {
-    const { tipo, w } = this;
-    if (y < 1 || y >= this.h - 1 || !SUOLO[tipo[i + w]] || tipo[i - w] !== M.VUOTO || this.caso() >= 0.002) return false;
-    this.germoglia(i, true);
-    return true;
   }
 
   /**

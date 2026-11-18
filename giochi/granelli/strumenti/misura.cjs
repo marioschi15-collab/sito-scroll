@@ -104,7 +104,46 @@ const SCENE = {
   },
   maturoTrascinato: { nome: 'maturo, vista trascinata', prepara: maturo, trascina: true },
   creature: { nome: 'paese con 30 creature', prepara: paese, dopo: creatureIntorno },
+  miscele: { nome: '40 miscele', prepara: quarantaMiscele },
 };
+
+/**
+ * Quaranta miscele diverse nel mondo, ognuna in un mucchietto sul suolo intorno al centro: le prime quaranta coppie
+ * di materiali che danno una miscela (polveri, liquidi, gas, con i loro caratteri: si muovono, reagiscono, crescono).
+ */
+function quarantaMiscele() {
+  const m = window.granelli();
+  // I materiali e i fenomeni sono già nel Libro: le scoperte (e i salvataggi che le seguono) non entrano nella misura.
+  for (let id = 1; id < 36; id++) if (id !== 23 && id !== 24) m.visti.add(id);
+  for (let id = 100; id < 124; id++) m.visti.add(id);
+  const ids = [];
+  for (let a = 1; a < 36 && ids.length < 40; a++) {
+    for (let b = a + 1; b < 36 && ids.length < 40; b++) {
+      const id = m.registra(a, b);
+      if (id > 0) ids.push(id);
+    }
+  }
+  const cx = m.w >> 1;
+  let celle = 0;
+  ids.forEach((id, k) => {
+    const t = m.tipoPer(id);
+    if (t < 0) return;
+    // Già nel Libro: così non arrivano quaranta avvisi a coprire la misura.
+    m.visti.add(id);
+    const x0 = cx - 120 + k * 6;
+    for (let dx = 0; dx < 5; dx++) {
+      const s = m.suolo(x0 + dx);
+      for (let dy = 1; dy <= 6; dy++) {
+        const i = (s - dy) * m.w + x0 + dx;
+        if (m.tipo[i] === 0) {
+          m.metti(i, t);
+          celle++;
+        }
+      }
+    }
+  });
+  return { miscele: ids.length, celle };
+}
 
 /**
  * Dopo il paese di giorno, trenta creature intorno (i numeri sono quelli di src/contenuti/numeri.ts): dieci che
