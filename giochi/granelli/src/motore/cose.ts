@@ -35,46 +35,6 @@ export const C = {
   ARATRO: 227,
   PONTE: 228,
   FARO: 229,
-  // Le cose nate unendo le invenzioni tra loro e con gli omini: per ora sono gettoni, non si posano.
-  SECCHIO: 260,
-  FIACCOLA: 261,
-  MINESTRA: 262,
-  FARINA: 263,
-  FOCACCIA: 264,
-  VELIERO: 265,
-  FOCOLARE: 266,
-  FATTORIA: 267,
-  PORTO: 268,
-  RACCOLTO: 269,
-  BIBLIOTECA: 270,
-  BOTTEGA: 271,
-  ORTO: 272,
-  FRUTTETO: 273,
-  ACCAMPAMENTO: 274,
-} as const;
-
-/** Le genti: mestieri e persone che nascono portando una cosa a un omino (e un regno). Gettoni, come le cose qui sopra. */
-export const G = {
-  CACCIATORE: 230,
-  CONTADINO: 231,
-  PESCATORE: 232,
-  VASAIO: 233,
-  FORNAIO: 234,
-  FABBRO: 235,
-  GUERRIERO: 236,
-  MAESTRO: 237,
-  MERCANTE: 238,
-  MUGNAIO: 239,
-  GUARDIANO: 240,
-  RE: 241,
-  ARTIGIANO: 242,
-  CARRETTIERE: 243,
-  FAMIGLIA: 244,
-  CANTASTORIE: 245,
-  VIANDANTE: 246,
-  CITTADINO: 247,
-  CUSTODE: 248,
-  REGNO: 249,
 } as const;
 
 /** Le ere e i grandi eventi: non si creano, arrivano quando il mondo fa un certo passo. */
@@ -90,11 +50,17 @@ export const E = {
   MEDIOEVO: 408,
 } as const;
 
-/** Le ere, in ordine: l'ultima raggiunta è quella in cui si trova il mondo. */
-export const ERE: readonly number[] = [E.PIETRA, E.BRONZO, E.FERRO, E.ANTICA, E.MEDIOEVO];
+/**
+ * Le ere di prima delle schede, in ordine. La fila completa (con le ere scritte nelle schede, ognuna dopo la sua)
+ * la dà `ere()` di contenuti/registro.ts: è quella che il gioco usa.
+ */
+export const ERE_DI_PRIMA: readonly number[] = [E.PIETRA, E.BRONZO, E.FERRO, E.ANTICA, E.MEDIOEVO];
 
-/** Quanto è grande nel mondo (in celle) ciò che si può posare. Quello che manca qui è solo un'idea o un oggetto da tasca. */
-export const INGOMBRO: Record<number, readonly [number, number]> = {
+/**
+ * Quanto è grande nel mondo (in celle) ciò che si posava già prima delle schede. Le costruzioni delle schede hanno
+ * l'ingombro ricavato dalla loro figura: tutte insieme le dà `ingombroDi()` di contenuti/registro.ts.
+ */
+export const INGOMBRO_DI_PRIMA: Readonly<Record<number, readonly [number, number]>> = {
   [C.FALO]: [5, 4],
   [C.CAPANNA]: [10, 6],
   [C.CAMPO]: [10, 4],
@@ -126,11 +92,12 @@ export interface Cosa {
 export const OSPITA: Record<number, number> = { [C.CAPANNA]: 3, [C.CASA]: 5, [C.CASTELLO]: 12 };
 
 /**
- * Le unioni scritte a mano: due scoperte qualsiasi (materiali, invenzioni, perfino gli omini) e ciò che ne nasce.
- * In Unisci vengono prima di tutto; poi le reazioni del mondo (esiti.ts), e solo le coppie di sostanze rimaste
- * senza esito danno una miscela. Le altre coppie non danno niente.
+ * Le unioni scritte a mano prima delle schede: due scoperte qualsiasi (materiali, invenzioni, perfino gli omini) e
+ * ciò che ne nasce. Le unioni nuove si scrivono nelle schede (src/contenuti/), con le chiavi; tutte insieme le dà
+ * `unioneDi()` di contenuti/registro.ts. In Unisci vengono prima di tutto; poi le reazioni del mondo (esiti.ts), e
+ * solo le coppie di sostanze rimaste senza esito danno una miscela. Le altre coppie non danno niente.
  */
-const UNIONI: readonly (readonly [number, number, number])[] = [
+export const UNIONI_DI_PRIMA: readonly (readonly [number, number, number])[] = [
   [M.PIETRA, M.LEGNO, C.UTENSILE],
   [M.LEGNO, M.FUOCO, C.FALO],
   [M.LEGNO, M.PIANTA, C.CAPANNA],
@@ -166,51 +133,7 @@ const UNIONI: readonly (readonly [number, number, number])[] = [
 
   // ── La via dei primi omini: un tetto e qualcosa da mangiare, e arriva qualcuno ──
   [C.CAPANNA, M.FRUTTO, OMINO],
-
-  // ── Una cosa portata a un omino: lui ne fa il suo mestiere ──
-  [OMINO, C.LANCIA, G.CACCIATORE],
-  [OMINO, C.CAMPO, G.CONTADINO],
-  [OMINO, C.BARCA, G.PESCATORE],
-  [OMINO, C.VASO, G.VASAIO],
-  [OMINO, C.PANE, G.FORNAIO],
-  [OMINO, C.FORNACE, G.FABBRO],
-  [OMINO, C.SPADA, G.GUERRIERO],
-  [OMINO, C.LIBRO, G.MAESTRO],
-  [OMINO, C.MERCATO, G.MERCANTE],
-  [OMINO, C.MULINO, G.MUGNAIO],
-  [OMINO, C.FARO, G.GUARDIANO],
-  [OMINO, C.CASTELLO, G.RE],
-  [OMINO, C.UTENSILE, G.ARTIGIANO],
-  [OMINO, C.CARRO, G.CARRETTIERE],
-  [OMINO, C.CAPANNA, G.FAMIGLIA],
-  [OMINO, C.FALO, G.CANTASTORIE],
-  [OMINO, C.PONTE, G.VIANDANTE],
-  [OMINO, C.CITTA, G.CITTADINO],
-  [OMINO, C.TEMPIO, G.CUSTODE],
-  [C.CITTA, C.CASTELLO, G.REGNO],
-
-  // ── Le invenzioni unite tra loro e con quello che c'è ──
-  [C.POZZO, C.VASO, C.SECCHIO],
-  [C.FALO, M.LEGNO, C.FIACCOLA],
-  [C.FALO, C.VASO, C.MINESTRA],
-  [C.MULINO, C.CAMPO, C.FARINA],
-  [C.FARINA, C.FALO, C.FOCACCIA],
-  [C.BARCA, M.ARIA, C.VELIERO],
-  [C.CASA, C.FALO, C.FOCOLARE],
-  [C.CASA, C.CAMPO, C.FATTORIA],
-  [C.FARO, C.BARCA, C.PORTO],
-  [C.ARATRO, C.CAMPO, C.RACCOLTO],
-  [C.LIBRO, C.TEMPIO, C.BIBLIOTECA],
-  [C.PANE, C.MONETA, C.BOTTEGA],
-  [C.POZZO, C.CAMPO, C.ORTO],
-  [C.CAMPO, M.FRUTTO, C.FRUTTETO],
-  [C.CAPANNA, C.FALO, C.ACCAMPAMENTO],
 ];
-
-/** Tutto ciò che nasce da un'unione scritta: per Unisci è una cosa da unire, mai un fenomeno da guardare nel mondo. */
-export const RISULTATI: ReadonlySet<number> = new Set(UNIONI.map(([, , r]) => r));
-/** Tutto ciò che entra in un'unione scritta come ingrediente. */
-export const INGREDIENTI: ReadonlySet<number> = new Set(UNIONI.flatMap(([a, b]) => [a, b]));
 
 /**
  * Un numero solo per una coppia di scoperte d'autore, uguale nei due ordini (un numero e non un testo: si chiede
@@ -220,20 +143,12 @@ export function chiaveCoppia(a: number, b: number): number {
   if (a >= 65536 || b >= 65536) return -1;
   return a < b ? a * 65536 + b : b * 65536 + a;
 }
-const TAVOLA = new Map<number, number>(UNIONI.map(([a, b, r]) => [chiaveCoppia(a, b), r]));
 
-/** Cosa nasce unendo due scoperte secondo le unioni scritte a mano; -1 se quella coppia non è prevista. */
-export function unione(a: number, b: number): number {
-  return TAVOLA.get(chiaveCoppia(a, b)) ?? -1;
-}
-
-/** Per ogni invenzione, le coppie da cui nasce (serve al libro). */
-export function vieDi(id: number): [number, number][] {
-  return UNIONI.filter(([, , r]) => r === id).map(([a, b]) => [a, b]);
-}
-
-/** Quando si scopre la prima cosa, arriva anche la seconda: è così che cambiano le ere. */
-export const CONSEGUENZE: readonly (readonly [number, number])[] = [
+/**
+ * Quando si scopre la prima cosa, arriva anche la seconda: è così che cambiano le ere. Queste sono quelle di prima
+ * delle schede; tutte insieme (con `arrivaCon` delle schede) le dà `conseguenze()` di contenuti/registro.ts.
+ */
+export const CONSEGUENZE_DI_PRIMA: readonly (readonly [number, number])[] = [
   [C.UTENSILE, E.PIETRA],
   [C.FALO, E.FUOCO_DOMATO],
   [C.CAMPO, E.AGRICOLTURA],

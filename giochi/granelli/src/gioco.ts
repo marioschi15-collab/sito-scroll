@@ -1,6 +1,6 @@
+import { INIZIALI, ere, ingombroDi, voce, voci, vociTrovate } from './contenuti/registro.js';
 import { Pittore } from './disegno/pittore.js';
 import { apriLibro, nomeDi, tondino } from './libro.js';
-import { ERE, INGOMBRO } from './motore/cose.js';
 import { M, OMINO, PRIMA_ID_MISCELA, VILLAGGIO } from './motore/materiali.js';
 import { Mondo } from './motore/mondo.js';
 import { SUPERFICIE, terreno } from './motore/terreno.js';
@@ -9,7 +9,6 @@ import { costruisciPagina, el } from './pagina.js';
 import { ADDIO_MESTOLO, ANNUNCIO, NON_SI_POSA, annuncioDiLutto } from './righe.js';
 import { type Ricordi, leggiRicordi } from './ricordi.js';
 import { carica, extraDi, fotografa, ripristina, salva } from './salvataggio.js';
-import { INIZIALI, PER_ID, SCOPERTE, vociTrovate } from './scoperte.js';
 
 const GOMMA = -1;
 // Il -2 era il Mestolo, che non c'è più: il numero resta libero, così una partita di prima non lo confonde con altro.
@@ -130,7 +129,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   // ── Tavolozza ────────────────────────────────────────────────────────────────
   const eMiscela = (id: number): boolean => id >= PRIMA_ID_MISCELA;
   /** Si può mettere nel mondo col dito: i materiali e le invenzioni che lo permettono, e tutte le miscele. */
-  const versabile = (id: number): boolean => (eMiscela(id) ? mondo.ricettario.has(id) : PER_ID.get(id)?.versabile === true);
+  const versabile = (id: number): boolean => (eMiscela(id) ? mondo.ricettario.has(id) : voce(id)?.versabile === true);
   const quanteVoci = (): number => vociTrovate(mondo.visti);
   const quanteMiscele = (): number => [...mondo.visti].filter(eMiscela).length;
 
@@ -175,9 +174,9 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     if (scelto >= 0 && !ricordi.recenti.includes(scelto)) scelto = ricordi.recenti[0];
     scegli(scelto);
     const miscele = quanteMiscele();
-    p.bLibro.textContent = `Libro ${quanteVoci()}/${SCOPERTE.length}${miscele ? ` +${miscele}` : ''}`;
-    const eraDiOra = [...ERE].reverse().find((id) => mondo.visti.has(id));
-    p.era.textContent = eraDiOra ? (PER_ID.get(eraDiOra)?.nome ?? '') : 'Prima di tutto';
+    p.bLibro.textContent = `Libro ${quanteVoci()}/${voci().length}${miscele ? ` +${miscele}` : ''}`;
+    const eraDiOra = [...ere()].reverse().find((id) => mondo.visti.has(id));
+    p.era.textContent = eraDiOra ? (voce(eraDiOra)?.nome ?? '') : 'Prima di tutto';
   }
   ridisegnaTavolozza();
 
@@ -235,7 +234,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       mondo.fulmine(Math.max(0, Math.min(mondo.w - 1, x)), 0);
       return;
     }
-    if (INGOMBRO[scelto]) {
+    if (ingombroDi(scelto)) {
       // Una costruzione si posa solo dove può stare: se no, una riga dice perché.
       const dove = mondo.puoPosare(scelto, x, y);
       if (!dove.si) diRiga(NON_SI_POSA[dove.perche]);
@@ -328,7 +327,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   function comeNasce(id: number): string {
     const ricetta = mondo.ricettario.get(id);
     if (ricetta) return `${nomeDi(mondo, ricetta.a)} + ${nomeDi(mondo, ricetta.b)}`;
-    const via = PER_ID.get(id)?.nasce[0];
+    const via = voce(id)?.nasce[0];
     if (!via) return '';
     return via.con.map((ingrediente) => nomeDi(mondo, ingrediente)).join(' + ') + (via.nota ? `, ${via.nota}` : '');
   }
@@ -392,7 +391,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     navigator.vibrate?.(25);
     ridisegnaTavolozza(nuove);
     salvaTutto();
-    if (quanteVoci() === SCOPERTE.length || nuove.includes(VILLAGGIO)) setTimeout(festa, 1500);
+    if (quanteVoci() === voci().length || nuove.includes(VILLAGGIO)) setTimeout(festa, 1500);
   }
 
   // ── Finestre: libro e messaggi ───────────────────────────────────────────────
@@ -426,7 +425,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
 
   function festa(): void {
-    const tutto = quanteVoci() === SCOPERTE.length;
+    const tutto = quanteVoci() === voci().length;
     const { scheda, chiudi } = messaggio(tutto ? 'Hai scoperto tutto!' : 'È nato un villaggio!', [
       tutto
         ? 'Tutte le voci del Libro sono tue. Restano le miscele: quelle non finiscono mai.'

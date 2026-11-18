@@ -1,4 +1,4 @@
-import { C, E, G, INGOMBRO, vieDi } from './motore/cose.js';
+import { C, E, INGOMBRO_DI_PRIMA, UNIONI_DI_PRIMA } from './motore/cose.js';
 import * as K from './motore/materiali.js';
 
 const { M } = K;
@@ -9,7 +9,10 @@ export interface Via {
   nota?: string;
 }
 
-/** Una voce del libro delle scoperte. */
+/**
+ * Una voce del Libro scritta prima delle schede (materiali, fenomeni, invenzioni, ere). Le voci nuove si scrivono
+ * come schede in src/contenuti/; tutte insieme, con chiave, tipo e famiglia, le dà il registro (contenuti/registro.ts).
+ */
 export interface Scoperta {
   id: number;
   nome: string;
@@ -24,18 +27,6 @@ export interface Scoperta {
   versabile: boolean;
 }
 
-/** I capitoli del libro, nell'ordine in cui si sfogliano. Le miscele hanno un capitolo a parte, senza fine. */
-export const SEZIONI: readonly (readonly [string, string])[] = [
-  ['elementi', 'I quattro elementi'],
-  ['terra', 'Terra e pietre'],
-  ['cielo', 'Acqua e cielo'],
-  ['fuoco', 'Fuoco e fumo'],
-  ['vita', 'Vita'],
-  ['genti', 'Genti'],
-  ['cose', 'Invenzioni'],
-  ['ere', 'Ere ed eventi'],
-];
-
 export const INIZIALI: readonly number[] = [M.TERRA, M.ACQUA, M.FUOCO, M.ARIA];
 
 function voce(id: number, nome: string, sezione: string, indizio: string, descrizione: string, nasce: readonly Via[] = [], versabile = true): Scoperta {
@@ -47,7 +38,8 @@ const nota = (testo: string, ...ids: number[]): Via => ({ con: ids, nota: testo 
 const evento = (id: number, nome: string, sezione: string, indizio: string, descrizione: string, nasce: readonly Via[]): Scoperta =>
   voce(id, nome, sezione, indizio, descrizione, nasce, false);
 
-export const SCOPERTE: Scoperta[] = [
+/** Le voci di prima, nell'ordine in cui il Libro le mostra dentro ogni capitolo. */
+export const VOCI_DI_PRIMA: Scoperta[] = [
   // ── I quattro elementi ──
   voce(M.TERRA, 'Terra', 'elementi', '', 'Cade, si ammucchia, regge quello che le metti sopra. Quasi tutto comincia da qui.'),
   voce(M.ACQUA, 'Acqua', 'elementi', '', 'Scorre verso il basso e riempie ogni conca. Spegne, bagna, disseta.'),
@@ -120,15 +112,19 @@ export const SCOPERTE: Scoperta[] = [
 ];
 
 /**
- * Una voce che nasce da un'unione scritta (cose.ts): le sue vie sono quelle unioni. Se ha un ingombro si può
+ * Un'invenzione: nasce da un'unione scritta (cose.ts), e le sue vie sono quelle unioni. Se ha un ingombro si può
  * posare nel mondo; altrimenti, per ora, è un gettone che si unisce ad altro.
  */
-const unita = (id: number, nome: string, sezione: string, indizio: string, descrizione: string): Scoperta =>
-  voce(id, nome, sezione, indizio, descrizione, vieDi(id).map(([a, b]) => con(a, b)), INGOMBRO[id] !== undefined);
-/** Un'invenzione: nasce unendo due scoperte. */
-const invenzione = (id: number, nome: string, indizio: string, descrizione: string): Scoperta => unita(id, nome, 'cose', indizio, descrizione);
-/** Un mestiere, una persona, un popolo: nasce portando qualcosa a un omino. */
-const gente = (id: number, nome: string, indizio: string, descrizione: string): Scoperta => unita(id, nome, 'genti', indizio, descrizione);
+const invenzione = (id: number, nome: string, indizio: string, descrizione: string): Scoperta =>
+  voce(
+    id,
+    nome,
+    'cose',
+    indizio,
+    descrizione,
+    UNIONI_DI_PRIMA.filter(([, , r]) => r === id).map(([a, b]) => con(a, b)),
+    INGOMBRO_DI_PRIMA[id] !== undefined,
+  );
 const era = (id: number, nome: string, indizio: string, descrizione: string, grazie: number): Scoperta =>
   voce(id, nome, 'ere', indizio, descrizione, [con(grazie)], false);
 
@@ -163,41 +159,6 @@ const INVENZIONI: readonly Scoperta[] = [
   invenzione(C.ARATRO, 'Aratro', 'Il ferro, nel campo.', 'Una lama di ferro che apre la terra. Lo stesso campo dà il doppio.'),
   invenzione(C.PONTE, 'Ponte', 'Una strada che non si ferma davanti all’acqua.', 'Una strada sospesa sull’acqua. Due rive diventano un posto solo.'),
   invenzione(C.FARO, 'Faro', 'Un fuoco in cima a una torre.', 'Un fuoco in cima a una torre: di notte dice alle barche dov’è la terra.'),
-  invenzione(C.SECCHIO, 'Secchio', 'Al pozzo serve qualcosa per tirare su l’acqua.', 'Un vaso legato a una corda: scende nel pozzo pieno di niente e risale pieno d’acqua.'),
-  invenzione(C.FIACCOLA, 'Fiaccola', 'Un pezzo di legno che si porta via il falò.', 'Un bastone acceso al falò: la luce che cammina con te nel buio.'),
-  invenzione(C.MINESTRA, 'Minestra', 'Il vaso, messo sul falò.', 'Acqua, erbe e quello che c’è, nel vaso sul fuoco. Scalda la pancia e mette tutti intorno allo stesso fuoco.'),
-  invenzione(C.FARINA, 'Farina', 'Quello che il mulino fa del campo.', 'Il raccolto del campo macinato dal mulino: una polvere bianca che non sembra niente, e invece è il pane di domani.'),
-  invenzione(C.FOCACCIA, 'Focaccia', 'La farina, cotta sul falò.', 'Farina e acqua schiacciate e cotte sulle pietre calde del falò. Il pane più antico del mondo.'),
-  invenzione(C.VELIERO, 'Veliero', 'Una barca che si fa spingere dal vento.', 'Una barca con una vela: non servono più le braccia, basta il vento.'),
-  invenzione(C.FOCOLARE, 'Focolare', 'Il falò, portato dentro casa.', 'Il fuoco dentro casa, nel suo angolo di pietre: cuoce, scalda e la sera tiene tutti vicini.'),
-  invenzione(C.FATTORIA, 'Fattoria', 'Una casa in mezzo ai campi.', 'Una casa con i suoi campi intorno: chi ci vive semina, raccoglie e mette da parte per l’inverno.'),
-  invenzione(C.PORTO, 'Porto', 'Il faro chiama, le barche arrivano.', 'Moli, barche legate e un faro che le chiama a casa: qui il mare diventa una strada.'),
-  invenzione(C.RACCOLTO, 'Raccolto', 'L’aratro nel campo, e poi pazienza.', 'Il campo arato dà spighe alte e piene: un anno di lavoro che si porta a casa in pochi giorni.'),
-  invenzione(C.BIBLIOTECA, 'Biblioteca', 'Un posto speciale per tenere i libri.', 'Tanti libri sotto lo stesso tetto: quello che sanno in tanti, a disposizione di uno solo.'),
-  invenzione(C.BOTTEGA, 'Bottega', 'Il pane, in cambio di monete.', 'Un banco, un forno e qualcuno che conta le monete: si compra il pane invece di farlo.'),
-  invenzione(C.ORTO, 'Orto', 'Un campo vicino all’acqua del pozzo.', 'Un campo piccolo, innaffiato col secchio del pozzo: insalata, fagioli, zucche, tutto l’anno.'),
-  invenzione(C.FRUTTETO, 'Frutteto', 'Semina un frutto nel campo.', 'File di alberi piantati apposta: i frutti non si cercano più nel bosco, si raccolgono.'),
-  invenzione(C.ACCAMPAMENTO, 'Accampamento', 'Capanne intorno al fuoco.', 'Qualche capanna attorno a un falò: non è ancora un paese, ma ci somiglia.'),
-  gente(G.CACCIATORE, 'Cacciatore', 'Dai una lancia a un omino.', 'Un omino con la lancia: esce all’alba, cammina tanto, e torna con la cena.'),
-  gente(G.CONTADINO, 'Contadino', 'Un omino e un campo.', 'Un omino che ha scelto il campo: sa quando seminare e quando aspettare.'),
-  gente(G.PESCATORE, 'Pescatore', 'Un omino e una barca.', 'Un omino con la barca e tanta pazienza: l’acqua gli dà da mangiare.'),
-  gente(G.VASAIO, 'Vasaio', 'Un omino che sa fare vasi.', 'Mani sporche d’argilla e una ruota che gira: da lui escono vasi, piatti e brocche.'),
-  gente(G.FORNAIO, 'Fornaio', 'Un omino e il pane.', 'Si alza prima di tutti: quando il paese si sveglia, il pane è già caldo.'),
-  gente(G.FABBRO, 'Fabbro', 'Un omino davanti alla fornace.', 'Fuoco, martello e incudine: piega il metallo e ne fa attrezzi, chiodi e ferri.'),
-  gente(G.GUERRIERO, 'Guerriero', 'Dai una spada a un omino.', 'Un omino con la spada: difende il paese, e a volte se ne va a cercare guai.'),
-  gente(G.MAESTRO, 'Maestro', 'Un omino che ha letto un libro.', 'Ha letto e ricorda, e lo racconta ai più piccoli: così quello che si sa non va perso.'),
-  gente(G.MERCANTE, 'Mercante', 'Un omino al mercato.', 'Compra qui e vende là: porta in paese cose che nessuno aveva mai visto.'),
-  gente(G.MUGNAIO, 'Mugnaio', 'Un omino e il mulino.', 'Bianco di farina dalla testa ai piedi: guarda il cielo, e quando c’è vento macina.'),
-  gente(G.GUARDIANO, 'Guardiano del faro', 'Qualcuno deve tenere acceso il faro.', 'Ogni sera sale le scale e accende il fuoco: le barche tornano a casa grazie a lui.'),
-  gente(G.RE, 'Re', 'Un omino nel castello.', 'Un omino con la corona che decide per tutti. Se decide bene, il paese lo ricorda a lungo.'),
-  gente(G.ARTIGIANO, 'Artigiano', 'Dai un utensile a un omino.', 'Un omino con l’utensile in mano: aggiusta, intaglia, costruisce. Le cose belle passano dalle sue mani.'),
-  gente(G.CARRETTIERE, 'Carrettiere', 'Qualcuno deve guidare il carro.', 'Sempre in strada con il suo carro: porta il grano al mulino e la farina in paese.'),
-  gente(G.FAMIGLIA, 'Famiglia', 'Un omino sotto un tetto.', 'Un tetto e chi ci vive sotto: si mangia insieme, si litiga, si fa pace.'),
-  gente(G.CANTASTORIE, 'Cantastorie', 'Un omino seduto vicino al falò.', 'La sera, intorno al fuoco, racconta storie vere e storie inventate. Nessuno sa più quali sono quali.'),
-  gente(G.VIANDANTE, 'Viandante', 'Un omino che attraversa il ponte.', 'Uno che passa e non si ferma: racconta di paesi lontani, e un giorno riparte.'),
-  gente(G.CITTADINO, 'Cittadino', 'Un omino che va a vivere in città.', 'Vive tra le mura, fa un mestiere tra cento, e la sera va in piazza a sentire le novità.'),
-  gente(G.CUSTODE, 'Custode del tempio', 'Qualcuno deve aprire il tempio al mattino.', 'Tiene pulite le colonne e accese le lampade, e conosce tutte le storie scritte sui muri.'),
-  gente(G.REGNO, 'Regno', 'Una città e un castello, insieme.', 'Tante città sotto lo stesso castello: un paese grande, con i suoi confini e le sue leggi.'),
   era(E.PIETRA, 'Età della pietra', 'Comincia con il primo utensile.', 'Il mondo ha il suo primo utensile. Da adesso le cose non si trovano soltanto: si fanno.', C.UTENSILE),
   era(E.FUOCO_DOMATO, 'Il fuoco domato', 'Quando il fuoco smette di fare paura.', 'Il fuoco non è più solo un pericolo: è calore, luce e compagnia. Le notti non sono più le stesse.', C.FALO),
   era(E.AGRICOLTURA, 'Nasce l’agricoltura', 'Quando si smette di cercare il cibo.', 'Chi semina resta. Intorno ai campi nascono i paesi.', C.CAMPO),
@@ -208,13 +169,4 @@ const INVENZIONI: readonly Scoperta[] = [
   era(E.COMMERCIO, 'Nasce il commercio', 'Quando le cose cominciano a viaggiare.', 'Monete e mercati: le cose viaggiano più lontano delle persone.', C.MERCATO),
   era(E.MEDIOEVO, 'Medioevo', 'Comincia con il primo castello.', 'Castelli sulle colline e paesi stretti intorno. Un’altra età.', C.CASTELLO),
 ];
-SCOPERTE.push(...INVENZIONI);
-
-export const PER_ID = new Map(SCOPERTE.map((s) => [s.id, s]));
-
-/** Quante voci del Libro sono già state scoperte. Le miscele non sono voci: hanno un capitolo a parte, senza fine. */
-export function vociTrovate(visti: ReadonlySet<number>): number {
-  let n = 0;
-  for (const s of SCOPERTE) if (visti.has(s.id)) n++;
-  return n;
-}
+VOCI_DI_PRIMA.push(...INVENZIONI);

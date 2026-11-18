@@ -4,7 +4,8 @@ import type { Mondo } from '../motore/mondo.js';
 import { Cielo, oraDelMondo } from './cielo.js';
 import { FIORI, TA, TB, TG, TR, tinteMiscela } from './colori.js';
 import { FIAMME, figura, figureOmino } from './figure.js';
-import { C, type Cosa, ERE, INGOMBRO } from '../motore/cose.js';
+import { ere, ingombroDi } from '../contenuti/registro.js';
+import { C, type Cosa } from '../motore/cose.js';
 import { NUOTA, type Omino, SCAPPA } from '../motore/omini.js';
 import { PENDENZA_MAX, regge, staAGalla } from '../motore/posa.js';
 import { LUCCIOLA, Particelle, SCINTILLA } from './particelle.js';
@@ -513,9 +514,9 @@ export class Pittore {
     const lumi: [number, number, number, string][] = [];
     // In che era siamo: 0 prima di tutto, poi una in più per ogni era raggiunta.
     let era = 0;
-    for (const id of ERE) if (this.mondo.visti.has(id)) era++;
+    for (const id of ere()) if (this.mondo.visti.has(id)) era++;
     for (const c of cose) {
-      const [lw, lh] = INGOMBRO[c.id];
+      const [lw, lh] = ingombroDi(c.id)!;
       const f = c.id === C.FALO ? FIAMME[(this.fotogrammi >> 3) % 3] : figura(c.id, notte);
       if (!f) continue;
       const X = Math.round((c.x + lw / 2) * 2 - f.width / 2) - ox;
@@ -528,7 +529,8 @@ export class Pittore {
         if (Math.random() < 0.1) this.particelle.aggiungi(SCINTILLA, c.x + lw / 2, c.y - lh + 1, (Math.random() - 0.5) * 3, -4 - Math.random() * 5, 0.6 + Math.random() * 0.8, 0.45);
       } else if (c.id === C.FARO) lumi.push([X + f.width / 2, Y + 3, notte ? 30 : 10, 'rgba(255,240,170,0.6)']);
       else if (c.id === C.FORNACE) lumi.push([X + f.width / 2, Y + f.height - 5, 12, 'rgba(255,140,50,0.45)']);
-      else if (notte && lh > 5 && c.id !== C.CAMPO && c.id !== C.CARRO && c.id !== C.BARCA && c.id !== C.PONTE && c.id !== C.MURA && c.id !== C.POZZO) {
+      // Le finestre accese di notte: non per ciò che non ha un tetto, né per ciò che sta a galla (anche veliero e porto).
+      else if (notte && lh > 5 && c.id !== C.CAMPO && c.id !== C.CARRO && !staAGalla(c.id) && c.id !== C.MURA && c.id !== C.POZZO) {
         lumi.push([X + f.width / 2, Y + f.height - 6, f.width * 0.5, 'rgba(255,205,90,0.35)']);
       }
       void lh;

@@ -1,30 +1,7 @@
-import {
-  ALBA,
-  ARCOBALENO,
-  DESERTO,
-  ERUZIONE,
-  FORESTA,
-  GHIACCIAIO,
-  INCENDIO,
-  LAGO,
-  LUCCIOLE,
-  M,
-  NEVICATA,
-  NOTTE,
-} from './materiali.js';
+import { paesaggi } from '../contenuti/registro.js';
+import { ALBA, ARCOBALENO, LUCCIOLE, M, NOTTE } from './materiali.js';
 import type { Mondo } from './mondo.js';
 import { luceDelGiorno } from './tempo.js';
-
-/** Quante celle di un materiale servono perché il mondo "abbia" un certo paesaggio. */
-const PAESAGGI: readonly (readonly [number, number, number])[] = [
-  [LAGO, M.ACQUA, 700],
-  [FORESTA, M.LEGNO, 120],
-  [DESERTO, M.SABBIA, 1500],
-  [INCENDIO, M.BRACE, 50],
-  [ERUZIONE, M.LAVA, 350],
-  [GHIACCIAIO, M.GHIACCIO, 300],
-  [NEVICATA, M.NEVE, 300],
-];
 
 /**
  * I fenomeni non sono materiali: sono cose che succedono quando il mondo arriva a un certo punto
@@ -33,7 +10,8 @@ const PAESAGGI: readonly (readonly [number, number, number])[] = [
 export function fenomeni(m: Mondo): void {
   const cx = m.w >> 1;
   const alto = (m.h * 0.2) | 0;
-  for (const [id, materiale, soglia] of PAESAGGI) {
+  // I paesaggi (lago, foresta, deserto… e quelli delle schede, con `siVede`): basta averne abbastanza celle.
+  for (const [id, materiale, soglia] of paesaggi()) {
     if (m.conta[materiale] >= soglia) m.scopri(id, cx, m.h >> 1);
   }
   const luce = luceDelGiorno(m.tic);

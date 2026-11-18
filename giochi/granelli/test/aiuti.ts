@@ -2,7 +2,7 @@ import { ALBA, ARCOBALENO, FIORE, FORESTA, LAGO, LUCCIOLE, M, N_BASE, NOTTE, PIO
 import { Mondo } from '../src/motore/mondo.js';
 import type { Causa } from '../src/motore/omini.js';
 import { terreno } from '../src/motore/terreno.js';
-import { INIZIALI } from '../src/scoperte.js';
+import { INIZIALI } from '../src/contenuti/registro.js';
 
 /** Un mondo piccolo e vuoto, con i quattro elementi già noti e un seme fisso: ogni prova rifà sempre la stessa storia. */
 export function mondo(w = 60, h = 60, seme = 7): Mondo {

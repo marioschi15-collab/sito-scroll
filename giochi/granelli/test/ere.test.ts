@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { C, CONSEGUENZE, E, ERE, vieDi } from '../src/motore/cose.js';
+import { conseguenze, ere, unioni, voci } from '../src/contenuti/registro.js';
+import { C, E } from '../src/motore/cose.js';
 import { erePronte } from '../src/motore/ere.js';
 import { M, N_BASE, OMINO, VILLAGGIO } from '../src/motore/materiali.js';
 import type { Mondo } from '../src/motore/mondo.js';
 import { fotografa, ripristina } from '../src/salvataggio.js';
-import { SCOPERTE } from '../src/scoperte.js';
 import { mondo } from './aiuti.js';
 
-/** Gli eventi di CONSEGUENZE che non sono ere della scala: arrivano solo dopo l'Età della pietra. */
-const EVENTI = CONSEGUENZE.map(([, allora]) => allora).filter((id) => !ERE.includes(id));
+/** Gli eventi delle conseguenze che non sono ere della scala: arrivano solo dopo l'Età della pietra. */
+const ERE = ere();
+const EVENTI = conseguenze()
+  .map(([, allora]) => allora)
+  .filter((id) => !ERE.includes(id));
 
 /** Lancia un errore se nel mondo c'è un'era senza la precedente, o un evento senza l'Età della pietra. */
 function inOrdine(m: Mondo): void {
@@ -69,13 +72,13 @@ describe('le ere arrivano in ordine', () => {
   });
 
   it('nessuna sequenza di unioni, a caso con seme fisso, apre un’era prima della precedente', () => {
-    const coppie = Object.values(C).flatMap((id) => vieDi(id));
+    const coppie = unioni().map(([a, b]) => [a, b] as const);
     let finoAlMedioevo = 0;
     for (let seme = 1; seme <= 60; seme++) {
       const caso = dadi(seme);
       const m = mondo();
       // Tutti i materiali, gli omini e il villaggio: le invenzioni si fanno solo unendo.
-      for (const voce of SCOPERTE) if (voce.id < N_BASE || voce.id === OMINO || voce.id === VILLAGGIO) m.visti.add(voce.id);
+      for (const voce of voci()) if (voce.id < N_BASE || voce.id === OMINO || voce.id === VILLAGGIO) m.visti.add(voce.id);
       for (let mossa = 0; mossa < 200; mossa++) {
         const [a, b] = coppie[(caso() * coppie.length) | 0];
         if (!m.visti.has(a) || !m.visti.has(b)) continue;

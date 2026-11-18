@@ -1,6 +1,7 @@
 import { arrivo } from './arrivi.js';
 import { ALTEZZA, appoggio, libera, posto, quotaDelPasso } from './cammino.js';
-import { C, type Cosa, INGOMBRO, OSPITA } from './cose.js';
+import { ingombroDi } from '../contenuti/registro.js';
+import { C, type Cosa, OSPITA } from './cose.js';
 import { BAMBINO, M, OMINO, PRIMA_MISCELA, VILLAGGIO } from './materiali.js';
 import { SOGLIA } from './miscele.js';
 import { luceDelGiorno } from './tempo.js';
@@ -207,7 +208,7 @@ function scostati(m: Mondo, o: Omino): void {
   }
 }
 
-const centroDi = (cosa: Cosa): number => cosa.x + (INGOMBRO[cosa.id][0] >> 1);
+const centroDi = (cosa: Cosa): number => cosa.x + (ingombroDi(cosa.id)![0] >> 1);
 
 /** Quanti omini stanno dormendo in una casa. */
 function inCasa(m: Mondo, casa: Cosa): number {

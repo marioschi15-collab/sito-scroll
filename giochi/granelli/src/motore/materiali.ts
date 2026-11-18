@@ -66,6 +66,20 @@ export const NEVICATA = 120;
 export const ESPLOSIONE = 121;
 export const TEMPORALE = 122;
 export const LUCCIOLE = 123;
+/**
+ * Quante celle di un materiale servono perché il mondo "abbia" un certo paesaggio: [scoperta, materiale, celle].
+ * Questi sono quelli di prima delle schede; tutti insieme (con `siVede` delle schede) li dà `paesaggi()` di
+ * contenuti/registro.ts.
+ */
+export const PAESAGGI_DI_PRIMA: readonly (readonly [number, number, number])[] = [
+  [LAGO, M.ACQUA, 700],
+  [FORESTA, M.LEGNO, 120],
+  [DESERTO, M.SABBIA, 1500],
+  [INCENDIO, M.BRACE, 50],
+  [ERUZIONE, M.LAVA, 350],
+  [GHIACCIAIO, M.GHIACCIO, 300],
+  [NEVICATA, M.NEVE, 300],
+];
 /** Da questo numero in su, una scoperta è una miscela: il numero dipende solo dai due ingredienti. */
 export const PRIMA_ID_MISCELA = 1_000_000;
 

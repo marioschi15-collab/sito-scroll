@@ -15,6 +15,7 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
 | dopo P2 | 0,59 / 1,95 / 2,91 (60) | 0,69 / 2,56 / 4,42 (60) | 0,92 / 3,72 / 5,11 (59) | 2,27 / 8,66 / 12,59 (58) | 0,85 / 3,33 / 4,23 (60) | 0,77 / 3,58 / 5,32 (60) | 1,13 / 4,64 / 6,91 (58) | 1,29 / 4,02 / 5,90 (60) | 1,15 / 5,11 / 8,21 (54) |
 | dopo P3a | 0,47 / 1,89 / 2,86 (60) | 0,71 / 2,63 / 3,83 (60) | 0,77 / 3,24 / 4,79 (59) | 1,86 / 8,04 / 11,80 (59) | 0,60 / 2,50 / 3,57 (60) | 0,76 / 2,69 / 4,37 (60) | 1,06 / 4,20 / 6,03 (59) | 0,86 / 3,75 / 5,48 (60) | 1,08 / 4,58 / 7,48 (57) |
 | dopo P3b | 0,53 / 2,10 / 2,83 (60) | 0,77 / 2,96 / 3,80 (60) | 0,91 / 3,65 / 5,08 (59) | 1,94 / 7,92 / 11,88 (59) | 0,63 / 2,43 / 3,35 (60) | 0,76 / 2,96 / 3,93 (60) | 1,03 / 4,52 / 7,33 (56) | 0,92 / 3,87 / 6,18 (60) | 1,17 / 5,28 / 6,65 (60) |
+| dopo P5a | 0,46 / 2,13 / 3,22 (60) | 0,66 / 3,00 / 3,99 (60) | 0,92 / 3,65 / 4,91 (59) | 2,20 / 8,73 / 12,58 (58) | 0,67 / 2,68 / 4,13 (60) | 0,79 / 3,15 / 4,08 (60) | 1,12 / 4,72 / 5,94 (59) | 0,98 / 4,10 / 5,64 (60) | 1,28 / 4,42 / 7,11 (58) |
 
 ## Note
 
@@ -51,3 +52,14 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
   dopo; lago 3,79 e 3,76; temporale 4,68 e 5,07; incendio 11,64 e 11,40; paese di giorno 3,49 e 3,93; di notte 4,27
   e 4,37; mondo maturo 5,78 e 6,37; mare 5,47 e 5,60; maturo trascinato 6,76 e 6,46. Le differenze vanno nei due
   sensi e restano nel rumore della macchina, come il 7,33 del mondo maturo nella riga della tabella.
+- **dopo P5a** (schede in `src/contenuti/`, registro unico, controlli automatici, le voci del paese come schede):
+  a ogni fotogramma cambia solo come si legge l'ingombro di una cosa posata (`ingombroDi`, una tavola fatta una
+  volta sola) e se sta a galla. Confronto alternato con la copia di prima, a x6, due giri per parte (prima / dopo):
+  mondo vuoto 3,04-3,10 / 3,20-3,32; lago 4,00-4,12 / 3,89-3,97; temporale 4,99-5,54 / 5,18-5,27; incendio
+  12,39-12,96 / 12,94-13,08; paese di giorno 3,73-3,82 / 3,86-4,40; di notte 4,81-4,82 / 4,62-5,06; mondo maturo
+  7,12-7,16 / 5,89-7,31; mare 5,63-5,68 / 5,51-5,91; maturo trascinato 8,35-8,83 / 7,78-7,88. Tutto nel rumore.
+- **dopo P5a, controllo indipendente** (copia di prima rifatta dall'ultimo commit, a x6, due giri alternati per
+  parte, prima / dopo): mondo vuoto 2,87-3,11 / 3,20-3,22; lago 3,89-4,30 / 4,07-4,29 (un giro a 5,38, rifatto);
+  temporale 5,27-5,95 / 5,48-5,56; incendio 12,33-12,44 / 12,22-13,40; paese di giorno 4,03 / 3,98-4,36; di notte
+  4,30-5,10 / 5,08-5,18; mondo maturo 6,50-7,97 / 6,28-7,41; mare 5,71-5,88 / 6,13-6,14; maturo trascinato
+  6,94-8,91 / 8,37-8,61. Nessuna scena oltre il rumore.

@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { C, G } from '../src/motore/cose.js';
+import { INIZIALI, idDi, voce } from '../src/contenuti/registro.js';
+import { C } from '../src/motore/cose.js';
 import { M, OMINO } from '../src/motore/materiali.js';
 import type { Mondo } from '../src/motore/mondo.js';
 import { ADDIO_MESTOLO, UNISCI } from '../src/righe.js';
 import { leggiRicordi } from '../src/ricordi.js';
 import { rispostaDiUnisci } from '../src/risposta.js';
-import { INIZIALI, PER_ID } from '../src/scoperte.js';
 import { libroDa12, mondo, riempi } from './aiuti.js';
 
 /** Il nome di una scoperta, come lo scrive il pannello (le miscele qui non servono). */
-const nome = (id: number): string => PER_ID.get(id)?.nome ?? '???';
+const nome = (id: number): string => voce(id)?.nome ?? '???';
 /** Unisce due cose come il pannello Unisci, guardando il mezzo del mondo. */
 const unisci = (m: Mondo, a: number, b: number) => rispostaDiUnisci(m, a, b, m.w >> 1, nome);
 
@@ -42,7 +42,7 @@ describe('il pannello Unisci dice com’è andata', () => {
   it('un mestiere: un omino con la lancia fa il cacciatore', () => {
     const m = mondo();
     m.visti.add(OMINO).add(C.LANCIA);
-    expect(unisci(m, OMINO, C.LANCIA)).toEqual({ titolo: 'Nuova scoperta!', id: G.CACCIATORE, sotto: 'Omino + Lancia', nuova: true });
+    expect(unisci(m, OMINO, C.LANCIA)).toEqual({ titolo: 'Nuova scoperta!', id: idDi('cacciatore'), sotto: 'Omino + Lancia', nuova: true });
   });
 
   it('capanna e frutto: dice se gli omini sono arrivati o se arriveranno vicino all’acqua', () => {

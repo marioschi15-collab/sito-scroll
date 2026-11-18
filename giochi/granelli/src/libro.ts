@@ -4,7 +4,7 @@ import { PRIMA_ID_MISCELA } from './motore/materiali.js';
 import type { Mondo } from './motore/mondo.js';
 import { descriviMiscela, etichette } from './motore/nomi.js';
 import { el } from './pagina.js';
-import { INIZIALI, PER_ID, SCOPERTE, SEZIONI, type Scoperta } from './scoperte.js';
+import { INIZIALI, type Voce, capitoli, voce as voceDi, voci, vociDelCapitolo } from './contenuti/registro.js';
 
 /** Quello che il libro deve sapere del gioco per mostrarsi. */
 export interface PerIlLibro {
@@ -17,7 +17,7 @@ const MISCELE = 'miscele';
 
 /** Come si chiama una scoperta qualsiasi: una voce d'autore, oppure una miscela con il nome che le è toccato. */
 export function nomeDi(mondo: Mondo, id: number): string {
-  return PER_ID.get(id)?.nome ?? mondo.ricettario.get(id)?.nome ?? '???';
+  return voceDi(id)?.nome ?? mondo.ricettario.get(id)?.nome ?? '???';
 }
 
 /** Il tondino con la grana di una scoperta, uguale a come appare nel mondo. */
@@ -28,8 +28,8 @@ export function tondino(mondo: Mondo, id: number, classe = 'pallino'): HTMLSpanE
 }
 
 /** Le voci d'autore che hanno questa cosa tra gli ingredienti. */
-function figliDi(id: number): Scoperta[] {
-  return SCOPERTE.filter((s) => s.id !== id && s.nasce.some((via) => via.con.includes(id)));
+function figliDi(id: number): Voce[] {
+  return voci().filter((s) => s.id !== id && s.nasce.some((via) => via.con.includes(id)));
 }
 
 /**
@@ -42,7 +42,7 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
   const visti = mondo.visti;
   const ordine = [...visti];
   const miscele = ordine.filter((id) => id >= PRIMA_ID_MISCELA);
-  const trovate = SCOPERTE.filter((s) => visti.has(s.id)).length;
+  const trovate = voci().filter((s) => visti.has(s.id)).length;
   /** Da quante voci in su anche le cose senza una ricetta si uniscono, e nascono le miscele. */
   const siMescola = trovate >= SOGLIA_MISCELE;
 
@@ -58,7 +58,7 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
   const titoli = el('div', 'libro-titoli');
   titoli.append(
     el('h2', '', 'Libro delle scoperte'),
-    el('span', 'libro-conto', `${trovate} di ${SCOPERTE.length} scoperte${miscele.length ? ` · ${miscele.length} miscele` : ''}`),
+    el('span', 'libro-conto', `${trovate} di ${voci().length} scoperte${miscele.length ? ` · ${miscele.length} miscele` : ''}`),
   );
   const bChiudi = el('button', 'tasto', 'Chiudi');
   bChiudi.addEventListener('click', chiudi);
@@ -67,7 +67,7 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
   const corpo = el('div', 'libro-corpo');
   scheda.append(testa, linguette, corpo);
 
-  let capitolo = SEZIONI[0][0];
+  let capitolo = capitoli()[0][0];
 
   /** Un nome con il suo tondino: se la cosa è nota porta alla sua pagina, altrimenti resta un mistero. */
   function etichetta(id: number): HTMLElement {
@@ -95,7 +95,7 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
 
   /** La pagina di una voce: cos'è, come nasce, a cosa porta, con chi è stata fusa. */
   function pagina(id: number): void {
-    const voce = PER_ID.get(id);
+    const voce = voceDi(id);
     const ricetta = mondo.ricettario.get(id);
     const sostanza = mondo.sostanzaDi(id);
     corpo.innerHTML = '';
@@ -105,7 +105,7 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
     indietro.addEventListener('click', () => elenco());
     const intestazione = el('div', 'voce-testa');
     const titoli2 = el('div', 'voce-titoli');
-    const capitoloNome = ricetta ? 'Miscela' : (SEZIONI.find(([chiave]) => chiave === voce?.sezione)?.[1] ?? '');
+    const capitoloNome = ricetta ? 'Miscela' : (capitoli().find(([chiave]) => chiave === voce?.famiglia)?.[1] ?? '');
     titoli2.append(el('span', 'voce-capitolo', capitoloNome), el('h2', '', nomeDi(mondo, id)));
     const cartellini = el('div', 'cartellini');
     if (sostanza) for (const parola of etichette(sostanza)) cartellini.append(el('span', 'cartellino', parola));
@@ -183,9 +183,9 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
   function elenco(): void {
     corpo.innerHTML = '';
     linguette.innerHTML = '';
-    for (const [chiave, nome] of [...SEZIONI, [MISCELE, 'Miscele'] as const]) {
-      const voci = SCOPERTE.filter((s) => s.sezione === chiave);
-      const conto = chiave === MISCELE ? `${miscele.length}` : `${voci.filter((s) => visti.has(s.id)).length}/${voci.length}`;
+    for (const [chiave, nome] of [...capitoli(), [MISCELE, 'Miscele'] as const]) {
+      const delCapitolo = vociDelCapitolo(chiave);
+      const conto = chiave === MISCELE ? `${miscele.length}` : `${delCapitolo.filter((s) => visti.has(s.id)).length}/${delCapitolo.length}`;
       const b = el('button', chiave === capitolo ? 'linguetta attiva' : 'linguetta');
       b.append(el('span', '', nome), el('span', 'linguetta-conto', conto));
       b.addEventListener('click', () => {
@@ -210,8 +210,7 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
         pagine.append(cartella(id, true, r ? `${nomeDi(mondo, r.a)} + ${nomeDi(mondo, r.b)}` : ''));
       }
     } else {
-      for (const s of SCOPERTE) {
-        if (s.sezione !== capitolo) continue;
+      for (const s of vociDelCapitolo(capitolo)) {
         const trovata = visti.has(s.id);
         pagine.append(cartella(s.id, trovata, trovata ? s.descrizione.split('. ')[0].replace(/[.:]$/, '') + '.' : s.indizio));
       }
@@ -220,7 +219,7 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
   }
 
   if (voceIniziale !== undefined && visti.has(voceIniziale)) {
-    capitolo = PER_ID.get(voceIniziale)?.sezione ?? MISCELE;
+    capitolo = voceDi(voceIniziale)?.famiglia ?? MISCELE;
     elenco();
     pagina(voceIniziale);
   } else elenco();

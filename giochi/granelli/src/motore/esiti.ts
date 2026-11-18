@@ -1,5 +1,6 @@
-import { SCOPERTE } from '../scoperte.js';
-import { INGREDIENTI, RISULTATI, chiaveCoppia, unione } from './cose.js';
+import { eIngrediente, eRisultato, unioneDi, viaDiFenomeno } from '../contenuti/registro.js';
+import { VOCI_DI_PRIMA } from '../scoperte.js';
+import { UNIONI_DI_PRIMA, chiaveCoppia } from './cose.js';
 import { BASE, N_BASE, OMINO, PRIMA_ID_MISCELA, VILLAGGIO } from './materiali.js';
 import { idMiscela } from './miscele.js';
 import { CELLA_PER_CELLA, COPPIE, RESTA } from './ricette.js';
@@ -24,11 +25,15 @@ for (const [a, b, primo, secondo, inUnisci] of COPPIE) {
   if (esito <= 0) continue;
   (esito < N_BASE ? MATERIA : FENOMENO).set(chiaveCoppia(a, b), esito);
 }
-for (const voce of SCOPERTE) {
+/** Ciò che nasce da un'unione scritta prima delle schede (le schede hanno le loro unioni, nel registro). */
+const NATI_DA_UNIONE = new Set(UNIONI_DI_PRIMA.map(([, , r]) => r));
+// Queste tavole si fanno con le sole voci di prima: le schede non inventano materiali, e le vie dei loro fenomeni
+// le dà il registro (`viaDiFenomeno`), che si legge solo quando serve e mai al caricamento di questo modulo.
+for (const voce of VOCI_DI_PRIMA) {
   // Le invenzioni hanno la loro tavola (cose.ts) e le ere arrivano da sole: qui contano materiali, vita e fenomeni.
-  // Anche ciò che nasce da un'unione scritta (un mestiere, l'omino che arriva alla capanna) ha già la sua tavola:
-  // le sue vie non sono quelle di un fenomeno da guardare nel mondo.
-  if (voce.sezione === 'cose' || voce.sezione === 'ere' || RISULTATI.has(voce.id)) continue;
+  // Anche ciò che nasce da un'unione scritta (l'omino che arriva alla capanna) ha già la sua tavola: le sue vie non
+  // sono quelle di un fenomeno da guardare nel mondo.
+  if (voce.sezione === 'cose' || voce.sezione === 'ere' || NATI_DA_UNIONE.has(voce.id)) continue;
   for (const via of voce.nasce) {
     if (via.con.length !== 2 || via.con[0] === via.con[1]) continue;
     const [a, b] = via.con;
@@ -56,12 +61,12 @@ export function esitoNoto(a: number, b: number): number {
 
 /** Il fenomeno di cui la coppia è la via (un'esplosione, un temporale…); -1 se non lo è di nessuno. */
 export function fenomenoDi(a: number, b: number): number {
-  return FENOMENO.get(chiaveCoppia(a, b)) ?? -1;
+  return FENOMENO.get(chiaveCoppia(a, b)) ?? viaDiFenomeno(a, b);
 }
 
 /** Vero se la coppia ha già un esito scritto a mano (invenzione, reazione del mondo o fenomeno): non dà mai una miscela. */
 export function coppiaDAutore(a: number, b: number): boolean {
-  if (unione(a, b) >= 0) return true;
+  if (unioneDi(a, b) >= 0 || viaDiFenomeno(a, b) >= 0) return true;
   const chiave = chiaveCoppia(a, b);
   return MATERIA.has(chiave) || FENOMENO.has(chiave) || (a < 256 && b < 256 && REAZIONI.has(a * 256 + b));
 }
@@ -101,7 +106,7 @@ function sostanza(id: number): boolean {
  */
 export function esitoDi(a: number, b: number, voci: number): Esito {
   if (a === b) return NIENTE;
-  const invenzione = unione(a, b);
+  const invenzione = unioneDi(a, b);
   if (invenzione >= 0) return { genere: 'unione', id: invenzione };
   const materia = esitoNoto(a, b);
   if (materia >= 0) return { genere: 'materia', id: materia };
@@ -117,7 +122,7 @@ export function esitoDi(a: number, b: number, voci: number): Esito {
  * entra in un'unione scritta o ne nasce (le invenzioni, i mestieri, le cose nuove).
  */
 export function siUnisce(id: number): boolean {
-  return (id > 0 && id < N_BASE) || id === OMINO || id === VILLAGGIO || INGREDIENTI.has(id) || RISULTATI.has(id);
+  return (id > 0 && id < N_BASE) || id === OMINO || id === VILLAGGIO || eIngrediente(id) || eRisultato(id);
 }
 
 /**
@@ -130,7 +135,7 @@ export function coppiaDEsempio(visti: ReadonlySet<number>): [number, number] | n
   let nota: [number, number] | null = null;
   for (let i = 0; i < miei.length; i++) {
     for (let j = i + 1; j < miei.length; j++) {
-      let esito = unione(miei[i], miei[j]);
+      let esito = unioneDi(miei[i], miei[j]);
       if (esito < 0) esito = esitoNoto(miei[i], miei[j]);
       if (esito < 0) continue;
       if (!visti.has(esito)) return [miei[i], miei[j]];

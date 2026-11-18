@@ -1,7 +1,7 @@
+import { ingombroDi, viaDiFenomeno } from '../contenuti/registro.js';
 import { primiOmini } from './arrivi.js';
 import { type Bersaglio, cheCosaCe } from './bersaglio.js';
 import { ALTEZZA, posto } from './cammino.js';
-import { INGOMBRO } from './cose.js';
 import { REAZIONI, esitoDi } from './esiti.js';
 import { M, N_BASE, OMINO, PRIMA_ID_MISCELA, TRONCO } from './materiali.js';
 import type { Mondo } from './mondo.js';
@@ -55,7 +55,7 @@ const VERSO_L_ACQUA = 30;
 const FIAMME = new Set<number>([M.FUOCO, M.LAVA, M.FULMINE]);
 
 /** Ciò che si posa o nasce nel mondo: portato su un materiale non lo unisce, ci si mette sopra (il terreno non è un bersaglio). */
-const siPosaONasce = (id: number): boolean => INGOMBRO[id] !== undefined || id === OMINO;
+const siPosaONasce = (id: number): boolean => ingombroDi(id) !== undefined || id === OMINO;
 
 const nonQui = (perche: PercheNo): EsitoPorta => ({ genere: 'nonQui', perche });
 
@@ -72,11 +72,12 @@ function libere(m: Mondo, x: number, y: number): number {
 
 /** Mette lì la cosa portata: versa una manciata, posa una costruzione, fa nascere un omino o cadere un fulmine. */
 function metti(m: Mondo, id: number, x: number, y: number): EsitoPorta {
-  if (INGOMBRO[id]) {
+  const ingombro = ingombroDi(id);
+  if (ingombro) {
     const dove = m.puoPosare(id, x, y);
     if (!dove.si) return nonQui(dove.perche);
     m.posa(id, x, y);
-    return { genere: 'messa', x: dove.x + (INGOMBRO[id][0] >> 1), y: dove.y };
+    return { genere: 'messa', x: dove.x + (ingombro[0] >> 1), y: dove.y };
   }
   if (id === OMINO) {
     if (!m.dentro(x, 0)) return nonQui('pieno');
@@ -187,7 +188,7 @@ function diventa(m: Mondo, b: Bersaglio, nato: number, quante: number): void {
  * per parte attorno al tronco), così posandola non si toglie la cosa su cui si è portato il gettone.
  */
 function zona(m: Mondo, b: Bersaglio): [number, number] {
-  if (b.genere === 'cosa') return [b.rif.x, b.rif.x + INGOMBRO[b.rif.id][0] - 1];
+  if (b.genere === 'cosa') return [b.rif.x, b.rif.x + ingombroDi(b.rif.id)![0] - 1];
   if (b.genere === 'omino') return [b.x, b.x];
   let z0 = b.x - 3;
   let z1 = b.x + 3;
@@ -205,7 +206,7 @@ function zona(m: Mondo, b: Bersaglio): [number, number] {
 
 /** Posa la costruzione appena nata nel posto libero più vicino al punto, senza coprire il bersaglio; null se non c'è posto. */
 function posaAccanto(m: Mondo, id: number, b: Bersaglio, x: number, y: number): { x: number; y: number } | null {
-  const lw = INGOMBRO[id][0];
+  const lw = ingombroDi(id)![0];
   const [z0, z1] = zona(m, b);
   for (let d = (lw >> 1) + 1; d <= ACCANTO; d++) {
     for (const lato of [1, -1]) {
@@ -259,6 +260,9 @@ export function porta(m: Mondo, id: number, x: number, y: number, da: Provenienz
     // A contatto, perché succeda davvero: la polvere nera deve toccare la fiamma.
     const ta = daVersare(m, id, b);
     if (ta < 0 || versaAccanto(m, ta, b).length === 0) metti(m, id, x, y);
+    // Un fenomeno scritto in una scheda non ha regole sue nel motore (le hanno l'esplosione, il temporale…): averne
+    // portato la coppia nel mondo è già vederlo succedere, e si scopre lì. In Unisci, invece, resta da guardare.
+    if (viaDiFenomeno(id, b.id) === esito.id) m.scopri(esito.id, x, y);
     return { genere: 'nelMondo', con: b.id, fenomeno: esito.id };
   }
   if (esito.genere === 'niente') {
@@ -274,7 +278,7 @@ export function porta(m: Mondo, id: number, x: number, y: number, da: Provenienz
     m.scopri(esito.id, x, y);
     // Se la coppia è anche una reazione del mondo (pietra e acqua) succede pure quella, se non brucia e non distrugge.
     reagisci(m, id, b, true);
-    const posata = INGOMBRO[esito.id] ? posaAccanto(m, esito.id, b, x, y) : null;
+    const posata = ingombroDi(esito.id) ? posaAccanto(m, esito.id, b, x, y) : null;
     return { genere: 'unione', nato: esito.id, nuova, con: b.id, x: posata?.x ?? x, y: posata?.y ?? y, posata: posata !== null };
   }
 

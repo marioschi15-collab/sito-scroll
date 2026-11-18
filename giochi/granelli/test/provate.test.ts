@@ -11,14 +11,15 @@ import { libroDa12, mondo, riempi } from './aiuti.js';
  * prova, simula chi aggiorna il gioco dopo aver già provato quella coppia.
  */
 const futuro = vi.hoisted(() => ({ acceso: false }));
-vi.mock('../src/motore/cose.js', async (originale) => {
-  const vero = await originale<typeof import('../src/motore/cose.js')>();
+vi.mock('../src/contenuti/registro.js', async (originale) => {
+  const vero = await originale<typeof import('../src/contenuti/registro.js')>();
+  const { C: cose } = await import('../src/motore/cose.js');
   return {
     ...vero,
-    unione: (a: number, b: number): number => {
+    unioneDi: (a: number, b: number): number => {
       const coppia = [a, b].sort((x, y) => x - y).join(':');
-      if (futuro.acceso && coppia === `${vero.C.UTENSILE}:${vero.C.POZZO}`) return vero.C.VASO;
-      return vero.unione(a, b);
+      if (futuro.acceso && coppia === `${cose.UTENSILE}:${cose.POZZO}`) return cose.VASO;
+      return vero.unioneDi(a, b);
     },
   };
 });

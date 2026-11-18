@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { C, CONSEGUENZE, E, ERE, RISULTATI, unione, vieDi } from '../src/motore/cose.js';
+import { INIZIALI, conseguenze, eRisultato, ere, unioneDi as unione, unioni, voce as voceDi, voci, vociTrovate } from '../src/contenuti/registro.js';
+import { C, E } from '../src/motore/cose.js';
 import { SOLO_NEL_MONDO, coppiaDEsempio, esitoNoto, fenomenoDi, siUnisce } from '../src/motore/esiti.js';
-import { BRUCIA, ESPLOSIONE, INCENDIO, M, N_BASE, NASCOSTO, PRIMA_ID_MISCELA, PRIMA_MISCELA, TEMPORALE } from '../src/motore/materiali.js';
+import { BRUCIA, ESPLOSIONE, INCENDIO, M, N_BASE, NASCOSTO, OMINO, PRIMA_ID_MISCELA, PRIMA_MISCELA, TEMPORALE } from '../src/motore/materiali.js';
 import { idMiscela } from '../src/motore/miscele.js';
 import type { Mondo } from '../src/motore/mondo.js';
 import { ACCENDI, COPPIE } from '../src/motore/ricette.js';
 import { fotografa, ripristina } from '../src/salvataggio.js';
-import { INIZIALI, SCOPERTE, vociTrovate } from '../src/scoperte.js';
 import { gira, libroDa12, mondo, quanti, riempi } from './aiuti.js';
 
 describe('unire due scoperte', () => {
@@ -32,16 +32,17 @@ describe('unire due scoperte', () => {
   it('ogni invenzione si può raggiungere partendo dai quattro elementi, e ha la sua voce nel libro', () => {
     const raggiunte = new Set<number>([...INIZIALI]);
     // quello che il mondo dei granelli sa far nascere da sé
-    for (const s of SCOPERTE) if (s.sezione !== 'cose' && s.sezione !== 'ere') raggiunte.add(s.id);
+    for (const s of voci()) if (s.famiglia !== 'cose' && s.famiglia !== 'ere' && !eRisultato(s.id)) raggiunte.add(s.id);
+    raggiunte.add(OMINO);
     for (let giro = 0; giro < 12; giro++) {
-      for (const id of Object.values(C)) if (vieDi(id).some(([a, b]) => raggiunte.has(a) && raggiunte.has(b))) raggiunte.add(id);
+      for (const [a, b, id] of unioni()) if (raggiunte.has(a) && raggiunte.has(b)) raggiunte.add(id);
     }
-    for (const id of Object.values(C)) {
+    for (const id of [...Object.values(C), ...unioni().map(([, , r]) => r)]) {
       expect(raggiunte.has(id), `invenzione ${id}`).toBe(true);
-      expect(SCOPERTE.some((s) => s.id === id)).toBe(true);
+      expect(voceDi(id), `invenzione ${id}`).toBeDefined();
     }
-    for (const id of Object.values(E)) expect(SCOPERTE.some((s) => s.id === id)).toBe(true);
-    for (const id of ERE) expect(CONSEGUENZE.some(([, allora]) => allora === id)).toBe(true);
+    for (const id of Object.values(E)) expect(voceDi(id)).toBeDefined();
+    for (const id of ere()) expect(conseguenze().some(([, allora]) => allora === id)).toBe(true);
   });
 
   it('una cosa posata cade fino a terra, si salva con la partita e la gomma la toglie', () => {
@@ -72,7 +73,7 @@ describe('Unisci conosce le reazioni del mondo', () => {
   /** Un mondo in cui tutti i materiali e tutte le invenzioni sono già noti: ogni coppia si può provare. */
   function saputo(): Mondo {
     const m = mondo(40, 40);
-    for (const voce of SCOPERTE) if (siUnisce(voce.id)) m.visti.add(voce.id);
+    for (const voce of voci()) if (siUnisce(voce.id)) m.visti.add(voce.id);
     return m;
   }
 
@@ -155,9 +156,9 @@ describe('Unisci conosce le reazioni del mondo', () => {
     expect(m.ricettario.size).toBe(0);
     // Vale per ogni fenomeno o paesaggio del Libro che nasce da due cose: Unisci non lo scopre al posto del mondo.
     let provati = 0;
-    for (const voce of SCOPERTE) {
+    for (const voce of voci()) {
       // Ciò che nasce da un'unione scritta (l'Omino, alla capanna con un frutto) non è un fenomeno: lo dà Unisci.
-      if (voce.id < N_BASE || voce.sezione === 'cose' || voce.sezione === 'ere' || RISULTATI.has(voce.id)) continue;
+      if (voce.id < N_BASE || voce.famiglia === 'cose' || voce.famiglia === 'ere' || eRisultato(voce.id)) continue;
       for (const via of voce.nasce) {
         if (via.con.length !== 2) continue;
         const n = mondo();
@@ -184,7 +185,7 @@ describe('Unisci conosce le reazioni del mondo', () => {
         if (!NASCOSTO[a] && !NASCOSTO[b] && (unione(a, b) >= 0 || esitoNoto(a, b) >= 0)) ottenibili.add(m.unisci(a, b));
       }
     }
-    for (const voce of SCOPERTE) {
+    for (const voce of voci()) {
       if (voce.id >= N_BASE || INIZIALI.includes(voce.id)) continue;
       if (voce.nasce.some((via) => via.con.length === 2)) expect(ottenibili.has(voce.id), voce.nome).toBe(true);
     }
@@ -236,7 +237,7 @@ describe('Unisci conosce le reazioni del mondo', () => {
   it('dove una coppia è insieme una reazione del mondo e un’invenzione, portandole una sull’altra nasce l’invenzione e, se non distrugge, avviene la reazione', () => {
     // Per ogni invenzione che nasce da due materiali: portati uno sull'altro nel mondo la scoprono, proprio come in Unisci.
     let anche = 0;
-    for (const [a, b, invenzione] of Object.values(C).flatMap((id) => vieDi(id).map(([x, y]) => [x, y, id] as const))) {
+    for (const [a, b, invenzione] of unioni()) {
       if (a >= N_BASE || b >= N_BASE) continue;
       const m = mondo();
       riempi(m, 10, 35, 49, 39, b);
@@ -298,7 +299,7 @@ describe('Unisci conosce le reazioni del mondo', () => {
     }
     expect(m.ricettario.size).toBe(0);
     // Quando non c'è più niente di nuovo da suggerire, resta comunque una coppia vera e già nota.
-    const tutto = new Set(SCOPERTE.map((voce) => voce.id));
+    const tutto = new Set(voci().map((voce) => voce.id));
     const nota = coppiaDEsempio(tutto)!;
     expect(tutto.has(nota[0]) && tutto.has(nota[1])).toBe(true);
   });

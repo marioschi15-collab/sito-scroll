@@ -37,6 +37,21 @@ async function versa(s, nome, x, y, ms) {
   await gesto(s.cdp, tratto([x - 12, y], [x + 12, y], 6), { ms: 40, fermo: ms });
 }
 
+/** Due voci scritte come schede (src/contenuti/paese.ts), con i loro numeri di numeri.ts. */
+const SCHEDE = { CACCIATORE: 230, ACCAMPAMENTO: 274 };
+
+/** Quanto è larga l'immagine del tondino di una voce del Libro: 7 per la grana di un materiale, di più per un'icona. */
+const larghezzaTondino = (page, nome) =>
+  page.evaluate(async (nome) => {
+    const voce = [...document.querySelectorAll('.scheda.libro .voce')].find((v) => v.querySelector('strong')?.textContent === nome);
+    const url = voce?.querySelector('.pallino')?.style.backgroundImage.slice(5, -2);
+    if (!url) return 0;
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    return img.naturalWidth;
+  }, nome);
+
 const PASSI = [
   {
     nome: 'si apre con il benvenuto, e «Inizia» lo chiude',
@@ -278,6 +293,58 @@ const PASSI = [
       pretendi(r.esito.genere === 'unione' && r.esito.nato === M.FANGO, `portando l’acqua sulla terra è successo ${JSON.stringify(r.esito)}`);
       pretendi(r.dopo > r.prima, `il fango lì intorno non è cresciuto: prima ${r.prima} celle, dopo ${r.dopo}`);
       pretendi(r.provata, 'la coppia terra e acqua non risulta provata');
+    },
+  },
+  {
+    nome: 'le voci scritte come schede hanno nel Libro la loro icona, e una costruzione delle schede si posa col dito',
+    fai: async (s) => {
+      await s.page.evaluate((ids) => {
+        const m = window.granelli();
+        for (const id of ids) m.scopri(id, m.w >> 1, m.h >> 1);
+      }, [SCHEDE.CACCIATORE, SCHEDE.ACCAMPAMENTO]);
+      await chiudiFinestre(s.page);
+      await s.page.waitForFunction(() => document.querySelector('.avvisi').childElementCount === 0, null, { timeout: 15000 });
+      await s.page.locator('.tasto-libro').tap();
+      await s.page.locator('.scheda.libro').waitFor();
+      await s.page.locator('.linguetta', { hasText: 'Genti' }).tap();
+      const persona = await larghezzaTondino(s.page, 'Cacciatore');
+      await s.page.locator('.linguetta', { hasText: 'Invenzioni' }).tap();
+      const campo = await larghezzaTondino(s.page, 'Accampamento');
+      await s.page.locator('.linguetta', { hasText: 'Terra e pietre' }).tap();
+      const fango = await larghezzaTondino(s.page, 'Fango');
+      pretendi(persona >= 14 && campo >= 14, `nel Libro Cacciatore e Accampamento non hanno la loro icona (larghe ${persona} e ${campo})`);
+      pretendi(fango === 7, `il tondino del Fango è largo ${fango}, non 7`);
+      await s.page.locator('.scheda.libro .scheda-testa .tasto', { hasText: 'Chiudi' }).tap();
+      await scegli(s.page, 'Accampamento');
+      // Il mondo vivo non lascia mai lo stesso terreno in vista (acqua, pendii, la capanna di prima): con il mondo in
+      // pausa si spiana un tratto di roccia nuda in mezzo alla vista, e lì un tocco deve posare l'accampamento.
+      await s.page.locator('.barra .tasto', { hasText: 'Pausa' }).tap();
+      const punto = await s.page.evaluate(([id, roccia]) => {
+        const m = window.granelli();
+        const r = document.querySelector('.foglio').getBoundingClientRect();
+        const q = document.querySelector('.quadro').getBoundingClientRect();
+        const scala = r.width / m.w;
+        const cx = Math.floor(((q.left + q.right) / 2 - r.left) / scala);
+        const cy = Math.floor(((q.top + q.bottom) / 2 - r.top) / scala);
+        for (let x = cx - 12; x <= cx + 12; x++) {
+          for (let y = cy - 20; y < Math.min(m.h, cy + 6); y++) {
+            if (y < cy) m.svuota(y * m.w + x);
+            else m.metti(y * m.w + x, roccia);
+          }
+        }
+        m.omini = m.omini.filter((o) => Math.abs(o.x - cx) > 14);
+        m.cose = m.cose.filter((c) => c.x > cx + 14 || c.x + 20 < cx - 14);
+        const dove = m.puoPosare(id, cx, cy - 3);
+        if (!dove.si) return dove.perche;
+        return [r.left + (cx + 0.5) * scala, r.top + (cy - 3 + 0.5) * scala];
+      }, [SCHEDE.ACCAMPAMENTO, M.ROCCIA]);
+      pretendi(Array.isArray(punto), `nella vista spianata l’accampamento non si posa: ${punto}`);
+      const prima = await s.page.evaluate(() => window.granelli().cose.length);
+      await gesto(s.cdp, [[punto]]);
+      await s.page.waitForFunction((n) => window.granelli().cose.length > n, prima, { timeout: 3000 });
+      const ultima = await s.page.evaluate(() => window.granelli().cose.at(-1).id);
+      pretendi(ultima === SCHEDE.ACCAMPAMENTO, `il tocco ha posato ${ultima} invece dell’accampamento`);
+      await s.page.locator('.barra .tasto', { hasText: 'Riprendi' }).tap();
     },
   },
   {

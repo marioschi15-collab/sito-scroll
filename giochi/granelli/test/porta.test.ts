@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cheCosaCe } from '../src/motore/bersaglio.js';
-import { C, INGOMBRO } from '../src/motore/cose.js';
+import { ingombroDi } from '../src/contenuti/registro.js';
+import { C } from '../src/motore/cose.js';
 import { ESPLOSIONE, INCENDIO, M, N_TIPI, OMINO, PRIMA_MISCELA, TRONCO } from '../src/motore/materiali.js';
 import type { Mondo } from '../src/motore/mondo.js';
 import { albero, gira, libroDa12, mondo, primaGenerazione, quanti, riempi } from './aiuti.js';
@@ -71,7 +72,7 @@ describe('portare una cosa sopra un’altra', () => {
     expect(m.cose.length).toBe(1);
     const c = m.cose[0];
     // Accanto: non sopra il tronco né a meno di tre celle da lui, e non lontano dal punto.
-    expect(c.x > 63 || c.x + INGOMBRO[C.CAPANNA][0] - 1 < 57).toBe(true);
+    expect(c.x > 63 || c.x + ingombroDi(C.CAPANNA)![0] - 1 < 57).toBe(true);
     expect(Math.abs(c.x + 5 - 60)).toBeLessThanOrEqual(12 + 5);
     expect(tronchi(m)).toBe(prima);
     // Una capanna c'è già: la stessa unione non ne fa nascere un'altra.

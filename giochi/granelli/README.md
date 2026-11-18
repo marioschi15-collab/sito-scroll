@@ -17,7 +17,8 @@ Una capanna e un frutto chiamano i **primi omini**: ne arrivano due, vicino all'
 guardando (se l'acqua non c'è, «arriveranno vicino all'acqua»). Lo strumento dei primi giorni che rimestava le cose non
 c'è più: chi lo aveva in una partita salvata ritrova la Mano e un saluto, una volta sola.
 
-Le unioni scritte a mano sono una tabella che cresce, in `src/motore/cose.ts`:
+Le unioni scritte a mano crescono: quelle delle invenzioni stanno in `src/motore/cose.ts`, quelle nuove nelle
+**schede** di `src/contenuti/` (le genti e le cose del paese stanno in `src/contenuti/paese.ts`):
 
 | Con… | …e… | nasce |
 | --- | --- | --- |
@@ -31,7 +32,9 @@ Le unioni scritte a mano sono una tabella che cresce, in `src/motore/cose.ts`:
 | Faro, Libro, Pane, Città | Barca · Tempio · Moneta · Castello | Porto · Biblioteca · Bottega · Regno |
 
 Prima di queste c'erano le trentadue unioni delle invenzioni, dall'utensile al faro; ora ogni invenzione serve a farne
-almeno un'altra.
+almeno un'altra. Le genti e le cose del paese hanno la loro icona a quadretti; quelle che sono costruzioni (focolare,
+fattoria, biblioteca, bottega, orto, frutteto, accampamento, e sull'acqua veliero e porto) si posano nel mondo come le
+altre.
 
 Il motore sa già **portare una cosa sopra un'altra** dentro il mondo (`Mondo.porta`, i gesti arriveranno dopo): con
 le stesse regole di Unisci, l'acqua portata sulla terra fa nascere il fango proprio lì, il legno portato su un albero
@@ -62,9 +65,11 @@ sul dispositivo.
 ```powershell
 pnpm install
 pnpm dev          # il gioco in sviluppo, si aggiorna mentre si modifica
-pnpm test         # le prove del motore (materiali, acqua, miscele, Unisci, unioni, portare, ere, omini, paesi, costruzioni, salvataggio)
+pnpm test         # le prove (materiali, acqua, miscele, Unisci, unioni, portare, ere, omini, paesi, costruzioni, salvataggio, schede)
 pnpm typecheck
 pnpm build        # produce dist/index.html: un solo file, si apre con un doppio clic
+node strumenti/contenuti.cjs                # controllo delle scoperte: tutte raggiungibili, nessun doppione
+node strumenti/contenuti.cjs --file paese   # lo stesso, per un file di schede solo
 node strumenti/fumo.cjs     # giro di fumo nel browser, su un telefono simulato (dopo pnpm build)
 node strumenti/misura.cjs   # millesimi per fotogramma nelle scene di riferimento (dopo pnpm build)
 ```
@@ -78,6 +83,12 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
 
 ## Dove sta cosa
 
+- `src/contenuti/`: le scoperte come dati. `scheda.ts` è il formato di una scheda; `numeri.ts` il numero di ogni
+  chiave (cresce solo in coda: i salvataggi contengono numeri); `famiglie.ts` i capitoli del Libro; `tipi.ts` il
+  tipo e l'articolo delle voci di prima; `paese.ts` le prime schede; `indice.ts` l'elenco dei file di schede.
+  `registro.ts` è l'unico che mette insieme schede e motore: voci, unioni, ingombri, ere, conseguenze e paesaggi per
+  tutto il gioco (`voce`, `voci`, `idDi`, `unioneDi`, `ingombroDi`, `ere`…), con le tavole fatte alla prima
+  chiamata. `controllo.ts` è il controllo automatico che usano `strumenti/contenuti.cjs` e le prove.
 - `src/motore/materiali.ts`: l'elenco dei materiali, dei fenomeni e il carattere di ogni sostanza.
 - `src/motore/mondo.ts`: la griglia e le regole. Ogni materiale ha poche regole; pioggia, incendi, boschi e
   temporali nascono dal loro incontro. Qui sta anche il comportamento delle miscele.
@@ -88,8 +99,8 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
   `esiti.ts`: da quelle e dalle vie a due ingredienti del Libro, l'esito di ogni coppia in Unisci (`esitoNoto`),
   i fenomeni che non si regalano (`fenomenoDi`) e le coppie che non danno mai una miscela (`coppiaDAutore`).
   `esitoDi` decide l'esito di una coppia, uno solo per Unisci e per il mondo, senza toccare niente.
-  `cose.ts`: le invenzioni, i mestieri (`G`), tutte le unioni scritte e le ere; `ere.ts`: quale era (o grande evento)
-  può scattare adesso.
+  `cose.ts`: le invenzioni, le loro unioni e le ere di prima delle schede (`..._DI_PRIMA`: il gioco le legge dal
+  registro); `ere.ts`: quale era (o grande evento) può scattare adesso.
 - `src/motore/bersaglio.ts`: che cosa c'è in un punto del mondo per chi ci porta sopra qualcosa (`cheCosaCe`: un
   omino, una cosa posata, un materiale, un appoggio, il vuoto). `porta.ts`: portare una scoperta sopra quel punto
   (`Mondo.porta`), con le regole in ordine e l'esito da raccontare.
@@ -103,7 +114,8 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
   chiamati da un'unione (`primiOmini`, `cercaApprodo`).
 - `src/motore/posa.ts`: dove una costruzione può stare (`puoPosare`, con il perché di ogni rifiuto), le piante che
   toglie quando si posa e come si assesta dopo (scende soltanto; barca e ponte seguono l'acqua).
-- `src/scoperte.ts`: le voci del Libro, con capitolo, indizio, descrizione e modi in cui nascono.
+- `src/scoperte.ts`: le voci del Libro di prima delle schede (materiali, fenomeni, invenzioni, ere), con capitolo,
+  indizio, descrizione e modi in cui nascono.
   `src/libro.ts`: il Libro sullo schermo (capitoli, voci, pagine collegate tra loro).
 - `src/disegno/`: tutto quello che si vede. `pittore.ts` colora i granelli con ombre e luci (di notte un fuoco
   illumina ciò che ha intorno) e rende morbidi nuvole e fumo; `cielo.ts` il cielo con sole, luna, stelle,
@@ -122,10 +134,17 @@ Il carattere dei titoli è Pixelify Sans (licenza libera SIL OFL 1.1), preso dal
 
 ## Per aggiungere una scoperta
 
-1. Un numero nuovo in `materiali.ts`, con il suo stato e il suo carattere (`base(...)`).
-2. La regola che la fa nascere in `mondo.ts`, dentro `aggiorna`; se nasce da una coppia, anche in `ricette.ts`
-   (così Unisci e il mondo la conoscono: le prove in `test/unisci.test.ts` e `test/coppie.test.ts` scorrono tutte
-   le coppie). Se è una cosa che nasce unendo (un'invenzione, un mestiere), basta una riga in `UNIONI` di
-   `cose.ts` e la voce in `scoperte.ts` con `invenzione(...)` o `gente(...)`: le vie del Libro si scrivono da sole.
-3. La voce in `scoperte.ts` e il colore in `disegno/colori.ts`.
-4. Una prova in `test/` (un file per argomento, aiuti comuni in `test/aiuti.ts`) che la fa nascere davvero.
+1. Scegli una chiave (minuscole e trattini, per esempio `aquilone`) e aggiungi in coda a `src/contenuti/numeri.ts`
+   la riga `['aquilone', 500]` con il primo numero libero da 500 in su. Le righe di prima non si toccano mai.
+2. Scrivi la scheda nel file della sua famiglia in `src/contenuti/` (il formato è in `scheda.ts`): nome, genere,
+   numero e articolo, famiglia (un capitolo di `famiglie.ts`), tipo, `unioni` con le chiavi delle cose da cui nasce,
+   indizio, descrizione che finisce col punto, l'icona di 12x12 quadretti con le lettere di `disegno/tavolozza.ts`.
+3. Una costruzione ha anche la `figura` (due quadretti per cella: l'ingombro si ricava da lì); un'era ha `arrivaCon`
+   e `dopo`; un luogo o un fenomeno che si vede nel mondo ha `siVede`; un evento il suo `evento`.
+4. Fai entrare la scheda nuova in almeno due unioni di altre schede (oppure scrivi `finale: true` se è un punto d'arrivo).
+5. Un file nuovo si aggiunge a `src/contenuti/indice.ts`.
+6. Controlla con `node strumenti/contenuti.cjs` (o `--file <nome>` per il tuo file): dice se qualcosa non si
+   raggiunge, se una coppia ha già un esito, se manca un campo. Poi `pnpm test`.
+7. Non serve toccare altro: Libro, tavolozza, Unisci, il mondo e il salvataggio leggono dal registro.
+8. Un materiale nuovo (granelli che cadono, scorrono, bruciano) è un'altra storia: va nel motore (`materiali.ts`,
+   `mondo.ts`, `ricette.ts`, il colore in `disegno/colori.ts`), con una prova in `test/` che lo fa nascere davvero.

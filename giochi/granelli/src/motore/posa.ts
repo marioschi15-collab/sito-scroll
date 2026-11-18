@@ -1,4 +1,5 @@
-import { C, type Cosa, INGOMBRO } from './cose.js';
+import { aGalla, ingombroDi } from '../contenuti/registro.js';
+import { C, type Cosa } from './cose.js';
 import { GAS, LIQUIDO, M, N_TIPI, NULLA, POLVERE, SOLIDO, TRONCO } from './materiali.js';
 import type { Mondo } from './mondo.js';
 
@@ -18,11 +19,11 @@ export type Divieto = 'ignota' | 'troppe' | 'occupato' | 'pende' | 'bagnato' | '
 /** Dove finirebbe una cosa posata (la cella in basso a sinistra del suo ingombro), oppure perché lì non può stare. */
 export type Posto = { si: true; x: number; y: number } | { si: false; perche: Divieto };
 
-/** Ciò che sta a galla: si posa solo sull'acqua e ne segue il pelo. Tutto il resto vuole terreno fermo. */
+/** Ciò che sta a galla tra le cose di prima: si posa solo sull'acqua e ne segue il pelo. Tutto il resto vuole terreno fermo. */
 const A_GALLA: Record<number, boolean> = { [C.BARCA]: true, [C.PONTE]: true };
 
-/** Vero per ciò che sta a galla (barca e ponte) e non a terra. */
-export const staAGalla = (id: number): boolean => A_GALLA[id] === true;
+/** Vero per ciò che sta a galla (barca e ponte, e le costruzioni delle schede segnate `aGalla`) e non a terra. */
+export const staAGalla = (id: number): boolean => A_GALLA[id] === true || aGalla(id);
 
 /** Ciò che cresce e non regge niente: una costruzione gli passa attraverso, e posandola lo si toglie. */
 const VERDE = new Uint8Array(N_TIPI);
@@ -98,7 +99,7 @@ function affiora(m: Mondo, x: number, da: number, aGalla: boolean): number {
 
 /** Vero se due ingombri si sovrappongono (toccarsi di fianco va bene: due tratti di mura fanno un muro solo). */
 function sovrapposte(ax: number, ay: number, a: readonly [number, number], b: Cosa): boolean {
-  const i = INGOMBRO[b.id];
+  const i = ingombroDi(b.id)!;
   return ax < b.x + i[0] && b.x < ax + a[0] && ay - a[1] < b.y && b.y - i[1] < ay;
 }
 
@@ -109,7 +110,7 @@ function sovrapposte(ax: number, ay: number, a: readonly [number, number], b: Co
  * tutto il resto la terra ferma; e nessun ingombro ne copre un altro.
  */
 export function puoPosare(m: Mondo, id: number, x: number, y: number): Posto {
-  const ingombro = INGOMBRO[id];
+  const ingombro = ingombroDi(id);
   if (!ingombro || !m.visti.has(id)) return NO.ignota;
   if (m.cose.length >= COSE_MAX) return NO.troppe;
   const [lw, lh] = ingombro;
@@ -193,7 +194,7 @@ function abbatti(m: Mondo, da: number): void {
  * tronco lì dentro. La chioma di un albero vicino che sporge sopra il tetto resta dov'è, attaccata al suo albero.
  */
 export function sgombra(m: Mondo, id: number, x: number, y: number): void {
-  const [lw, lh] = INGOMBRO[id];
+  const [lw, lh] = ingombroDi(id)!;
   for (let cx = x; cx < x + lw; cx++) {
     // Anche l'erba rimasta nel piccolo vuoto sotto la cosa, dove il terreno è un po' più basso.
     for (let cy = Math.max(0, y - lh + 1); cy <= Math.min(m.h - 1, y + PENDENZA_MAX); cy++) {
@@ -214,7 +215,7 @@ export function assestaCose(m: Mondo): void {
   const { w, h, coperta } = m;
   coperta.fill(0);
   for (const c of m.cose) {
-    const [lw, lh] = INGOMBRO[c.id];
+    const [lw, lh] = ingombroDi(c.id)!;
     const x0 = Math.max(0, c.x);
     const x1 = Math.min(w, c.x + lw);
     for (let x = x0; x < x1; x++) coperta[x] = 1;
@@ -264,7 +265,7 @@ function galleggia(m: Mondo, c: Cosa, x0: number, x1: number, lh: number): void 
 export function sottoUnaCosa(m: Mondo, x: number, y: number): boolean {
   if (!m.coperta[x]) return false;
   for (const c of m.cose) {
-    const [lw, lh] = INGOMBRO[c.id];
+    const [lw, lh] = ingombroDi(c.id)!;
     if (x >= c.x && x < c.x + lw && y > c.y - lh && y <= c.y + PENDENZA_MAX + 1) return true;
   }
   return false;

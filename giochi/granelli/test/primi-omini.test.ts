@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cercaApprodo } from '../src/motore/arrivi.js';
-import { C, INGOMBRO } from '../src/motore/cose.js';
+import { ingombroDi } from '../src/contenuti/registro.js';
+import { C } from '../src/motore/cose.js';
 import { BAMBINO, M, OMINO } from '../src/motore/materiali.js';
 import type { Mondo } from '../src/motore/mondo.js';
 import { NON_QUI } from '../src/righe.js';
@@ -17,7 +18,7 @@ function rivaConCapanna(seme = 1): { m: Mondo; punto: [number, number]; lago: { 
     for (const x of [x1 + d, x0 - d]) {
       if (!m.posa(C.CAPANNA, x, m.suolo(x) - 1)) continue;
       const c = m.cose[0];
-      return { m, punto: [c.x + (INGOMBRO[C.CAPANNA][0] >> 1), c.y - 2], lago: { x0, x1 } };
+      return { m, punto: [c.x + (ingombroDi(C.CAPANNA)![0] >> 1), c.y - 2], lago: { x0, x1 } };
     }
   }
   throw new Error('sulle rive non c’è posto per la capanna');

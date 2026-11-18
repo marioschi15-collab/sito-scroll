@@ -1,13 +1,7 @@
+import { figuraDi, iconaDi } from '../contenuti/registro.js';
 import { C, E } from '../motore/cose.js';
 import { BAMBINO, OMINO, VILLAGGIO } from '../motore/materiali.js';
-
-/** I colori delle figure: ogni lettera dei disegni qui sotto è uno di questi. */
-const P: Record<string, string> = {
-  k: '#1b1420', n: '#3b2a22', b: '#6b4426', B: '#8f5e36', D: '#b07a48', g: '#1f5a3a', G: '#2f8048', l: '#4fae58', L: '#86d66c',
-  r: '#a8362b', R: '#d2553c', O: '#ef7d55', o: '#ff9a2e', y: '#ffd95a', Y: '#fff3b0', w: '#efe6cf', W: '#ffffff', V: '#d8ceb4',
-  s: '#7f8794', S: '#aab1bd', d: '#555c68', c: '#3f7fd6', C: '#8fc4ff', p: '#f2c79b', q: '#cf9a6c', h: '#3a2a20', m: '#34426e',
-  t: '#c9a55e', T: '#e8cf8a', U: '#f6e6b0', F: '#9fd0ff', A: '#b06ce0', z: '#e0a030', Z: '#a86a18', e: '#9aa4b4', x: '#c8d0dc',
-};
+import { P } from './tavolozza.js';
 
 /** Prepara una figura una volta sola, con il suo contorno scuro; `scambi` cambia alcuni colori (le finestre di notte). */
 export function prepara(righe: readonly string[], scambi?: Record<string, string>): HTMLCanvasElement {
@@ -72,14 +66,30 @@ DISEGNI[OMINO] = OMINO_FERMO;
 DISEGNI[BAMBINO] = ['.hhh.', '.ppp.', '.kpk.', 'qAAAq', '.AAA.', '.m.m.'];
 
 const pronte = new Map<string, HTMLCanvasElement>();
-/** La figura di un'invenzione, di giorno o di notte (con le finestre accese); null se non ha una figura sua. */
+/**
+ * La figura di un'invenzione, di giorno o di notte (con le finestre accese); null se non ha una figura sua. Le
+ * figure di prima stanno qui; quelle delle schede le dà il registro.
+ */
 export function figura(id: number, notte = false): HTMLCanvasElement | null {
-  const righe = DISEGNI[id];
+  const righe = DISEGNI[id] ?? figuraDi(id);
   if (!righe) return null;
   const chiave = `${id}${notte ? 'n' : ''}`;
   let tela = pronte.get(chiave);
   if (!tela) {
     tela = prepara(righe, notte ? { F: P.y } : undefined);
+    pronte.set(chiave, tela);
+  }
+  return tela;
+}
+
+/** L'icona a quadretti di una scheda, con il suo contorno; null se la scheda non ne ha una. */
+export function icona(id: number): HTMLCanvasElement | null {
+  const righe = iconaDi(id);
+  if (!righe) return null;
+  const chiave = `${id}i`;
+  let tela = pronte.get(chiave);
+  if (!tela) {
+    tela = prepara(righe);
     pronte.set(chiave, tela);
   }
   return tela;

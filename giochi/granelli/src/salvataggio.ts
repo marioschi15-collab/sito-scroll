@@ -1,4 +1,5 @@
-import { type Cosa, INGOMBRO, OSPITA } from './motore/cose.js';
+import { ingombroDi } from './contenuti/registro.js';
+import { type Cosa, OSPITA } from './motore/cose.js';
 import { M, N_BASE, N_TIPI, PRIMA_MISCELA, TRONCO } from './motore/materiali.js';
 import { Mondo } from './motore/mondo.js';
 import type { Omino } from './motore/omini.js';
@@ -101,7 +102,7 @@ function segnaTronchi(m: Mondo): void {
 
 /** Le cose posate di una fotografia, ognuna con il suo numero d'ordine; e se i numeri mancavano, quelli nuovi. */
 function cosePosate(d: Salvato, m: Mondo): { cose: Cosa[]; rinumerate: boolean } {
-  const buone = (d.cose ?? []).filter((c) => INGOMBRO[c.id] && m.dentro(c.x, c.y));
+  const buone = (d.cose ?? []).filter((c) => ingombroDi(c.id) !== undefined && m.dentro(c.x, c.y));
   const numeri = new Set(buone.map((c) => c.n));
   const rinumerate = numeri.size !== buone.length || buone.some((c) => !Number.isInteger(c.n) || (c.n as number) < 1);
   return { cose: buone.map((c, k) => ({ id: c.id, x: c.x, y: c.y, n: rinumerate ? k + 1 : (c.n as number) })), rinumerate };

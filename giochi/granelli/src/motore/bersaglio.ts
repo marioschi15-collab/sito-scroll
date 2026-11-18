@@ -1,5 +1,6 @@
 import { ALTEZZA } from './cammino.js';
-import { type Cosa, INGOMBRO } from './cose.js';
+import { ingombroDi } from '../contenuti/registro.js';
+import type { Cosa } from './cose.js';
 import { GAS, NASCOSTO, NULLA, OMINO } from './materiali.js';
 import type { Mondo } from './mondo.js';
 import type { Omino } from './omini.js';
@@ -50,7 +51,7 @@ function ominoVicino(m: Mondo, x: number, y: number, raggio: number): Omino | nu
 /** La cosa posata il cui ingombro contiene il punto, o gli passa a una cella; null se non c'è. */
 function cosaSotto(m: Mondo, x: number, y: number): Cosa | null {
   for (const c of m.cose) {
-    const [lw, lh] = INGOMBRO[c.id];
+    const [lw, lh] = ingombroDi(c.id)!;
     if (x >= c.x - 1 && x <= c.x + lw && y >= c.y - lh && y <= c.y + 1) return c;
   }
   return null;

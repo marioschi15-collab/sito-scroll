@@ -1,58 +1,62 @@
 import { describe, expect, it } from 'vitest';
-import { C, G, INGOMBRO, INGREDIENTI, RISULTATI, unione, vieDi } from '../src/motore/cose.js';
+import { eIngrediente, eRisultato, ingombroDi, unioneDi as unione, unioni, vieDi, voce as voceDi, voci } from '../src/contenuti/registro.js';
+import { C } from '../src/motore/cose.js';
 import { esitoDi, esitoNoto, fenomenoDi, siUnisce } from '../src/motore/esiti.js';
 import { M, N_BASE, OMINO } from '../src/motore/materiali.js';
-import { PER_ID, SCOPERTE } from '../src/scoperte.js';
 import { mondo } from './aiuti.js';
 
 /** Le invenzioni di prima (dall'utensile al faro): ognuna deve servire a fare qualcos'altro. */
-const INVENZIONI = Object.values(C).filter((id) => id < 230);
-/** Le voci nate con le unioni nuove: mestieri, persone e cose, tutte con un numero tra 230 e 299. */
-const NUOVE = [...Object.values(G), ...Object.values(C).filter((id) => id >= 230)];
+const INVENZIONI = Object.values(C);
+/** Le voci nate con le unioni del P3: mestieri, persone e cose, ora schede del file `paese`, con un numero tra 230 e 299. */
+const NUOVE = voci()
+  .filter((v) => v.file === 'paese')
+  .map((v) => v.id);
 /** Tutte le unioni nuove: quelle delle voci nuove e la via dei primi omini (la capanna con un frutto). */
 const UNIONI_NUOVE = [...NUOVE.flatMap((id) => vieDi(id).map(([a, b]) => [a, b, id] as const)), ...vieDi(OMINO).map(([a, b]) => [a, b, OMINO] as const)];
 
 describe('le unioni nuove', () => {
   it('sono almeno trenta, e almeno dieci hanno per ingrediente un omino o una costruzione che si posa', () => {
     expect(UNIONI_NUOVE.length).toBeGreaterThanOrEqual(30);
-    const conOmini = UNIONI_NUOVE.filter(([a, b]) => [a, b].some((id) => id === OMINO || INGOMBRO[id] !== undefined));
+    const conOmini = UNIONI_NUOVE.filter(([a, b]) => [a, b].some((id) => id === OMINO || ingombroDi(id) !== undefined));
     expect(conOmini.length).toBeGreaterThanOrEqual(10);
     expect(UNIONI_NUOVE.filter(([a, b]) => a === OMINO || b === OMINO).length).toBeGreaterThanOrEqual(10);
   });
 
   it('ogni invenzione entra in almeno un’unione come ingrediente: nessuna resta un vicolo cieco', () => {
-    for (const id of INVENZIONI) expect(INGREDIENTI.has(id), PER_ID.get(id)?.nome).toBe(true);
+    for (const id of INVENZIONI) expect(eIngrediente(id), voceDi(id)?.nome).toBe(true);
   });
 
   it('le voci nuove hanno un numero tra 230 e 299, il capitolo giusto, nome, indizio e descrizione in italiano semplice', () => {
+    expect(NUOVE.length).toBe(35);
     const numeri = new Set<number>();
     for (const id of NUOVE) {
       expect(id).toBeGreaterThanOrEqual(230);
       expect(id).toBeLessThanOrEqual(299);
       expect(numeri.has(id)).toBe(false);
       numeri.add(id);
-      const voce = PER_ID.get(id)!;
+      const voce = voceDi(id)!;
       expect(voce, `voce ${id}`).toBeDefined();
-      expect(voce.sezione).toBe(Object.values(G).includes(id as never) ? 'genti' : 'cose');
+      expect(voce.famiglia).toBe(id < 260 ? 'genti' : 'cose');
       for (const testo of [voce.nome, voce.indizio, voce.descrizione]) {
         expect(testo.length, voce.nome).toBeGreaterThanOrEqual(2);
         expect(testo).not.toMatch(/agente|prompt|token|\bapi\b|bug|sprite|render|mestolo/i);
       }
       expect(voce.descrizione).toMatch(/\.$/);
-      // Per ora sono gettoni: non si versano e non si posano.
-      expect(voce.versabile).toBe(false);
-      // Il Libro racconta come nascono: le stesse unioni scritte in cose.ts.
+      // Si mettono nel mondo dalla tavolozza solo le costruzioni (si posano); le altre, per ora, sono gettoni.
+      expect(voce.versabile).toBe(voce.tipo === 'costruzione');
+      expect(voce.versabile).toBe(ingombroDi(id) !== undefined);
+      // Il Libro racconta come nascono: le stesse unioni scritte nella loro scheda.
       expect(voce.nasce.map((via) => via.con)).toEqual(vieDi(id));
     }
     // Ogni nome è unico in tutto il Libro.
-    const nomi = SCOPERTE.map((s) => s.nome);
+    const nomi = voci().map((s) => s.nome);
     expect(new Set(nomi).size).toBe(nomi.length);
   });
 
   it('ogni voce nuova compare nello scaffale di Unisci, e nessuna delle sue coppie è presa per un fenomeno', () => {
     for (const id of [...NUOVE, OMINO]) {
-      expect(siUnisce(id), PER_ID.get(id)?.nome).toBe(true);
-      expect(RISULTATI.has(id)).toBe(true);
+      expect(siUnisce(id), voceDi(id)?.nome).toBe(true);
+      expect(eRisultato(id)).toBe(true);
       for (const [a, b] of vieDi(id)) {
         expect(fenomenoDi(a, b), `${a} + ${b}`).toBe(-1);
         expect(esitoDi(a, b, 0)).toEqual({ genere: 'unione', id });
@@ -73,7 +77,7 @@ describe('le unioni nuove', () => {
 
   it('nessuna coppia è scritta due volte, e le unioni nuove non tolgono niente a quelle di prima', () => {
     const chiavi = new Set<string>();
-    for (const id of [...RISULTATI]) {
+    for (const id of new Set(unioni().map(([, , r]) => r))) {
       for (const [a, b] of vieDi(id)) {
         const chiave = `${Math.min(a, b)}:${Math.max(a, b)}`;
         expect(chiavi.has(chiave), chiave).toBe(false);

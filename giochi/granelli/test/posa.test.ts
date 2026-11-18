@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { C, INGOMBRO } from '../src/motore/cose.js';
+import { costruzioni, ingombroDi } from '../src/contenuti/registro.js';
+import { C } from '../src/motore/cose.js';
 import { ALBERO, M, TRONCO } from '../src/motore/materiali.js';
 import type { Mondo } from '../src/motore/mondo.js';
-import { COSE_MAX } from '../src/motore/posa.js';
+import { COSE_MAX, staAGalla } from '../src/motore/posa.js';
 import { albero, gira, lago, mondo, mondoVero, quanti, riempi } from './aiuti.js';
 
-const TUTTE = Object.keys(INGOMBRO).map(Number);
+const TUTTE = costruzioni();
 
 /** Un piano di roccia alla riga 60, con tutte le invenzioni già scoperte. */
 function piano(w = 200): Mondo {
@@ -26,7 +27,7 @@ function appoggio(m: Mondo, n: number): { rette: number; vuoto: number } {
   const c = m.cose[n];
   let rette = 0;
   let vuoto = 0;
-  for (let x = c.x; x < c.x + INGOMBRO[c.id][0]; x++) {
+  for (let x = c.x; x < c.x + ingombroDi(c.id)![0]; x++) {
     let y = c.y + 1;
     while (y < m.h && m.leggi(x, y) === M.VUOTO) y++;
     if (y === c.y + 1) rette++;
@@ -124,7 +125,7 @@ describe('dove una costruzione può stare', () => {
     }
   });
 
-  it('barca e ponte solo sull’acqua, tutto il resto solo all’asciutto', () => {
+  it('barca, ponte, veliero e porto solo sull’acqua, tutto il resto solo all’asciutto', () => {
     const m = mondoVero(5);
     for (const id of TUTTE) m.visti.add(id);
     const { x0, x1, pelo } = lago(m, 12);
@@ -137,9 +138,11 @@ describe('dove una costruzione può stare', () => {
     // Anche toccando sott'acqua, la barca finisce a galla.
     expect(m.puoPosare(C.BARCA, mezzo, pelo + 5)).toEqual({ si: true, x: mezzo - 4, y: pelo });
     for (const id of TUTTE) {
-      if (id === C.BARCA || id === C.PONTE) continue;
-      expect(esito(m, id, mezzo, 20)).toBe('bagnato');
+      if (staAGalla(id)) expect(esito(m, id, asciutto, 20), `${id}`).toBe('asciutto');
+      else expect(esito(m, id, mezzo, 20), `${id}`).toBe('bagnato');
     }
+    // Le costruzioni delle schede segnate «a galla» (il veliero e il porto) stanno sull'acqua come la barca.
+    expect(TUTTE.filter(staAGalla).length).toBe(4);
     expect(m.posa(C.CASA, mezzo, 20)).toBe(false);
     expect(m.posa(C.BARCA, mezzo, 20)).toBe(true);
     gira(m, 400);

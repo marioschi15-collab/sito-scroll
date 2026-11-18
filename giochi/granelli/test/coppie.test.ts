@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { C, INGOMBRO, vieDi } from '../src/motore/cose.js';
+import { ingombroDi, unioni, voci } from '../src/contenuti/registro.js';
+import { C } from '../src/motore/cose.js';
 import { SOGLIA_MISCELE, SOLO_NEL_MONDO, esitoDi, siUnisce } from '../src/motore/esiti.js';
 import { M, N_BASE, NASCOSTO, OMINO, VILLAGGIO } from '../src/motore/materiali.js';
 import { idMiscela } from '../src/motore/miscele.js';
@@ -7,12 +8,11 @@ import type { Mondo } from '../src/motore/mondo.js';
 import { staAGalla } from '../src/motore/posa.js';
 import type { EsitoPorta } from '../src/motore/porta.js';
 import { ACCENDI, COPPIE } from '../src/motore/ricette.js';
-import { SCOPERTE } from '../src/scoperte.js';
 import { gira, libroDa12, mondo, quanti, riempi } from './aiuti.js';
 
 /** Tutte le coppie scritte a mano: le unioni delle invenzioni e le reazioni del mondo. */
 const TUTTE: [number, number][] = [
-  ...Object.values(C).flatMap((id) => vieDi(id)),
+  ...unioni().map(([a, b]) => [a, b] as [number, number]),
   ...COPPIE.map(([a, b]) => [a, b] as [number, number]),
 ];
 
@@ -20,7 +20,7 @@ const TUTTE: [number, number][] = [
 function saputo(): Mondo {
   const m = mondo(120, 70);
   riempi(m, 0, 50, 119, 69, M.ROCCIA);
-  for (const voce of SCOPERTE) if (siUnisce(voce.id)) m.visti.add(voce.id);
+  for (const voce of voci()) if (siUnisce(voce.id)) m.visti.add(voce.id);
   return m;
 }
 
@@ -50,14 +50,15 @@ function bersaglio(m: Mondo, id: number): [number, number] | null {
     riempi(m, 40, 42, 60, 49, id);
     return [50, 45];
   }
-  if (INGOMBRO[id]) {
+  const ingombro = ingombroDi(id);
+  if (ingombro) {
     if (staAGalla(id)) {
       riempi(m, 20, 50, 80, 56, M.VUOTO);
       riempi(m, 20, 50, 80, 56, M.ACQUA);
     }
     if (!m.posa(id, 50, 45)) return null;
     const c = m.cose[0];
-    return [c.x + (INGOMBRO[id][0] >> 1), c.y - (INGOMBRO[id][1] >> 1)];
+    return [c.x + (ingombro[0] >> 1), c.y - (ingombro[1] >> 1)];
   }
   if (id === OMINO) {
     m.aggiungiOmino(50, 49);

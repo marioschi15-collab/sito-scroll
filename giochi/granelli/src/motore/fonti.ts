@@ -1,5 +1,6 @@
 import { libera } from './cammino.js';
-import { C, INGOMBRO } from './cose.js';
+import { ingombroDi } from '../contenuti/registro.js';
+import { C } from './cose.js';
 import { GAS, LIQUIDO, M, POLVERE } from './materiali.js';
 import type { Mondo } from './mondo.js';
 
@@ -68,7 +69,7 @@ export class Fonti {
     }
     for (const cosa of m.cose) {
       if (cosa.id !== C.POZZO && cosa.id !== C.CAMPO) continue;
-      const centro = cosa.x + (INGOMBRO[cosa.id][0] >> 1);
+      const centro = cosa.x + (ingombroDi(cosa.id)![0] >> 1);
       if (centro < 0 || centro >= w) continue;
       const delPozzo = cosa.id === C.POZZO;
       const portata = delPozzo ? AL_POZZO : AL_CAMPO;

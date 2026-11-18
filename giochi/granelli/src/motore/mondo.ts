@@ -1,7 +1,7 @@
 import { ALTEZZA } from './cammino.js';
-import { PER_ID, vociTrovate } from '../scoperte.js';
 import { primiOmini } from './arrivi.js';
-import { type Cosa, INGOMBRO } from './cose.js';
+import { eVoce, ingombroDi, vociTrovate } from '../contenuti/registro.js';
+import type { Cosa } from './cose.js';
 import { erePronte } from './ere.js';
 import { SOGLIA_MISCELE, SOLO_NEL_MONDO, coppiaDAutore, esitoDi } from './esiti.js';
 import { fenomeni } from './fenomeni.js';
@@ -370,7 +370,7 @@ export class Mondo {
     if (id <= 0 || this.visti.has(id)) return;
     this.visti.add(id);
     this.novita.push({ id, x, y });
-    if (PER_ID.has(id) && vociTrovate(this.visti) === SOGLIA_MISCELE) this.annunci.push('miscele');
+    if (eVoce(id) && vociTrovate(this.visti) === SOGLIA_MISCELE) this.annunci.push('miscele');
     // Le ere arrivano in ordine: quella che tocca adesso scatta, e con lei, a cascata, quelle che aspettavano.
     for (const era of erePronte(this.visti)) this.scopri(era, x, y);
   }
@@ -445,7 +445,7 @@ export class Mondo {
     let n = 1;
     for (const c of this.cose) if (c.n >= n) n = c.n + 1;
     this.cose.push({ id, x: dove.x, y: dove.y, n });
-    this.coperta.fill(1, dove.x, dove.x + INGOMBRO[id][0]);
+    this.coperta.fill(1, dove.x, dove.x + ingombroDi(id)![0]);
     this.fonti.daRifare = true;
     return true;
   }
@@ -1372,7 +1372,7 @@ export class Mondo {
     }
     const prima = this.cose.length;
     this.cose = this.cose.filter((c) => {
-      const [lw, lh] = INGOMBRO[c.id];
+      const [lw, lh] = ingombroDi(c.id)!;
       return !(x >= c.x - raggio && x < c.x + lw + raggio && y <= c.y + raggio && y > c.y - lh - raggio);
     });
     if (this.cose.length !== prima) this.fonti.daRifare = true;

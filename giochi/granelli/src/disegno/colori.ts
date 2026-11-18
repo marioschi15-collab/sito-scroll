@@ -1,5 +1,6 @@
 import { GAS, LIQUIDO, M, N_BASE, N_TIPI, OMINO, type Sostanza, VILLAGGIO } from '../motore/materiali.js';
-import { figura, stendardo } from './figure.js';
+import { haStendardo } from '../contenuti/registro.js';
+import { figura, icona, stendardo } from './figure.js';
 
 /** Quattro sfumature per materiale: la "grana" che fa sembrare la terra terra e non una macchia piatta. */
 export const TR = new Uint8Array(N_TIPI * 4);
@@ -86,7 +87,8 @@ function incornicia(f: HTMLCanvasElement): string {
 export function campione(id: number, miscela?: Sostanza | null): string {
   const pronto = campioni.get(id);
   if (pronto) return pronto;
-  const disegnata = figura(id) ?? (id >= 400 && id < 1000 ? stendardo(id) : null);
+  // Prima l'icona di una scheda, poi la figura nel mondo; un'era (o un evento) senza disegno ha il suo stendardo.
+  const disegnata = icona(id) ?? figura(id) ?? (haStendardo(id) ? stendardo(id) : null);
   if (disegnata) {
     const url = incornicia(disegnata);
     campioni.set(id, url);

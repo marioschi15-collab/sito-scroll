@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALBA, ARCOBALENO, ESPLOSIONE, FIORE, LAGO, M, N_BASE, NASCOSTO, NOTTE, PIOGGIA } from '../src/motore/materiali.js';
-import { INIZIALI, SCOPERTE } from '../src/scoperte.js';
+import { INIZIALI, voci } from '../src/contenuti/registro.js';
 import { gira, mondo, quanti, riempi, versaPer } from './aiuti.js';
 
 describe('i materiali da soli', () => {
@@ -141,16 +141,16 @@ describe('le scoperte', () => {
   });
 
   it('ogni voce del libro ha nome, indizio e ricetta; le iniziali non hanno indizio', () => {
-    const ids = new Set(SCOPERTE.map((s) => s.id));
-    expect(ids.size).toBe(SCOPERTE.length);
-    for (const s of SCOPERTE) {
+    const ids = new Set(voci().map((s) => s.id));
+    expect(ids.size).toBe(voci().length);
+    for (const s of voci()) {
       expect(s.nome.length).toBeGreaterThan(0);
       expect(s.descrizione.length).toBeGreaterThan(20);
       if (!INIZIALI.includes(s.id)) expect(s.indizio.length).toBeGreaterThan(0);
     }
     // Ogni materiale che si può scoprire ha la sua voce; brace e roccia non sono scoperte e non ne hanno.
     for (let t = 1; t < N_BASE; t++) expect(ids.has(t)).toBe(!NASCOSTO[t]);
-    for (const s of SCOPERTE) for (const ricetta of s.nasce) for (const id of ricetta.con) expect(ids.has(id)).toBe(true);
+    for (const s of voci()) for (const ricetta of s.nasce) for (const id of ricetta.con) expect(ids.has(id)).toBe(true);
   });
 });
 
