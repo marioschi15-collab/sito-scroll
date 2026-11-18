@@ -69,8 +69,18 @@ sale o scende di più di tre celle (un muretto di pietre copre il dislivello); m
 sull'acqua. Quando non si può, una riga spiega perché. Una volta posate scendono soltanto, se il terreno cede: né la
 sabbia né un albero le sollevano, e sotto di loro non cresce niente.
 
+Le **finestre** (il Libro, Unisci, i messaggi) si aprono una alla volta: un messaggio che arriva mentre un'altra
+finestra è aperta, o mentre il dito sta facendo un gesto sul mondo, aspetta il suo turno. Quando arriva un'era della
+storia (o uno dei suoi grandi passi) un messaggio la annuncia con il suo stendardo. Con il Libro o un messaggio aperti
+il mondo si ferma; «Hai scoperto tutto!» si festeggia una volta sola.
+
 Non usa nessun servizio a pagamento: gira tutto nel browser di chi gioca, anche da telefono, e ricorda la partita
-sul dispositivo.
+sul dispositivo. Il salvataggio è a prova di guasto: si scrive al più ogni due secondi (mai durante un gesto, subito
+quando la pagina va via); un dato sporco nella partita salvata si scarta da solo senza perdere il resto, e se il mondo
+non si legge il Libro resta in un mondo nuovo; prima di sovrascrivere una partita letta male, e prima di ricominciare,
+se ne tiene una copia di riserva. Dove il browser non lascia salvare (un riquadro chiuso dentro un'altra pagina) il
+gioco parte lo stesso, lo dice nel benvenuto e con un segno fisso. «Nuovo» offre di svuotare il mondo tenendo il Libro;
+«Riparti da zero» sta in fondo, chiede una seconda volta quante scoperte si perdono, e per dieci secondi si annulla.
 
 ## Comandi
 
@@ -83,6 +93,7 @@ pnpm build        # produce dist/index.html: un solo file, si apre con un doppio
 node strumenti/contenuti.cjs                # controllo delle scoperte: tutte raggiungibili, nessun doppione
 node strumenti/contenuti.cjs --file paese   # lo stesso, per un file di schede solo
 node strumenti/fumo.cjs     # giro di fumo nel browser, su un telefono simulato (dopo pnpm build)
+node strumenti/riquadro.cjs # il gioco in un riquadro chiuso dentro una pagina lunga: parte, dice che non salva, non fa scorrere la pagina
 node strumenti/misura.cjs   # millesimi per fotogramma nelle scene di riferimento (dopo pnpm build)
 ```
 
@@ -147,7 +158,13 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
   `src/righe.ts`: le frasi brevi in fondo al cielo (una posa rifiutata, un lutto,
   una cosa che lì non si mette, l'annuncio delle miscele).
   `src/main.ts`: la partenza.
-- `src/salvataggio.ts`: la partita salvata nel browser, miscele e coppie provate comprese.
+- `src/salvataggio.ts`: la fotografia della partita (miscele, coppie provate, cose, omini, creature comprese) e la
+  ripresa campo per campo (`riprendi`: le voci sporche si scartano una a una), la copia di riserva (`tieniDaParte`,
+  `carica`). `src/deposito.ts`: il posto dove si salva (oggi lo spazio del browser; se non si può, la memoria della
+  pagina). `src/custode.ts`: quando salvare.
+- `src/finestre.ts`: tutte le finestre (una alla volta, finestra di dialogo vera, Esc e tocco fuori per chiudere, il
+  resto della pagina inerte); `src/coda.ts` la fila dei messaggi che aspettano; `src/feste.ts` quale festa merita
+  una scoperta.
 
 Il carattere dei titoli è Pixelify Sans (licenza libera SIL OFL 1.1), preso dal pacchetto
 `@fontsource-variable/pixelify-sans` e messo dentro il file del gioco: la pagina non scarica niente da fuori.

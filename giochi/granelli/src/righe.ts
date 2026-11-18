@@ -69,3 +69,37 @@ export const PAUSA_LUTTI = 20000;
 export function annuncioDiLutto(causa: Causa, ora: number, ultimo: number): string {
   return ora - ultimo < PAUSA_LUTTI ? '' : LUTTO[causa];
 }
+
+/** La frase fissa, piccola, che resta sul mondo dove il browser non lascia salvare. */
+export const NON_SALVATA = 'Qui la partita non resta salvata';
+
+/** La riga del benvenuto dove il browser non lascia salvare. */
+export const NON_SALVATA_BENVENUTO = 'Qui il browser non lascia salvare: puoi giocare lo stesso, ma quando chiudi la pagina il mondo ricomincia da capo.';
+
+/** Le parole della finestra «Nuovo» e della sua seconda domanda. */
+export const RICOMINCIA = {
+  titolo: 'Ricominciare?',
+  spiega: 'Puoi svuotare solo il mondo e tenere il Libro con tutte le scoperte, oppure ripartire dai quattro elementi.',
+  svuota: 'Svuota il mondo',
+  annulla: 'Annulla',
+  daZero: 'Riparti da zero…',
+  sicuro: 'Ripartire da zero?',
+  tieni: 'No, tieni tutto',
+  si: 'Sì, riparti da zero',
+  svuotato: 'Il mondo è vuoto. Il Libro è rimasto.',
+  ripartito: 'Sei ripartito dai quattro elementi.',
+  ripensaci: 'Annulla',
+} as const;
+
+/** «1 scoperta», «2 scoperte»: un numero con la parola giusta. */
+const conto = (n: number, una: string, tante: string): string => `${n} ${n === 1 ? una : tante}`;
+
+/** La seconda domanda prima di ripartire da zero: dice quanto si perde. */
+export function perderai(scoperte: number, miscele: number): string {
+  if (scoperte <= 0 && miscele <= 0) return 'Il Libro ha solo i quattro elementi: non perdi niente. Il mondo torna di sola roccia.';
+  const cosa = [scoperte > 0 ? conto(scoperte, 'scoperta', 'scoperte') : '', miscele > 0 ? conto(miscele, 'miscela', 'miscele') : ''].filter(Boolean).join(' e ');
+  return `Perderai ${cosa}. Sicuro?`;
+}
+
+/** Il titolo piccolo sopra il nome, quando arriva un'era della storia o uno dei suoi grandi passi. */
+export const ARRIVA = { era: 'Comincia una nuova era', passo: 'Un grande passo' } as const;

@@ -40,6 +40,20 @@ async function versa(s, nome, x, y, ms) {
 /** Due voci scritte come schede (src/contenuti/paese.ts), con i loro numeri di numeri.ts. */
 const SCHEDE = { CACCIATORE: 230, ACCAMPAMENTO: 274, FIACCOLA: 261, UCCELLO: 502, PESCE: 503, PECORA: 505 };
 
+/** Le chiavi del salvataggio nel browser (src/salvataggio.ts) e il numero dell'Età della pietra (src/motore/cose.ts). */
+const CHIAVE = 'granelli-v1';
+const RISERVA = 'granelli-v1-riserva';
+const ETA_DELLA_PIETRA = 400;
+
+/** Quante voci ha il Libro nel mondo vivo, miscele escluse. */
+const quanteScoperte = (page) => page.evaluate(() => [...window.granelli().visti].filter((id) => id < 1000000).length);
+
+/** Il centro di un elemento della pagina, per toccarlo con un dito vero. */
+const centro = async (locator) => {
+  const r = await locator.boundingBox();
+  return [r.x + r.width / 2, r.y + r.height / 2];
+};
+
 /** Quanto è larga l'immagine del tondino di una voce del Libro: 7 per la grana di un materiale, di più per un'icona. */
 const larghezzaTondino = (page, nome) =>
   page.evaluate(async (nome) => {
@@ -368,17 +382,77 @@ const PASSI = [
     },
   },
   {
+    nome: '«Riparti da zero» sta lontano dal tasto grande, chiede una seconda volta e si può annullare',
+    fai: async (s) => {
+      await chiudiFinestre(s.page);
+      const prima = await quanteScoperte(s.page);
+      pretendi(prima > 6, `per questa prova servono delle scoperte, ce ne sono ${prima}`);
+      const apriNuovo = async () => {
+        await s.page.locator('.barra button', { hasText: /^Nuovo$/ }).tap();
+        await s.page.locator('.scheda.messaggio').waitFor();
+      };
+      await apriNuovo();
+      const svuota = await s.page.getByRole('button', { name: 'Svuota il mondo' }).boundingBox();
+      const daZero = await s.page.getByRole('button', { name: 'Riparti da zero…' }).boundingBox();
+      pretendi(daZero.y - (svuota.y + svuota.height) >= 40, `«Riparti da zero» sta a ${Math.round(daZero.y - svuota.y - svuota.height)} px dal tasto grande`);
+      await s.page.getByRole('button', { name: 'Riparti da zero…' }).tap();
+      const domanda = s.page.locator('.scheda.messaggio', { hasText: 'Ripartire da zero?' });
+      await domanda.waitFor();
+      const testo = await domanda.textContent();
+      pretendi(new RegExp(`Perderai ${prima - 4} scopert`).test(testo), `la seconda domanda non dice quante scoperte si perdono: «${testo}»`);
+      const fuoco = await s.page.evaluate(() => document.activeElement?.textContent);
+      pretendi(fuoco === 'No, tieni tutto', `il fuoco è su «${fuoco}» invece che sul tasto che tiene tutto`);
+      await s.page.getByRole('button', { name: 'No, tieni tutto' }).tap();
+      pretendi((await quanteScoperte(s.page)) === prima, 'con «No, tieni tutto» il Libro è cambiato lo stesso');
+      // Questa volta sì: il Libro torna ai quattro elementi, la partita di prima resta da parte, e «Annulla» la riporta.
+      await apriNuovo();
+      await s.page.getByRole('button', { name: 'Riparti da zero…' }).tap();
+      // Un avviso di scoperta ancora in vista nel momento in cui si riparte.
+      await s.page.evaluate(() => {
+        // Una scoperta già fatta torna nuova: il Libro conta lo stesso numero di voci, e nasce il suo avviso.
+        const m = window.granelli();
+        const id = [...m.visti].find((v) => v > 4 && v < 200);
+        m.visti.delete(id);
+        m.scopri(id, m.w >> 1, 20);
+      });
+      await s.page.waitForTimeout(100);
+      pretendi((await s.page.locator('.avvisi .avviso').count()) > 0, 'la prova non ha fatto nascere l’avviso');
+      await s.page.getByRole('button', { name: 'Sì, riparti da zero' }).tap();
+      pretendi((await quanteScoperte(s.page)) === 4, 'dopo «Riparti da zero» il Libro non è tornato ai quattro elementi');
+      // Gli avvisi del mondo di prima se ne vanno: toccati, aprirebbero nel Libro una voce che non c'è più.
+      pretendi((await s.page.locator('.avvisi .avviso').count()) === 0, 'dopo «Riparti da zero» restano gli avvisi delle scoperte di prima');
+      // Una riga che arriva mentre c'è «Annulla» sale sopra, non ci finisce sotto.
+      await s.page.evaluate(() => window.granelli().annunci.push('miscele'));
+      await s.page.waitForTimeout(400);
+      const sovrapposte = await s.page.evaluate(() => {
+        const a = document.querySelector('.riga').getBoundingClientRect();
+        const b = document.querySelector('.ripensa').getBoundingClientRect();
+        return a.bottom > b.top && a.top < b.bottom;
+      });
+      pretendi(!sovrapposte, 'la riga sta sotto quella con «Annulla»');
+      const riserva = await s.page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? '{}').visti?.length ?? 0, RISERVA);
+      pretendi(riserva >= prima, `la copia di riserva ha ${riserva} scoperte invece di ${prima}`);
+      const annulla = s.page.locator('.ripensa button', { hasText: 'Annulla' });
+      pretendi(await annulla.isVisible(), 'dopo «Riparti da zero» non c’è il tasto per annullare');
+      await annulla.tap();
+      pretendi((await quanteScoperte(s.page)) === prima, 'con «Annulla» il Libro non è tornato com’era');
+      pretendi(!(await s.page.locator('.ripensa').isVisible()), 'dopo «Annulla» la riga per annullare è ancora lì');
+      await s.page.waitForTimeout(2200);
+      const salvate = await s.page.evaluate((k) => JSON.parse(localStorage.getItem(k)).visti.filter((id) => id < 1000000).length, CHIAVE);
+      pretendi(salvate === prima, `dopo «Annulla» la partita salvata ha ${salvate} scoperte invece di ${prima}`);
+    },
+  },
+  {
     nome: 'una partita di prima con il Mestolo si apre con la Mano scelta e un saluto, una volta sola',
     fai: async (s) => {
       // La partita salvata diventa «di prima»: con il Mestolo tra i ricordi. Questa pagina smette di salvare
       // (altrimenti chiudendosi riscriverebbe la partita), e la si riapre in una pagina nuova.
-      await s.page.evaluate(() => {
-        const chiave = Object.keys(localStorage).find((k) => localStorage.getItem(k).includes('"extra"'));
+      await s.page.evaluate((chiave) => {
         const dati = JSON.parse(localStorage.getItem(chiave));
         dati.extra = { ...dati.extra, mestolo: true };
         localStorage.setItem(chiave, JSON.stringify(dati));
         Storage.prototype.setItem = () => {};
-      });
+      }, CHIAVE);
       const apri = async () => {
         const pagina = await s.ctx.newPage();
         pagina.on('pageerror', (e) => s.errori.push(`errore nella pagina: ${e.message}`));
@@ -398,6 +472,36 @@ const PASSI = [
       const dopo = await apri();
       pretendi((await dopo.locator('.scheda.messaggio', { hasText: 'Mestolo' }).count()) === 0, 'il saluto al Mestolo è tornato una seconda volta');
       await dopo.close();
+    },
+  },
+  {
+    nome: 'un salvataggio con dati sporchi (un null tra cose, omini e ricette) si riapre con il Libro intatto',
+    fai: async (s) => {
+      // Si sporca la partita salvata e la si apre in una pagina nuova: questa, dal passo prima, non scrive più, e la
+      // partita sporca la scrive la pagina nuova prima che parta il gioco.
+      const dati = JSON.parse(await s.page.evaluate((chiave) => localStorage.getItem(chiave), CHIAVE));
+      for (const campo of ['cose', 'omini', 'ricette', 'creature', 'provate']) dati[campo] = [null, ...(dati[campo] ?? [])];
+      dati.visti.push('a', null, -3);
+      const atteso = dati.visti.filter((id) => typeof id === 'number' && id > 0 && id < 1000000).length;
+      const pagina = await s.ctx.newPage();
+      pagina.on('pageerror', (e) => s.errori.push(`errore nella pagina: ${e.message}`));
+      await pagina.addInitScript(
+        ([chiave, riserva, testo]) => {
+          localStorage.setItem(chiave, testo);
+          localStorage.removeItem(riserva);
+        },
+        [CHIAVE, RISERVA, JSON.stringify(dati)],
+      );
+      await pagina.goto(s.page.url());
+      await pagina.waitForFunction(() => typeof window.granelli === 'function');
+      pretendi((await pagina.getByRole('button', { name: 'Inizia' }).count()) === 0, 'con un salvataggio sporco si riparte dal benvenuto');
+      const tornate = await quanteScoperte(pagina);
+      pretendi(tornate === atteso, `dal salvataggio sporco sono tornate ${tornate} scoperte invece di ${atteso}`);
+      const tasto = await pagina.locator('.tasto-libro').textContent();
+      pretendi(tasto.startsWith(`Libro ${tornate}/`), `il tasto del Libro dice «${tasto}»`);
+      const riserva = await pagina.evaluate((k) => localStorage.getItem(k), RISERVA);
+      pretendi(riserva !== null && riserva.includes('[null,'), 'il salvataggio sporco non è stato messo da parte prima di essere riscritto');
+      await pagina.close();
     },
   },
   {
@@ -474,6 +578,53 @@ const PASSI = [
       await s.page.waitForTimeout(200);
       const pecore = await s.page.evaluate((id) => window.granelli().creature.filter((c) => c.id === id).length, SCHEDE.PECORA);
       pretendi(pecore === 2, `dopo il tocco con la pecora ce ne sono ${pecore}`);
+    },
+  },
+  {
+    nome: 'un messaggio d’era arrivato a metà di un gesto aspetta che il dito si alzi; finestra di dialogo vera, e il mondo si ferma',
+    fai: async (s) => {
+      await chiudiFinestre(s.page);
+      await scegli(s.page, 'Mano');
+      const q = await quadro(s.page);
+      const vivo = await s.page.evaluate(async () => {
+        const t = window.granelli().tic;
+        await new Promise((r) => setTimeout(r, 300));
+        return window.granelli().tic > t;
+      });
+      pretendi(vivo, 'prima del messaggio il mondo è già fermo: la prova non direbbe niente');
+      const dito = [{ x: Math.round(q.x + q.w / 2), y: Math.round(q.y + q.h / 2), id: 0, radiusX: 4, radiusY: 4, force: 1 }];
+      await s.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: dito });
+      await s.page.evaluate((era) => {
+        const m = window.granelli();
+        m.visti.delete(era);
+        m.scopri(era, m.w >> 1, 20);
+      }, ETA_DELLA_PIETRA);
+      await s.page.waitForTimeout(700);
+      pretendi((await s.page.locator('.velo').count()) === 0, 'il messaggio dell’era si è aperto con il dito ancora sul mondo');
+      await s.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      const era = s.page.locator('.scheda.messaggio', { hasText: 'Età della pietra' });
+      await era.waitFor({ timeout: 3000 });
+      const d = await s.page.evaluate(() => {
+        const scheda = document.querySelector('.scheda.messaggio');
+        const titolo = document.getElementById(scheda.getAttribute('aria-labelledby') ?? '');
+        return {
+          ruolo: scheda.getAttribute('role'),
+          titolo: titolo?.textContent,
+          fuoco: scheda.contains(document.activeElement) && document.activeElement.tagName === 'BUTTON',
+          inerti: ['.barra', '.cielo', '.piede'].every((c) => document.querySelector(c).inert),
+          tic: window.granelli().tic,
+        };
+      });
+      pretendi(d.ruolo === 'dialog' && d.titolo === 'Età della pietra', `la finestra non si presenta come una finestra di dialogo con il suo titolo: ${JSON.stringify(d)}`);
+      pretendi(d.fuoco && d.inerti, `fuoco sul tasto e resto della pagina inerte: ${JSON.stringify(d)}`);
+      await s.page.waitForTimeout(500);
+      const tic = await s.page.evaluate(() => window.granelli().tic);
+      pretendi(tic === d.tic, `con un messaggio aperto il mondo va avanti (${d.tic} → ${tic})`);
+      // Toccare fuori dalla scheda, sul velo scuro, la chiude: tutto torna toccabile.
+      await gesto(s.cdp, [[[q.x + 6, q.y + q.h - 6]]]);
+      await s.page.waitForTimeout(150);
+      pretendi((await s.page.locator('.velo').count()) === 0, 'toccando fuori il messaggio dell’era non si chiude');
+      pretendi(!(await s.page.evaluate(() => document.querySelector('.barra').inert)), 'chiusa la finestra, la barra resta inerte');
     },
   },
   {

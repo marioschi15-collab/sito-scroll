@@ -17,6 +17,7 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
 | dopo P3b | 0,53 / 2,10 / 2,83 (60) | 0,77 / 2,96 / 3,80 (60) | 0,91 / 3,65 / 5,08 (59) | 1,94 / 7,92 / 11,88 (59) | 0,63 / 2,43 / 3,35 (60) | 0,76 / 2,96 / 3,93 (60) | 1,03 / 4,52 / 7,33 (56) | 0,92 / 3,87 / 6,18 (60) | 1,17 / 5,28 / 6,65 (60) | – |
 | dopo P5a | 0,46 / 2,13 / 3,22 (60) | 0,66 / 3,00 / 3,99 (60) | 0,92 / 3,65 / 4,91 (59) | 2,20 / 8,73 / 12,58 (58) | 0,67 / 2,68 / 4,13 (60) | 0,79 / 3,15 / 4,08 (60) | 1,12 / 4,72 / 5,94 (59) | 0,98 / 4,10 / 5,64 (60) | 1,28 / 4,42 / 7,11 (58) | – |
 | dopo P5b | 0,48 / 1,78 / 2,45 (60) | 0,57 / 2,34 / 3,24 (60) | 0,80 / 3,01 / 4,74 (59) | 1,86 / 7,36 / 10,81 (60) | 0,60 / 2,11 / 3,28 (60) | 0,62 / 2,50 / 3,94 (60) | 0,86 / 4,01 / 5,59 (59) | 0,91 / 3,51 / 5,14 (60) | 1,04 / 4,06 / 6,53 (59) | 0,67 / 2,58 / 3,81 (60) |
+| dopo P7 | 0,61 / 2,95 / 3,50 (60) | 0,88 / 3,57 / 5,83 (60) | 1,17 / 4,63 / 7,12 (59) | 2,60 / 10,92 / 15,63 (50) | 0,88 / 3,85 / 5,41 (60) | 1,16 / 4,26 / 5,52 (59) | 1,21 / 5,70 / 7,51 (60) | 1,14 / 5,22 / 7,32 (60) | 1,33 / 5,57 / 8,82 (56) | 1,05 / 4,46 / 5,99 (59) |
 
 ## Note
 
@@ -73,3 +74,11 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
   / 3,48; mondo maturo 5,31-6,03 / 5,56-6,66: nel rumore. Il paese con 30 creature, dopo le pose specchiate, contro il
   paese senza nello stesso giro (tre giri): 3,52-4,30 contro 3,14-3,45, sempre 60 fotogrammi al secondo; la differenza
   sta per lo più nella vasca d'acqua in più e nelle trenta figure da disegnare.
+- **dopo P7** (una finestra alla volta, salvataggio a prova di guasto): a ogni fotogramma si aggiunge solo la domanda
+  «c'è una finestra che ferma il mondo?»; i salvataggi passano dal custode (al più uno ogni due secondi, mai durante
+  un gesto) invece di uno per ogni scoperta. Confronto alternato con la copia di prima, a x6, due giri per parte
+  (prima / dopo): mondo vuoto 3,86-4,01 / 3,71-3,90; paese di giorno 4,95-5,36 / 4,73-5,49; mondo maturo 9,63-9,64
+  (53 fotogrammi) / 7,31-7,80 (59): qui le scoperte arrivano a raffica e prima ognuna riscriveva tutta la partita;
+  paese con 30 creature 5,10-5,62 / 5,47-5,97; incendio 14,29-16,42 / 14,97-15,92; temporale 6,46-6,92 / 6,67-7,06.
+  Oggi la macchina è più lenta per tutte e due le copie (l'incendio a 15 contro l'11 della riga «dopo P5b»): conta il
+  confronto nello stesso giro, e fuori dal mondo maturo è tutto nel rumore.

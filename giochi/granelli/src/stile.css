@@ -47,6 +47,11 @@ body {
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
+/* Quello che è nascosto resta nascosto, anche se la sua classe dice come mostrarlo. */
+[hidden] {
+  display: none !important;
+}
+
 button {
   font: inherit;
   color: inherit;
@@ -234,6 +239,48 @@ button {
   opacity: 1;
 }
 
+/* Il segno fisso dove il browser non lascia salvare: piccolo, in un angolo, non ruba i tocchi. */
+.non-salvata {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #0b1020b3;
+  border: 1px solid var(--bordo);
+  color: var(--tenue);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+/* Dopo «Nuovo», per qualche secondo: cos'è successo e il tasto per tornare indietro. */
+.ripensa {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: min(94%, 440px);
+  padding: 8px 8px 8px 14px;
+  border-radius: 14px;
+  background: #1b2340f2;
+  border: 1px solid var(--accento);
+  box-shadow: 0 6px 20px #0008;
+  font-size: 14px;
+  z-index: 2;
+}
+.ripensa .tasto.pieno {
+  padding: 8px 16px;
+}
+/* Una riga che arriva mentre c'è «Annulla» (un lutto, un annuncio) sale sopra, invece di finirci sotto. */
+.cielo:has(.ripensa:not([hidden])) .riga {
+  bottom: 76px;
+}
+
 /* ── Tavolozza ── */
 .piede {
   display: flex;
@@ -407,6 +454,10 @@ button {
   place-items: center;
   padding: 16px;
   animation: appare 0.2s;
+  /* Dentro un riquadro di un'altra pagina, strisciare o girare la rotella su una finestra non deve far scorrere la
+     pagina che la ospita: il velo non scorre, e le schede scorrono solo dentro di sé. */
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 @keyframes appare {
   from {
@@ -417,6 +468,8 @@ button {
   width: min(100%, 720px);
   max-height: 100%;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   background: var(--carta);
   border: 1px solid var(--bordo);
   border-radius: 18px;
@@ -447,6 +500,37 @@ button {
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
+}
+/* Due scelte che non si devono confondere: una sopra l'altra, ben distanti. */
+.fila-larga {
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+/* Un tasto che c'è ma non chiama: piccolo, senza bordo, lontano da quello grande. */
+.scheda .tasto.discreto {
+  display: block;
+  margin: 48px auto 0;
+  background: transparent;
+  border-color: transparent;
+  color: var(--tenue);
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Il tasto che fa perdere qualcosa: si legge bene, ma non invita. */
+.tasto.pericolo {
+  background: transparent;
+  border-color: #ff7a7a;
+  color: #ffb0b0;
+}
+/* La testa del messaggio che annuncia un'era: il suo stendardo e la parola piccola sopra il nome. */
+.messaggio-era {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 .scheda-testa {
   position: sticky;
@@ -535,6 +619,8 @@ button {
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x;
   padding: 0 16px 12px;
   border-bottom: 1px solid var(--bordo);
   scrollbar-width: none;
@@ -568,6 +654,8 @@ button {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding: 14px 16px 18px;
   display: flex;
   flex-direction: column;

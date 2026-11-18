@@ -71,10 +71,17 @@ async function premiInizia(page) {
   }
 }
 
-/** Chiude le finestre rimaste aperte sopra il mondo (un saluto, una festa, il Libro). */
+/**
+ * Chiude le finestre rimaste aperte sopra il mondo (un saluto, una festa, il Libro). I messaggi in fila arrivano un
+ * attimo dopo che si è chiusa la finestra prima (src/finestre.ts): si aspetta che non ne arrivino altri, perché con un
+ * messaggio aperto il mondo è fermo e una misura non direbbe niente.
+ */
 async function chiudiFinestre(page) {
-  for (let k = 0; k < 4; k++) {
-    if ((await page.locator('.velo').count()) === 0) return;
+  for (let k = 0; k < 12; k++) {
+    if ((await page.locator('.velo').count()) === 0) {
+      await page.waitForTimeout(450);
+      if ((await page.locator('.velo').count()) === 0) return;
+    }
     await page.keyboard.press('Escape');
     await page.waitForTimeout(80);
   }

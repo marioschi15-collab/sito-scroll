@@ -2,6 +2,7 @@ import { nomeDi, tondino } from './libro.js';
 import { coppiaDEsempio, siUnisce } from './motore/esiti.js';
 import { PRIMA_ID_MISCELA } from './motore/materiali.js';
 import type { Mondo } from './motore/mondo.js';
+import type { Finestre } from './finestre.js';
 import { el } from './pagina.js';
 import { rispostaDiUnisci } from './risposta.js';
 
@@ -24,15 +25,12 @@ function invito(mondo: Mondo): string {
  * risultato loro, le miscele. Una coppia già provata lo dice. `colonna` dice dove sta guardando chi gioca: gli
  * omini chiamati da un'unione arrivano lì vicino, se possono.
  */
-export function apriUnisci(app: HTMLElement, mondo: Mondo, colonna: () => number): void {
-  const velo = el('div', 'velo');
-  const scheda = el('div', 'scheda libro unisci');
-  velo.append(scheda);
-  const chiudi = (): void => velo.remove();
-  velo.addEventListener('click', (e) => {
-    if (e.target === velo) chiudi();
-  });
+export function apriUnisci(finestre: Finestre, mondo: Mondo, colonna: () => number): void {
+  // Il mondo continua a vivere sotto Unisci: le cose nate da un'unione (gli omini, una capanna) ci sono già.
+  finestre.apri({ classe: 'libro unisci', fermaIlMondo: false, riempi: ({ scheda, chiudi }) => riempiUnisci(scheda, chiudi, mondo, colonna) });
+}
 
+function riempiUnisci(scheda: HTMLDivElement, chiudi: () => void, mondo: Mondo, colonna: () => number): void {
   const testa = el('div', 'scheda-testa');
   const titoli = el('div', 'libro-titoli');
   titoli.append(el('h2', '', 'Unisci'), el('span', 'libro-conto', 'Tocca due cose: vediamo cosa ne nasce.'));
@@ -99,5 +97,4 @@ export function apriUnisci(app: HTMLElement, mondo: Mondo, colonna: () => number
 
   mostra('Prova una coppia', null, invito(mondo), false);
   ridisegna();
-  app.append(velo);
 }

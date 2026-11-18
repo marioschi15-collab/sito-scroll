@@ -39,7 +39,13 @@ export function costruisciPagina(app: HTMLElement) {
   // Una frase breve che spiega quello che è appena successo (una posa rifiutata, un lutto): chi usa un lettore di schermo la sente.
   const riga = el('p', 'riga');
   riga.setAttribute('role', 'status');
-  cielo.append(quadro, suggerimento, riga);
+  // Dove il browser non lascia salvare, un segno piccolo e fisso lo ricorda (vedi deposito.ts).
+  const nonSalvata = el('p', 'non-salvata');
+  nonSalvata.hidden = true;
+  // Dopo «Nuovo», per qualche secondo, il modo di tornare indietro.
+  const ripensa = el('div', 'ripensa');
+  ripensa.hidden = true;
+  cielo.append(quadro, suggerimento, riga, nonSalvata, ripensa);
 
   const piede = el('footer', 'piede');
   const pennelli = el('div', 'pennelli');
@@ -49,5 +55,15 @@ export function costruisciPagina(app: HTMLElement) {
   const avvisi = el('div', 'avvisi');
   app.append(barra, cielo, piede, avvisi);
 
-  return { bLibro, bUnisci, bPausa, bNuovo, era, foglio, cielo, quadro, tele, suggerimento, riga, pennelli, tavolozza, avvisi };
+  return { bLibro, bUnisci, bPausa, bNuovo, era, foglio, cielo, quadro, tele, suggerimento, riga, nonSalvata, ripensa, pennelli, tavolozza, avvisi };
+}
+
+/**
+ * Una piccola vibrazione, solo dopo che chi gioca ha toccato davvero la pagina: prima il browser la vieta (e dentro
+ * un riquadro lo scrive tra gli errori).
+ */
+export function vibra(ms: number): void {
+  const n = navigator as Navigator & { userActivation?: { hasBeenActive: boolean } };
+  if (n.userActivation && !n.userActivation.hasBeenActive) return;
+  n.vibrate?.(ms);
 }

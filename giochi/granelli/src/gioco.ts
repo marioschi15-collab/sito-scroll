@@ -1,15 +1,30 @@
-import { INIZIALI, eCostruzione, ere, tipoDi, voce, voci, vociTrovate } from './contenuti/registro.js';
+import { INIZIALI, eCostruzione, eVoce, ere, tipoDi, voce, voci, vociTrovate } from './contenuti/registro.js';
+import { Custode } from './custode.js';
+import { apriDeposito } from './deposito.js';
 import { Pittore } from './disegno/pittore.js';
+import { festaDovuta } from './feste.js';
+import { type Finestra, Finestre } from './finestre.js';
 import { apriLibro, nomeDi, tondino } from './libro.js';
 import { M, OMINO, PRIMA_ID_MISCELA, VILLAGGIO } from './motore/materiali.js';
 import { accade } from './motore/eventi.js';
 import { Mondo } from './motore/mondo.js';
 import { SUPERFICIE, terreno } from './motore/terreno.js';
 import { apriUnisci } from './unisci.js';
-import { costruisciPagina, el } from './pagina.js';
-import { ADDIO_MESTOLO, ANNUNCIO, NON_QUI, NON_SI_POSA, annuncioDiLutto } from './righe.js';
+import { costruisciPagina, el, vibra } from './pagina.js';
+import {
+  ADDIO_MESTOLO,
+  ANNUNCIO,
+  ARRIVA,
+  NON_QUI,
+  NON_SALVATA,
+  NON_SALVATA_BENVENUTO,
+  NON_SI_POSA,
+  RICOMINCIA,
+  annuncioDiLutto,
+  perderai,
+} from './righe.js';
 import { type Ricordi, leggiRicordi } from './ricordi.js';
-import { carica, extraDi, fotografa, ripristina, salva } from './salvataggio.js';
+import { carica, extraDi, fotografa, riprendi, salva, tieniDaParte } from './salvataggio.js';
 
 const GOMMA = -1;
 // Il -2 era il Mestolo, che non c'è più: il numero resta libero, così una partita di prima non lo confonde con altro.
@@ -22,6 +37,16 @@ const ALTO = 190;
 const IN_VISTA = 96;
 /** Quante cose stanno nella tavolozza: le ultime usate o scoperte. Tutte le altre si prendono dal Libro. */
 const POSTI = 14;
+/** Per quanto tempo, dopo «Nuovo», si può ancora tornare indietro (in millesimi di secondo). */
+const RIPENSAMENTO = 10000;
+
+/** Un mondo di sola roccia. */
+function mondoNuovo(): Mondo {
+  const m = new Mondo(LARGO, ALTO, (Date.now() & 0x7fffffff) || 1);
+  for (const id of INIZIALI) m.visti.add(id);
+  terreno(m);
+  return m;
+}
 
 /**
  * Costruisce la pagina e fa partire il gioco. `ripresa` è la fotografia di una partita interrotta, se c'è:
@@ -29,12 +54,15 @@ const POSTI = 14;
  */
 export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => unknown } {
   const p = costruisciPagina(app);
+  // Dove si salva: se il browser non lo permette, si gioca lo stesso e la pagina lo dice.
+  const deposito = apriDeposito();
 
   let foto = ripresa;
-  let salvato = ripristina(foto);
+  let salvato = riprendi(foto, mondoNuovo)?.mondo ?? null;
   if (!salvato) {
-    foto = carica();
-    salvato = ripristina(foto);
+    const trovata = carica(deposito, mondoNuovo);
+    foto = trovata.dati;
+    salvato = trovata.ripresa?.mondo ?? null;
   }
   const { ricordi, avevaIlMestolo } = leggiRicordi(salvato ? extraDi(foto) : null);
   // Chi aveva il Mestolo in mano ritrova la Mano: lo strumento che sposta la vista, che non fa danni.
@@ -68,14 +96,6 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
 
   // ── Il mondo ─────────────────────────────────────────────────────────────────
-  /** Un mondo di sola roccia. */
-  function mondoNuovo(): Mondo {
-    const m = new Mondo(LARGO, ALTO, (Date.now() & 0x7fffffff) || 1);
-    for (const id of INIZIALI) m.visti.add(id);
-    terreno(m);
-    return m;
-  }
-
   let mondo = salvato ?? mondoNuovo();
 
   /** Un fulmine o un'esplosione: tutto si schiarisce per un istante e il mondo trema. */
@@ -182,7 +202,25 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   ridisegnaTavolozza();
 
   const daRicordare = (): Ricordi => ({ recenti: ricordi.recenti });
-  const salvaTutto = (): void => salva(mondo, daRicordare());
+  /** Dove il browser non lascia salvare (o lo spazio è finito), il segno fisso lo ricorda. */
+  function segnaSalvabile(): void {
+    p.nonSalvata.hidden = deposito.salvabile;
+  }
+  p.nonSalvata.textContent = NON_SALVATA;
+  segnaSalvabile();
+  // Chi vuole salvare lo chiede al custode, che scrive al più una volta ogni due secondi e mai durante un gesto.
+  const custode = new Custode({
+    ora: () => performance.now(),
+    richiama: (fai, ms) => window.setTimeout(fai, ms),
+    scrivi: () => {
+      salva(deposito, mondo, daRicordare());
+      segnaSalvabile();
+    },
+  });
+  const salvaTutto = (): void => custode.chiedi();
+
+  // ── Finestre: una alla volta, e i messaggi aspettano il loro turno ─────────────
+  const finestre = new Finestre(app, () => fineDeiGesti());
 
   // ── Il dito ──────────────────────────────────────────────────────────────────
   interface Dito {
@@ -214,10 +252,25 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     return { x: x / prese.size, y: y / prese.size };
   };
 
+  /** Un dito comincia o finisce un gesto sul mondo: finché dura, niente finestre nuove e niente salvataggi. */
+  function gesto(inCorso: boolean): void {
+    finestre.gesto(inCorso);
+    custode.gesto(inCorso);
+  }
+  /** Tutte le dita si considerano alzate: prima che si apra una finestra, che rende il mondo intoccabile. */
+  function fineDeiGesti(): void {
+    if (prese.size === 0) return;
+    prese.clear();
+    dita.clear();
+    trascina = null;
+    gesto(false);
+  }
+
   p.quadro.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     p.quadro.setPointerCapture(e.pointerId);
     p.suggerimento.classList.add('via');
+    if (prese.size === 0) gesto(true);
     prese.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (scelto === MANO || e.button === 2 || prese.size >= 2) {
       // Due dita (o la Mano) spostano la vista: quello che si stava versando si ferma.
@@ -279,15 +332,18 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   });
   const alza = (e: PointerEvent): void => {
     dita.delete(e.pointerId);
-    prese.delete(e.pointerId);
-    if (prese.size === 0) trascina = null;
-    else if (trascina) {
+    if (!prese.delete(e.pointerId)) return;
+    if (prese.size === 0) {
+      trascina = null;
+      gesto(false);
+    } else if (trascina) {
       const centro = centroPrese();
       trascina = { x: centro.x, y: centro.y, camX, camY };
     }
   };
   p.quadro.addEventListener('pointerup', alza);
   p.quadro.addEventListener('pointercancel', alza);
+  p.quadro.addEventListener('lostpointercapture', alza);
   p.quadro.addEventListener('contextmenu', (e) => e.preventDefault());
   p.quadro.addEventListener('wheel', (e) => {
     e.preventDefault();
@@ -324,13 +380,15 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     }
     if (mondo.pieno && !avvisatoPieno) {
       avvisatoPieno = true;
-      const { scheda, chiudi } = messaggio('Troppe miscele insieme', [
-        'In questo mondo ci sono già 192 miscele diverse, e non c’è posto per un’altra.',
-        'Cancellane qualcuna con la Gomma: nel Libro restano tutte, e potrai versarle di nuovo quando vuoi.',
-      ]);
-      const b = el('button', 'tasto pieno', 'Ho capito');
-      b.addEventListener('click', chiudi);
-      scheda.append(b);
+      messaggio(
+        'Troppe miscele insieme',
+        [
+          'In questo mondo ci sono già 192 miscele diverse, e non c’è posto per un’altra.',
+          'Cancellane qualcuna con la Gomma: nel Libro restano tutte, e potrai versarle di nuovo quando vuoi.',
+        ],
+        'Ho capito',
+        { chiave: 'pieno' },
+      );
     }
     if (!mondo.pieno) avvisatoPieno = false;
   }
@@ -404,18 +462,21 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       inCoda.push(n.id);
       prossimoAvviso();
       if (versabile(n.id)) inTavolozza(n.id);
+      if (tipoDi(n.id) === 'era') annunciaEra(n.id);
     }
     mondo.novita = [];
-    navigator.vibrate?.(25);
+    vibra(25);
     ridisegnaTavolozza(nuove);
     salvaTutto();
-    if (quanteVoci() === voci().length || nuove.includes(VILLAGGIO)) setTimeout(festa, 1500);
+    // Il Libro completo si festeggia una volta sola: quando arriva l'ultima voce, non a ogni miscela dopo.
+    const quale = festaDovuta(nuove, quanteVoci(), voci().length, eVoce, VILLAGGIO);
+    if (quale) setTimeout(() => festa(quale === 'tutto'), 1500);
   }
 
-  // ── Finestre: libro e messaggi ───────────────────────────────────────────────
+  // ── Finestre: libro, messaggi, «Nuovo» ──────────────────────────────────────
   function libro(voce?: number): void {
     apriLibro(
-      app,
+      finestre,
       {
         mondo,
         usa: (id) => {
@@ -429,77 +490,154 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     );
   }
 
-  function messaggio(titolo: string, righe: readonly string[]): { scheda: HTMLDivElement; chiudi: () => void } {
-    const velo = el('div', 'velo');
-    const scheda = el('div', 'scheda messaggio');
-    velo.append(scheda);
-    const chiudi = (): void => velo.remove();
-    velo.addEventListener('click', (e) => {
-      if (e.target === velo) chiudi();
-    });
-    scheda.append(el('h2', '', titolo), ...righe.map((r) => el('p', '', r)));
-    app.append(velo);
-    return { scheda, chiudi };
+  /** Riempie la scheda di un messaggio: un titolo (con sopra, se c'è, una parola piccola), le righe, un tasto. */
+  function scriviMessaggio(f: Finestra, titolo: string, righe: readonly string[], tasto: string, sopra?: HTMLElement): void {
+    if (sopra) f.scheda.append(sopra);
+    f.scheda.append(el('h2', '', titolo), ...righe.map((r) => el('p', '', r)));
+    const b = el('button', 'tasto pieno', tasto);
+    b.addEventListener('click', f.chiudi);
+    f.scheda.append(b);
   }
 
-  function festa(): void {
-    const tutto = quanteVoci() === voci().length;
-    const { scheda, chiudi } = messaggio(tutto ? 'Hai scoperto tutto!' : 'È nato un villaggio!', [
-      tutto
-        ? 'Tutte le voci del Libro sono tue. Restano le miscele: quelle non finiscono mai.'
-        : 'Da quattro granelli a un paese abitato. Proteggili, oppure no: il mondo è tuo.',
-    ]);
-    const b = el('button', 'tasto pieno', 'Continua');
-    b.addEventListener('click', chiudi);
-    scheda.append(b);
+  /** Un messaggio del gioco: aspetta in fila che si chiuda la finestra aperta e che il dito finisca il suo gesto. */
+  function messaggio(titolo: string, righe: readonly string[], tasto: string, opzioni: { chiave?: string; sopra?: () => HTMLElement } = {}): void {
+    finestre.aspetta({ classe: 'messaggio', riempi: (f) => scriviMessaggio(f, titolo, righe, tasto, opzioni.sopra?.()) }, opzioni.chiave);
+  }
+
+  /** Arriva un'era (o un grande passo della storia): si festeggia con il suo stendardo e due righe. */
+  function annunciaEra(id: number): void {
+    const v = voce(id);
+    if (!v) return;
+    const sopra = (): HTMLElement => {
+      const testa = el('div', 'messaggio-era');
+      testa.append(tondino(mondo, id, 'pallino enorme'), el('span', 'avviso-sopra', ere().includes(id) ? ARRIVA.era : ARRIVA.passo));
+      return testa;
+    };
+    messaggio(v.nome, [v.descrizione], 'Avanti', { chiave: `era-${id}`, sopra });
+  }
+
+  function festa(tutto: boolean): void {
+    messaggio(
+      tutto ? 'Hai scoperto tutto!' : 'È nato un villaggio!',
+      [
+        tutto
+          ? 'Tutte le voci del Libro sono tue. Restano le miscele: quelle non finiscono mai.'
+          : 'Da quattro granelli a un paese abitato. Proteggili, oppure no: il mondo è tuo.',
+      ],
+      'Continua',
+      { chiave: tutto ? 'tutto' : 'villaggio' },
+    );
   }
 
   function benvenuto(): void {
-    const { scheda, chiudi } = messaggio('Granelli', [
+    const righe = [
       'Sotto il cielo c’è solo roccia nuda. Tu hai quattro elementi: terra, acqua, fuoco e aria.',
       'Versali col dito e falli incontrare: ogni cosa nuova entra nella tavolozza e nel Libro. Il mondo è grande: con la Mano (o con due dita) sposti la vista.',
       'Con Unisci metti insieme due scoperte e ne nasce una terza: attrezzi, case, e via via le ere della storia.',
       'Se ti blocchi, apri il Libro: ci sono gli indizi.',
-    ]);
-    const b = el('button', 'tasto pieno', 'Inizia');
-    b.addEventListener('click', chiudi);
-    scheda.append(b);
+    ];
+    if (!deposito.salvabile) righe.push(NON_SALVATA_BENVENUTO);
+    messaggio('Granelli', righe, 'Inizia');
   }
 
+  /** La finestra di «Nuovo»: svuotare il mondo (il tasto grande) o, più in basso e con una seconda domanda, ripartire da zero. */
   function chiediNuovo(): void {
-    const { scheda, chiudi } = messaggio('Ricominciare?', [
-      'Puoi svuotare solo il mondo e tenere il Libro con tutte le scoperte, oppure ripartire dai quattro elementi.',
-    ]);
-    const riparti = (daZero: boolean): void => {
-      const vecchio = mondo;
-      mondo = mondoNuovo();
-      if (daZero) ricordi.recenti = [...INIZIALI];
-      else {
-        for (const id of vecchio.visti) mondo.visti.add(id);
-        for (const [id, ricetta] of vecchio.ricettario) mondo.ricettario.set(id, ricetta);
-        // Il Libro resta, e con lui le coppie già provate: Unisci deve continuare a dire «Già fatta» e «Già provata».
-        for (const coppia of vecchio.provate) mondo.provate.add(coppia);
-      }
-      pittore = nuovoPittore();
-      dita.clear();
-      inCoda.length = 0;
-      centrata = false;
-      adatta();
-      ridisegnaTavolozza();
-      salvaTutto();
-      chiudi();
+    finestre.apri({
+      classe: 'messaggio',
+      riempi: ({ scheda, chiudi }) => {
+        scheda.append(el('h2', '', RICOMINCIA.titolo), el('p', '', RICOMINCIA.spiega));
+        const fila = el('div', 'fila');
+        const svuota = el('button', 'tasto pieno', RICOMINCIA.svuota);
+        svuota.addEventListener('click', () => {
+          chiudi();
+          riparti(false);
+        });
+        const annulla = el('button', 'tasto', RICOMINCIA.annulla);
+        annulla.addEventListener('click', chiudi);
+        fila.append(svuota, annulla);
+        // «Riparti da zero» sta in fondo, piccolo e lontano dal tasto grande: un tocco sbagliato non cancella il Libro.
+        const daZero = el('button', 'tasto discreto', RICOMINCIA.daZero);
+        daZero.addEventListener('click', () => {
+          chiudi();
+          chiediDaZero();
+        });
+        scheda.append(fila, daZero);
+      },
+    });
+  }
+
+  /** La seconda domanda, prima di perdere il Libro: quanto si perde, e il tasto sicuro per primo. */
+  function chiediDaZero(): void {
+    finestre.apri({
+      classe: 'messaggio',
+      riempi: ({ scheda, chiudi }) => {
+        scheda.append(el('h2', '', RICOMINCIA.sicuro), el('p', '', perderai(quanteVoci() - INIZIALI.length, quanteMiscele())));
+        const tieni = el('button', 'tasto pieno', RICOMINCIA.tieni);
+        tieni.addEventListener('click', chiudi);
+        const si = el('button', 'tasto pericolo', RICOMINCIA.si);
+        si.addEventListener('click', () => {
+          chiudi();
+          riparti(true);
+        });
+        const fila = el('div', 'fila fila-larga');
+        fila.append(tieni, si);
+        scheda.append(fila);
+      },
+    });
+  }
+
+  /** Mette in gioco un mondo (nuovo, o quello di prima dopo un ripensamento) con la sua tavolozza e la sua vista. */
+  function metti(nuovo: Mondo, recenti: number[], vista?: { x: number; y: number }): void {
+    mondo = nuovo;
+    ricordi.recenti = recenti;
+    pittore = nuovoPittore();
+    fineDeiGesti();
+    dita.clear();
+    // Gli avvisi e la riga parlavano del mondo di prima: dopo «Riparti da zero» un avviso «Nuova scoperta» rimasto lì
+    // aprirebbe nel Libro una voce che non c'è più, e la riga starebbe sotto quella con «Annulla».
+    inCoda.length = 0;
+    p.avvisi.replaceChildren();
+    p.riga.classList.remove('su');
+    centrata = vista !== undefined;
+    adatta();
+    if (vista) muoviVista(vista.x, vista.y);
+    ridisegnaTavolozza();
+    salvaTutto();
+  }
+
+  /** Svuota il mondo (e se `daZero` anche il Libro). Prima tiene da parte la partita, e per un po' si può tornare indietro. */
+  function riparti(daZero: boolean): void {
+    const vecchio = { mondo, recenti: [...ricordi.recenti], vista: { x: camX, y: camY } };
+    tieniDaParte(deposito, mondo, daRicordare());
+    const nuovo = mondoNuovo();
+    if (!daZero) {
+      for (const id of mondo.visti) nuovo.visti.add(id);
+      for (const [id, ricetta] of mondo.ricettario) nuovo.ricettario.set(id, ricetta);
+      // Il Libro resta, e con lui le coppie già provate: Unisci deve continuare a dire «Già fatta» e «Già provata».
+      for (const coppia of mondo.provate) nuovo.provate.add(coppia);
+    } else finestre.svuota();
+    metti(nuovo, daZero ? [...INIZIALI] : vecchio.recenti);
+    ripensaci(daZero ? RICOMINCIA.ripartito : RICOMINCIA.svuotato, () => metti(vecchio.mondo, vecchio.recenti, vecchio.vista));
+  }
+
+  /** Per qualche secondo, una riga con il tasto per tornare indietro. */
+  let viaIlRipensamento = 0;
+  function ripensaci(testo: string, indietro: () => void): void {
+    clearTimeout(viaIlRipensamento);
+    p.ripensa.innerHTML = '';
+    const b = el('button', 'tasto pieno', RICOMINCIA.ripensaci);
+    const togli = (): void => {
+      clearTimeout(viaIlRipensamento);
+      p.ripensa.hidden = true;
+      p.ripensa.innerHTML = '';
     };
-    const fila = el('div', 'fila');
-    for (const [testo, classe, azione] of [
-      ['Svuota il mondo', 'tasto pieno', () => riparti(false)],
-      ['Riparti da zero', 'tasto', () => riparti(true)],
-      ['Annulla', 'tasto', chiudi],
-    ] as const) {
-      const b = el('button', classe, testo);
-      b.addEventListener('click', azione);
-      fila.append(b);
-    }
-    scheda.append(fila);
+    b.addEventListener('click', () => {
+      togli();
+      indietro();
+    });
+    p.ripensa.append(el('span', '', testo), b);
+    p.ripensa.hidden = false;
+    viaIlRipensamento = window.setTimeout(togli, RIPENSAMENTO);
   }
 
   function pausa(): void {
@@ -510,12 +648,11 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
 
   p.bLibro.addEventListener('click', () => libro());
   // Gli omini chiamati da Unisci arrivano, se possono, vicino a dove sta guardando chi gioca.
-  p.bUnisci.addEventListener('click', () => apriUnisci(app, mondo, () => camX + vistaW / 2));
+  p.bUnisci.addEventListener('click', () => apriUnisci(finestre, mondo, () => camX + vistaW / 2));
   p.bNuovo.addEventListener('click', chiediNuovo);
   p.bPausa.addEventListener('click', pausa);
   addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') app.querySelector('.velo:last-of-type')?.remove();
-    else if (e.key === ' ' && !app.querySelector('.velo') && !(e.target instanceof HTMLButtonElement)) pausa();
+    if (e.key === ' ' && !finestre.aperta && !(e.target instanceof HTMLButtonElement)) pausa();
   });
 
   // ── Il tempo ─────────────────────────────────────────────────────────────────
@@ -529,7 +666,8 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     versaDita();
     while (arretrato >= ISTANTE) {
       arretrato -= ISTANTE;
-      if (!inPausa) mondo.passo();
+      // Con il Libro o un messaggio aperti il mondo si ferma: niente succede mentre chi gioca sta leggendo.
+      if (!inPausa && !finestre.fermaIlMondo) mondo.passo();
     }
     leggiNovita();
     pittore.disegna(Math.min(0.05, passato / 1000), camX, camY);
@@ -537,20 +675,18 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
   }
   requestAnimationFrame(fotogramma);
 
+  // Il mondo cambia da solo: ogni dieci secondi va salvato; e subito, quando la pagina va in secondo piano o si chiude.
   setInterval(salvaTutto, 10000);
-  addEventListener('pagehide', salvaTutto);
+  addEventListener('pagehide', () => custode.subito());
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) salvaTutto();
+    if (document.hidden) custode.subito();
     else prima = performance.now();
   });
 
   if (salvato) p.suggerimento.classList.add('via');
   else benvenuto();
   if (avevaIlMestolo) {
-    const { scheda, chiudi } = messaggio('Una novità', [ADDIO_MESTOLO]);
-    const b = el('button', 'tasto pieno', 'Ho capito');
-    b.addEventListener('click', chiudi);
-    scheda.append(b);
+    messaggio('Una novità', [ADDIO_MESTOLO], 'Ho capito');
     // Da qui la partita si ricorda senza il Mestolo: il saluto non torna alla prossima apertura.
     salvaTutto();
   }

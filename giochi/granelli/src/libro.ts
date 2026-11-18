@@ -3,6 +3,7 @@ import { SOGLIA_MISCELE } from './motore/esiti.js';
 import { PRIMA_ID_MISCELA } from './motore/materiali.js';
 import type { Mondo } from './motore/mondo.js';
 import { descriviMiscela, etichette } from './motore/nomi.js';
+import type { Finestre } from './finestre.js';
 import { el } from './pagina.js';
 import { INIZIALI, type Voce, capitoli, voce as voceDi, voci, vociDelCapitolo } from './contenuti/registro.js';
 
@@ -37,7 +38,11 @@ function figliDi(id: number): Voce[] {
  * cos'è, come nasce e a cosa porta. Ogni nome è un collegamento: dal fango si va all'argilla, dall'argilla al
  * mattone, e così via, come in un'enciclopedia del proprio mondo.
  */
-export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: number): void {
+export function apriLibro(finestre: Finestre, dati: PerIlLibro, voceIniziale?: number): void {
+  finestre.apri({ classe: 'libro', riempi: ({ scheda, chiudi }) => riempiLibro(scheda, chiudi, dati, voceIniziale) });
+}
+
+function riempiLibro(scheda: HTMLDivElement, chiudi: () => void, dati: PerIlLibro, voceIniziale?: number): void {
   const { mondo } = dati;
   const visti = mondo.visti;
   const ordine = [...visti];
@@ -45,14 +50,6 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
   const trovate = voci().filter((s) => visti.has(s.id)).length;
   /** Da quante voci in su anche le cose senza una ricetta si uniscono, e nascono le miscele. */
   const siMescola = trovate >= SOGLIA_MISCELE;
-
-  const velo = el('div', 'velo');
-  const scheda = el('div', 'scheda libro');
-  velo.append(scheda);
-  const chiudi = (): void => velo.remove();
-  velo.addEventListener('click', (e) => {
-    if (e.target === velo) chiudi();
-  });
 
   const testa = el('div', 'scheda-testa');
   const titoli = el('div', 'libro-titoli');
@@ -162,8 +159,8 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
     if (ricetta || voce?.versabile) {
       const usa = el('button', 'tasto pieno', 'Usa nel mondo');
       usa.addEventListener('click', () => {
-        dati.usa(id);
         chiudi();
+        dati.usa(id);
       });
       piede.append(usa);
     }
@@ -223,5 +220,4 @@ export function apriLibro(app: HTMLElement, dati: PerIlLibro, voceIniziale?: num
     elenco();
     pagina(voceIniziale);
   } else elenco();
-  app.append(velo);
 }
