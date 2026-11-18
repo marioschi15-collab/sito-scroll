@@ -9,6 +9,7 @@ import {
   ingombroDi,
   numeri,
   paesaggi,
+  schede,
   tipoDi,
   vociDelCapitolo,
   voce,
@@ -21,6 +22,21 @@ import { fotografa, ripristina } from '../src/salvataggio.js';
 import { mondo, riempi } from './aiuti.js';
 
 const { M } = K;
+
+/** I sei file della grande infornata (P8): ognuno con il suo blocco di cento numeri. */
+const BLOCCHI: Record<string, number> = { natura: 600, bottega: 700, citta: 800, macchine: 900, moderno: 1000, cielo: 1100 };
+/**
+ * La prima e l'ultima chiave di ogni blocco della grande infornata, e quante sono: fissate per sempre come quelle di
+ * prima (i salvataggi contengono i numeri). Dentro un blocco i numeri sono senza buchi, quindi bastano queste.
+ */
+const BLOCCHI_FISSI: Record<string, readonly [string, string, number]> = {
+  natura: ['seme', 'coniglio', 60],
+  bottega: ['ascia', 'cuoco', 60],
+  citta: ['papiro', 'cavaliere', 55],
+  macchine: ['rinascimento', 'ingegnere', 55],
+  moderno: ['eta-moderna', 'passi-sulla-luna', 50],
+  cielo: ['sole', 'stormo', 35],
+};
 
 /**
  * I numeri di oggi, fissati per sempre: i salvataggi contengono questi numeri, e una partita salvata deve ritrovare
@@ -70,12 +86,32 @@ describe('i numeri delle scoperte', () => {
       expect(chiaveDi(v.id), v.nome).toBe(v.chiave);
       expect(idDi(v.chiave)).toBe(v.id);
     }
-    expect(voci().length).toBe(145);
+    expect(voci().length).toBe(460);
   });
 
   it('quelli della prima infornata nemmeno: da 500, nell’ordine in cui sono nati', () => {
     for (const [chiave, n] of Object.entries(NUMERI_NUOVI)) expect(idDi(chiave), chiave).toBe(n);
-    expect(numeri().filter(([, n]) => n >= 500).map(([chiave]) => chiave)).toEqual(Object.keys(NUMERI_NUOVI));
+    expect(numeri().filter(([, n]) => n >= 500 && n < 600).map(([chiave]) => chiave)).toEqual(Object.keys(NUMERI_NUOVI));
+  });
+
+  it('la grande infornata ha sei blocchi di cento numeri, uno per file, e ogni scheda sta nel blocco del suo file', () => {
+    const nuovi = numeri().filter(([, n]) => n >= 600);
+    for (const [chiave, n] of nuovi) expect(n, chiave).toBeLessThan(1200);
+    // Dentro ogni blocco i numeri crescono senza buchi: le chiavi dell'indice, poi quelle aggiunte in fondo.
+    for (const base of Object.values(BLOCCHI)) {
+      const blocco = nuovi.map(([, n]) => n).filter((n) => n >= base && n < base + 100);
+      expect(blocco.length).toBeGreaterThan(0);
+      expect(blocco).toEqual(blocco.map((_, i) => base + i));
+    }
+    for (const v of voci()) {
+      if (v.file === undefined || !(v.file in BLOCCHI)) continue;
+      expect(v.id >= BLOCCHI[v.file] && v.id < BLOCCHI[v.file] + 100, `${v.nome} (${v.file})`).toBe(true);
+    }
+    for (const [file, [prima, ultima, quante]] of Object.entries(BLOCCHI_FISSI)) {
+      expect(idDi(prima), file).toBe(BLOCCHI[file]);
+      expect(idDi(ultima), file).toBe(BLOCCHI[file] + quante - 1);
+      expect(schede().filter(([f]) => f === file).length, file).toBe(quante);
+    }
   });
 
   it('i numeri dalle schede nuove partono da 500 e non toccano i posti speciali (miscele, ere, cose)', () => {
@@ -144,7 +180,10 @@ describe('il registro', () => {
     const veliero = idDi('veliero');
     expect(ingombroDi(veliero)).toEqual(ingombroDaFigura(voce(veliero)!.figura!));
     expect(ingombroDaFigura(['abc', 'abcde', 'a'])).toEqual([3, 2]);
-    expect(costruzioni().length).toBe(Object.keys(INGOMBRO_DI_PRIMA).length + 12);
+    // Quelle della grande infornata si contano a parte (sono 72).
+    const diPrima = costruzioni().filter((id) => !((voce(id)?.file ?? '') in BLOCCHI));
+    expect(diPrima.length).toBe(Object.keys(INGOMBRO_DI_PRIMA).length + 12);
+    expect(costruzioni().length - diPrima.length).toBe(72);
     // Gli oggetti si appoggiano a terra, piccoli quanto la loro figura (o la loro icona senza il bordo vuoto); non
     // sono costruzioni. Le idee e i mestieri non si posano.
     expect(ingombroDi(C.UTENSILE)).toEqual([5, 4]);
@@ -152,9 +191,10 @@ describe('il registro', () => {
     expect(ingombroDi(idDi('secchio'))).toEqual([5, 5]);
     expect(costruzioni()).not.toContain(C.UTENSILE);
     for (const id of [C.SCRITTURA, idDi('fabbro'), idDi('musica')]) expect(ingombroDi(id)).toBeUndefined();
-    expect(ere()).toEqual(ERE_DI_PRIMA);
-    expect(conseguenze()).toEqual(CONSEGUENZE_DI_PRIMA);
-    expect(paesaggi()).toEqual(K.PAESAGGI_DI_PRIMA);
+    // Le ere, le conseguenze e i paesaggi di prima vengono per primi; quelli delle schede (le ere nuove) dopo.
+    expect(ere().slice(0, ERE_DI_PRIMA.length)).toEqual(ERE_DI_PRIMA);
+    expect(conseguenze().slice(0, CONSEGUENZE_DI_PRIMA.length)).toEqual(CONSEGUENZE_DI_PRIMA);
+    expect(paesaggi().slice(0, K.PAESAGGI_DI_PRIMA.length)).toEqual(K.PAESAGGI_DI_PRIMA);
   });
 
   it('il Libro mostra le schede nel loro capitolo, dopo le voci di prima', () => {

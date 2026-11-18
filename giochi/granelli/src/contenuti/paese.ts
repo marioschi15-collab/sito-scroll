@@ -345,7 +345,11 @@ export const PAESE: readonly Scheda[] = [
     articolo: 'la',
     famiglia: 'cose',
     tipo: 'oggetto',
-    unioni: [['mulino', 'campo']],
+    // Prima del mulino il grano si pestava a mano: il mortaio della bottega (P8) è la via più antica.
+    unioni: [
+      ['mulino', 'campo'],
+      ['mortaio', 'grano'],
+    ],
     indizio: 'Quello che il mulino fa del campo.',
     descrizione: 'Il raccolto del campo macinato dal mulino: una polvere bianca che non sembra niente, e invece è il pane di domani.',
     icona: [

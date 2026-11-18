@@ -26,7 +26,7 @@ const PROVA = [evento('soffione', 'Soffione', 'vento'), evento('saetta', 'Saetta
 
 vi.mock('../src/contenuti/numeri.js', async (originale) => {
   const vero = await originale<typeof import('../src/contenuti/numeri.js')>();
-  return { ...vero, NUMERI: [...vero.NUMERI, ['soffione', 950], ['saetta', 951], ['sussulto', 952], ['raggio', 953]] };
+  return { ...vero, NUMERI: [...vero.NUMERI, ['soffione', 5200], ['saetta', 5201], ['sussulto', 5202], ['raggio', 5203]] };
 });
 vi.mock('../src/contenuti/indice.js', async (originale) => {
   const vero = await originale<typeof import('../src/contenuti/indice.js')>();
@@ -44,7 +44,7 @@ const BUFERA = idDi('bufera');
 function cielo() {
   const m = mondo(120, 80);
   riempi(m, 0, 60, 119, 79, M.ROCCIA);
-  for (const id of [ACQUAZZONE, BUFERA, 950, 951, 952, 953]) m.visti.add(id);
+  for (const id of [ACQUAZZONE, BUFERA, 5200, 5201, 5202, 5203]) m.visti.add(id);
   return m;
 }
 
@@ -79,7 +79,7 @@ describe('un evento portato nel mondo accade lì, per qualche secondo, e poi fin
   it('il vento spinge di lato la sabbia leggera; i lampi fanno cadere fulmini; la scossa fa scivolare; la luce scioglie la neve', () => {
     const vento = cielo();
     riempi(vento, 55, 40, 65, 44, M.SABBIA);
-    vento.porta(950, 60, 42, 'gettone');
+    vento.porta(5200, 60, 42, 'gettone');
     const dir = vento.eventi[0].dir;
     gira(vento, 60);
     let oltre = 0;
@@ -88,7 +88,7 @@ describe('un evento portato nel mondo accade lì, per qualche secondo, e poi fin
 
     const lampi = cielo();
     const fulmini = contaFulmini(lampi);
-    lampi.porta(951, 60, 50, 'gettone');
+    lampi.porta(5201, 60, 50, 'gettone');
     gira(lampi, DURATA_EVENTO);
     expect(fulmini()).toBeGreaterThanOrEqual(4);
     expect(lampi.eventi.length).toBe(0);
@@ -97,7 +97,7 @@ describe('un evento portato nel mondo accade lì, per qualche secondo, e poi fin
     // Una torre di sabbia appoggiata a un muretto: la scossa la fa franare di lato.
     riempi(scossa, 58, 40, 59, 59, M.ROCCIA);
     riempi(scossa, 60, 40, 61, 59, M.SABBIA);
-    scossa.porta(952, 60, 50, 'gettone');
+    scossa.porta(5202, 60, 50, 'gettone');
     expect(accade(scossa, 'scossa')).toBe(true);
     gira(scossa, 120);
     let franata = 0;
@@ -107,7 +107,7 @@ describe('un evento portato nel mondo accade lì, per qualche secondo, e poi fin
     const luce = cielo();
     riempi(luce, 50, 55, 70, 59, M.NEVE);
     const neve = quanti(luce, M.NEVE);
-    luce.porta(953, 60, 54, 'gettone');
+    luce.porta(5203, 60, 54, 'gettone');
     gira(luce, DURATA_EVENTO);
     expect(quanti(luce, M.NEVE)).toBeLessThan(neve);
   });

@@ -79,8 +79,9 @@ describe('le ere arrivano in ordine', () => {
       const m = mondo();
       // Tutti i materiali, gli omini e il villaggio: le invenzioni si fanno solo unendo.
       for (const voce of voci()) if (voce.id < N_BASE || voce.id === OMINO || voce.id === VILLAGGIO) m.visti.add(voce.id);
-      // Più unioni scritte ci sono, più mosse servono per arrivare in fondo: con 116 unioni, quattrocento.
-      for (let mossa = 0; mossa < 400; mossa++) {
+      // Più unioni scritte ci sono, più mosse servono per arrivare in fondo: con 116 unioni, quattrocento; con la
+      // grande infornata (P8) crescono insieme alle unioni.
+      for (let mossa = 0; mossa < Math.max(400, coppie.length * 4); mossa++) {
         const [a, b] = coppie[(caso() * coppie.length) | 0];
         if (!m.visti.has(a) || !m.visti.has(b)) continue;
         m.unisci(a, b);
@@ -90,6 +91,24 @@ describe('le ere arrivano in ordine', () => {
     }
     // La prova non è vuota: molte storie arrivano davvero fino in fondo.
     expect(finoAlMedioevo).toBeGreaterThan(20);
+  });
+
+  it('unendo tutto quello che si può, le ere arrivano tutte, in ordine, fino all’era dello spazio', () => {
+    const coppie = unioni().map(([a, b]) => [a, b] as const);
+    const m = mondo();
+    // Quello che si scopre nel mondo e non unendo: i materiali, gli omini, il villaggio, i luoghi e i fenomeni.
+    for (const v of voci()) {
+      if (v.id < N_BASE || v.id === OMINO || v.id === VILLAGGIO || v.tipo === 'luogo' || v.tipo === 'fenomeno') m.visti.add(v.id);
+    }
+    for (let giro = 0, prima = -1; prima !== m.visti.size && giro < 60; giro++) {
+      prima = m.visti.size;
+      for (const [a, b] of coppie) if (m.visti.has(a) && m.visti.has(b)) m.unisci(a, b);
+      inOrdine(m);
+    }
+    // Le cinque ere della grande infornata (P8) arrivano dopo il Medioevo, con la stampa, la caravella, la macchina a
+    // vapore, la lampadina e il razzo.
+    expect(ERE.length).toBe(10);
+    expect(ERE.filter((id) => !m.visti.has(id))).toEqual([]);
   });
 
   it('le partite salvate con ere già raggiunte le tengono, e quelle in attesa scattano al momento giusto', () => {

@@ -20,6 +20,7 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
 | dopo P7 | 0,61 / 2,95 / 3,50 (60) | 0,88 / 3,57 / 5,83 (60) | 1,17 / 4,63 / 7,12 (59) | 2,60 / 10,92 / 15,63 (50) | 0,88 / 3,85 / 5,41 (60) | 1,16 / 4,26 / 5,52 (59) | 1,21 / 5,70 / 7,51 (60) | 1,14 / 5,22 / 7,32 (60) | 1,33 / 5,57 / 8,82 (56) | 1,05 / 4,46 / 5,99 (59) | – |
 | dopo P9 | 0,67 / 2,95 / 4,03 (60) | 0,82 / 3,53 / 4,83 (60) | 1,11 / 4,45 / 6,47 (59) | 2,39 / 10,15 / 15,62 (51) | 1,12 / 3,13 / 4,24 (60) | 1,01 / 3,66 / 5,46 (59) | 1,45 / 4,95 / 7,10 (60) | 1,39 / 4,72 / 7,21 (60) | 1,46 / 5,53 / 8,03 (59) | 0,91 / 4,04 / 5,85 (60) | – |
 | dopo P10 | 0,82 / 2,77 / 3,90 (60) | 0,85 / 3,42 / 5,09 (60) | 1,33 / 4,65 / 6,89 (59) | 2,85 / 11,24 / 15,14 (53) | 0,84 / 3,38 / 6,11 (60) | 1,14 / 4,42 / 6,26 (59) | 1,35 / 5,69 / 7,32 (59) | 1,21 / 5,30 / 6,68 (60) | 1,30 / 5,92 / 9,06 (55) | 0,91 / 3,76 / 6,42 (59) | 2,28 / 8,31 / 13,85 (53) |
+| dopo P8 | 0,80 / 2,86 / 4,25 (60) | 1,14 / 4,64 / 6,01 (60) | 1,36 / 5,53 / 7,65 (59) | 2,97 / 10,69 / 16,92 (45) | 0,93 / 3,95 / 5,18 (60) | 1,15 / 4,65 / 6,36 (59) | 1,52 / 6,07 / 9,27 (56) | 1,65 / 5,68 / 8,28 (59) | 1,61 / 6,49 / 9,25 (56) | 1,19 / 4,76 / 6,38 (60) | 2,39 / 8,80 / 13,91 (54) |
 
 ## Note
 
@@ -109,3 +110,13 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
   7,54-7,66; maturo, vista trascinata 7,74-8,59 / 8,27-8,31; 40 miscele 11,50-11,89 / 11,30-12,43. Nessuna scena
   oltre il rumore. Un giro intero di questa copia, sulla stessa macchina: 0,71 / 2,70 / 3,58 (vuoto), 0,99 / 3,72 /
   5,18 (paese di giorno), 1,23 / 6,18 / 8,78 (maturo), 2,25 / 8,45 / 11,91 (40 miscele).
+- **dopo P8** (la grande infornata: 315 scoperte nuove, 852 unioni scritte, 460 voci nel Libro): a ogni fotogramma
+  non si aggiunge niente; le tavole del registro sono più grandi ma si fanno una volta sola, alla prima chiamata. Il
+  file del gioco passa da 231 a 457 kB (157 kB compresso). Confronto alternato con la copia di prima (ultimo commit), a
+  x6, due giri per parte (prima / dopo): lago 6,30-6,52 / 5,91-6,07; mondo maturo 8,43-8,79 / 8,15-9,06; mare
+  7,83-8,21 / 7,45-8,32; paese di giorno 5,58-5,70 / 5,66-5,90: nel rumore. Nella riga sopra il lago, il maturo e il
+  mare a x6 sono più alti della riga del P10 per un giro disturbato. Il Libro con tutte le 460 voci si apre in 60
+  millesimi, 200-250 con il processore rallentato 6 volte.
+  Il controllo, sulla stessa macchina, tre giri alternati a x6 (prima / dopo): incendio 18,70-20,86-17,43 /
+  19,34-18,52-16,20; maturo 9,57-13,98-9,70 / 9,82-10,04-8,92; paese di notte 8,14-6,86 / 7,56-7,21; lago 6,37-6,15 /
+  5,91-5,67: nel rumore.

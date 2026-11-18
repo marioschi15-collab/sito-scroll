@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { costruzioni, ingombroDi } from '../src/contenuti/registro.js';
+import { costruzioni, ingombroDi, voce } from '../src/contenuti/registro.js';
 import { C } from '../src/motore/cose.js';
 import { ALBERO, M, TRONCO } from '../src/motore/materiali.js';
 import type { Mondo } from '../src/motore/mondo.js';
@@ -141,8 +141,11 @@ describe('dove una costruzione può stare', () => {
       if (staAGalla(id)) expect(esito(m, id, asciutto, 20), `${id}`).toBe('asciutto');
       else expect(esito(m, id, mezzo, 20), `${id}`).toBe('bagnato');
     }
-    // Le costruzioni delle schede segnate «a galla» (il veliero e il porto) stanno sull'acqua come la barca.
-    expect(TUTTE.filter(staAGalla).length).toBe(4);
+    // Le costruzioni delle schede segnate «a galla» (il veliero e il porto) stanno sull'acqua come la barca; quelle
+    // della grande infornata (P8) si contano a parte: caravella, battello a vapore, ponte di ferro e sottomarino.
+    const diPrima = TUTTE.filter((id) => voce(id)?.file === undefined || voce(id)?.file === 'paese' || voce(id)?.file === 'campagna');
+    expect(diPrima.filter(staAGalla).length).toBe(4);
+    expect(TUTTE.filter(staAGalla).length).toBe(8);
     expect(m.posa(C.CASA, mezzo, 20)).toBe(false);
     expect(m.posa(C.BARCA, mezzo, 20)).toBe(true);
     gira(m, 400);

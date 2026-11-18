@@ -19,8 +19,9 @@ function iconaDa(figura: readonly string[]): string[] {
   });
 }
 
+// Le creature stanno nel capitolo «Animali», insieme a quelle della grande infornata (natura.ts).
 const creatura = (s: Omit<Scheda, 'famiglia' | 'tipo' | 'numero' | 'icona'>): Scheda => ({
-  famiglia: 'vita',
+  famiglia: 'animali',
   tipo: 'creatura',
   numero: 's',
   icona: iconaDa(s.figura!),
@@ -253,6 +254,8 @@ const SAPERI: readonly Scheda[] = [
     unioni: [
       ['lana', 'barca'],
       ['tessitore', 'lana'],
+      // Chi abitava sulle palafitte pescava da sotto casa: il ponte con la bottega (P8).
+      ['palafitta', 'pesce'],
     ],
     indizio: 'Un filo annodato tante volte, da gettare dalla barca.',
     descrizione: 'Tanti nodi, tutti uguali, e in mezzo tanti buchi: l’acqua passa, i pesci no.',

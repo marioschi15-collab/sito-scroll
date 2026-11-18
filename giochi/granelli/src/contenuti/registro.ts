@@ -367,6 +367,8 @@ export const paesaggi = (): readonly (readonly [number, number, number])[] => t(
 export const problemi = (): readonly string[] => t().problemi;
 /** Le schede così come sono scritte, con il nome del loro file: servono al controllo (strumenti/contenuti.cjs). */
 export const schede = (): readonly (readonly [string, Scheda])[] => Object.entries(FILE).flatMap(([file, lista]) => lista.map((s) => [file, s] as const));
+/** I nomi dei file di schede di `indice.ts`, anche quelli ancora vuoti (i sei della grande infornata nascono così). */
+export const fileDiSchede = (): readonly string[] => Object.keys(FILE);
 /** Tutte le chiavi con il loro numero, nell'ordine di numeri.ts. */
 export const numeri = (): readonly (readonly [string, number])[] => NUMERI;
 /** Vero per i numeri delle scoperte nate con le schede nuove (da 500 in su). */

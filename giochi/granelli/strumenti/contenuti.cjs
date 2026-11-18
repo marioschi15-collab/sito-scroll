@@ -1,5 +1,5 @@
 // Il controllo delle scoperte: ogni voce si raggiunge dai quattro elementi, nessuna coppia ha due esiti, ogni scheda
-// è scritta per intero, le schede nuove non sono vicoli ciechi. Non serve il browser: legge le schede da src/.
+// è scritta per intero, nessuna voce è un vicolo cieco (se non è segnata «finale»). Non serve il browser: legge le schede da src/.
 //   node strumenti/contenuti.cjs                 tutto il Libro
 //   node strumenti/contenuti.cjs --file paese    le schede di un file solo (le chiavi di numeri.ts ancora senza
 //                                                scheda contano come esistenti: le scrive qualcun altro)
@@ -22,13 +22,9 @@ function argomento(nome) {
     logLevel: 'silent',
   });
   const file = argomento('--file');
-  const { errori, avvisi, conti } = controllo.controlla(file ? { file } : {});
+  const { errori, conti } = controllo.controlla(file ? { file } : {});
   console.log(`Granelli · controllo delle scoperte${file ? ` (file «${file}»)` : ''}`);
   console.log(`Voci del Libro: ${conti.voci}, di cui ${conti.schede} scritte come schede · unioni scritte: ${conti.unioni} · file: ${conti.file.join(', ')}`);
-  if (avvisi.length) {
-    console.log('\nDa sapere (non sono errori):');
-    for (const a of avvisi) console.log(`  - ${a}`);
-  }
   if (errori.length) {
     console.log(`\nDa correggere (${errori.length}):`);
     for (const e of errori) console.log(`  ✗ ${e}`);

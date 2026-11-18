@@ -147,6 +147,10 @@ describe('Unisci conosce le reazioni del mondo', () => {
 
   it('le vie dei fenomeni non vengono regalate: succedono solo nel mondo', () => {
     const m = saputo();
+    // Esplosione e incendio qui devono essere ancora da vedere, anche quando (con la grande infornata) entrano in
+    // qualche unione e il mondo «saputo» li conosce già.
+    m.visti.delete(ESPLOSIONE);
+    m.visti.delete(INCENDIO);
     expect(m.unisci(M.POLVERE_NERA, M.FUOCO)).toBe(SOLO_NEL_MONDO);
     expect(m.unisci(M.LAVA, M.POLVERE_NERA)).toBe(SOLO_NEL_MONDO);
     expect(fenomenoDi(M.FUOCO, M.POLVERE_NERA)).toBe(ESPLOSIONE);

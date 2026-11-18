@@ -3,8 +3,9 @@
 Un mondo di granelli che reagiscono tra loro. Si parte da quattro elementi (terra, acqua, fuoco, aria), si versano
 col dito e si fanno incontrare: ogni cosa nuova che nasce entra nella tavolozza e nel Libro delle scoperte.
 
-Il Libro ha più di cento voci scritte a mano (materiali, fenomeni come la pioggia o l'arcobaleno, piante, omini e
-mestieri, invenzioni, ere), divise in capitoli, ognuna con la sua pagina: cos'è, come nasce, a cosa porta.
+Il Libro ha quattrocentosessanta voci scritte a mano (materiali, fenomeni come la pioggia o l'arcobaleno, piante,
+animali, cibo, attrezzi, omini e mestieri, invenzioni, città e saperi, macchine, il mondo moderno e lo spazio, stagioni
+e feste, ere), divise in capitoli, ognuna con la sua pagina: cos'è, come nasce, a cosa porta, e una curiosità vera.
 
 Con **Unisci** si scelgono due scoperte e si guarda cosa ne nasce, come nei giochi di alchimia: prima le unioni
 scritte a mano (pietra e legno: l'utensile; un omino con la lancia: il cacciatore), poi le stesse reazioni del mondo
@@ -60,6 +61,19 @@ almeno un'altra. Le genti e le cose del paese hanno la loro icona a quadretti; q
 fattoria, biblioteca, bottega, orto, frutteto, accampamento, e sull'acqua veliero e porto) si posano nel mondo come le
 altre.
 
+**La grande infornata** ha aggiunto 315 scoperte in sei parti, con più di ottocento unioni scritte in tutto: la
+natura (alberi da posare, frutti dell'orto, cibo, stagioni e una trentina di animali), la bottega (attrezzi, oggetti
+di casa e mestieri antichi), la città (scrittura, leggi, arti, commercio, costruzioni della città), le macchine (dal
+rinascimento all'età delle macchine), il mondo moderno (elettricità, medicina, trasporti, fino ai passi sulla Luna) e
+il cielo (sole, luna, nebbia, eclissi, feste e giochi del vento). Le ere vanno avanti fino allo spazio: dopo il
+medioevo vengono rinascimento (con la stampa), grandi viaggi (con la caravella), età delle macchine (con la macchina a
+vapore), età moderna (con la lampadina) ed era dello spazio (con il razzo). Ogni voce si raggiunge dai quattro
+elementi ed entra in almeno due unioni, tranne pochi punti d'arrivo voluti (la pizza, il telefonino, i passi sulla
+Luna…). Le unioni seguono idee che si imparano e si riusano: il cibo lasciato in casa chiama il topo, un animale
+portato su una stagione la fa andare avanti, una cosa portata sulla notte diventa la luce che le somiglia lassù, un
+omino portato su una cosa ne prende il mestiere. I fenomeni del cielo non si regalano: si scoprono portando una cosa
+sull'altra dentro il mondo (l'estate portata sul fuoco fa il sole, il formaggio portato sul pozzo la luna).
+
 Il motore sa già **portare una cosa sopra un'altra** dentro il mondo (`Mondo.porta`, i gesti arriveranno dopo): con
 le stesse regole di Unisci, l'acqua portata sulla terra fa nascere il fango proprio lì, il legno portato su un albero
 fa nascere una capanna posata accanto (l'albero resta), una casa portata sulla terra si posa, un omino nasce, e due
@@ -111,7 +125,7 @@ gioco parte lo stesso, lo dice nel benvenuto e con un segno fisso. «Nuovo» off
 ```powershell
 pnpm install
 pnpm dev          # il gioco in sviluppo, si aggiorna mentre si modifica
-pnpm test         # le prove (materiali, acqua, miscele con nomi, caratteri, rarità e partite di prima, Unisci, unioni, portare, ere, omini, paesi, costruzioni, salvataggio, schede, creature, eventi, cortesia, suggerimenti, indizi)
+pnpm test         # le prove (materiali, acqua, miscele con nomi, caratteri, rarità e partite di prima, Unisci, unioni, portare, ere, omini, paesi, costruzioni, salvataggio, schede e vicoli ciechi, fenomeni del cielo, creature, eventi, cortesia, suggerimenti, indizi)
 pnpm typecheck
 pnpm build        # produce dist/index.html: un solo file, si apre con un doppio clic
 node strumenti/contenuti.cjs                # controllo delle scoperte: tutte raggiungibili, nessun doppione
@@ -133,8 +147,10 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
 - `src/contenuti/`: le scoperte come dati. `scheda.ts` è il formato di una scheda; `numeri.ts` il numero di ogni
   chiave (cresce solo in coda: i salvataggi contengono numeri); `famiglie.ts` i capitoli del Libro; `tipi.ts` il
   tipo e l'articolo delle voci di prima; `paese.ts` le genti e le cose del paese; `campagna.ts` la prima infornata
-  (creature, miele, lana, arnia, ovile, apicoltore, pastore, musica, danza, acquazzone, bufera); `indice.ts` l'elenco
-  dei file di schede.
+  (creature, miele, lana, arnia, ovile, apicoltore, pastore, musica, danza, acquazzone, bufera); `natura.ts`,
+  `bottega.ts`, `citta.ts`, `macchine.ts`, `moderno.ts`, `cielo.ts` le sei parti della grande infornata (P8), ognuna
+  con il suo blocco di cento numeri; `indice.ts` l'elenco dei file di schede. `note-p8.md` elenca i comportamenti che
+  le voci della grande infornata aspettano dai pacchetti dopo (il razzo che decolla, la fontana che zampilla…).
   `registro.ts` è l'unico che mette insieme schede e motore: voci, unioni, ingombri, ere, conseguenze e paesaggi per
   tutto il gioco (`voce`, `voci`, `idDi`, `unioneDi`, `ingombroDi`, `ere`…), con le tavole fatte alla prima
   chiamata. `controllo.ts` è il controllo automatico che usano `strumenti/contenuti.cjs` e le prove.
@@ -203,8 +219,9 @@ Il carattere dei titoli è Pixelify Sans (licenza libera SIL OFL 1.1), preso dal
 
 ## Per aggiungere una scoperta
 
-1. Scegli una chiave (minuscole e trattini, per esempio `aquilone`) e aggiungi in coda a `src/contenuti/numeri.ts`
-   la riga `['aquilone', 500]` con il primo numero libero da 500 in su. Le righe di prima non si toccano mai.
+1. Scegli una chiave (minuscole e trattini, per esempio `trampolino`) e aggiungi in fondo a `src/contenuti/numeri.ts`
+   la riga `['trampolino', 1200]` con il primo numero libero in coda (oggi da 1200 in su). Le righe di prima non si
+   toccano mai, e i numeri liberi dentro i blocchi della grande infornata restano liberi.
 2. Scrivi la scheda nel file della sua famiglia in `src/contenuti/` (il formato è in `scheda.ts`): nome, genere,
    numero e articolo, famiglia (un capitolo di `famiglie.ts`), tipo, `unioni` con le chiavi delle cose da cui nasce,
    indizio, descrizione che finisce col punto, l'icona di 12x12 quadretti con le lettere di `disegno/tavolozza.ts`.
@@ -212,7 +229,17 @@ Il carattere dei titoli è Pixelify Sans (licenza libera SIL OFL 1.1), preso dal
    `figura`, `muove` e, se vuole, `altraPosa` (grande come la figura); un mestiere il suo `segno` (al più 6x7); un'era
    ha `arrivaCon` e `dopo`; un luogo o un fenomeno che si vede nel mondo ha `siVede`; un evento il suo `evento`.
    Un oggetto si appoggia a terra grande quanto la sua icona senza il bordo vuoto: niente da aggiungere.
-4. Fai entrare la scheda nuova in almeno due unioni di altre schede (oppure scrivi `finale: true` se è un punto d'arrivo).
+4. Fai entrare la scheda nuova in almeno due unioni di altre schede (oppure scrivi `finale: true` se è un punto
+   d'arrivo): il controllo lo chiede a tutte le voci, anche a quelle di prima. Le regole delle coppie:
+   - mai due materiali (tra loro decidono le reazioni del mondo e le miscele, anche le 52 d'autore di `firmate.ts`);
+   - almeno una delle due cose si tocca nel mondo (materiale, costruzione, oggetto, creatura, omino): due cose che non
+     ci stanno (idee, mestieri, luoghi, eventi, ere) si uniscono solo gettone su gettone, e se ne tollerano al più 3;
+   - niente costruzione + materiale da costruzione (pietra, legno, mattone, vetro, metallo, ghiaccio, argilla,
+     ossidiana, diamante): quelle coppie sono tenute per le varianti («Casa di pietra»);
+   - il nome di un ingrediente non contiene quello dell'altro né quello di ciò che nasce (l'indizio direbbe tutto);
+   - restano senza esito le quattro coppie del giro di fumo (Utensile + Pozzo, Vaso + Lancia, Ruota + Pane,
+     Fiaccola + Pecora) e quelle delle prove con schede finte (vedi `test/contenuti-errori.test.ts`);
+   - la coppia di un fenomeno è una via nel mondo, non può essere anche un'unione; un luogo si scopre solo con `siVede`.
 5. Un file nuovo si aggiunge a `src/contenuti/indice.ts`.
 6. Controlla con `node strumenti/contenuti.cjs` (o `--file <nome>` per il tuo file): dice se qualcosa non si
    raggiunge, se una coppia ha già un esito, se manca un campo. Poi `pnpm test`.

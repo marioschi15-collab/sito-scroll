@@ -53,8 +53,8 @@ const SBAGLIATE: Scheda[] = [
 vi.mock('../src/contenuti/numeri.js', async (originale) => {
   const vero = await originale<typeof import('../src/contenuti/numeri.js')>();
   const chiavi = ['cieco', 'doppione', 'irraggiungibile', 'evento-muto', 'fango-finto', 'casetta', 'melma', 'gergo', 'mai-scritto', 'fantasma', 'zoppo', 'gigante'];
-  // Numeri da 900, dopo quelli veri. L'ultima riga torna indietro: i numeri nuovi devono crescere sempre.
-  return { ...vero, NUMERI: [...vero.NUMERI, ...chiavi.map((k, i) => [k, 900 + i] as const), ['indietro', 905] as const, ['sciame', 930] as const] };
+  // Numeri da 5100, dopo quelli veri. L'ultima riga torna indietro: i numeri nuovi devono crescere sempre.
+  return { ...vero, NUMERI: [...vero.NUMERI, ...chiavi.map((k, i) => [k, 5100 + i] as const), ['indietro', 5105] as const, ['sciame', 5130] as const] };
 });
 vi.mock('../src/contenuti/indice.js', async (originale) => {
   const vero = await originale<typeof import('../src/contenuti/indice.js')>();
@@ -79,8 +79,8 @@ describe('il controllo trova le schede scritte male', () => {
     trova(/«Irraggiungibile» non si raggiunge/);
     trova(/«senza-numero».*non ha un numero in numeri\.ts/);
     trova(/terra \+ acqua .* è già una reazione del mondo/);
-    trova(/il numero 905 \(«indietro»\) non è in coda/);
-    trova(/In numeri\.ts il numero 905 è dato a due chiavi/);
+    trova(/il numero 5105 \(«indietro»\) non è in coda/);
+    trova(/In numeri\.ts il numero 5105 è dato a due chiavi/);
   });
 
   it('schede incomplete: evento senza effetto, articolo sbagliato, icona storta, costruzione senza figura, materia, gergo', () => {

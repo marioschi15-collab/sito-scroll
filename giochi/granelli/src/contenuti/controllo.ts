@@ -9,6 +9,7 @@ import {
   INIZIALI,
   conseguenze,
   eNuova,
+  fileDiSchede,
   idDi,
   ingombroDi,
   numeri,
@@ -32,8 +33,6 @@ import type { Scheda } from './scheda.js';
 export interface Rapporto {
   /** Cose da correggere: con un errore la prova fallisce. */
   errori: string[];
-  /** Cose da sapere: i vicoli ciechi delle voci di prima, che la grande infornata porterà a zero. */
-  avvisi: string[];
   /** Quante voci, schede e unioni scritte ci sono, e in quali file. */
   conti: { voci: number; schede: number; unioni: number; file: string[] };
 }
@@ -50,7 +49,10 @@ const ARTICOLI = new Set(['il', 'lo', 'la', 'l', 'i', 'gli', 'le']);
 // «api» non c'è apposta: in italiano sono le api del miele, e una scheda le può nominare.
 const GERGO = /\b(agente|prompt|token|bug|sprite|render|mestolo)\b/i;
 const CHIAVE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-/** Quante volte, almeno, una scheda nuova entra in un'unione come ingrediente. */
+/**
+ * Quante volte, almeno, una voce entra in un'unione come ingrediente. Dalla grande infornata (P8) vale per tutte,
+ * anche per quelle di prima: una voce che non serve a farne altre la si segna «finale», apposta.
+ */
 const USI_MINIMI = 2;
 
 /** Vero se una figura o un'icona usa solo lettere della tavolozza, ha almeno un quadretto pieno e righe non vuote. */
@@ -178,10 +180,10 @@ function raggiungibili(anche: Iterable<number>): Set<number> {
 /** Il controllo: tutto il Libro, oppure le schede di un file solo. */
 export function controlla(opzioni: Opzioni = {}): Rapporto {
   const errori: string[] = [];
-  const avvisi: string[] = [];
   const file = opzioni.file;
   const tutte = schede();
-  const nomiFile = [...new Set(tutte.map(([f]) => f))];
+  // Dall'indice, non dalle schede: un file appena nato e ancora vuoto si può già controllare.
+  const nomiFile = [...fileDiSchede()];
   if (file !== undefined && !nomiFile.includes(file)) errori.push(`Non c'è un file di schede che si chiama «${file}» (indice.ts).`);
   const nome = (id: number): string => voce(id)?.nome ?? String(id);
 
@@ -254,7 +256,7 @@ export function controlla(opzioni: Opzioni = {}): Rapporto {
     if (!preso.has(v.id)) errori.push(`«${v.nome}» non si raggiunge partendo dai quattro elementi.`);
   }
 
-  // ── Vicoli ciechi: ogni scheda nuova serve a farne altre ──
+  // ── Vicoli ciechi: ogni voce serve a farne altre ──
   const usi = new Map<number, number>();
   const usiNelFile = new Map<number, number>();
   const conta = (m: Map<number, number>, id: number): void => {
@@ -275,24 +277,18 @@ export function controlla(opzioni: Opzioni = {}): Rapporto {
       conta(usiNelFile, idDi(b));
     }
   }
-  const ciechi: string[] = [];
   for (const v of voci()) {
     if (v.finale || v.tipo === 'era') continue;
     const n = usi.get(v.id) ?? 0;
-    if (!eNuova(v.id)) {
-      if (n < USI_MINIMI && file === undefined) ciechi.push(v.nome);
-      continue;
-    }
     if (file === undefined && n < USI_MINIMI) {
       const quante = n === 0 ? 'in nessuna unione' : n === 1 ? 'in una sola unione' : `in ${n} unioni`;
       errori.push(`«${v.nome}» entra ${quante} come ingrediente: ne servono almeno ${USI_MINIMI} (o la si segna «finale»).`);
     }
-    if (file !== undefined && v.file === file && (usiNelFile.get(v.id) ?? 0) < 1) {
+    // Chi scrive un file nuovo lo deve chiudere da sé: ogni sua voce entra in almeno un'unione del suo file. Le voci
+    // di prima scritte come schede (il paese) contano solo nel controllo di tutto il Libro.
+    if (file !== undefined && eNuova(v.id) && v.file === file && (usiNelFile.get(v.id) ?? 0) < 1) {
       errori.push(`«${v.nome}» non entra in nessuna unione del suo file (${file}) come ingrediente.`);
     }
-  }
-  if (ciechi.length > 0) {
-    avvisi.push(`Voci di prima che entrano in meno di ${USI_MINIMI} unioni scritte (${ciechi.length}): ${ciechi.join(', ')}.`);
   }
 
   // ── Le costruzioni hanno un ingombro, le voci della tavolozza si posano o si versano ──
@@ -303,7 +299,6 @@ export function controlla(opzioni: Opzioni = {}): Rapporto {
 
   return {
     errori,
-    avvisi,
     conti: { voci: voci().length, schede: tutte.length, unioni: unioni().length, file: nomiFile },
   };
 }
