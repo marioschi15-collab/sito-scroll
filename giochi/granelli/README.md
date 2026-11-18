@@ -42,6 +42,18 @@ fa nascere una capanna posata accanto (l'albero resta), una casa portata sulla t
 cose che non si uniscono lo dicono. Il mondo ricorda quali coppie sono già state provate (solo che sono state
 provate: l'esito si ricalcola sempre, così una coppia che oggi non dà niente può dare qualcosa domani).
 
+Ogni scoperta, portata nel mondo, **fa qualcosa secondo il suo tipo**. Le **creature** (lombrico, ape, uccello,
+pesce, rana, pecora) camminano, volano o nuotano da sé, muoiono nel fuoco e nella lava (e i pesci fuori dall'acqua),
+sono al più quaranta, si salvano con la partita e si uniscono come gli omini: un utensile portato su una pecora dà la
+lana. Un **oggetto** portato sul vuoto o sul terreno si appoggia a terra come una figurina (piccolo quanto la sua
+icona); portato su un omino, lui lo tiene in mano per un po'. Un **mestiere** portato su un omino gli dà il segno del
+mestiere sopra la testa (e un omino a cui si porta la lancia diventa proprio lui il cacciatore). Un'**idea** portata
+su un omino o su una costruzione compare in un fumetto e resta tra le cose che sa. Un **evento** (l'acquazzone, la
+bufera) accade lì per cinque secondi. E se a un omino o a una creatura si porta qualcosa con cui non nasce niente,
+reagisce lo stesso: scappa dal fuoco, beve l'acqua, annusa il cibo, starnutisce, trema, saltella, ci pensa su, oppure
+guarda la cosa e scuote la testa. Per ora queste cose nuove si portano nel mondo con un tocco, dopo averle scelte
+nella tavolozza; i gesti veri (trascinare il gettone, tenere premuto con la Mano) arriveranno dopo.
+
 Le **ere** arrivano in ordine: pietra, bronzo, ferro, età antica, medioevo. Un'invenzione fatta in anticipo (il
 castello prima del bronzo) resta, e la sua era aspetta il suo turno; il fuoco domato, l'agricoltura, la scrittura e il
 commercio vengono dopo l'Età della pietra.
@@ -65,7 +77,7 @@ sul dispositivo.
 ```powershell
 pnpm install
 pnpm dev          # il gioco in sviluppo, si aggiorna mentre si modifica
-pnpm test         # le prove (materiali, acqua, miscele, Unisci, unioni, portare, ere, omini, paesi, costruzioni, salvataggio, schede)
+pnpm test         # le prove (materiali, acqua, miscele, Unisci, unioni, portare, ere, omini, paesi, costruzioni, salvataggio, schede, creature, eventi, cortesia)
 pnpm typecheck
 pnpm build        # produce dist/index.html: un solo file, si apre con un doppio clic
 node strumenti/contenuti.cjs                # controllo delle scoperte: tutte raggiungibili, nessun doppione
@@ -85,7 +97,9 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
 
 - `src/contenuti/`: le scoperte come dati. `scheda.ts` è il formato di una scheda; `numeri.ts` il numero di ogni
   chiave (cresce solo in coda: i salvataggi contengono numeri); `famiglie.ts` i capitoli del Libro; `tipi.ts` il
-  tipo e l'articolo delle voci di prima; `paese.ts` le prime schede; `indice.ts` l'elenco dei file di schede.
+  tipo e l'articolo delle voci di prima; `paese.ts` le genti e le cose del paese; `campagna.ts` la prima infornata
+  (creature, miele, lana, arnia, ovile, apicoltore, pastore, musica, danza, acquazzone, bufera); `indice.ts` l'elenco
+  dei file di schede.
   `registro.ts` è l'unico che mette insieme schede e motore: voci, unioni, ingombri, ere, conseguenze e paesaggi per
   tutto il gioco (`voce`, `voci`, `idDi`, `unioneDi`, `ingombroDi`, `ere`…), con le tavole fatte alla prima
   chiamata. `controllo.ts` è il controllo automatico che usano `strumenti/contenuti.cjs` e le prove.
@@ -112,6 +126,9 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
   per colonna (il Mondo lo ricalcola ogni due secondi). `arrivi.ts`: quando e dove arrivano i primi omini (acqua,
   piante e un riparo di pietra o mattoni; vicino all'acqua, in un punto da cui ci si arriva a piedi), e i primi omini
   chiamati da un'unione (`primiOmini`, `cercaApprodo`).
+- `src/motore/creature.ts`: le creature (`nasciCreatura`, `aggiornaCreature`): camminano, volano, nuotano o stanno,
+  pensano ogni quattro istanti. `eventi.ts`: gli eventi portati nel mondo (`accadi`), con sei effetti pronti (pioggia,
+  neve, vento, lampi, scossa, luce). `cortesia.ts`: come reagisce chi riceve una cosa con cui non nasce niente.
 - `src/motore/posa.ts`: dove una costruzione può stare (`puoPosare`, con il perché di ogni rifiuto), le piante che
   toglie quando si posa e come si assesta dopo (scende soltanto; barca e ponte seguono l'acqua).
 - `src/scoperte.ts`: le voci del Libro di prima delle schede (materiali, fenomeni, invenzioni, ere), con capitolo,
@@ -120,7 +137,10 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
 - `src/disegno/`: tutto quello che si vede. `pittore.ts` colora i granelli con ombre e luci (di notte un fuoco
   illumina ciò che ha intorno) e rende morbidi nuvole e fumo; `cielo.ts` il cielo con sole, luna, stelle,
   montagne e arcobaleno; `particelle.ts` scintille, lucciole e la festa delle scoperte; `omini.ts` i personaggi
-  animati; `colori.ts` i colori di ogni materiale e i tondini della tavolozza.
+  animati; `colori.ts` i colori di ogni materiale e i tondini della tavolozza. `figure.ts` prepara le figure (anche
+  le due pose delle creature, il segno dei mestieri, le cose in piccolo per la mano e per i fumetti); `tasca.ts` le
+  figure delle cose da tasca di prima (le legge anche il registro, per l'ingombro); `quadretti.ts` come si dimezza un
+  disegno restando a quadretti netti.
 - `src/pagina.ts` e `src/stile.css`: lo scheletro e l'aspetto della pagina. `src/gioco.ts`: tavolozza, dito,
   avvisi e il tempo che scorre. `src/unisci.ts`: il pannello Unisci; `src/risposta.ts`: che cosa dice dopo
   un'unione. `src/ricordi.ts`: quello che la pagina ricorda con la partita (e il saluto per lo strumento che non c'è più).
@@ -139,8 +159,10 @@ Il carattere dei titoli è Pixelify Sans (licenza libera SIL OFL 1.1), preso dal
 2. Scrivi la scheda nel file della sua famiglia in `src/contenuti/` (il formato è in `scheda.ts`): nome, genere,
    numero e articolo, famiglia (un capitolo di `famiglie.ts`), tipo, `unioni` con le chiavi delle cose da cui nasce,
    indizio, descrizione che finisce col punto, l'icona di 12x12 quadretti con le lettere di `disegno/tavolozza.ts`.
-3. Una costruzione ha anche la `figura` (due quadretti per cella: l'ingombro si ricava da lì); un'era ha `arrivaCon`
-   e `dopo`; un luogo o un fenomeno che si vede nel mondo ha `siVede`; un evento il suo `evento`.
+3. Una costruzione ha anche la `figura` (due quadretti per cella: l'ingombro si ricava da lì); una creatura la
+   `figura`, `muove` e, se vuole, `altraPosa` (grande come la figura); un mestiere il suo `segno` (al più 6x7); un'era
+   ha `arrivaCon` e `dopo`; un luogo o un fenomeno che si vede nel mondo ha `siVede`; un evento il suo `evento`.
+   Un oggetto si appoggia a terra grande quanto la sua icona senza il bordo vuoto: niente da aggiungere.
 4. Fai entrare la scheda nuova in almeno due unioni di altre schede (oppure scrivi `finale: true` se è un punto d'arrivo).
 5. Un file nuovo si aggiunge a `src/contenuti/indice.ts`.
 6. Controlla con `node strumenti/contenuti.cjs` (o `--file <nome>` per il tuo file): dice se qualcosa non si

@@ -2,6 +2,8 @@ import { ALTEZZA } from './cammino.js';
 import { primiOmini } from './arrivi.js';
 import { eVoce, ingombroDi, vociTrovate } from '../contenuti/registro.js';
 import type { Cosa } from './cose.js';
+import { type Creatura, aggiornaCreature, distanzaDalCorpo } from './creature.js';
+import { type Evento, aggiornaEventi } from './eventi.js';
 import { erePronte } from './ere.js';
 import { SOGLIA_MISCELE, SOLO_NEL_MONDO, coppiaDAutore, esitoDi } from './esiti.js';
 import { fenomeni } from './fenomeni.js';
@@ -141,8 +143,14 @@ export class Mondo {
   fatti: Fatto[] = [];
   /** Le esplosioni avvenute dall'ultima volta che qualcuno ha guardato (in celle). */
   botti: { x: number; y: number; r: number }[] = [];
-  /** Le invenzioni posate nel mondo. */
+  /** Le cose posate nel mondo: le costruzioni e gli oggetti appoggiati a terra. */
   cose: Cosa[] = [];
+  /** Gli animali che vivono nel mondo (vedi creature.ts). */
+  creature: Creatura[] = [];
+  /** Dove sono sparite delle creature dall'ultima volta che qualcuno ha guardato (in celle): lì si vede uno sbuffo. */
+  sparite: { x: number; y: number }[] = [];
+  /** Gli eventi portati nel mondo che stanno accadendo adesso (vedi eventi.ts). */
+  eventi: Evento[] = [];
   /** Per ogni colonna, 1 se una cosa posata la copre: lì sotto non germoglia niente (lo tiene aggiornato `assestaCose`). */
   readonly coperta: Uint8Array;
   /** Dove si beve e dove si mangia, colonna per colonna: gli omini lo consultano quando hanno sete o fame. */
@@ -455,6 +463,11 @@ export class Mondo {
     this.dato[i] = 0;
   }
 
+  /** Scambia due celle: quello che c'era nella prima va nella seconda, e viceversa (il vento, una scossa). */
+  sposta(a: number, b: number): void {
+    this.scambia(a, b);
+  }
+
   private scambia(a: number, b: number): void {
     const { tipo, dato, tinta, fatto } = this;
     const t = tipo[a];
@@ -720,6 +733,8 @@ export class Mondo {
     // Dove si beve e dove si mangia: ogni due secondi circa, e subito se una cosa è stata posata o tolta.
     if (this.fonti.daRifare) this.fonti.aggiorna(this);
     aggiornaOmini(this);
+    aggiornaCreature(this);
+    if (this.eventi.length > 0) aggiornaEventi(this);
   }
 
   /** Conta quante celle ci sono di ogni tipo. */
@@ -1362,7 +1377,7 @@ export class Mondo {
     else this.metti(i, esito);
   }
 
-  /** La gomma: toglie tutto quello che trova nel cerchio, omini compresi. */
+  /** La gomma: toglie tutto quello che trova nel cerchio, omini e creature compresi. */
   cancella(x: number, y: number, raggio: number): void {
     for (let dy = -raggio; dy <= raggio; dy++) {
       for (let dx = -raggio; dx <= raggio; dx++) {
@@ -1384,6 +1399,7 @@ export class Mondo {
       }
       return true;
     });
+    if (this.creature.length > 0) this.creature = this.creature.filter((c) => distanzaDalCorpo(c, x, y) > r2);
   }
 
   /** Posa un omino con i piedi nel punto indicato (se è per aria, cadrà fino a terra da solo). */

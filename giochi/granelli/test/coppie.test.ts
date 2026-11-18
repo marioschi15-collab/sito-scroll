@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ingombroDi, unioni, voci } from '../src/contenuti/registro.js';
+import { ingombroDi, muoveDi, tipoDi, unioni, voci } from '../src/contenuti/registro.js';
 import { C } from '../src/motore/cose.js';
+import { nasciCreatura } from '../src/motore/creature.js';
 import { SOGLIA_MISCELE, SOLO_NEL_MONDO, esitoDi, siUnisce } from '../src/motore/esiti.js';
 import { M, N_BASE, NASCOSTO, OMINO, VILLAGGIO } from '../src/motore/materiali.js';
 import { idMiscela } from '../src/motore/miscele.js';
@@ -42,8 +43,8 @@ function nato(m: Mondo, e: EsitoPorta): number | null {
 }
 
 /**
- * Mette nel mondo il bersaglio (un blocco di materiale, una costruzione posata, un omino) e dice dove toccarlo;
- * null se quella scoperta nel mondo non può stare.
+ * Mette nel mondo il bersaglio (un blocco di materiale, una costruzione posata o un oggetto appoggiato, un omino,
+ * una creatura) e dice dove toccarlo; null se quella scoperta nel mondo non può stare.
  */
 function bersaglio(m: Mondo, id: number): [number, number] | null {
   if (id > 0 && id < N_BASE && !NASCOSTO[id]) {
@@ -63,6 +64,12 @@ function bersaglio(m: Mondo, id: number): [number, number] | null {
   if (id === OMINO) {
     m.aggiungiOmino(50, 49);
     return [50, 48];
+  }
+  if (tipoDi(id) === 'creatura') {
+    // Chi nuota nasce nell'acqua: gliene serve un po'.
+    if (muoveDi(id) === 'nuota') riempi(m, 40, 44, 60, 49, M.ACQUA);
+    const c = nasciCreatura(m, id, 50, 47);
+    return typeof c === 'string' ? null : [c.x, c.y];
   }
   return null;
 }
@@ -98,7 +105,7 @@ describe('un esito solo, per Unisci e per il mondo', () => {
         visti.push(nato(m, m.porta(gettone, punto[0], punto[1], 'gettone')));
       }
       if (provati === 0) {
-        // Due cose che nel mondo non stanno (bronzo e utensile): si uniscono solo gettone su gettone.
+        // Due cose che nel mondo non stanno (due idee, un'idea e un luogo): si uniscono solo gettone su gettone.
         soloGettoni++;
         continue;
       }

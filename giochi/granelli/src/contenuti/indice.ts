@@ -1,3 +1,4 @@
+import { CAMPAGNA } from './campagna.js';
 import { PAESE } from './paese.js';
 import type { Scheda } from './scheda.js';
 
@@ -7,4 +8,5 @@ import type { Scheda } from './scheda.js';
  */
 export const FILE: Readonly<Record<string, readonly Scheda[]>> = {
   paese: PAESE,
+  campagna: CAMPAGNA,
 };

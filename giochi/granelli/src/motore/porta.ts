@@ -1,7 +1,10 @@
-import { ingombroDi, viaDiFenomeno } from '../contenuti/registro.js';
+import { eCostruzione, ingombroDi, tipoDi, viaDiFenomeno } from '../contenuti/registro.js';
 import { primiOmini } from './arrivi.js';
 import { type Bersaglio, cheCosaCe } from './bersaglio.js';
 import { ALTEZZA, posto } from './cammino.js';
+import { reagisciConCortesia } from './cortesia.js';
+import { type NoCreatura, nasciCreatura } from './creature.js';
+import { accadi } from './eventi.js';
 import { REAZIONI, esitoDi } from './esiti.js';
 import { M, N_BASE, OMINO, PRIMA_ID_MISCELA, TRONCO } from './materiali.js';
 import type { Mondo } from './mondo.js';
@@ -13,10 +16,11 @@ export type Provenienza = 'gettone' | 'mondo';
 
 /**
  * Perché una cosa non si è messa lì: i divieti della posa, oppure `soloSopra` (si porta solo sopra un'altra cosa:
- * un utensile, la scrittura), `pieno` (non c'è posto per versarla), `troppi` (gli omini sono già tanti), `acqua`
- * (i primi omini chiamati da un'unione arrivano solo vicino all'acqua, e lì intorno non ce n'è).
+ * un mestiere, un'idea), `pieno` (non c'è posto per versarla), `troppi` (gli omini sono già tanti), `acqua`
+ * (i primi omini chiamati da un'unione arrivano solo vicino all'acqua, e lì intorno non ce n'è), e per le creature
+ * `affollato` (ce ne sono già tante) e `senzAcqua` (chi nuota nasce solo nell'acqua).
  */
-export type PercheNo = Divieto | 'soloSopra' | 'pieno' | 'troppi' | 'acqua';
+export type PercheNo = Divieto | NoCreatura | 'soloSopra' | 'pieno' | 'troppi' | 'acqua';
 
 /** Quello che è successo portando una cosa sopra un punto del mondo: la pagina lo racconta. */
 export type EsitoPorta =
@@ -31,8 +35,16 @@ export type EsitoPorta =
   | { genere: 'messa'; x: number; y: number }
   /** La via di un fenomeno: la cosa è stata messa lì, e il fenomeno va guardato nel mondo. */
   | { genere: 'nelMondo'; con: number; fenomeno: number }
-  /** Le due cose non si uniscono (`perOra` se diventeranno una miscela quando il Libro sarà più pieno). */
-  | { genere: 'niente'; con: number; perOra?: true }
+  /**
+   * Le due cose non si uniscono (`perOra` se diventeranno una miscela quando il Libro sarà più pieno). Se la cosa è
+   * stata portata su un omino o su una creatura, `reazione` dice come ha reagito (vedi cortesia.ts).
+   */
+  | { genere: 'niente'; con: number; perOra?: true; reazione?: number }
+  /**
+   * Nessuna unione, ma la cosa ha fatto quello che fa il suo tipo (`cosa` è lei, `a` il bersaglio): un oggetto ora in
+   * mano a un omino, un mestiere preso, un'idea pensata da un omino o scritta su una costruzione, un evento che accade.
+   */
+  | { genere: 'dato'; cosa: number; a: number; x: number; y: number }
   | { genere: 'nonQui'; perche: PercheNo }
   /** Una cosa del mondo riportata sul vuoto, sul terreno o su una sua uguale: torna dov'era, niente copie. */
   | { genere: 'torna' };
@@ -54,8 +66,18 @@ const VERSO_L_ACQUA = 30;
 
 const FIAMME = new Set<number>([M.FUOCO, M.LAVA, M.FULMINE]);
 
-/** Ciò che si posa o nasce nel mondo: portato su un materiale non lo unisce, ci si mette sopra (il terreno non è un bersaglio). */
-const siPosaONasce = (id: number): boolean => ingombroDi(id) !== undefined || id === OMINO;
+/**
+ * Ciò che si posa o nasce nel mondo: portato su un materiale non lo unisce, ci si mette sopra (il terreno non è un
+ * bersaglio). Sono le costruzioni e gli omini; gli oggetti e le creature, invece, prima provano a unirsi.
+ */
+const siPosaONasce = (id: number): boolean => (eCostruzione(id) && ingombroDi(id) !== undefined) || id === OMINO;
+
+/** Per quanti istanti un omino tiene in mano la cosa che gli è stata portata (un minuto), prima di metterla via. */
+export const TIENE_PER = 3600;
+/** Per quanti istanti resta il fumetto di un'idea appena arrivata (quattro secondi). */
+export const FUMETTO_PER = 240;
+/** Quante idee, al più, ricorda un omino o una costruzione: arrivata una nuova, la più vecchia si dimentica. */
+const IDEE_MAX = 6;
 
 const nonQui = (perche: PercheNo): EsitoPorta => ({ genere: 'nonQui', perche });
 
@@ -70,8 +92,20 @@ function libere(m: Mondo, x: number, y: number): number {
   return n;
 }
 
-/** Mette lì la cosa portata: versa una manciata, posa una costruzione, fa nascere un omino o cadere un fulmine. */
+/**
+ * Mette lì la cosa portata: versa una manciata, posa una costruzione o appoggia un oggetto, fa nascere un omino o
+ * una creatura, fa accadere un evento o cadere un fulmine.
+ */
 function metti(m: Mondo, id: number, x: number, y: number): EsitoPorta {
+  const tipo = tipoDi(id);
+  if (tipo === 'creatura') {
+    const c = nasciCreatura(m, id, x, y);
+    return typeof c === 'string' ? nonQui(c) : { genere: 'messa', x: c.x, y: c.y };
+  }
+  if (tipo === 'evento') {
+    accadi(m, id, x, y);
+    return { genere: 'messa', x, y };
+  }
   const ingombro = ingombroDi(id);
   if (ingombro) {
     const dove = m.puoPosare(id, x, y);
@@ -189,7 +223,7 @@ function diventa(m: Mondo, b: Bersaglio, nato: number, quante: number): void {
  */
 function zona(m: Mondo, b: Bersaglio): [number, number] {
   if (b.genere === 'cosa') return [b.rif.x, b.rif.x + ingombroDi(b.rif.id)![0] - 1];
-  if (b.genere === 'omino') return [b.x, b.x];
+  if (b.genere === 'omino' || b.genere === 'creatura') return [b.x, b.x];
   let z0 = b.x - 3;
   let z1 = b.x + 3;
   for (let x = Math.max(0, b.x - 3); x <= Math.min(m.w - 1, b.x + 3); x++) {
@@ -237,6 +271,54 @@ function chiamaGliOmini(m: Mondo, con: number, x: number, y: number, nuova: bool
   return { genere: 'unione', nato: OMINO, nuova, con, x: dove.x, y: dove.y - 1, posata: true };
 }
 
+/** Aggiunge un'idea a quelle che qualcuno sa (senza doppioni, al più sei: la più vecchia si dimentica). */
+function impara(sa: number[] | undefined, idea: number): number[] {
+  const nuove = (sa ?? []).filter((id) => id !== idea);
+  nuove.push(idea);
+  return nuove.slice(-IDEE_MAX);
+}
+
+/**
+ * La regola e): quando la coppia non dà niente, la cosa fa quello che fa il suo tipo. Un evento accade lì; un
+ * oggetto portato su un omino lui lo tiene in mano; un mestiere lo prende (e ne porta il segno); un'idea la pensa,
+ * e resta tra le cose che sa (anche una costruzione la tiene scritta); un oggetto o una creatura portati su un
+ * materiale si appoggiano o nascono lì, perché il terreno non è un bersaglio. null se il tipo non fa niente qui.
+ */
+function comportamento(m: Mondo, id: number, b: Bersaglio, x: number, y: number): EsitoPorta | null {
+  const tipo = tipoDi(id);
+  const dato: EsitoPorta = { genere: 'dato', cosa: id, a: b.id, x: b.x, y: b.y };
+  if (tipo === 'evento') {
+    accadi(m, id, x, y);
+    return dato;
+  }
+  if (b.genere === 'omino') {
+    const o = b.rif;
+    if (tipo === 'oggetto') {
+      o.tiene = id;
+      o.tieneFino = m.tic + TIENE_PER;
+      return dato;
+    }
+    if (tipo === 'mestiere') {
+      o.mestiere = id;
+      return dato;
+    }
+    if (tipo === 'idea') {
+      o.sa = impara(o.sa, id);
+      o.nuvoletta = id;
+      o.nuvolettaFino = m.tic + FUMETTO_PER;
+      return dato;
+    }
+  }
+  if (b.genere === 'cosa' && tipo === 'idea' && eCostruzione(b.id)) {
+    b.rif.sa = impara(b.rif.sa, id);
+    b.rif.nuvoletta = id;
+    b.rif.nuvolettaFino = m.tic + FUMETTO_PER;
+    return dato;
+  }
+  if (b.genere === 'materia' && (tipo === 'oggetto' || tipo === 'creatura')) return metti(m, id, x, y);
+  return null;
+}
+
 /**
  * Porta la scoperta `id` sopra il punto (x, y) del mondo. Le regole, nell'ordine:
  * a) una cosa del mondo (tenuta con la Mano) riportata sul vuoto, sul terreno o su una sua uguale torna dov'era;
@@ -245,7 +327,11 @@ function chiamaGliOmini(m: Mondo, con: number, x: number, y: number, nuova: bool
  * d) altrimenti decide `esitoDi`, come in Unisci: invenzione nuova (nasce accanto, se si posa), invenzione già
  *    fatta, i primi omini (arrivano in due vicino all'acqua), reazione del mondo (le celle cambiano davvero), via di un fenomeno (la cosa si mette lì e si guarda),
  *    miscela (dalla dodicesima voce del Libro), niente. Le coppie provate in (d) si ricordano, tranne i fenomeni
- *    e le miscele che aspettano il Libro più pieno.
+ *    e le miscele che aspettano il Libro più pieno;
+ * e) se (d) dice niente, un gettone fa quello che fa il suo tipo (vedi `comportamento`): è un esito «dato», non un
+ *    niente, e non si ricorda come coppia provata. Se invece non succede proprio niente su un omino o una creatura,
+ *    il bersaglio reagisce lo stesso (le reazioni di cortesia).
+ * Un mestiere nato da un'unione su un omino lo prende proprio quell'omino; una creatura nata da un'unione nasce lì.
  * La cosa su cui si porta il gettone non viene mai tolta.
  */
 export function porta(m: Mondo, id: number, x: number, y: number, da: Provenienza): EsitoPorta {
@@ -266,19 +352,37 @@ export function porta(m: Mondo, id: number, x: number, y: number, da: Provenienz
     return { genere: 'nelMondo', con: b.id, fenomeno: esito.id };
   }
   if (esito.genere === 'niente') {
-    if (!esito.perOra) m.ricordaProvata(id, b.id);
-    return esito.perOra ? { genere: 'niente', con: b.id, perOra: true } : { genere: 'niente', con: b.id };
+    if (esito.perOra) return { genere: 'niente', con: b.id, perOra: true };
+    if (da === 'gettone') {
+      const fatto = comportamento(m, id, b, x, y);
+      if (fatto) return fatto;
+    }
+    m.ricordaProvata(id, b.id);
+    if (b.genere === 'omino' || b.genere === 'creatura') return { genere: 'niente', con: b.id, reazione: reagisciConCortesia(m, b.rif, id) };
+    return { genere: 'niente', con: b.id };
   }
   m.ricordaProvata(id, b.id);
   const nuova = !m.visti.has(esito.id);
 
   if (esito.genere === 'unione') {
     if (esito.id === OMINO) return chiamaGliOmini(m, b.id, x, y, nuova);
+    if (b.genere === 'omino' && tipoDi(esito.id) === 'mestiere') {
+      // L'omino a cui si è portata la lancia diventa proprio lui il cacciatore, e la lancia la tiene in mano.
+      b.rif.mestiere = esito.id;
+      if (da === 'gettone' && tipoDi(id) === 'oggetto') {
+        b.rif.tiene = id;
+        b.rif.tieneFino = m.tic + TIENE_PER;
+      }
+    }
     if (!nuova) return { genere: 'giaFatta', nato: esito.id, con: b.id };
     m.scopri(esito.id, x, y);
     // Se la coppia è anche una reazione del mondo (pietra e acqua) succede pure quella, se non brucia e non distrugge.
     reagisci(m, id, b, true);
-    const posata = ingombroDi(esito.id) ? posaAccanto(m, esito.id, b, x, y) : null;
+    if (tipoDi(esito.id) === 'creatura') {
+      const c = nasciCreatura(m, esito.id, x, y);
+      if (typeof c !== 'string') return { genere: 'unione', nato: esito.id, nuova, con: b.id, x: c.x, y: c.y, posata: true };
+    }
+    const posata = eCostruzione(esito.id) && ingombroDi(esito.id) ? posaAccanto(m, esito.id, b, x, y) : null;
     return { genere: 'unione', nato: esito.id, nuova, con: b.id, x: posata?.x ?? x, y: posata?.y ?? y, posata: posata !== null };
   }
 

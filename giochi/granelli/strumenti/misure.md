@@ -8,14 +8,15 @@ In ogni casella: millesimi di JavaScript per fotogramma a velocità piena / con 
 Telefono simulato 390x780. I numeri assoluti dipendono dalla macchina che misura: contano i confronti tra righe
 misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
 
-| riga | mondo vuoto | lago (6.000 celle) | temporale | incendio | paese di giorno | paese di notte | mondo maturo | mare (29.000 celle) | maturo, vista trascinata |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| partenza | 0,65 / 2,56 / 3,50 (60) | 1,27 / 5,18 / 8,16 (60) | 1,91 / 9,18 / 13,11 (51) | 2,87 / 11,85 / 17,56 (43) | 0,90 / 4,18 / 5,10 (60) | 0,92 / 4,69 / 5,58 (60) | 2,55 / 11,29 / 14,48 (47) | 2,89 / 13,54 / 30,69 (28) | 2,85 / 9,85 / 19,91 (31) |
-| dopo P1 | 0,60 / 2,43 / 3,30 (60) | 0,76 / 3,16 / 5,52 (60) | 1,14 / 6,01 / 6,30 (59) | 2,48 / 12,24 / 14,38 (52) | 0,81 / 3,94 / 5,33 (60) | 0,97 / 4,26 / 6,65 (60) | 1,47 / 6,61 / 6,77 (60) | 1,14 / 4,72 / 7,23 (60) | 1,41 / 7,28 / 9,72 (50) |
-| dopo P2 | 0,59 / 1,95 / 2,91 (60) | 0,69 / 2,56 / 4,42 (60) | 0,92 / 3,72 / 5,11 (59) | 2,27 / 8,66 / 12,59 (58) | 0,85 / 3,33 / 4,23 (60) | 0,77 / 3,58 / 5,32 (60) | 1,13 / 4,64 / 6,91 (58) | 1,29 / 4,02 / 5,90 (60) | 1,15 / 5,11 / 8,21 (54) |
-| dopo P3a | 0,47 / 1,89 / 2,86 (60) | 0,71 / 2,63 / 3,83 (60) | 0,77 / 3,24 / 4,79 (59) | 1,86 / 8,04 / 11,80 (59) | 0,60 / 2,50 / 3,57 (60) | 0,76 / 2,69 / 4,37 (60) | 1,06 / 4,20 / 6,03 (59) | 0,86 / 3,75 / 5,48 (60) | 1,08 / 4,58 / 7,48 (57) |
-| dopo P3b | 0,53 / 2,10 / 2,83 (60) | 0,77 / 2,96 / 3,80 (60) | 0,91 / 3,65 / 5,08 (59) | 1,94 / 7,92 / 11,88 (59) | 0,63 / 2,43 / 3,35 (60) | 0,76 / 2,96 / 3,93 (60) | 1,03 / 4,52 / 7,33 (56) | 0,92 / 3,87 / 6,18 (60) | 1,17 / 5,28 / 6,65 (60) |
-| dopo P5a | 0,46 / 2,13 / 3,22 (60) | 0,66 / 3,00 / 3,99 (60) | 0,92 / 3,65 / 4,91 (59) | 2,20 / 8,73 / 12,58 (58) | 0,67 / 2,68 / 4,13 (60) | 0,79 / 3,15 / 4,08 (60) | 1,12 / 4,72 / 5,94 (59) | 0,98 / 4,10 / 5,64 (60) | 1,28 / 4,42 / 7,11 (58) |
+| riga | mondo vuoto | lago (6.000 celle) | temporale | incendio | paese di giorno | paese di notte | mondo maturo | mare (29.000 celle) | maturo, vista trascinata | paese con 30 creature |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| partenza | 0,65 / 2,56 / 3,50 (60) | 1,27 / 5,18 / 8,16 (60) | 1,91 / 9,18 / 13,11 (51) | 2,87 / 11,85 / 17,56 (43) | 0,90 / 4,18 / 5,10 (60) | 0,92 / 4,69 / 5,58 (60) | 2,55 / 11,29 / 14,48 (47) | 2,89 / 13,54 / 30,69 (28) | 2,85 / 9,85 / 19,91 (31) | – |
+| dopo P1 | 0,60 / 2,43 / 3,30 (60) | 0,76 / 3,16 / 5,52 (60) | 1,14 / 6,01 / 6,30 (59) | 2,48 / 12,24 / 14,38 (52) | 0,81 / 3,94 / 5,33 (60) | 0,97 / 4,26 / 6,65 (60) | 1,47 / 6,61 / 6,77 (60) | 1,14 / 4,72 / 7,23 (60) | 1,41 / 7,28 / 9,72 (50) | – |
+| dopo P2 | 0,59 / 1,95 / 2,91 (60) | 0,69 / 2,56 / 4,42 (60) | 0,92 / 3,72 / 5,11 (59) | 2,27 / 8,66 / 12,59 (58) | 0,85 / 3,33 / 4,23 (60) | 0,77 / 3,58 / 5,32 (60) | 1,13 / 4,64 / 6,91 (58) | 1,29 / 4,02 / 5,90 (60) | 1,15 / 5,11 / 8,21 (54) | – |
+| dopo P3a | 0,47 / 1,89 / 2,86 (60) | 0,71 / 2,63 / 3,83 (60) | 0,77 / 3,24 / 4,79 (59) | 1,86 / 8,04 / 11,80 (59) | 0,60 / 2,50 / 3,57 (60) | 0,76 / 2,69 / 4,37 (60) | 1,06 / 4,20 / 6,03 (59) | 0,86 / 3,75 / 5,48 (60) | 1,08 / 4,58 / 7,48 (57) | – |
+| dopo P3b | 0,53 / 2,10 / 2,83 (60) | 0,77 / 2,96 / 3,80 (60) | 0,91 / 3,65 / 5,08 (59) | 1,94 / 7,92 / 11,88 (59) | 0,63 / 2,43 / 3,35 (60) | 0,76 / 2,96 / 3,93 (60) | 1,03 / 4,52 / 7,33 (56) | 0,92 / 3,87 / 6,18 (60) | 1,17 / 5,28 / 6,65 (60) | – |
+| dopo P5a | 0,46 / 2,13 / 3,22 (60) | 0,66 / 3,00 / 3,99 (60) | 0,92 / 3,65 / 4,91 (59) | 2,20 / 8,73 / 12,58 (58) | 0,67 / 2,68 / 4,13 (60) | 0,79 / 3,15 / 4,08 (60) | 1,12 / 4,72 / 5,94 (59) | 0,98 / 4,10 / 5,64 (60) | 1,28 / 4,42 / 7,11 (58) | – |
+| dopo P5b | 0,48 / 1,78 / 2,45 (60) | 0,57 / 2,34 / 3,24 (60) | 0,80 / 3,01 / 4,74 (59) | 1,86 / 7,36 / 10,81 (60) | 0,60 / 2,11 / 3,28 (60) | 0,62 / 2,50 / 3,94 (60) | 0,86 / 4,01 / 5,59 (59) | 0,91 / 3,51 / 5,14 (60) | 1,04 / 4,06 / 6,53 (59) | 0,67 / 2,58 / 3,81 (60) |
 
 ## Note
 
@@ -63,3 +64,12 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
   temporale 5,27-5,95 / 5,48-5,56; incendio 12,33-12,44 / 12,22-13,40; paese di giorno 4,03 / 3,98-4,36; di notte
   4,30-5,10 / 5,08-5,18; mondo maturo 6,50-7,97 / 6,28-7,41; mare 5,71-5,88 / 6,13-6,14; maturo trascinato
   6,94-8,91 / 8,37-8,61. Nessuna scena oltre il rumore.
+- **dopo P5b** (creature, oggetti appoggiati e in mano, mestieri, idee, eventi, reazioni di cortesia): nuova colonna
+  «paese con 30 creature» (il paese di giorno, più dieci creature che camminano tra le case, dieci che volano sopra e
+  dieci pesci in una vasca scavata accanto). Le creature pensano ogni quattro istanti: provate da sole, trenta costano
+  circa 3 milionesimi di secondo per istante. Le pose specchiate si preparano una volta sola, così chi va a sinistra
+  si disegna con un'immagine sola come chi va a destra. Confronto alternato con la copia di prima, a x6, due giri per
+  parte (prima / dopo): mondo vuoto 2,56-3,08 / 2,71-2,83; paese di giorno 2,94-3,10 / 3,09-3,43; di notte 3,93-4,12
+  / 3,48; mondo maturo 5,31-6,03 / 5,56-6,66: nel rumore. Il paese con 30 creature, dopo le pose specchiate, contro il
+  paese senza nello stesso giro (tre giri): 3,52-4,30 contro 3,14-3,45, sempre 60 fotogrammi al secondo; la differenza
+  sta per lo più nella vasca d'acqua in più e nelle trenta figure da disegnare.

@@ -140,6 +140,27 @@ export const NUMERI: readonly (readonly [string, number])[] = [
   ['commercio', 407],
   ['medioevo', 408],
   // ── Le scoperte nuove: da 500 in su, sempre in coda ──
+  // La prima infornata: la campagna (campagna.ts), con le creature, le loro cose, i mestieri, le idee e due eventi.
+  ['lombrico', 500],
+  ['ape', 501],
+  ['uccello', 502],
+  ['pesce', 503],
+  ['rana', 504],
+  ['pecora', 505],
+  ['miele', 506],
+  ['lana', 507],
+  ['rete', 508],
+  ['flauto', 509],
+  ['arnia', 510],
+  ['spaventapasseri', 511],
+  ['ovile', 512],
+  ['apicoltore', 513],
+  ['pastore', 514],
+  ['tessitore', 515],
+  ['musica', 516],
+  ['danza', 517],
+  ['acquazzone', 518],
+  ['bufera', 519],
 ];
 
 /** Il primo numero delle scoperte nuove: tutto quello che viene dopo la tavola di oggi parte da qui. */

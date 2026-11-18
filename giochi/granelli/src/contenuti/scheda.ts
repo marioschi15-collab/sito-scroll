@@ -60,6 +60,13 @@ export interface Scheda {
   icona?: readonly string[];
   /** La figura nel mondo, per costruzioni e creature: due quadretti per cella, ingombro = metà larghezza x metà altezza. */
   figura?: readonly string[];
+  /**
+   * Per le creature: la seconda posa della figura (le zampe avanti, le ali giù), grande come la prima. La creatura
+   * alterna le due mentre si muove; senza, la figura fa un piccolo saltello.
+   */
+  altraPosa?: readonly string[];
+  /** Per i mestieri: il piccolo segno (al più 7 righe da 6 quadretti) che l'omino porta sopra la testa. */
+  segno?: readonly string[];
   /** Per le costruzioni: si posa solo sull'acqua e ne segue il pelo, come la barca. */
   aGalla?: true;
   muove?: Muove;

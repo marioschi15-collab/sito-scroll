@@ -160,6 +160,10 @@ button {
 .quadro.lampo .bagliore {
   animation: bagliore 0.4s ease-out;
 }
+/* Una scossa portata nel mondo: la vista trema finché dura. */
+.quadro.trema {
+  animation: scossa 0.32s linear infinite;
+}
 @keyframes bagliore {
   0% {
     opacity: 0.55;
@@ -497,7 +501,8 @@ button {
   .granello.nuovo {
     animation: none;
   }
-  .quadro.lampo {
+  .quadro.lampo,
+  .quadro.trema {
     animation: none;
   }
 }

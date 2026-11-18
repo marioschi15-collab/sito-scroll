@@ -1,6 +1,8 @@
-import { figuraDi, iconaDi } from '../contenuti/registro.js';
+import { altraPosaDi, figuraDi, iconaDi, segnoDi } from '../contenuti/registro.js';
 import { C, E } from '../motore/cose.js';
 import { BAMBINO, OMINO, VILLAGGIO } from '../motore/materiali.js';
+import { dimezza } from './quadretti.js';
+import { DA_TASCA } from './tasca.js';
 import { P } from './tavolozza.js';
 
 /** Prepara una figura una volta sola, con il suo contorno scuro; `scambi` cambia alcuni colori (le finestre di notte). */
@@ -44,21 +46,7 @@ const DISEGNI: Record<number, readonly string[]> = {
   [C.MERCATO]: ['rrWWrrWWrrWWrrWWrrWW', 'rRWWRRWWRRWWRRWWRRWW', 'rRWWRRWWRRWWRRWWRRWW', '.b................b.', '.b..ooo..lll..yy..b.', '.bBBBBBBBBBBBBBBBBb.', '.bDDDDDDDDDDDDDDDDb.', '.b................b.', '.b................b.'],
   [C.PONTE]: ['b......................b....', 'bBBBBBBBBBBBBBBBBBBBBBBBBBBb', 'bDDDDDDDDDDDDDDDDDDDDDDDDDDb', '.sS....sSSSSSSs....sSSs.....', '.sS...sS......Ss...sSs......', '.sS..sS........Ss..sSs......', '.sS.sS..........SsssSs......'],
   [C.FARO]: ['...YyY....', '..YyYyY...', '...sSs....', '..sSSSs...', '..rRRRr...', '..wwwww...', '..wwwww...', '..rRRRr...', '..rRRRr...', '..wwwww...', '..wwwww...', '..rRRRr...', '..rRRRr...', '..wwwww...', '..wwFww...', '..wwwww...', '.sSSSSSs..', 'sSSnnnSSs.', 'dssnnnssd.'],
-  // ── Cose da tasca: si vedono solo nel libro e nel pannello Unisci ──
-  [C.UTENSILE]: ['......sS.', '.....sSSS', '....bsSs.', '...bB.s..', '..bB.....', '.bB......', 'bB.......'],
-  [C.LANCIA]: ['.......sS', '......sSs', '.....bs..', '....bB...', '...bB....', '..bB.....', '.bB......', 'bB.......'],
-  [C.RUOTA]: ['..sSSSs..', '.sS.s.Ss.', 'sS..s..Ss', 'sssssssss', 'sS..s..Ss', '.sS.s.Ss.', '..sSSSs..'],
-  [C.VASO]: ['..rRRRr..', '...rRr...', '..rRRRr..', '.rRORRRr.', '.rRORRRr.', '.rRRRRRr.', '..rRRRr..'],
-  [C.PANE]: ['..tTTTt..', '.tTUTUTt.', 'tTTTTTTTt', 'tTTTTTTTt', '.ttttttt.'],
-  [C.BRONZO]: ['...zzzz..', '..zzZzzz.', '.zzzzzZzz', 'zzZzzzzzz', 'ZZZZZZZZZ'],
-  [C.SPADA]: ['.......xe', '......xe.', '.....xe..', '....xe...', '.z.xe....', '..ze.....', '.bzz.....', 'b........'],
-  [C.STRADA]: ['.........', 'sSsSSsSsS', 'SsSSsSSsS', 'TtTTtTtTT'],
-  [C.SCRITTURA]: ['.RRRRRRR.', '.Rn.nn.R.', '.R.nn.nR.', '.Rnn.n.R.', '.R.n.nnR.', '.RRRRRRR.'],
-  [C.MONETA]: ['..zzzz...', '.zzyyzz..', 'zzyzzyzz.', 'zzyzzyzz.', '.zzyyzz..', '..zzzz...'],
-  [C.CITTA]: ['....S.......rR...', '...SSS.....rRRr..', '..rSkS.rR..wwww..', '.rRSSSrRRr.wFww..', '.wwSSSwwww.wwww..', 'SSSSSSSSSSSSSSSSS', 'sSsSSsSnnSsSSsSSs'],
-  [C.LIBRO]: ['.rrrrrrr.', '.rWWWWWr.', '.rWnnnWr.', '.rWWWWWr.', '.rWnnWWr.', '.rWWWWWr.', '.rrrrrrr.'],
-  [C.FERRO]: ['...eeee..', '..eexeee.', '.eeeeexee', 'eexeeeeee', 'ddddddddd'],
-  [C.ARATRO]: ['bB.......', '.bB......', '..bBbBbB.', '...bB..e.', '..bB..ee.', '.....eex.'],
+  ...DA_TASCA,
   [VILLAGGIO]: ['....tTt.....rR...', '...tTUTt...rRRr..', '..tTTTTTt.rRRRRr.', '..bBFBnBb.wFwnww.', '..bBBBnBb.wwwnww.'],
 };
 const OMINO_FERMO = ['.hhhh.', '.hpph.', '.pkpk.', '.pppp.', 'qAAAAq', 'pAAAAp', '.AAAA.', '.mm.m.', '.m..m.', '.n..n.'];
@@ -91,6 +79,89 @@ export function icona(id: number): HTMLCanvasElement | null {
   if (!tela) {
     tela = prepara(righe);
     pronte.set(chiave, tela);
+  }
+  return tela;
+}
+
+/** Una figura già pronta, specchiata: chi la disegna non deve girare la tela a ogni fotogramma. */
+function specchiata(f: HTMLCanvasElement): HTMLCanvasElement {
+  const tela = document.createElement('canvas');
+  tela.width = f.width;
+  tela.height = f.height;
+  const g = tela.getContext('2d')!;
+  g.translate(f.width, 0);
+  g.scale(-1, 1);
+  g.drawImage(f, 0, 0);
+  return tela;
+}
+
+/**
+ * Le pose di una creatura: [prima, seconda, prima specchiata, seconda specchiata]. Le figure guardano a destra;
+ * la seconda posa alterna zampe o ali (senza, è la stessa figura abbassata di un quadretto: un saltello). null se
+ * non ha figura.
+ */
+export function figureCreatura(id: number): readonly HTMLCanvasElement[] | null {
+  const pronta = coppie.get(id);
+  if (pronta) return pronta;
+  const righe = figuraDi(id);
+  if (!righe) return null;
+  const altra = altraPosaDi(id) ?? ['.'.repeat(righe[0].length), ...righe.slice(0, -1)];
+  const due = [prepara(righe), prepara(altra)];
+  const quattro = [...due, ...due.map(specchiata)];
+  coppie.set(id, quattro);
+  return quattro;
+}
+const coppie = new Map<number, readonly HTMLCanvasElement[]>();
+
+/**
+ * Una cosa in piccolo, per la mano di un omino o per un fumetto: la sua figura (o la sua icona) dimezzata. null se
+ * non ha né l'una né l'altra.
+ */
+export function miniatura(id: number): HTMLCanvasElement | null {
+  const chiave = `${id}m`;
+  let tela = pronte.get(chiave);
+  if (tela) return tela;
+  const righe = DISEGNI[id] ?? iconaDi(id) ?? figuraDi(id);
+  if (!righe) return null;
+  const piccola = dimezza(righe);
+  if (piccola.length === 0) return null;
+  tela = prepara(piccola);
+  pronte.set(chiave, tela);
+  return tela;
+}
+
+/** Il segno di un mestiere, da portare sopra la testa; null se la scheda non ne ha uno. */
+export function segno(id: number): HTMLCanvasElement | null {
+  const chiave = `${id}s`;
+  let tela = pronte.get(chiave);
+  if (tela) return tela;
+  const righe = segnoDi(id);
+  if (!righe) return null;
+  tela = prepara(righe);
+  pronte.set(chiave, tela);
+  return tela;
+}
+
+/** I segni delle reazioni di cortesia (vedi motore/cortesia.ts), dal primo (-1, scappa) all'ultimo (-8, ci pensa). */
+const REAZIONI: readonly (readonly string[])[] = [
+  ['.R.', '.R.', '.R.', '...', '.R.'],
+  ['..c..', '.cCc.', 'cCCCc', 'cCCCc', '.ccc.'],
+  ['.w.w.', 'w.w..', '.w.w.', 'w.w..', '.w.w.'],
+  ['.yyy.', 'y...y', '...y.', '..y..', '.....', '..y..'],
+  ['y.y.y', '.yyy.', 'yyyyy', '.yyy.', 'y.y.y'],
+  ['C.C.C', '.C.C.', 'C.C.C'],
+  ['.R.R.', 'RRRRR', 'RRRRR', '.RRR.', '..R..'],
+  ['.....', '.....', 'W.W.W'],
+];
+const segniReazioni = new Map<number, HTMLCanvasElement>();
+/** Il segno di una reazione di cortesia (un numero negativo); null se il numero non è una reazione. */
+export function segnoReazione(r: number): HTMLCanvasElement | null {
+  const righe = REAZIONI[-r - 1];
+  if (!righe) return null;
+  let tela = segniReazioni.get(r);
+  if (!tela) {
+    tela = prepara(righe);
+    segniReazioni.set(r, tela);
   }
   return tela;
 }

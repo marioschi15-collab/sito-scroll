@@ -42,9 +42,10 @@ describe('le unioni nuove', () => {
         expect(testo).not.toMatch(/agente|prompt|token|\bapi\b|bug|sprite|render|mestolo/i);
       }
       expect(voce.descrizione).toMatch(/\.$/);
-      // Si mettono nel mondo dalla tavolozza solo le costruzioni (si posano); le altre, per ora, sono gettoni.
-      expect(voce.versabile).toBe(voce.tipo === 'costruzione');
-      expect(voce.versabile).toBe(ingombroDi(id) !== undefined);
+      // Tutte stanno nella tavolozza e si portano nel mondo, tranne i luoghi (il regno): si guardano, non si portano.
+      expect(voce.versabile).toBe(voce.tipo !== 'luogo');
+      // Si posano a terra le costruzioni e gli oggetti (come figurine); i mestieri vanno a un omino.
+      expect(ingombroDi(id) !== undefined).toBe(voce.tipo === 'costruzione' || voce.tipo === 'oggetto');
       // Il Libro racconta come nascono: le stesse unioni scritte nella loro scheda.
       expect(voce.nasce.map((via) => via.con)).toEqual(vieDi(id));
     }

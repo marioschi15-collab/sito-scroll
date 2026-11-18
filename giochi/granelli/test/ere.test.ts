@@ -79,7 +79,8 @@ describe('le ere arrivano in ordine', () => {
       const m = mondo();
       // Tutti i materiali, gli omini e il villaggio: le invenzioni si fanno solo unendo.
       for (const voce of voci()) if (voce.id < N_BASE || voce.id === OMINO || voce.id === VILLAGGIO) m.visti.add(voce.id);
-      for (let mossa = 0; mossa < 200; mossa++) {
+      // Più unioni scritte ci sono, più mosse servono per arrivare in fondo: con 116 unioni, quattrocento.
+      for (let mossa = 0; mossa < 400; mossa++) {
         const [a, b] = coppie[(caso() * coppie.length) | 0];
         if (!m.visti.has(a) || !m.visti.has(b)) continue;
         m.unisci(a, b);

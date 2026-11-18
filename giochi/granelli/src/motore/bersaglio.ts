@@ -1,6 +1,7 @@
 import { ALTEZZA } from './cammino.js';
 import { ingombroDi } from '../contenuti/registro.js';
 import type { Cosa } from './cose.js';
+import { type Creatura, distanzaDalCorpo as distanzaDallaCreatura } from './creature.js';
 import { GAS, NASCOSTO, NULLA, OMINO } from './materiali.js';
 import type { Mondo } from './mondo.js';
 import type { Omino } from './omini.js';
@@ -13,6 +14,7 @@ import type { Omino } from './omini.js';
  */
 export type Bersaglio =
   | { genere: 'omino'; id: number; x: number; y: number; rif: Omino }
+  | { genere: 'creatura'; id: number; x: number; y: number; rif: Creatura }
   | { genere: 'cosa'; id: number; x: number; y: number; rif: Cosa }
   | { genere: 'materia'; id: number; x: number; y: number }
   | { genere: 'appoggio'; id: -1; x: number; y: number }
@@ -48,6 +50,31 @@ function ominoVicino(m: Mondo, x: number, y: number, raggio: number): Omino | nu
   return migliore;
 }
 
+/** La creatura col corpo più vicino al punto, entro `raggio` celle; null se non c'è. Vale quanto un omino. */
+function creaturaVicina(m: Mondo, x: number, y: number, raggio: number): Creatura | null {
+  let migliore: Creatura | null = null;
+  let dMin = raggio * raggio;
+  for (const c of m.creature) {
+    const d = distanzaDallaCreatura(c, x, y);
+    if (d <= dMin) {
+      dMin = d;
+      migliore = c;
+    }
+  }
+  return migliore;
+}
+
+/**
+ * Chi è vivo e più vicino al punto, entro `raggio` celle: un omino o una creatura (a pari distanza l'omino). Gli
+ * omini e le creature sono bersagli allo stesso modo.
+ */
+function vivoVicino(m: Mondo, x: number, y: number, raggio: number): Bersaglio | null {
+  const o = ominoVicino(m, x, y, raggio);
+  const c = creaturaVicina(m, x, y, raggio);
+  if (c && (!o || distanzaDallaCreatura(c, x, y) < distanzaDalCorpo(o, x, y))) return { genere: 'creatura', id: c.id, x: c.x, y: c.y, rif: c };
+  return o ? { genere: 'omino', id: OMINO, x: o.x, y: o.y, rif: o } : null;
+}
+
 /** La cosa posata il cui ingombro contiene il punto, o gli passa a una cella; null se non c'è. */
 function cosaSotto(m: Mondo, x: number, y: number): Cosa | null {
   for (const c of m.cose) {
@@ -66,8 +93,9 @@ function materiaDi(m: Mondo, i: number): number {
 }
 
 /**
- * Che cosa c'è qui, nell'ordine: (1) un omino col corpo entro 2 celle dal punto; (2) una cosa posata che contiene
- * il punto (o gli passa a una cella); (3) un omino entro 6 celle; (4) la materia della cella, o la più vicina entro
+ * Che cosa c'è qui, nell'ordine: (1) un omino o una creatura col corpo entro 2 celle dal punto; (2) una cosa posata
+ * che contiene il punto (o gli passa a una cella); (3) un omino o una creatura entro 6 celle; (4) la materia della
+ * cella, o la più vicina entro
  * 3 celle (gas e fiamme contano solo se il punto è proprio su di loro); (5) appoggio, se intorno c'è soltanto
  * terreno che non è una scoperta; (6) il vuoto. Gli omini che dormono in casa non si vedono e non sono bersagli.
  */
@@ -75,12 +103,12 @@ export function cheCosaCe(m: Mondo, px: number, py: number): Bersaglio {
   // Il punto può arrivare con la virgola (dal dito): conta la cella che lo contiene, se no gli indici non tornano.
   const x = Math.floor(px);
   const y = Math.floor(py);
-  const sulCorpo = ominoVicino(m, x, y, SUL_CORPO);
-  if (sulCorpo) return { genere: 'omino', id: OMINO, x: sulCorpo.x, y: sulCorpo.y, rif: sulCorpo };
+  const sulCorpo = vivoVicino(m, x, y, SUL_CORPO);
+  if (sulCorpo) return sulCorpo;
   const cosa = cosaSotto(m, x, y);
   if (cosa) return { genere: 'cosa', id: cosa.id, x, y, rif: cosa };
-  const vicino = ominoVicino(m, x, y, VICINO);
-  if (vicino) return { genere: 'omino', id: OMINO, x: vicino.x, y: vicino.y, rif: vicino };
+  const vicino = vivoVicino(m, x, y, VICINO);
+  if (vicino) return vicino;
 
   if (m.dentro(x, y)) {
     const qui = materiaDi(m, y * m.w + x);

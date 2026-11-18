@@ -1,5 +1,6 @@
 import { CONSEGUENZE_DI_PRIMA, ERE_DI_PRIMA, INGOMBRO_DI_PRIMA, UNIONI_DI_PRIMA, chiaveCoppia } from '../motore/cose.js';
 import { N_BASE, PAESAGGI_DI_PRIMA, PRIMA_ID_MISCELA } from '../motore/materiali.js';
+import { DA_TASCA } from '../disegno/tasca.js';
 import { INIZIALI, type Via, VOCI_DI_PRIMA } from '../scoperte.js';
 import { FAMIGLIE } from './famiglie.js';
 import { FILE } from './indice.js';
@@ -35,10 +36,16 @@ export interface Voce {
   sapevi?: string;
   /** I modi in cui nasce, con i numeri (vuoto per i quattro elementi). */
   nasce: readonly Via[];
-  /** Si mette nel mondo col dito dalla tavolozza: i materiali e le costruzioni. */
+  /**
+   * Sta nella tavolozza e si porta nel mondo: i materiali, le costruzioni, gli oggetti, le creature, i mestieri, le
+   * idee e gli eventi. Non ci stanno l'Omino (arriva da sé), i luoghi, i fenomeni e le ere, che si guardano succedere.
+   */
   versabile: boolean;
   icona?: readonly string[];
+  /** Come sta nel mondo: la figura di una costruzione o di una creatura, e per un oggetto la sua icona rifilata. */
   figura?: readonly string[];
+  altraPosa?: readonly string[];
+  segno?: readonly string[];
   muove?: Muove;
   evento?: Effetto;
   /** Voluta senza seguito: non conta come vicolo cieco. */
@@ -62,6 +69,8 @@ interface Tavole {
   vieDeiFenomeni: Map<number, number>;
   ingombro: Record<number, readonly [number, number]>;
   costruzioni: number[];
+  /** Quanto è grande una creatura, in celle: [larghezza, altezza]. */
+  misure: Map<number, readonly [number, number]>;
   aGalla: Set<number>;
   ere: number[];
   conseguenze: (readonly [number, number])[];
@@ -79,6 +88,37 @@ export function ingombroDaFigura(figura: readonly string[]): readonly [number, n
   return [Math.ceil(largo / 2), Math.ceil(figura.length / 2)];
 }
 
+/** Un disegno senza le righe e le colonne vuote intorno: un'icona di 12x12 con il bordo libero diventa più piccola. */
+export function rifila(righe: readonly string[]): string[] {
+  let su = righe.length;
+  let giu = -1;
+  let sx = Infinity;
+  let dx = -1;
+  righe.forEach((r, y) => {
+    for (let x = 0; x < r.length; x++) {
+      if (r[x] === '.') continue;
+      su = Math.min(su, y);
+      giu = Math.max(giu, y);
+      sx = Math.min(sx, x);
+      dx = Math.max(dx, x);
+    }
+  });
+  if (giu < 0) return [];
+  return righe.slice(su, giu + 1).map((r) => r.padEnd(dx + 1, '.').slice(sx, dx + 1));
+}
+
+/** I tipi che stanno nella tavolozza e si portano nel mondo (oltre ai materiali e alle costruzioni). */
+const IN_TAVOLOZZA = new Set<TipoVoce>(['oggetto', 'creatura', 'mestiere', 'idea', 'evento']);
+
+/**
+ * Come sta nel mondo un oggetto appoggiato a terra: la sua figura di prima (l'utensile, il pane), oppure l'icona
+ * della sua scheda senza il bordo vuoto. Un oggetto senza nessuno dei due non si appoggia.
+ */
+function figuraDaAppoggiare(id: number, icona?: readonly string[], figura?: readonly string[]): readonly string[] | undefined {
+  const righe = figura ?? DA_TASCA[id] ?? icona;
+  const rifilata = righe ? rifila(righe) : [];
+  return rifilata.length > 0 ? rifilata : undefined;
+}
 function costruisci(): Tavole {
   const problemi: string[] = [];
   const numeroDi = new Map<string, number>();
@@ -89,6 +129,9 @@ function costruisci(): Tavole {
   }
 
   const voci: Voce[] = [];
+  const ingombro: Record<number, readonly [number, number]> = { ...INGOMBRO_DI_PRIMA };
+  const costruzioni = Object.keys(INGOMBRO_DI_PRIMA).map(Number);
+  const misure = new Map<number, readonly [number, number]>();
   for (const s of VOCI_DI_PRIMA) {
     const chiave = chiaveDi.get(s.id) ?? `voce-${s.id}`;
     const [tipo, articolo, genere] = TIPI_DI_PRIMA[chiave] ?? ['oggetto', 'il', 'm'];
@@ -105,14 +148,17 @@ function costruisci(): Tavole {
       indizio: s.indizio,
       descrizione: s.descrizione,
       nasce: s.nasce,
-      versabile: s.versabile,
+      versabile: s.versabile || IN_TAVOLOZZA.has(tipo),
       finale: false,
     });
+    if (tipo === 'oggetto') {
+      const figura = figuraDaAppoggiare(s.id);
+      if (figura) ingombro[s.id] = ingombroDaFigura(figura);
+    }
   }
 
   const unioni: (readonly [number, number, number])[] = [...UNIONI_DI_PRIMA];
   const vieDeiFenomeni = new Map<number, number>();
-  const ingombro: Record<number, readonly [number, number]> = { ...INGOMBRO_DI_PRIMA };
   const aGalla = new Set<number>();
   const conseguenze: (readonly [number, number])[] = [...CONSEGUENZE_DI_PRIMA];
   const paesaggi: (readonly [number, number, number])[] = [...PAESAGGI_DI_PRIMA];
@@ -168,8 +214,13 @@ function costruisci(): Tavole {
       const posabile = s.tipo === 'costruzione' && s.figura !== undefined && s.figura.length > 0;
       if (posabile) {
         ingombro[id] = ingombroDaFigura(s.figura!);
+        costruzioni.push(id);
         if (s.aGalla) aGalla.add(id);
       }
+      // Un oggetto si appoggia a terra come una figurina, piccolo quanto la sua icona: è una cosa del mondo, ma non un tetto.
+      const appoggiata = s.tipo === 'oggetto' ? figuraDaAppoggiare(id, s.icona, s.figura) : undefined;
+      if (appoggiata) ingombro[id] = ingombroDaFigura(appoggiata);
+      if (s.tipo === 'creatura' && s.figura !== undefined && s.figura.length > 0) misure.set(id, ingombroDaFigura(s.figura));
       voci.push({
         id,
         chiave: s.chiave,
@@ -183,9 +234,11 @@ function costruisci(): Tavole {
         descrizione: s.descrizione,
         sapevi: s.sapevi,
         nasce,
-        versabile: posabile,
+        versabile: posabile || IN_TAVOLOZZA.has(s.tipo),
         icona: s.icona,
-        figura: s.figura,
+        figura: appoggiata ?? s.figura,
+        altraPosa: s.altraPosa,
+        segno: s.segno,
         muove: s.muove,
         evento: s.evento,
         finale: s.finale === true,
@@ -221,7 +274,8 @@ function costruisci(): Tavole {
     ingredienti: new Set(unioni.flatMap(([a, b]) => [a, b])),
     vieDeiFenomeni,
     ingombro,
-    costruzioni: Object.keys(ingombro).map(Number),
+    costruzioni,
+    misure,
     aGalla,
     ere,
     conseguenze,
@@ -277,14 +331,29 @@ export const eIngrediente = (id: number): boolean => t().ingredienti.has(id);
 /** Il fenomeno di una scheda di cui la coppia è la via nel mondo; -1 se non lo è di nessuno. */
 export const viaDiFenomeno = (a: number, b: number): number => t().vieDeiFenomeni.get(chiaveCoppia(a, b)) ?? -1;
 
-/** Quanto è grande nel mondo, in celle, una cosa che si posa; undefined se non si posa. */
+/** Quanto è grande nel mondo, in celle, una cosa che si posa (una costruzione, un oggetto appoggiato); undefined se non si posa. */
 export const ingombroDi = (id: number): readonly [number, number] | undefined => t().ingombro[id];
-/** Tutte le cose che si posano nel mondo. */
+/** Tutte le costruzioni: le cose che si posano e restano lì come edifici (gli oggetti appoggiati non sono tra loro). */
 export const costruzioni = (): readonly number[] => t().costruzioni;
+/** Vero per una costruzione (non per un oggetto appoggiato a terra). */
+export const eCostruzione = (id: number): boolean => t().perId.get(id)?.tipo === 'costruzione';
+/** Quanto è grande una creatura nel mondo, in celle: [larghezza, altezza]; undefined se non è una creatura con la sua figura. */
+export const misuraDi = (id: number): readonly [number, number] | undefined => t().misure.get(id);
+/** Come si muove una creatura; undefined per ciò che non è una creatura. */
+export const muoveDi = (id: number): Muove | undefined => t().perId.get(id)?.muove;
+/** L'effetto di un evento portato nel mondo; undefined per ciò che non è un evento. */
+export const effettoDi = (id: number): Effetto | undefined => t().perId.get(id)?.evento;
 /** Una costruzione delle schede che si posa solo sull'acqua (barca e ponte, di prima, li sa posa.ts). */
 export const aGalla = (id: number): boolean => t().aGalla.has(id);
-/** La figura nel mondo di una scheda; undefined per le voci di prima (le loro figure stanno in disegno/figure.ts). */
+/**
+ * La figura nel mondo di una scheda (per un oggetto, la sua icona rifilata); undefined per le voci di prima (le loro
+ * figure stanno in disegno/figure.ts).
+ */
 export const figuraDi = (id: number): readonly string[] | undefined => t().perId.get(id)?.figura;
+/** La seconda posa di una creatura, se ce l'ha. */
+export const altraPosaDi = (id: number): readonly string[] | undefined => t().perId.get(id)?.altraPosa;
+/** Il segno che porta sopra la testa chi fa quel mestiere, se la scheda ce l'ha. */
+export const segnoDi = (id: number): readonly string[] | undefined => t().perId.get(id)?.segno;
 /** L'icona a quadretti di una scheda, se ce l'ha. */
 export const iconaDi = (id: number): readonly string[] | undefined => t().perId.get(id)?.icona;
 

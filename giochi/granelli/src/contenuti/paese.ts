@@ -10,7 +10,7 @@ import type { Scheda } from './scheda.js';
  * sono lettere della tavolozza; `cappello` copre le prime righe (il punto lascia vedere sotto); `segno` è largo fino
  * a cinque quadretti e si appoggia sul fondo, a destra.
  */
-function persona(maglia: string, capelli: string, cappello: readonly string[], segno: readonly string[]): string[] {
+export function persona(maglia: string, capelli: string, cappello: readonly string[], segno: readonly string[]): string[] {
   const busto = [
     '...hhhh.....',
     '..hhhhhh....',
@@ -35,14 +35,19 @@ function persona(maglia: string, capelli: string, cappello: readonly string[], s
   return busto.map((r) => r.join(''));
 }
 
-const SENZA: readonly string[] = [];
-const PAGLIA = ['...TTTT..', '.tTTTTTTt'];
-const CORONA = ['..y.y.y..', '..yyyyy..'];
-const ELMO = ['...ssss..', '..sSSSSs.', '..s....s.'];
-const BERRETTO_BIANCO = ['...WWWW..', '..WWWWWW.'];
-const BERRETTO = ['...mmmm..', '..mmmmmm.'];
-const CAPPUCCIO = ['...AAAA..', '..AAAAAA.', '..A....A.'];
-const FAZZOLETTO = ['...RRRR..', '..RRRRRR.'];
+/** L'icona di chi fa un mestiere, e il segno del mestiere da solo: l'omino che lo fa lo porta sopra la testa. */
+export function vestito(maglia: string, capelli: string, cappello: readonly string[], segno: readonly string[]): Pick<Scheda, 'icona' | 'segno'> {
+  return { icona: persona(maglia, capelli, cappello, segno), segno };
+}
+
+export const SENZA: readonly string[] = [];
+export const PAGLIA = ['...TTTT..', '.tTTTTTTt'];
+export const CORONA = ['..y.y.y..', '..yyyyy..'];
+export const ELMO = ['...ssss..', '..sSSSSs.', '..s....s.'];
+export const BERRETTO_BIANCO = ['...WWWW..', '..WWWWWW.'];
+export const BERRETTO = ['...mmmm..', '..mmmmmm.'];
+export const CAPPUCCIO = ['...AAAA..', '..AAAAAA.', '..A....A.'];
+export const FAZZOLETTO = ['...RRRR..', '..RRRRRR.'];
 
 const gente = (s: Omit<Scheda, 'famiglia' | 'tipo' | 'numero' | 'genere'> & Partial<Pick<Scheda, 'genere'>>): Scheda => ({
   famiglia: 'genti',
@@ -61,25 +66,25 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'lancia']],
     indizio: 'Dai una lancia a un omino.',
     descrizione: 'Un omino con la lancia: esce all’alba, cammina tanto, e torna con la cena.',
-    icona: persona('b', 'h', SENZA, ['....e', '...x.', '..b..', '.b...', 'b....']),
+    ...vestito('b', 'h', SENZA, ['....e', '...x.', '..b..', '.b...', 'b....']),
   }),
   gente({
     chiave: 'contadino',
     nome: 'Contadino',
     articolo: 'il',
-    unioni: [['omino', 'campo']],
+    unioni: [['omino', 'campo'], ['omino', 'spaventapasseri']],
     indizio: 'Un omino e un campo.',
     descrizione: 'Un omino che ha scelto il campo: sa quando seminare e quando aspettare.',
-    icona: persona('G', 'h', PAGLIA, ['.y.y.', '.yyy.', '..y..', '..l..', '..l..', '..l..']),
+    ...vestito('G', 'h', PAGLIA, ['.y.y.', '.yyy.', '..y..', '..l..', '..l..', '..l..']),
   }),
   gente({
     chiave: 'pescatore',
     nome: 'Pescatore',
     articolo: 'il',
-    unioni: [['omino', 'barca']],
+    unioni: [['omino', 'barca'], ['omino', 'pesce'], ['omino', 'rete']],
     indizio: 'Un omino e una barca.',
     descrizione: 'Un omino con la barca e tanta pazienza: l’acqua gli dà da mangiare.',
-    icona: persona('y', 'h', BERRETTO, ['c.CC.', 'cCCkC', 'c.CC.']),
+    ...vestito('y', 'h', BERRETTO, ['c.CC.', 'cCCkC', 'c.CC.']),
   }),
   gente({
     chiave: 'vasaio',
@@ -88,7 +93,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'vaso']],
     indizio: 'Un omino che sa fare vasi.',
     descrizione: 'Mani sporche d’argilla e una ruota che gira: da lui escono vasi, piatti e brocche.',
-    icona: persona('q', 'h', SENZA, ['.rRr.', '..r..', '.rRRr', 'rROOR', '.rRr.']),
+    ...vestito('q', 'h', SENZA, ['.rRr.', '..r..', '.rRRr', 'rROOR', '.rRr.']),
   }),
   gente({
     chiave: 'fornaio',
@@ -97,7 +102,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'pane']],
     indizio: 'Un omino e il pane.',
     descrizione: 'Si alza prima di tutti: quando il paese si sveglia, il pane è già caldo.',
-    icona: persona('w', 'h', BERRETTO_BIANCO, ['.tTt.', 'tTUTt', 'ttttt']),
+    ...vestito('w', 'h', BERRETTO_BIANCO, ['.tTt.', 'tTUTt', 'ttttt']),
   }),
   gente({
     chiave: 'fabbro',
@@ -106,7 +111,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'fornace']],
     indizio: 'Un omino davanti alla fornace.',
     descrizione: 'Fuoco, martello e incudine: piega il metallo e ne fa attrezzi, chiodi e ferri.',
-    icona: persona('d', 'h', SENZA, ['.ddd.', 'dSSSd', '..b..', '..b..', '..b..']),
+    ...vestito('d', 'h', SENZA, ['.ddd.', 'dSSSd', '..b..', '..b..', '..b..']),
   }),
   gente({
     chiave: 'guerriero',
@@ -115,7 +120,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'spada']],
     indizio: 'Dai una spada a un omino.',
     descrizione: 'Un omino con la spada: difende il paese, e a volte se ne va a cercare guai.',
-    icona: persona('r', 'h', ELMO, ['....e', '...e.', '..e..', '.ze..', 'b.z..']),
+    ...vestito('r', 'h', ELMO, ['....e', '...e.', '..e..', '.ze..', 'b.z..']),
   }),
   gente({
     chiave: 'maestro',
@@ -124,7 +129,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'libro']],
     indizio: 'Un omino che ha letto un libro.',
     descrizione: 'Ha letto e ricorda, e lo racconta ai più piccoli: così quello che si sa non va perso.',
-    icona: persona('m', 'x', SENZA, ['rrrr.', 'rWWWr', 'rWnWr', 'rWWWr', 'rrrrr']),
+    ...vestito('m', 'x', SENZA, ['rrrr.', 'rWWWr', 'rWnWr', 'rWWWr', 'rrrrr']),
   }),
   gente({
     chiave: 'mercante',
@@ -133,7 +138,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'mercato']],
     indizio: 'Un omino al mercato.',
     descrizione: 'Compra qui e vende là: porta in paese cose che nessuno aveva mai visto.',
-    icona: persona('A', 'h', FAZZOLETTO, ['.zzz.', 'zyyzz', 'zyzzz', '.zzz.']),
+    ...vestito('A', 'h', FAZZOLETTO, ['.zzz.', 'zyyzz', 'zyzzz', '.zzz.']),
   }),
   gente({
     chiave: 'mugnaio',
@@ -142,7 +147,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'mulino']],
     indizio: 'Un omino e il mulino.',
     descrizione: 'Bianco di farina dalla testa ai piedi: guarda il cielo, e quando c’è vento macina.',
-    icona: persona('V', 'w', SENZA, ['.ww..', '..w..', 'wwwww', 'wWWWw', 'wwwww']),
+    ...vestito('V', 'w', SENZA, ['.ww..', '..w..', 'wwwww', 'wWWWw', 'wwwww']),
   }),
   gente({
     chiave: 'guardiano-del-faro',
@@ -151,7 +156,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'faro']],
     indizio: 'Qualcuno deve tenere acceso il faro.',
     descrizione: 'Ogni sera sale le scale e accende il fuoco: le barche tornano a casa grazie a lui.',
-    icona: persona('x', 'h', BERRETTO, ['..d..', '.ddd.', 'dyYyd', 'dyYyd', '.ddd.']),
+    ...vestito('x', 'h', BERRETTO, ['..d..', '.ddd.', 'dyYyd', 'dyYyd', '.ddd.']),
   }),
   gente({
     chiave: 're',
@@ -160,7 +165,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'castello']],
     indizio: 'Un omino nel castello.',
     descrizione: 'Un omino con la corona che decide per tutti. Se decide bene, il paese lo ricorda a lungo.',
-    icona: persona('R', 'h', CORONA, ['..y..', '.yzy.', '..z..', '..z..', '..z..']),
+    ...vestito('R', 'h', CORONA, ['..y..', '.yzy.', '..z..', '..z..', '..z..']),
   }),
   gente({
     chiave: 'artigiano',
@@ -169,7 +174,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'utensile']],
     indizio: 'Dai un utensile a un omino.',
     descrizione: 'Un omino con l’utensile in mano: aggiusta, intaglia, costruisce. Le cose belle passano dalle sue mani.',
-    icona: persona('B', 'h', SENZA, ['...sS', '..bs.', '.bB..', 'bB...']),
+    ...vestito('B', 'h', SENZA, ['...sS', '..bs.', '.bB..', 'bB...']),
   }),
   gente({
     chiave: 'carrettiere',
@@ -178,7 +183,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'carro']],
     indizio: 'Qualcuno deve guidare il carro.',
     descrizione: 'Sempre in strada con il suo carro: porta il grano al mulino e la farina in paese.',
-    icona: persona('O', 'h', SENZA, ['.bBb.', 'bDbDb', 'bbBbb', 'bDbDb', '.bBb.']),
+    ...vestito('O', 'h', SENZA, ['.bBb.', 'bDbDb', 'bbBbb', 'bDbDb', '.bBb.']),
   }),
   gente({
     chiave: 'famiglia',
@@ -188,16 +193,16 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'capanna']],
     indizio: 'Un omino sotto un tetto.',
     descrizione: 'Un tetto e chi ci vive sotto: si mangia insieme, si litiga, si fa pace.',
-    icona: persona('A', 'h', SENZA, ['.hhh.', '.ppp.', '.kpk.', 'RRRRR', 'RRRRR']),
+    ...vestito('A', 'h', SENZA, ['.hhh.', '.ppp.', '.kpk.', 'RRRRR', 'RRRRR']),
   }),
   gente({
     chiave: 'cantastorie',
     nome: 'Cantastorie',
     articolo: 'il',
-    unioni: [['omino', 'falo']],
+    unioni: [['omino', 'falo'], ['omino', 'musica']],
     indizio: 'Un omino seduto vicino al falò.',
     descrizione: 'La sera, intorno al fuoco, racconta storie vere e storie inventate. Nessuno sa più quali sono quali.',
-    icona: persona('z', 'h', SENZA, ['..y..', '.yoy.', '.oYo.', 'bBDBb']),
+    ...vestito('z', 'h', SENZA, ['..y..', '.yoy.', '.oYo.', 'bBDBb']),
   }),
   gente({
     chiave: 'viandante',
@@ -206,7 +211,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'ponte']],
     indizio: 'Un omino che attraversa il ponte.',
     descrizione: 'Uno che passa e non si ferma: racconta di paesi lontani, e un giorno riparte.',
-    icona: persona('g', 'h', ['..bbbbb..', '.bBBBBBBb'], ['...D.', '..D..', '..b..', '..b..', '..b..', '..b..']),
+    ...vestito('g', 'h', ['..bbbbb..', '.bBBBBBBb'], ['...D.', '..D..', '..b..', '..b..', '..b..', '..b..']),
   }),
   gente({
     chiave: 'cittadino',
@@ -215,7 +220,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'citta']],
     indizio: 'Un omino che va a vivere in città.',
     descrizione: 'Vive tra le mura, fa un mestiere tra cento, e la sera va in piazza a sentire le novità.',
-    icona: persona('c', 'h', SENZA, ['..S..', '.SSS.', '.SkS.', '.SSS.', 'SSSSS']),
+    ...vestito('c', 'h', SENZA, ['..S..', '.SSS.', '.SkS.', '.SSS.', 'SSSSS']),
   }),
   gente({
     chiave: 'custode-del-tempio',
@@ -224,7 +229,7 @@ export const PAESE: readonly Scheda[] = [
     unioni: [['omino', 'tempio']],
     indizio: 'Qualcuno deve aprire il tempio al mattino.',
     descrizione: 'Tiene pulite le colonne e accese le lampade, e conosce tutte le storie scritte sui muri.',
-    icona: persona('A', 'h', CAPPUCCIO, ['.zz..', 'z..z.', '.zz..', '..z..', '..zz.', '..z..', '..zz.']),
+    ...vestito('A', 'h', CAPPUCCIO, ['.zz..', 'z..z.', '.zz..', '..z..', '..zz.', '..z..', '..zz.']),
   }),
   {
     chiave: 'regno',
@@ -366,7 +371,7 @@ export const PAESE: readonly Scheda[] = [
     articolo: 'la',
     famiglia: 'cose',
     tipo: 'oggetto',
-    unioni: [['farina', 'falo']],
+    unioni: [['farina', 'falo'], ['farina', 'miele']],
     indizio: 'La farina, cotta sul falò.',
     descrizione: 'Farina e acqua schiacciate e cotte sulle pietre calde del falò. Il pane più antico del mondo.',
     icona: [
@@ -393,7 +398,7 @@ export const PAESE: readonly Scheda[] = [
     famiglia: 'cose',
     tipo: 'costruzione',
     aGalla: true,
-    unioni: [['barca', 'aria']],
+    unioni: [['barca', 'aria'], ['barca', 'tessitore']],
     indizio: 'Una barca che si fa spingere dal vento.',
     descrizione: 'Una barca con una vela: non servono più le braccia, basta il vento.',
     figura: [
@@ -419,7 +424,7 @@ export const PAESE: readonly Scheda[] = [
     articolo: 'il',
     famiglia: 'cose',
     tipo: 'costruzione',
-    unioni: [['casa', 'falo']],
+    unioni: [['casa', 'falo'], ['casa', 'bufera']],
     indizio: 'Il falò, portato dentro casa.',
     descrizione: 'Il fuoco dentro casa, nel suo angolo di pietre: cuoce, scalda e la sera tiene tutti vicini.',
     figura: [
@@ -443,7 +448,7 @@ export const PAESE: readonly Scheda[] = [
     articolo: 'la',
     famiglia: 'cose',
     tipo: 'costruzione',
-    unioni: [['casa', 'campo']],
+    unioni: [['casa', 'campo'], ['casa', 'ovile']],
     indizio: 'Una casa in mezzo ai campi.',
     descrizione: 'Una casa con i suoi campi intorno: chi ci vive semina, raccoglie e mette da parte per l’inverno.',
     figura: [
@@ -492,7 +497,7 @@ export const PAESE: readonly Scheda[] = [
     articolo: 'il',
     famiglia: 'cose',
     tipo: 'oggetto',
-    unioni: [['aratro', 'campo']],
+    unioni: [['aratro', 'campo'], ['campo', 'spaventapasseri'], ['campo', 'acquazzone']],
     indizio: 'L’aratro nel campo, e poi pazienza.',
     descrizione: 'Il campo arato dà spighe alte e piene: un anno di lavoro che si porta a casa in pochi giorni.',
     icona: [
@@ -569,7 +574,7 @@ export const PAESE: readonly Scheda[] = [
     articolo: 'l',
     famiglia: 'cose',
     tipo: 'costruzione',
-    unioni: [['pozzo', 'campo']],
+    unioni: [['pozzo', 'campo'], ['campo', 'lombrico']],
     indizio: 'Un campo vicino all’acqua del pozzo.',
     descrizione: 'Un campo piccolo, innaffiato col secchio del pozzo: insalata, fagioli, zucche, tutto l’anno.',
     figura: [
@@ -590,7 +595,7 @@ export const PAESE: readonly Scheda[] = [
     articolo: 'il',
     famiglia: 'cose',
     tipo: 'costruzione',
-    unioni: [['campo', 'frutto']],
+    unioni: [['campo', 'frutto'], ['campo', 'ape'], ['campo', 'apicoltore']],
     indizio: 'Semina un frutto nel campo.',
     descrizione: 'File di alberi piantati apposta: i frutti non si cercano più nel bosco, si raccolgono.',
     figura: [
@@ -614,7 +619,7 @@ export const PAESE: readonly Scheda[] = [
     articolo: 'l',
     famiglia: 'cose',
     tipo: 'costruzione',
-    unioni: [['capanna', 'falo']],
+    unioni: [['capanna', 'falo'], ['falo', 'danza']],
     indizio: 'Capanne intorno al fuoco.',
     descrizione: 'Qualche capanna attorno a un falò: non è ancora un paese, ma ci somiglia.',
     figura: [

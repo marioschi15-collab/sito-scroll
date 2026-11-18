@@ -79,13 +79,18 @@ export const INGOMBRO_DI_PRIMA: Readonly<Record<number, readonly [number, number
   [C.FARO]: [5, 14],
 };
 
-/** Una cosa posata nel mondo: (x, y) è la cella in basso a sinistra del suo ingombro. */
+/** Una cosa posata nel mondo (una costruzione, o un oggetto appoggiato a terra): (x, y) è la cella in basso a sinistra del suo ingombro. */
 export interface Cosa {
   id: number;
   x: number;
   y: number;
   /** Il suo numero d'ordine: non cambia mai e non ce ne sono due uguali. Serve a riconoscerla (la casa di un omino è questa). */
   n: number;
+  /** Le idee portate sopra questa costruzione (la scrittura sul tempio): restano scritte. */
+  sa?: number[];
+  /** L'idea appena arrivata, mostrata in un fumetto, e fino a quale istante (non si salva). */
+  nuvoletta?: number;
+  nuvolettaFino?: number;
 }
 
 /** Un tetto sotto cui un omino può vivere, e quanti ne ospita. */

@@ -103,7 +103,37 @@ const SCENE = {
     },
   },
   maturoTrascinato: { nome: 'maturo, vista trascinata', prepara: maturo, trascina: true },
+  creature: { nome: 'paese con 30 creature', prepara: paese, dopo: creatureIntorno },
 };
+
+/**
+ * Dopo il paese di giorno, trenta creature intorno (i numeri sono quelli di src/contenuti/numeri.ts): dieci che
+ * camminano tra le case, dieci che volano sopra il paese, dieci pesci in una vasca scavata lì accanto.
+ */
+function creatureIntorno() {
+  const m = window.granelli();
+  const PECORA = 505;
+  const RANA = 504;
+  const UCCELLO = 502;
+  const APE = 501;
+  const PESCE = 503;
+  const cx = m.w >> 1;
+  // A destra del paese una vasca scavata nella roccia sotto il suolo, piena d'acqua, con le pareti che restano.
+  const v0 = cx + 70;
+  for (let x = v0; x < v0 + 24; x++) {
+    const s = m.suolo(x);
+    for (let y = s; y < s + 6; y++) m.metti(y * m.w + x, 2);
+  }
+  for (const id of [PECORA, RANA, UCCELLO, APE, PESCE]) m.visti.add(id);
+  // Messe direttamente nell'elenco del mondo (come fa il salvataggio), così nessuna si unisce con quello che ha vicino.
+  for (let k = 0; k < 10; k++) {
+    const x = cx - 50 + k * 11;
+    m.creature.push({ id: k % 2 ? PECORA : RANA, x, y: m.suolo(x) - 1, dir: k % 2 ? 1 : -1 });
+    m.creature.push({ id: k % 2 ? UCCELLO : APE, x: x + 4, y: m.suolo(x) - 30, dir: k % 2 ? -1 : 1 });
+    m.creature.push({ id: PESCE, x: v0 + 2 + k * 2, y: m.suolo(v0 + 2 + k * 2) + 3, dir: 1 });
+  }
+  return { creature: m.creature.length };
+}
 
 /**
  * Venti omini e una dozzina di edifici in fila intorno al centro del mondo, uno accanto all'altro dove il terreno

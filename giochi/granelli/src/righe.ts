@@ -27,6 +27,8 @@ export const NON_QUI: Record<PercheNo, string> = {
   pieno: 'Qui non c’è più posto: prova un po’ più in là.',
   troppi: 'Gli omini sono già tanti: per ora non ne arrivano altri.',
   acqua: 'Arriveranno vicino all’acqua.',
+  affollato: 'Gli animali qui sono già tanti: per ora non ne nascono altri.',
+  senzAcqua: 'Questo animale vive nell’acqua: portalo su un lago o su una pozza.',
 };
 
 /** Quello che il pannello Unisci risponde, oltre alle scoperte: le coppie già provate, quelle «per ora», gli omini. */

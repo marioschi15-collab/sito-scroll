@@ -49,8 +49,7 @@ describe('unire due scoperte', () => {
     const m = mondo(80, 60);
     riempi(m, 0, 50, 79, 59, M.PIETRA);
     expect(m.posa(C.CAPANNA, 40, 20)).toBe(false);
-    m.visti.add(C.CAPANNA).add(C.UTENSILE);
-    expect(m.posa(C.UTENSILE, 40, 20)).toBe(false);
+    m.visti.add(C.CAPANNA);
     expect(m.posa(C.CAPANNA, 40, 20)).toBe(true);
     gira(m, 200);
     expect(m.cose[0].y).toBe(49);

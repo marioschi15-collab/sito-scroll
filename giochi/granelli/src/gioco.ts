@@ -1,12 +1,13 @@
-import { INIZIALI, ere, ingombroDi, voce, voci, vociTrovate } from './contenuti/registro.js';
+import { INIZIALI, eCostruzione, ere, tipoDi, voce, voci, vociTrovate } from './contenuti/registro.js';
 import { Pittore } from './disegno/pittore.js';
 import { apriLibro, nomeDi, tondino } from './libro.js';
 import { M, OMINO, PRIMA_ID_MISCELA, VILLAGGIO } from './motore/materiali.js';
+import { accade } from './motore/eventi.js';
 import { Mondo } from './motore/mondo.js';
 import { SUPERFICIE, terreno } from './motore/terreno.js';
 import { apriUnisci } from './unisci.js';
 import { costruisciPagina, el } from './pagina.js';
-import { ADDIO_MESTOLO, ANNUNCIO, NON_SI_POSA, annuncioDiLutto } from './righe.js';
+import { ADDIO_MESTOLO, ANNUNCIO, NON_QUI, NON_SI_POSA, annuncioDiLutto } from './righe.js';
 import { type Ricordi, leggiRicordi } from './ricordi.js';
 import { carica, extraDi, fotografa, ripristina, salva } from './salvataggio.js';
 
@@ -234,7 +235,19 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       mondo.fulmine(Math.max(0, Math.min(mondo.w - 1, x)), 0);
       return;
     }
-    if (ingombroDi(scelto)) {
+    const tipo = tipoDi(scelto);
+    if (tipo === 'oggetto' || tipo === 'creatura' || tipo === 'mestiere' || tipo === 'idea' || tipo === 'evento') {
+      // Un tocco porta la cosa lì: un oggetto si appoggia (o lo prende l'omino toccato), una creatura nasce, un
+      // mestiere o un'idea vanno a chi li riceve, un evento accade. Se lì non si può, una riga dice perché.
+      const esito = mondo.porta(scelto, x, y, 'gettone');
+      if (esito.genere === 'nonQui') diRiga(NON_QUI[esito.perche]);
+      else if (esito.genere !== 'niente') {
+        p.riga.classList.remove('su');
+        salvaTutto();
+      }
+      return;
+    }
+    if (eCostruzione(scelto)) {
       // Una costruzione si posa solo dove può stare: se no, una riga dice perché.
       const dove = mondo.puoPosare(scelto, x, y);
       if (!dove.si) diRiga(NON_SI_POSA[dove.perche]);
@@ -376,6 +389,11 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     mondo.fatti.length = 0;
     for (const a of mondo.annunci) diRiga(ANNUNCIO[a]);
     mondo.annunci.length = 0;
+    for (const s of mondo.sparite) pittore.sbuffo(s.x, s.y);
+    mondo.sparite.length = 0;
+    // Finché dura una scossa portata nel mondo, la vista trema.
+    const trema = accade(mondo, 'scossa');
+    if (trema !== p.quadro.classList.contains('trema')) p.quadro.classList.toggle('trema', trema);
     for (const b of mondo.botti) pittore.botto(b.x, b.y, b.r);
     if (mondo.botti.length > 0) lampo();
     mondo.botti.length = 0;

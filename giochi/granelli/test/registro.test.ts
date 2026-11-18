@@ -53,6 +53,13 @@ const NUMERI_DI_OGGI: Record<string, number> = {
   'eta-del-ferro': E.FERRO, commercio: E.COMMERCIO, medioevo: E.MEDIOEVO,
 };
 
+/** I numeri delle scoperte nuove della prima infornata (src/contenuti/campagna.ts): fissati anche loro. */
+const NUMERI_NUOVI: Record<string, number> = {
+  lombrico: 500, ape: 501, uccello: 502, pesce: 503, rana: 504, pecora: 505, miele: 506, lana: 507, rete: 508,
+  flauto: 509, arnia: 510, spaventapasseri: 511, ovile: 512, apicoltore: 513, pastore: 514, tessitore: 515,
+  musica: 516, danza: 517, acquazzone: 518, bufera: 519,
+};
+
 describe('i numeri delle scoperte', () => {
   it('quelli di oggi non cambiano mai, e la tavola non ne ha altri sotto il 500', () => {
     for (const [chiave, n] of Object.entries(NUMERI_DI_OGGI)) expect(idDi(chiave), chiave).toBe(n);
@@ -63,7 +70,12 @@ describe('i numeri delle scoperte', () => {
       expect(chiaveDi(v.id), v.nome).toBe(v.chiave);
       expect(idDi(v.chiave)).toBe(v.id);
     }
-    expect(voci().length).toBe(125);
+    expect(voci().length).toBe(145);
+  });
+
+  it('quelli della prima infornata nemmeno: da 500, nell’ordine in cui sono nati', () => {
+    for (const [chiave, n] of Object.entries(NUMERI_NUOVI)) expect(idDi(chiave), chiave).toBe(n);
+    expect(numeri().filter(([, n]) => n >= 500).map(([chiave]) => chiave)).toEqual(Object.keys(NUMERI_NUOVI));
   });
 
   it('i numeri dalle schede nuove partono da 500 e non toccano i posti speciali (miscele, ere, cose)', () => {
@@ -132,9 +144,14 @@ describe('il registro', () => {
     const veliero = idDi('veliero');
     expect(ingombroDi(veliero)).toEqual(ingombroDaFigura(voce(veliero)!.figura!));
     expect(ingombroDaFigura(['abc', 'abcde', 'a'])).toEqual([3, 2]);
-    expect(costruzioni().length).toBe(Object.keys(INGOMBRO_DI_PRIMA).length + 9);
-    // Gli oggetti, le idee e i mestieri, per ora, non si posano.
-    for (const id of [C.UTENSILE, C.SCRITTURA, idDi('secchio'), idDi('fabbro')]) expect(ingombroDi(id)).toBeUndefined();
+    expect(costruzioni().length).toBe(Object.keys(INGOMBRO_DI_PRIMA).length + 12);
+    // Gli oggetti si appoggiano a terra, piccoli quanto la loro figura (o la loro icona senza il bordo vuoto); non
+    // sono costruzioni. Le idee e i mestieri non si posano.
+    expect(ingombroDi(C.UTENSILE)).toEqual([5, 4]);
+    expect(ingombroDi(C.STRADA)).toEqual([5, 2]);
+    expect(ingombroDi(idDi('secchio'))).toEqual([5, 5]);
+    expect(costruzioni()).not.toContain(C.UTENSILE);
+    for (const id of [C.SCRITTURA, idDi('fabbro'), idDi('musica')]) expect(ingombroDi(id)).toBeUndefined();
     expect(ere()).toEqual(ERE_DI_PRIMA);
     expect(conseguenze()).toEqual(CONSEGUENZE_DI_PRIMA);
     expect(paesaggi()).toEqual(K.PAESAGGI_DI_PRIMA);

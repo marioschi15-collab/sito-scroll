@@ -96,6 +96,16 @@ function controllaScheda(s: Scheda, file: string, esiste: (chiave: string) => bo
   if (s.tipo === 'costruzione' && s.figura === undefined) e.push(`${chi}: una costruzione ha bisogno della sua figura.`);
   if (s.figura !== undefined && !disegnoBuono(s.figura)) e.push(`${chi}: la figura usa lettere che la tavolozza non ha, o è vuota.`);
   if (s.aGalla && s.tipo !== 'costruzione') e.push(`${chi}: solo una costruzione sta a galla.`);
+  if (s.tipo === 'creatura' && s.figura === undefined) e.push(`${chi}: una creatura ha bisogno della sua figura, per muoversi nel mondo.`);
+  if (s.altraPosa !== undefined) {
+    if (s.tipo !== 'creatura') e.push(`${chi}: «altraPosa» serve solo alle creature.`);
+    const stessa = s.figura !== undefined && s.altraPosa.length === s.figura.length && s.altraPosa.every((r, k) => r.length === s.figura![k].length);
+    if (!stessa || !disegnoBuono(s.altraPosa)) e.push(`${chi}: «altraPosa» deve essere grande come la figura, con le lettere della tavolozza.`);
+  }
+  if (s.segno !== undefined) {
+    if (s.tipo !== 'mestiere') e.push(`${chi}: «segno» serve solo ai mestieri.`);
+    if (s.segno.length > 7 || s.segno.some((r) => r.length > 6) || !disegnoBuono(s.segno)) e.push(`${chi}: il segno è al più di 7 righe da 6 quadretti, con le lettere della tavolozza.`);
+  }
   if ((s.tipo === 'creatura') !== (s.muove !== undefined)) e.push(`${chi}: «muove» va scritto per le creature, e solo per loro.`);
   if (s.muove !== undefined && !MOVIMENTI.has(s.muove)) e.push(`${chi}: «muove» non può essere «${s.muove}».`);
   if ((s.tipo === 'evento') !== (s.evento !== undefined)) e.push(`${chi}: ogni evento dice il suo effetto («evento»), e solo gli eventi.`);

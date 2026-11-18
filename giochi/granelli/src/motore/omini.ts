@@ -2,6 +2,7 @@ import { arrivo } from './arrivi.js';
 import { ALTEZZA, appoggio, libera, posto, quotaDelPasso } from './cammino.js';
 import { ingombroDi } from '../contenuti/registro.js';
 import { C, type Cosa, OSPITA } from './cose.js';
+import { SCAPPA as CORRE_VIA } from './cortesia.js';
 import { BAMBINO, M, OMINO, PRIMA_MISCELA, VILLAGGIO } from './materiali.js';
 import { SOGLIA } from './miscele.js';
 import { luceDelGiorno } from './tempo.js';
@@ -40,6 +41,16 @@ export interface Omino {
    * il segno è la direzione, il numero i momenti che restano. Finché se ne ricorda cerca dall'altra parte.
    */
   chiusa?: number;
+  /** La cosa che tiene in mano (un oggetto che gli è stato portato), e fino a quale istante la tiene. */
+  tiene?: number;
+  tieneFino?: number;
+  /** Le idee che conosce (la scrittura…): restano scritte, e il suo cartellino le mostrerà. */
+  sa?: number[];
+  /** Il mestiere che fa: ne porta il segno sopra la testa. */
+  mestiere?: number;
+  /** Quello che mostra sopra la testa: un'idea a cui pensa (il suo numero) o una reazione (vedi cortesia.ts), e fino a quando. */
+  nuvoletta?: number;
+  nuvolettaFino?: number;
 }
 
 /** Di che cosa può morire un omino. */
@@ -304,6 +315,23 @@ function vivi(m: Mondo, o: Omino, notte: boolean): Causa | null {
         if (m.tipo[cibo] !== M.PIANTA || m.caso() < 0.3) m.svuota(cibo);
       }
     }
+  }
+
+  // Una cosa tenuta in mano si mette via dopo un po'; una nuvoletta passata se ne va.
+  if (o.tiene !== undefined && (o.tieneFino ?? 0) <= m.tic) {
+    delete o.tiene;
+    delete o.tieneFino;
+  }
+  if (o.nuvoletta !== undefined && (o.nuvolettaFino ?? 0) <= m.tic) {
+    delete o.nuvoletta;
+    delete o.nuvolettaFino;
+  }
+  if (o.nuvoletta === CORRE_VIA) {
+    // Gli hanno portato addosso qualcosa che scotta: corre via nella direzione in cui si è girato.
+    o.stato = SCAPPA;
+    cammina(m, o, true);
+    cammina(m, o, true);
+    return null;
   }
 
   const fuga = pericolo(m, o, 6);

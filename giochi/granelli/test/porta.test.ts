@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cheCosaCe } from '../src/motore/bersaglio.js';
-import { ingombroDi } from '../src/contenuti/registro.js';
+import { idDi, ingombroDi } from '../src/contenuti/registro.js';
 import { C } from '../src/motore/cose.js';
 import { ESPLOSIONE, INCENDIO, M, N_TIPI, OMINO, PRIMA_MISCELA, TRONCO } from '../src/motore/materiali.js';
 import type { Mondo } from '../src/motore/mondo.js';
@@ -180,8 +180,10 @@ describe('portare una cosa sopra un’altra', () => {
 
   it('ciò che non si versa né si posa va portato sopra un’altra cosa', () => {
     const m = piano();
-    m.visti.add(C.UTENSILE);
-    expect(m.porta(C.UTENSILE, 50, 30, 'gettone')).toEqual({ genere: 'nonQui', perche: 'soloSopra' });
+    const fabbro = idDi('fabbro');
+    m.visti.add(fabbro).add(C.SCRITTURA);
+    expect(m.porta(fabbro, 50, 30, 'gettone')).toEqual({ genere: 'nonQui', perche: 'soloSopra' });
+    expect(m.porta(C.SCRITTURA, 50, 30, 'gettone')).toEqual({ genere: 'nonQui', perche: 'soloSopra' });
     // Una costruzione dove non può stare dice perché, come la posa.
     m.visti.add(C.BARCA);
     expect(m.porta(C.BARCA, 50, 30, 'gettone')).toEqual({ genere: 'nonQui', perche: 'asciutto' });

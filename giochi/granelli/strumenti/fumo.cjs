@@ -38,7 +38,7 @@ async function versa(s, nome, x, y, ms) {
 }
 
 /** Due voci scritte come schede (src/contenuti/paese.ts), con i loro numeri di numeri.ts. */
-const SCHEDE = { CACCIATORE: 230, ACCAMPAMENTO: 274 };
+const SCHEDE = { CACCIATORE: 230, ACCAMPAMENTO: 274, FIACCOLA: 261, UCCELLO: 502, PESCE: 503, PECORA: 505 };
 
 /** Quanto è larga l'immagine del tondino di una voce del Libro: 7 per la grana di un materiale, di più per un'icona. */
 const larghezzaTondino = (page, nome) =>
@@ -247,9 +247,13 @@ const PASSI = [
       // e dagli omini (portata su di loro la terra cercherebbe di unirsi): si mette lì e si posa.
       const messa = await s.page.evaluate(([terra, roccia]) => {
         const m = window.granelli();
-        // Roccia nuda in tutte le colonne lì intorno, senza niente sopra (acqua, piante, terra) a meno di tre celle.
+        // Roccia nuda in tutte le colonne lì intorno, senza niente sopra (acqua, piante, terra) a meno di tre celle,
+        // e quasi piana: su un pendio la terra scivola giù (vicino al lago ci finisce dentro e diventa fango).
         const nuda = (x) => {
-          for (let k = -5; k <= 5; k++) if (m.leggi(x + k, m.suolo(x + k)) !== roccia || m.leggi(x + k, m.suolo(x + k) - 1) !== 0) return false;
+          for (let k = -5; k <= 5; k++) {
+            if (m.leggi(x + k, m.suolo(x + k)) !== roccia || m.leggi(x + k, m.suolo(x + k) - 1) !== 0) return false;
+            if (Math.abs(m.suolo(x + k) - m.suolo(x)) > 1) return false;
+          }
           return true;
         };
         const libera = (x) => m.cose.every((c) => x < c.x - 12 || x > c.x + 24) && m.omini.every((o) => Math.abs(o.x - x) > 10);
@@ -394,6 +398,82 @@ const PASSI = [
       const dopo = await apri();
       pretendi((await dopo.locator('.scheda.messaggio', { hasText: 'Mestolo' }).count()) === 0, 'il saluto al Mestolo è tornato una seconda volta');
       await dopo.close();
+    },
+  },
+  {
+    nome: 'le creature camminano, volano e nuotano; un tocco fa nascere una pecora e dà una fiaccola a un omino',
+    fai: async (s) => {
+      await chiudiFinestre(s.page);
+      // Sotto la vista un prato piano di roccia con una vasca d'acqua, e un omino in mezzo.
+      const q = await quadro(s.page);
+      const posto = await s.page.evaluate(([q, sc]) => {
+        const m = window.granelli();
+        const f = document.querySelector('.foglio');
+        const scala = f.getBoundingClientRect().width / m.w;
+        const t = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(f.style.transform);
+        const camX = -Number(t[1]) / scala;
+        const camY = -Number(t[2]) / scala;
+        const cx = Math.round(camX + q.w / scala / 2);
+        const piano = Math.round(camY + (q.h / scala) * 0.6);
+        for (let x = cx - 40; x < cx + 40; x++) {
+          for (let y = Math.max(0, piano - 40); y < Math.min(m.h, piano + 10); y++) {
+            if (y < piano) m.svuota(y * m.w + x);
+            else m.metti(y * m.w + x, 24);
+          }
+        }
+        for (let x = cx + 15; x < cx + 35; x++) for (let y = piano; y < piano + 6; y++) m.metti(y * m.w + x, 2);
+        m.omini = m.omini.filter((o) => Math.abs(o.x - cx) > 45);
+        m.cose = m.cose.filter((c) => c.x > cx + 45 || c.x + 20 < cx - 45);
+        m.creature = [];
+        for (const id of [sc.UCCELLO, sc.PESCE, sc.PECORA]) m.visti.add(id);
+        m.porta(sc.PECORA, cx - 30, piano - 3, 'gettone');
+        m.porta(sc.UCCELLO, cx - 10, piano - 25, 'gettone');
+        m.porta(sc.PESCE, cx + 25, piano + 3, 'gettone');
+        m.aggiungiOmino(cx, piano - 1);
+        m.omini.at(-1).casa = cx;
+        // La fiaccola arriva nel Libro (e nella tavolozza) come una scoperta qualsiasi.
+        m.scopri(sc.FIACCOLA, cx, piano - 5);
+        const cella = (x, y) => [q.x + (x - camX + 0.5) * scala, q.y + (y - camY + 0.5) * scala];
+        return { creature: m.creature.length, vuoto: cella(cx - 20, piano - 20) };
+      }, [q, SCHEDE]);
+      pretendi(posto.creature === 3, `nate ${posto.creature} creature invece di tre`);
+      const tappe = [];
+      for (let k = 0; k < 12; k++) {
+        tappe.push(await s.page.evaluate(() => window.granelli().creature.map((c) => `${c.x},${c.y}`)));
+        await s.page.waitForTimeout(300);
+      }
+      for (const [k, nome] of ['pecora', 'uccello', 'pesce'].entries()) {
+        const dove = new Set(tappe.map((t) => t[k]));
+        pretendi(dove.size > 2, `in quasi quattro secondi è rimasta ferma la creatura «${nome}»: ${[...dove].join(' ')}`);
+      }
+      // Un tocco con la fiaccola sull'omino: lui la tiene in mano.
+      await chiudiFinestre(s.page);
+      await scegli(s.page, 'Fiaccola');
+      const omino = await s.page.evaluate(([q]) => {
+        const m = window.granelli();
+        const f = document.querySelector('.foglio');
+        const scala = f.getBoundingClientRect().width / m.w;
+        const t = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(f.style.transform);
+        const o = m.omini.at(-1);
+        return [q.x + (o.x + Number(t[1]) / scala + 0.5) * scala, q.y + (o.y - 1 + Number(t[2]) / scala + 0.5) * scala];
+      }, [q]);
+      await gesto(s.cdp, [[omino]]);
+      await s.page.waitForTimeout(200);
+      const tiene = await s.page.evaluate(() => window.granelli().omini.at(-1).tiene);
+      pretendi(tiene === SCHEDE.FIACCOLA, `toccando l’omino con la fiaccola, lui tiene ${tiene}`);
+      // Un tocco con la pecora nel cielo vuoto: nasce lì, e cade sul prato.
+      await s.page.evaluate((id) => {
+        const m = window.granelli();
+        m.visti.delete(id);
+        m.scopri(id, 0, 0);
+      }, SCHEDE.PECORA);
+      await s.page.waitForTimeout(300);
+      await chiudiFinestre(s.page);
+      await scegli(s.page, 'Pecora');
+      await gesto(s.cdp, [[posto.vuoto]]);
+      await s.page.waitForTimeout(200);
+      const pecore = await s.page.evaluate((id) => window.granelli().creature.filter((c) => c.id === id).length, SCHEDE.PECORA);
+      pretendi(pecore === 2, `dopo il tocco con la pecora ce ne sono ${pecore}`);
     },
   },
   {

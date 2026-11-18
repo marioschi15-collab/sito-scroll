@@ -3,12 +3,17 @@ import { SOGLIA } from '../motore/miscele.js';
 import type { Mondo } from '../motore/mondo.js';
 import { Cielo, oraDelMondo } from './cielo.js';
 import { FIORI, TA, TB, TG, TR, tinteMiscela } from './colori.js';
-import { FIAMME, figura, figureOmino } from './figure.js';
-import { ere, ingombroDi } from '../contenuti/registro.js';
+import { FIAMME, figura, figureCreatura, figureOmino, miniatura, segno, segnoReazione } from './figure.js';
+import { ere, figuraDi, ingombroDi, muoveDi, tipoDi } from '../contenuti/registro.js';
 import { C, type Cosa } from '../motore/cose.js';
+import { GUARDA, SALTELLA, TREMA } from '../motore/cortesia.js';
+import type { Creatura } from '../motore/creature.js';
 import { NUOTA, type Omino, SCAPPA } from '../motore/omini.js';
 import { PENDENZA_MAX, regge, staAGalla } from '../motore/posa.js';
 import { LUCCIOLA, Particelle, SCINTILLA } from './particelle.js';
+
+/** Chi non sta reagendo resta fermo dov'è. */
+const FERMA: readonly [number, number, boolean] = [0, 0, false];
 
 /** Le tele sovrapposte su cui si disegna, da quella più in fondo a quella più in alto. */
 export interface Tele {
@@ -126,7 +131,9 @@ export class Pittore {
   /** Per ogni colonna, quanti granelli ci sono sopra quello che si sta disegnando. */
   private readonly sopra: Uint8Array;
   private readonly cielo: Cielo;
-  private readonly pose = new WeakMap<Omino, { x: number; y: number; passo: number }>();
+  private readonly pose = new WeakMap<Omino | Creatura, { x: number; y: number; passo: number }>();
+  /** Per ogni costruzione: se di notte le sue finestre si accendono (deciso una volta sola). */
+  private readonly accese = new Map<number, boolean>();
   private readonly copia = document.createElement('canvas');
   private readonly particelle = new Particelle();
   /** Quante celle di mondo entrano nella vista. */
@@ -502,6 +509,87 @@ export class Pittore {
     }
   }
 
+  /**
+   * Se di notte una costruzione accende le finestre. Le figure delle schede le accendono solo se hanno finestre
+   * disegnate (la lettera F); quelle di prima se hanno un tetto (alte più di cinque celle, e non sono campo, carro,
+   * mura, pozzo, né cose a galla). Gli oggetti appoggiati a terra mai.
+   */
+  private finestre(id: number, lh: number): boolean {
+    let si = this.accese.get(id);
+    if (si === undefined) {
+      const scheda = figuraDi(id);
+      if (tipoDi(id) !== 'costruzione') si = false;
+      else if (scheda) si = scheda.some((r) => r.includes('F'));
+      else si = lh > 5 && id !== C.CAMPO && id !== C.CARRO && !staAGalla(id) && id !== C.MURA && id !== C.POZZO;
+      this.accese.set(id, si);
+    }
+    return si;
+  }
+
+  /**
+   * Come si muove chi sta reagendo (vedi motore/cortesia.ts): chi guarda una cosa e scuote la testa si gira avanti e
+   * indietro, chi trema vibra, chi è contento saltella. [spostamento x, spostamento y, girato].
+   */
+  private mossa(reazione: number): readonly [number, number, boolean] {
+    const t = this.fotogrammi;
+    if (reazione === GUARDA) return [0, 0, ((t >> 3) & 1) === 1];
+    if (reazione === TREMA) return [(t & 2) === 0 ? -1 : 1, 0, false];
+    if (reazione === SALTELLA) return [0, -Math.abs(Math.round(Math.sin(t * 0.25) * 3)), false];
+    return FERMA;
+  }
+
+  /** Un fumetto bianco a quadretti, con la sua punta, sopra il punto (cx, cima): dentro c'è un'idea o una reazione. */
+  private fumetto(x: CanvasRenderingContext2D, cx: number, cima: number, dentro: HTMLCanvasElement | null): void {
+    if (!dentro) return;
+    const w = dentro.width + 2;
+    const h = dentro.height + 2;
+    const X = Math.round(cx - w / 2);
+    const Y = Math.round(cima - h - 3);
+    const punta = Math.round(cx);
+    x.fillStyle = '#1b1420';
+    x.fillRect(X - 1, Y, w + 2, h);
+    x.fillRect(X, Y - 1, w, h + 2);
+    x.fillRect(punta - 1, Y + h, 3, 2);
+    x.fillStyle = '#ffffff';
+    x.fillRect(X, Y, w, h);
+    x.fillRect(punta, Y + h, 1, 1);
+    x.drawImage(dentro, X + 1, Y + 1);
+  }
+
+  /** Una creatura, con le sue due pose: cammina, nuota, vola battendo le ali; e la sua reazione, se sta reagendo. */
+  private creatura(x: CanvasRenderingContext2D, c: Creatura, ox: number, oy: number, W: number, H: number): void {
+    const figure = figureCreatura(c.id);
+    if (!figure) return;
+    let posa = this.pose.get(c);
+    if (!posa) {
+      posa = { x: c.x, y: c.y, passo: 0 };
+      this.pose.set(c, posa);
+    }
+    const dx = c.x - posa.x;
+    const dy = c.y - posa.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 6) {
+      posa.x = c.x;
+      posa.y = c.y;
+    } else {
+      posa.x += dx * 0.25;
+      posa.y += dy * 0.25;
+    }
+    // Chi vola batte le ali sempre (tranne quando è posato), chi nuota muove la coda piano, chi cammina solo quando va.
+    const come = muoveDi(c.id);
+    if (come === 'vola' && !(c.fermo !== undefined && c.fermo > 0)) posa.passo += 0.3;
+    else if (come === 'nuota') posa.passo += 0.08;
+    else if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) posa.passo += 0.2;
+    const reazione = c.nuvoletta !== undefined && (c.nuvolettaFino ?? 0) > this.mondo.tic ? c.nuvoletta : 0;
+    const [mx, my, gira] = this.mossa(reazione);
+    // Le figure guardano a destra: chi va a sinistra prende la posa già specchiata.
+    const f = figure[(Math.floor(posa.passo) & 1) + ((gira ? -c.dir : c.dir) < 0 ? 2 : 0)];
+    const X = Math.round((posa.x + 0.5) * 2 - f.width / 2) - ox + mx;
+    const Y = Math.round((posa.y + 1) * 2) - f.height + 1 - oy + my;
+    if (X > W || X + f.width < 0 || Y > H || Y + f.height < 0) return;
+    x.drawImage(f, X, Y);
+    if (reazione < 0) this.fumetto(x, X + f.width / 2, Y, segnoReazione(reazione));
+  }
+
   /** Invenzioni, omini e particelle: figure disegnate sopra i granelli, con la luce dell'ora e i loro lumi. */
   private disegnaSopra(dt: number, camX: number, camY: number, luce: readonly number[], notte: boolean): void {
     const { cose, omini } = this.mondo;
@@ -529,12 +617,11 @@ export class Pittore {
         if (Math.random() < 0.1) this.particelle.aggiungi(SCINTILLA, c.x + lw / 2, c.y - lh + 1, (Math.random() - 0.5) * 3, -4 - Math.random() * 5, 0.6 + Math.random() * 0.8, 0.45);
       } else if (c.id === C.FARO) lumi.push([X + f.width / 2, Y + 3, notte ? 30 : 10, 'rgba(255,240,170,0.6)']);
       else if (c.id === C.FORNACE) lumi.push([X + f.width / 2, Y + f.height - 5, 12, 'rgba(255,140,50,0.45)']);
-      // Le finestre accese di notte: non per ciò che non ha un tetto, né per ciò che sta a galla (anche veliero e porto).
-      else if (notte && lh > 5 && c.id !== C.CAMPO && c.id !== C.CARRO && !staAGalla(c.id) && c.id !== C.MURA && c.id !== C.POZZO) {
-        lumi.push([X + f.width / 2, Y + f.height - 6, f.width * 0.5, 'rgba(255,205,90,0.35)']);
-      }
-      void lh;
+      // Le finestre accese di notte (vedi `finestre`).
+      else if (notte && this.finestre(c.id, lh)) lumi.push([X + f.width / 2, Y + f.height - 6, f.width * 0.5, 'rgba(255,205,90,0.35)']);
+      if (c.nuvoletta !== undefined && (c.nuvolettaFino ?? 0) > this.mondo.tic) this.fumetto(x, X + f.width / 2, Y, miniatura(c.nuvoletta));
     }
+    for (const c of this.mondo.creature) this.creatura(x, c, ox, oy, W, H);
     for (const o of omini) {
       if (o.dentro) continue;
       let posa = this.pose.get(o);
@@ -563,13 +650,30 @@ export class Pittore {
       const Y = Math.round((posa.y + 1) * 2) - fh + 1 - oy + affonda;
       if (X > W || X + fw < 0 || Y > H || Y + fh < 0) continue;
       const visibile = o.stato === NUOTA ? Math.max(1, f.height - Math.round(affonda / grande) - 1) : f.height;
+      const reazione = o.nuvoletta !== undefined && (o.nuvolettaFino ?? 0) > this.mondo.tic ? o.nuvoletta : 0;
+      const [mx, my, gira] = this.mossa(reazione);
+      const dir = gira ? -o.dir : o.dir;
       x.save();
-      if (o.dir < 0) {
-        x.translate(X + fw, Y);
+      if (dir < 0) {
+        x.translate(X + mx + fw, Y + my);
         x.scale(-1, 1);
-      } else x.translate(X, Y);
+      } else x.translate(X + mx, Y + my);
       x.drawImage(f, 0, 0, f.width, visibile, 0, 0, fw, Math.round(visibile * grande));
       x.restore();
+      // Quello che tiene in mano, davanti a sé all'altezza della mano; il segno del mestiere sopra la testa.
+      const mano = o.tiene !== undefined ? miniatura(o.tiene) : null;
+      if (mano) x.drawImage(mano, dir > 0 ? X + mx + fw - 2 : X + mx - mano.width + 2, Y + my + Math.round(fh * 0.55) - (mano.height >> 1));
+      let cima = Y + my;
+      const s = o.mestiere !== undefined ? segno(o.mestiere) : null;
+      if (s) {
+        cima -= s.height;
+        x.drawImage(s, Math.round(X + mx + fw / 2 - s.width / 2), cima);
+      }
+      if (reazione) this.fumetto(x, X + mx + fw / 2, cima, reazione > 0 ? miniatura(reazione) : segnoReazione(reazione));
+    }
+    // Un evento di luce fa brillare il posto dove è stato portato.
+    for (const e of this.mondo.eventi) {
+      if (e.effetto === 'luce') lumi.push([(e.x + 0.5) * 2 - ox, (e.y + 0.5) * 2 - oy, 36, 'rgba(255,240,170,0.5)']);
     }
     // La luce dell'ora cade sulle figure (non sul vuoto intorno), poi si accendono i lumi.
     if (luce[0] < 0.98 || luce[1] < 0.98 || luce[2] < 0.98) {

@@ -37,6 +37,10 @@ const SBAGLIATE: Scheda[] = [
   base('casetta', 'Casetta', { tipo: 'costruzione', icona: undefined, unioni: [['casa', 'aria']], finale: true }),
   base('melma', 'Melma', { tipo: 'materia', unioni: [['fango', 'vaso']], finale: true }),
   base('gergo', 'Gergo', { descrizione: 'Un bug nel mondo.', unioni: [['carro', 'aria']], finale: true }),
+  // Una creatura senza figura, una con l'altra posa storta, un mestiere con un segno troppo grande.
+  base('fantasma', 'Fantasma', { tipo: 'creatura', muove: 'vola', unioni: [['ruota', 'fumo']], finale: true }),
+  base('zoppo', 'Zoppo', { tipo: 'creatura', muove: 'cammina', figura: ['yy', 'yy'], altraPosa: ['yyy'], unioni: [['carro', 'fumo']], finale: true }),
+  base('gigante', 'Gigante', { tipo: 'mestiere', segno: ['yyyyyyyy'], unioni: [['omino', 'fumo']], finale: true }),
   // Scritta bene: le «api» sono quelle del miele, e la brace (che non è una voce del Libro) si può guardare.
   base('sciame', 'Sciame', {
     tipo: 'fenomeno',
@@ -48,9 +52,9 @@ const SBAGLIATE: Scheda[] = [
 
 vi.mock('../src/contenuti/numeri.js', async (originale) => {
   const vero = await originale<typeof import('../src/contenuti/numeri.js')>();
-  const chiavi = ['cieco', 'doppione', 'irraggiungibile', 'evento-muto', 'fango-finto', 'casetta', 'melma', 'gergo', 'mai-scritto'];
-  // L'ultima riga torna indietro: i numeri nuovi devono crescere sempre.
-  return { ...vero, NUMERI: [...vero.NUMERI, ...chiavi.map((k, i) => [k, 500 + i] as const), ['indietro', 505] as const, ['sciame', 520] as const] };
+  const chiavi = ['cieco', 'doppione', 'irraggiungibile', 'evento-muto', 'fango-finto', 'casetta', 'melma', 'gergo', 'mai-scritto', 'fantasma', 'zoppo', 'gigante'];
+  // Numeri da 900, dopo quelli veri. L'ultima riga torna indietro: i numeri nuovi devono crescere sempre.
+  return { ...vero, NUMERI: [...vero.NUMERI, ...chiavi.map((k, i) => [k, 900 + i] as const), ['indietro', 905] as const, ['sciame', 930] as const] };
 });
 vi.mock('../src/contenuti/indice.js', async (originale) => {
   const vero = await originale<typeof import('../src/contenuti/indice.js')>();
@@ -75,8 +79,8 @@ describe('il controllo trova le schede scritte male', () => {
     trova(/«Irraggiungibile» non si raggiunge/);
     trova(/«senza-numero».*non ha un numero in numeri\.ts/);
     trova(/terra \+ acqua .* è già una reazione del mondo/);
-    trova(/il numero 505 \(«indietro»\) non è in coda/);
-    trova(/In numeri\.ts il numero 505 è dato a due chiavi/);
+    trova(/il numero 905 \(«indietro»\) non è in coda/);
+    trova(/In numeri\.ts il numero 905 è dato a due chiavi/);
   });
 
   it('schede incomplete: evento senza effetto, articolo sbagliato, icona storta, costruzione senza figura, materia, gergo', () => {
@@ -86,6 +90,9 @@ describe('il controllo trova le schede scritte male', () => {
     trova(/«Casetta».*una costruzione ha bisogno della sua figura/);
     trova(/«Melma».*una scheda non può essere materia/);
     trova(/«Gergo».*c'è una parola da tecnici/);
+    trova(/«Fantasma».*una creatura ha bisogno della sua figura/);
+    trova(/«Zoppo».*«altraPosa» deve essere grande come la figura/);
+    trova(/«Gigante».*il segno è al più di 7 righe da 6 quadretti/);
     expect(r.errori.filter((e) => e.includes('Sciame'))).toEqual([]);
   });
 

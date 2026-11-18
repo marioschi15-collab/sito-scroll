@@ -86,7 +86,7 @@ const PROVA: Scheda[] = [
 
 vi.mock('../src/contenuti/numeri.js', async (originale) => {
   const vero = await originale<typeof import('../src/contenuti/numeri.js')>();
-  return { ...vero, NUMERI: [...vero.NUMERI, ['aquilone', 500], ['torretta', 501], ['eta-del-vento', 502], ['tramontana', 503], ['turbine', 504]] };
+  return { ...vero, NUMERI: [...vero.NUMERI, ['aquilone', 900], ['torretta', 901], ['eta-del-vento', 902], ['tramontana', 903], ['turbine', 904]] };
 });
 vi.mock('../src/contenuti/indice.js', async (originale) => {
   const vero = await originale<typeof import('../src/contenuti/indice.js')>();
@@ -103,66 +103,66 @@ const { rispostaDiUnisci } = await import('../src/risposta.js');
 const { gira, mondo, riempi } = await import('./aiuti.js');
 
 describe('una scheda nuova funziona dappertutto, senza toccare altro codice', () => {
-  it('il controllo la accetta, e ha il suo numero da 500 in su', () => {
+  it('il controllo la accetta, e ha il suo numero in coda (qui da 900, dopo quelli veri)', () => {
     expect(controlla().errori).toEqual([]);
     expect(controlla({ file: 'prova' }).errori).toEqual([]);
-    expect(R.idDi('aquilone')).toBe(500);
-    expect(R.voce(500)).toMatchObject({ nome: 'Aquilone', tipo: 'oggetto', file: 'prova' });
-    expect(R.voci().length).toBe(130);
+    expect(R.idDi('aquilone')).toBe(900);
+    expect(R.voce(900)).toMatchObject({ nome: 'Aquilone', tipo: 'oggetto', file: 'prova' });
+    expect(R.voci().length).toBe(150);
   });
 
   it('compare nel Libro, nel suo capitolo, e nello scaffale di Unisci', () => {
     expect(R.vociDelCapitolo('cose').map((v) => v.nome)).toContain('Aquilone');
     expect(R.vociDelCapitolo('ere').at(-1)?.nome).toBe('Età del vento');
     expect(R.vociDelCapitolo('cielo').map((v) => v.nome)).toContain('Tramontana');
-    expect(siUnisce(500)).toBe(true);
-    expect(siUnisce(501)).toBe(true);
-    expect(R.voce(500)?.nasce).toEqual([{ con: [C.LANCIA, M.ARIA] }]);
-    // Il disegno di riserva segue il tipo, non il numero: un oggetto da 500 in su non diventa uno stendardo d'era.
-    expect(R.haStendardo(500)).toBe(false);
-    expect(R.haStendardo(502)).toBe(true);
+    expect(siUnisce(900)).toBe(true);
+    expect(siUnisce(901)).toBe(true);
+    expect(R.voce(900)?.nasce).toEqual([{ con: [C.LANCIA, M.ARIA] }]);
+    // Il disegno di riserva segue il tipo, non il numero: un oggetto da 900 in su non diventa uno stendardo d'era.
+    expect(R.haStendardo(900)).toBe(false);
+    expect(R.haStendardo(902)).toBe(true);
     expect(R.haStendardo(E.MEDIOEVO)).toBe(true);
     expect(R.haStendardo(C.CAPANNA)).toBe(false);
   });
 
   it('si unisce in Unisci e portandola nel mondo; la costruzione nasce posata, e l’era arriva al suo turno', () => {
-    expect(esitoDi(C.LANCIA, M.ARIA, 0)).toEqual({ genere: 'unione', id: 500 });
+    expect(esitoDi(C.LANCIA, M.ARIA, 0)).toEqual({ genere: 'unione', id: 900 });
     const m = mondo(120, 70);
     riempi(m, 0, 50, 119, 69, M.ROCCIA);
     m.visti.add(C.LANCIA).add(C.MURA).add(C.TORRE);
     const r = rispostaDiUnisci(m, C.LANCIA, M.ARIA, 60, (id) => R.voce(id)?.nome ?? '?');
-    expect(r).toMatchObject({ titolo: 'Nuova scoperta!', id: 500, nuova: true });
+    expect(r).toMatchObject({ titolo: 'Nuova scoperta!', id: 900, nuova: true });
     // Una torre posata nel mondo, e l'aquilone portato sopra: nasce la torretta, posata lì accanto.
     m.visti.add(C.TORRE);
     expect(m.posa(C.TORRE, 40, 40)).toBe(true);
     const torre = m.cose[0];
-    const esito = m.porta(500, torre.x + 3, torre.y - 6, 'gettone');
-    expect(esito).toMatchObject({ genere: 'unione', nato: 501, nuova: true, posata: true });
-    expect(m.cose.map((c) => c.id)).toContain(501);
-    expect(R.ingombroDi(501)).toEqual([3, 3]);
+    const esito = m.porta(900, torre.x + 3, torre.y - 6, 'gettone');
+    expect(esito).toMatchObject({ genere: 'unione', nato: 901, nuova: true, posata: true });
+    expect(m.cose.map((c) => c.id)).toContain(901);
+    expect(R.ingombroDi(901)).toEqual([3, 3]);
     // L'era viene dopo il Medioevo: la torretta da sola non basta.
-    expect(R.ere().at(-1)).toBe(502);
-    expect(m.visti.has(502)).toBe(false);
+    expect(R.ere().at(-1)).toBe(902);
+    expect(m.visti.has(902)).toBe(false);
     for (const id of [E.PIETRA, E.BRONZO, E.FERRO, E.ANTICA]) m.visti.add(id);
     m.visti.add(C.TORRE).add(C.CASTELLO);
     m.scopri(E.MEDIOEVO, 0, 0);
-    expect(m.visti.has(502)).toBe(true);
+    expect(m.visti.has(902)).toBe(true);
     // Nel salvataggio è un numero come gli altri: si riapre con la sua voce e la sua costruzione.
     const copia = ripristina(JSON.parse(JSON.stringify(fotografa(m))))!;
-    expect(copia.visti.has(500) && copia.visti.has(501) && copia.visti.has(502)).toBe(true);
-    expect(copia.cose.map((c) => c.id)).toContain(501);
+    expect(copia.visti.has(900) && copia.visti.has(901) && copia.visti.has(902)).toBe(true);
+    expect(copia.cose.map((c) => c.id)).toContain(901);
   });
 
   it('un fenomeno con le sue unioni non si regala in Unisci, ma si scopre portandone la coppia nel mondo', () => {
-    expect(esitoDi(C.RUOTA, M.SABBIA, 0)).toEqual({ genere: 'fenomeno', id: 504 });
+    expect(esitoDi(C.RUOTA, M.SABBIA, 0)).toEqual({ genere: 'fenomeno', id: 904 });
     const m = mondo(60, 60);
     riempi(m, 0, 50, 59, 59, M.ROCCIA);
     riempi(m, 20, 44, 39, 49, M.SABBIA);
     m.visti.add(C.RUOTA).add(M.SABBIA);
     expect(rispostaDiUnisci(m, C.RUOTA, M.SABBIA, 30, (id) => R.voce(id)?.nome ?? '?')).toMatchObject({ id: null, nuova: false });
-    expect(m.visti.has(504)).toBe(false);
-    expect(m.porta(C.RUOTA, 30, 46, 'gettone')).toMatchObject({ genere: 'nelMondo', fenomeno: 504 });
-    expect(m.visti.has(504)).toBe(true);
+    expect(m.visti.has(904)).toBe(false);
+    expect(m.porta(C.RUOTA, 30, 46, 'gettone')).toMatchObject({ genere: 'nelMondo', fenomeno: 904 });
+    expect(m.visti.has(904)).toBe(true);
   });
 
   it('un fenomeno con «siVede» si scopre guardando il mondo', () => {
@@ -170,6 +170,6 @@ describe('una scheda nuova funziona dappertutto, senza toccare altro codice', ()
     riempi(m, 0, 55, 59, 59, M.ROCCIA);
     riempi(m, 5, 45, 54, 54, M.NEVE);
     gira(m, 200);
-    expect(m.visti.has(503)).toBe(true);
+    expect(m.visti.has(903)).toBe(true);
   });
 });

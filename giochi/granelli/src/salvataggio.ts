@@ -1,5 +1,6 @@
-import { ingombroDi } from './contenuti/registro.js';
+import { ingombroDi, misuraDi, tipoDi } from './contenuti/registro.js';
 import { type Cosa, OSPITA } from './motore/cose.js';
+import { CREATURE_MAX, type Creatura } from './motore/creature.js';
 import { M, N_BASE, N_TIPI, PRIMA_MISCELA, TRONCO } from './motore/materiali.js';
 import { Mondo } from './motore/mondo.js';
 import type { Omino } from './motore/omini.js';
@@ -21,8 +22,13 @@ export interface Salvato {
   ricette?: [number, number, number, string][];
   /** Quale miscela occupa quale posto nelle celle di questo mondo. */
   posti?: [number, number][];
-  /** Le invenzioni posate nel mondo (il numero d'ordine `n` manca nelle partite salvate prima che esistesse). */
-  cose?: { id: number; x: number; y: number; n?: number }[];
+  /**
+   * Le cose posate nel mondo (il numero d'ordine `n` manca nelle partite salvate prima che esistesse), con le idee
+   * scritte sopra una costruzione (`sa`, solo nelle partite di adesso).
+   */
+  cose?: { id: number; x: number; y: number; n?: number; sa?: number[] }[];
+  /** Le creature che vivono nel mondo: le partite di prima non ne hanno. */
+  creature?: { id: number; x: number; y: number; dir: number }[];
   /** 1 se i tronchi degli alberi sono già segnati nel `dato` del legno (vedi TRONCO): nelle partite più vecchie no. */
   tronchi?: 1;
   /** Il tempo che fa: da che parte tira il vento, quanto ha piovuto di recente, quanto si vede l'arcobaleno. */
@@ -70,7 +76,8 @@ export function fotografa(m: Mondo, extra?: unknown): Salvato {
     tic: m.tic,
     ricette: [...m.ricettario].map(([id, r]) => [id, r.a, r.b, r.nome]),
     posti,
-    cose: m.cose.map((c) => ({ ...c })),
+    cose: m.cose.map((c) => (c.sa ? { id: c.id, x: c.x, y: c.y, n: c.n, sa: [...c.sa] } : { id: c.id, x: c.x, y: c.y, n: c.n })),
+    creature: m.creature.map((c) => ({ id: c.id, x: c.x, y: c.y, dir: c.dir })),
     tronchi: 1,
     vento: m.vento,
     pioggia: m.pioggia,
@@ -105,7 +112,36 @@ function cosePosate(d: Salvato, m: Mondo): { cose: Cosa[]; rinumerate: boolean }
   const buone = (d.cose ?? []).filter((c) => ingombroDi(c.id) !== undefined && m.dentro(c.x, c.y));
   const numeri = new Set(buone.map((c) => c.n));
   const rinumerate = numeri.size !== buone.length || buone.some((c) => !Number.isInteger(c.n) || (c.n as number) < 1);
-  return { cose: buone.map((c, k) => ({ id: c.id, x: c.x, y: c.y, n: rinumerate ? k + 1 : (c.n as number) })), rinumerate };
+  return {
+    cose: buone.map((c, k) => {
+      const cosa: Cosa = { id: c.id, x: c.x, y: c.y, n: rinumerate ? k + 1 : (c.n as number) };
+      const sa = ideeBuone(c.sa);
+      if (sa) cosa.sa = sa;
+      return cosa;
+    }),
+    rinumerate,
+  };
+}
+
+/** Le idee che qualcuno sa, se sono davvero idee del Libro; undefined se non ce n'è nessuna buona. */
+function ideeBuone(v: unknown): number[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const sa = v.filter((id): id is number => numeroBuono(id) && tipoDi(id) === 'idea');
+  return sa.length > 0 ? sa : undefined;
+}
+
+/** Le creature di una fotografia che sono ancora creature del Libro e stanno nel mondo; al più quaranta. */
+function creatureBuone(d: Salvato, m: Mondo): Creatura[] {
+  if (!Array.isArray(d.creature)) return [];
+  const buone: Creatura[] = [];
+  for (const c of d.creature as unknown[]) {
+    if (buone.length >= CREATURE_MAX || !c || typeof c !== 'object') continue;
+    const { id, x, y, dir } = c as Record<string, unknown>;
+    if (!numeroBuono(id) || !numeroBuono(x) || !numeroBuono(y) || misuraDi(id) === undefined) continue;
+    if (!m.dentro(Math.floor(x), Math.floor(y))) continue;
+    buone.push({ id, x: Math.floor(x), y: Math.floor(y), dir: dir === -1 ? -1 : 1 });
+  }
+  return buone;
 }
 
 /** Un omino di una fotografia, senza i ricordi che non hanno senso in questo mondo (colonne che non esistono). */
@@ -117,6 +153,18 @@ function ominoPulito(o: Omino, m: Mondo): Omino {
     else delete copia[campo];
   }
   if (typeof copia.chiusa !== 'number' || !Number.isFinite(copia.chiusa)) delete copia.chiusa;
+  // Quello che tiene in mano, che sa e che fa: solo se è davvero un oggetto, un'idea, un mestiere del Libro.
+  if (!numeroBuono(copia.tiene) || tipoDi(copia.tiene) !== 'oggetto' || !numeroBuono(copia.tieneFino)) {
+    delete copia.tiene;
+    delete copia.tieneFino;
+  }
+  const sa = ideeBuone(copia.sa);
+  if (sa) copia.sa = sa;
+  else delete copia.sa;
+  if (!numeroBuono(copia.mestiere) || tipoDi(copia.mestiere) !== 'mestiere') delete copia.mestiere;
+  // La nuvoletta dura due secondi: alla ripresa non c'è più.
+  delete copia.nuvoletta;
+  delete copia.nuvolettaFino;
   return copia;
 }
 
@@ -147,6 +195,7 @@ export function ripristina(dati: unknown): Mondo | null {
         }
       }
     }
+    m.creature = creatureBuone(d, m);
     m.tic = d.tic | 0;
     // Il tempo che fa e l'attesa degli omini: i salvataggi di prima non li hanno, e allora valgono quelli di un mondo nuovo.
     if (d.vento === 1 || d.vento === -1) m.vento = d.vento;
