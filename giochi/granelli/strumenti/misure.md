@@ -18,6 +18,7 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
 | dopo P5a | 0,46 / 2,13 / 3,22 (60) | 0,66 / 3,00 / 3,99 (60) | 0,92 / 3,65 / 4,91 (59) | 2,20 / 8,73 / 12,58 (58) | 0,67 / 2,68 / 4,13 (60) | 0,79 / 3,15 / 4,08 (60) | 1,12 / 4,72 / 5,94 (59) | 0,98 / 4,10 / 5,64 (60) | 1,28 / 4,42 / 7,11 (58) | – |
 | dopo P5b | 0,48 / 1,78 / 2,45 (60) | 0,57 / 2,34 / 3,24 (60) | 0,80 / 3,01 / 4,74 (59) | 1,86 / 7,36 / 10,81 (60) | 0,60 / 2,11 / 3,28 (60) | 0,62 / 2,50 / 3,94 (60) | 0,86 / 4,01 / 5,59 (59) | 0,91 / 3,51 / 5,14 (60) | 1,04 / 4,06 / 6,53 (59) | 0,67 / 2,58 / 3,81 (60) |
 | dopo P7 | 0,61 / 2,95 / 3,50 (60) | 0,88 / 3,57 / 5,83 (60) | 1,17 / 4,63 / 7,12 (59) | 2,60 / 10,92 / 15,63 (50) | 0,88 / 3,85 / 5,41 (60) | 1,16 / 4,26 / 5,52 (59) | 1,21 / 5,70 / 7,51 (60) | 1,14 / 5,22 / 7,32 (60) | 1,33 / 5,57 / 8,82 (56) | 1,05 / 4,46 / 5,99 (59) |
+| dopo P9 | 0,67 / 2,95 / 4,03 (60) | 0,82 / 3,53 / 4,83 (60) | 1,11 / 4,45 / 6,47 (59) | 2,39 / 10,15 / 15,62 (51) | 1,12 / 3,13 / 4,24 (60) | 1,01 / 3,66 / 5,46 (59) | 1,45 / 4,95 / 7,10 (60) | 1,39 / 4,72 / 7,21 (60) | 1,46 / 5,53 / 8,03 (59) | 0,91 / 4,04 / 5,85 (60) |
 
 ## Note
 
@@ -82,3 +83,12 @@ misurate sulla stessa macchina, e differenze sotto il 10-15% sono rumore.
   paese con 30 creature 5,10-5,62 / 5,47-5,97; incendio 14,29-16,42 / 14,97-15,92; temporale 6,46-6,92 / 6,67-7,06.
   Oggi la macchina è più lenta per tutte e due le copie (l'incendio a 15 contro l'11 della riga «dopo P5b»): conta il
   confronto nello stesso giro, e fuori dal mondo maturo è tutto nel rumore.
+- **dopo P9** (mai un «niente» muto, indizi, puntini sui gettoni): a ogni fotogramma non si aggiunge niente. Il quadro
+  dei suggerimenti si calcola solo quando cambiano le scoperte (ridisegno della tavolozza, apertura di Unisci, tasto
+  Indizio), in una passata sulle circa 190 coppie scritte, e resta in memoria finché le scoperte non crescono: con 500
+  voci finte e 2.000 coppie costa meno di un millesimo (prova in test/suggerimenti.test.ts). Confronto alternato con
+  la copia di prima, a x6, due giri per parte (prima / dopo): mondo vuoto 4,09-4,12 / 4,04-4,30; paese di giorno
+  5,50-5,54 / 5,41-6,14; mondo maturo 8,28-8,35 / 7,74-8,92; paese con 30 creature 5,89-6,04 / 5,81-6,78: nel rumore.
+- **dopo P9, controllo indipendente** (copia di prima rifatta dall'ultimo commit, a x6, due giri alternati per
+  parte, prima / dopo): mondo vuoto 3,42-3,80 / 3,63-3,66; paese di giorno 4,49-4,98 / 4,40-5,04; mondo maturo
+  7,22-7,59 / 6,74-6,95; paese con 30 creature 5,23-5,24 / 5,49-5,65. Nessuna scena oltre il rumore.

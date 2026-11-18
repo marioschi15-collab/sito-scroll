@@ -3,6 +3,7 @@ import { INIZIALI, idDi, voce } from '../src/contenuti/registro.js';
 import { C } from '../src/motore/cose.js';
 import { M, OMINO } from '../src/motore/materiali.js';
 import type { Mondo } from '../src/motore/mondo.js';
+import { NIENTE } from '../src/indizi.js';
 import { ADDIO_MESTOLO, UNISCI } from '../src/righe.js';
 import { leggiRicordi } from '../src/ricordi.js';
 import { rispostaDiUnisci } from '../src/risposta.js';
@@ -11,16 +12,25 @@ import { libroDa12, mondo, riempi } from './aiuti.js';
 /** Il nome di una scoperta, come lo scrive il pannello (le miscele qui non servono). */
 const nome = (id: number): string => voce(id)?.nome ?? '???';
 /** Unisce due cose come il pannello Unisci, guardando il mezzo del mondo. */
-const unisci = (m: Mondo, a: number, b: number) => rispostaDiUnisci(m, a, b, m.w >> 1, nome);
+const unisci = (m: Mondo, a: number, b: number, nienti = 0) => rispostaDiUnisci(m, a, b, m.w >> 1, nome, nienti);
 
 describe('il pannello Unisci dice com’è andata', () => {
+  it('mai un «niente» muto: una riga gentile che cambia a ogni «niente», e solo i «niente» contano per l’indizio', () => {
+    const m = mondo();
+    m.visti.add(C.UTENSILE).add(C.POZZO).add(C.VASO);
+    const righe = [0, 1, 2].map((n) => unisci(m, C.UTENSILE, C.POZZO, n).sotto);
+    expect(new Set(righe).size).toBe(3);
+    for (const r of righe) expect(r.startsWith('Utensile + Pozzo: ')).toBe(true);
+    expect(unisci(m, M.TERRA, M.ACQUA).niente).toBeUndefined();
+  });
+
   it('una coppia già provata lo dice: «Già fatta: Fango», «Già provata: niente»', () => {
     const m = mondo();
     expect(unisci(m, M.TERRA, M.ACQUA)).toEqual({ titolo: 'Nuova scoperta!', id: M.FANGO, sotto: 'Terra + Acqua', nuova: true });
     expect(unisci(m, M.ACQUA, M.TERRA)).toEqual({ titolo: 'Già fatta:', id: M.FANGO, sotto: 'Acqua + Terra', nuova: false });
     m.visti.add(C.UTENSILE).add(C.POZZO);
-    expect(unisci(m, C.UTENSILE, C.POZZO)).toEqual({ titolo: 'Niente da fare', id: null, sotto: 'Utensile + Pozzo: queste due non si uniscono.', nuova: false });
-    expect(unisci(m, C.POZZO, C.UTENSILE)).toEqual({ titolo: 'Già provata: niente', id: null, sotto: 'Pozzo + Utensile: queste due non si uniscono.', nuova: false });
+    expect(unisci(m, C.UTENSILE, C.POZZO)).toEqual({ titolo: 'Niente, stavolta', id: null, sotto: `Utensile + Pozzo: ${NIENTE[0]}`, nuova: false, niente: true });
+    expect(unisci(m, C.POZZO, C.UTENSILE, 1)).toEqual({ titolo: 'Già provata: niente', id: null, sotto: `Pozzo + Utensile: ${NIENTE[1]}`, nuova: false, niente: true });
     // Una cosa già nota, arrivata da un'altra coppia mai provata prima: la conosci già.
     m.visti.add(M.LAVA);
     expect(unisci(m, M.LAVA, M.ACQUA)).toMatchObject({ titolo: 'Nuova scoperta!', id: M.PIETRA });
@@ -30,7 +40,7 @@ describe('il pannello Unisci dice com’è andata', () => {
   it('due sostanze senza ricetta, prima della dodicesima voce: «per ora» non si uniscono, e la coppia non si ricorda', () => {
     const m = mondo();
     m.visti.add(M.SABBIA).add(M.LEGNO);
-    expect(unisci(m, M.SABBIA, M.LEGNO)).toEqual({ titolo: 'Sabbia + Legno', id: null, sotto: UNISCI.perOra, nuova: false });
+    expect(unisci(m, M.SABBIA, M.LEGNO)).toEqual({ titolo: 'Sabbia + Legno', id: null, sotto: UNISCI.perOra, nuova: false, niente: true });
     expect(UNISCI.perOra).toBe('Queste due, per ora, non si uniscono.');
     // Una seconda volta dice lo stesso: non è «già provata», perché per ora non conta.
     expect(unisci(m, M.SABBIA, M.LEGNO).sotto).toBe(UNISCI.perOra);

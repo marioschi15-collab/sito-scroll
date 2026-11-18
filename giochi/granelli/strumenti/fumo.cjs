@@ -628,6 +628,74 @@ const PASSI = [
     },
   },
   {
+    nome: 'mai un «niente» muto: una riga gentile, l’indizio dopo tre «niente» (nel mondo e in Unisci), il tasto Indizio e i puntini',
+    fai: async (s) => {
+      await chiudiFinestre(s.page);
+      // Il mondo fermo, così la pecora resta dove la si tocca.
+      await s.page.locator('.barra .tasto', { hasText: 'Pausa' }).tap();
+      pretendi((await s.page.locator('.granello .puntino').count()) > 0, 'nella tavolozza nessun gettone ha il puntino «da provare»');
+      await scegli(s.page, 'Fiaccola');
+      const q = await quadro(s.page);
+      const pecora = await s.page.evaluate(([q, id]) => {
+        const m = window.granelli();
+        const f = document.querySelector('.foglio');
+        const scala = f.getBoundingClientRect().width / m.w;
+        const t = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(f.style.transform);
+        // Una pecora sola, ferma in mezzo alla vista: sul prato del passo delle creature.
+        const camX = -Number(t[1]) / scala;
+        const camY = -Number(t[2]) / scala;
+        const cx = Math.round(camX + q.w / scala / 2);
+        m.creature = m.creature.filter((c) => c.id !== id);
+        // Il mondo vivo cambia un poco da un giro all'altro: si cerca, vicino al centro, un punto dove la pecora nasce.
+        for (let dx = 0; dx < 30 && !m.creature.some((c) => c.id === id); dx++) {
+          for (const x of [cx + dx, cx - dx]) {
+            if (m.creature.some((c) => c.id === id)) break;
+            m.porta(id, x, m.suolo(x, Math.max(0, Math.round(camY))) - 2, 'gettone');
+          }
+        }
+        const c = m.creature.find((c) => c.id === id);
+        return c ? [q.x + (c.x - camX + 0.5) * scala, q.y + (c.y - 1 - camY + 0.5) * scala] : null;
+      }, [q, SCHEDE.PECORA]);
+      pretendi(pecora !== null, 'non c’è più una pecora da toccare');
+      const righe = [];
+      for (let k = 0; k < 3; k++) {
+        await gesto(s.cdp, [[pecora]]);
+        await s.page.waitForTimeout(150);
+        righe.push((await s.page.locator('.riga').textContent()) ?? '');
+      }
+      pretendi(righe.every((r) => r.startsWith('Fiaccola e Pecora: ')), `una fiaccola portata sulla pecora non lo dice con garbo: ${righe.join(' / ')}`);
+      pretendi(new Set(righe).size === 3, `tre «niente» di fila con la stessa riga: ${righe.join(' / ')}`);
+      await s.page.locator('.riga.indizio.su').waitFor({ timeout: 4000 });
+      const indizio = (await s.page.locator('.riga').textContent()) ?? '';
+      pretendi(/^Indizio: /.test(indizio), `dopo tre «niente» la riga dice «${indizio}» invece di un indizio`);
+      // Il tasto Indizio sul mondo: dà un indizio, e se lo si ritocca subito ripete quello e dice quando arriva il prossimo.
+      await s.page.locator('.indizio-mondo').tap();
+      await s.page.waitForTimeout(150);
+      const ripetuto = (await s.page.locator('.riga').textContent()) ?? '';
+      pretendi(/^Indizio: .*Un altro indizio tra \d+ second/.test(ripetuto), `ritoccando Indizio subito la riga dice «${ripetuto}»`);
+      // In Unisci: tre coppie che non danno niente, e al terzo arriva l'indizio sotto l'esito.
+      await s.page.evaluate(() => {
+        for (const id of [200, 208, 205, 203, 204, 207]) window.granelli().visti.add(id);
+      });
+      await s.page.locator('.tasto-unisci').tap();
+      await s.page.locator('.scheda.unisci').waitFor();
+      pretendi((await s.page.locator('.scaffale .gettone .puntino').count()) > 0, 'in Unisci nessun gettone ha il puntino');
+      const tocca = async (nome) => s.page.locator('.scaffale .gettone', { hasText: new RegExp(`^${nome}$`) }).tap();
+      for (const [n, [a, b]] of [['Utensile', 'Pozzo'], ['Vaso', 'Lancia'], ['Ruota', 'Pane']].entries()) {
+        await tocca(a);
+        await tocca(b);
+        const titolo = (await s.page.locator('.esito .avviso-sopra').textContent()) ?? '';
+        pretendi(/niente/i.test(titolo), `${a} + ${b} in Unisci dice «${titolo}»`);
+        const visibile = await s.page.locator('.consiglio').isVisible();
+        pretendi(visibile === (n === 2), `dopo ${n + 1} «niente» in Unisci l’indizio ${visibile ? 'c’è già' : 'non c’è'}`);
+      }
+      const consiglio = (await s.page.locator('.consiglio').innerText()) ?? '';
+      pretendi(/indizio/i.test(consiglio) && consiglio.length > 30, `l’indizio in Unisci dice «${consiglio}»`);
+      await s.page.locator('.scheda.unisci .scheda-testa .tasto', { hasText: 'Chiudi' }).tap();
+      await s.page.locator('.barra .tasto', { hasText: 'Riprendi' }).tap();
+    },
+  },
+  {
     nome: 'la pagina non ha scritto errori',
     fai: async (s) => {
       pretendi(s.errori.length === 0, s.errori.join('\n'));

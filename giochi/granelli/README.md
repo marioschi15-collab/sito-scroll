@@ -17,6 +17,16 @@ Una capanna e un frutto chiamano i **primi omini**: ne arrivano due, vicino all'
 guardando (se l'acqua non c'è, «arriveranno vicino all'acqua»). Lo strumento dei primi giorni che rimestava le cose non
 c'è più: chi lo aveva in una partita salvata ritrova la Mano e un saluto, una volta sola.
 
+**Mai un «niente» muto.** Quando due cose non danno niente il gioco lo dice con una riga gentile, ogni volta
+diversa («Fiaccola e Pecora: nessuna scintilla tra queste due.»), in Unisci come nel mondo; dopo tre «niente» di fila
+arriva da solo un **indizio** su una delle cose appena provate. Il tasto **Indizio** (sul mondo, in alto a destra, e
+in Unisci) aiuta senza regalare: prima nomina una sola delle due cose e fa intuire l'altra («Il pozzo ha ancora
+qualcosa da dare: prova a unirlo con un oggetto»), la volta dopo dice con che lettera comincia l'altra, poi passa a
+un'altra coppia; ne dà uno nuovo al più ogni minuto (prima ripete quello di prima). Quando con le cose che si hanno
+non c'è più niente di scritto da provare, suggerisce cosa far nascere nel mondo. Sui gettoni (tavolozza e Unisci) un
+**puntino** giallo segna chi ha ancora unioni da scoprire con cose che si hanno già; chi ha dato tutto ha il bordo
+tratteggiato e il nome più quieto.
+
 Le unioni scritte a mano crescono: quelle delle invenzioni stanno in `src/motore/cose.ts`, quelle nuove nelle
 **schede** di `src/contenuti/` (le genti e le cose del paese stanno in `src/contenuti/paese.ts`):
 
@@ -87,7 +97,7 @@ gioco parte lo stesso, lo dice nel benvenuto e con un segno fisso. «Nuovo» off
 ```powershell
 pnpm install
 pnpm dev          # il gioco in sviluppo, si aggiorna mentre si modifica
-pnpm test         # le prove (materiali, acqua, miscele, Unisci, unioni, portare, ere, omini, paesi, costruzioni, salvataggio, schede, creature, eventi, cortesia)
+pnpm test         # le prove (materiali, acqua, miscele, Unisci, unioni, portare, ere, omini, paesi, costruzioni, salvataggio, schede, creature, eventi, cortesia, suggerimenti, indizi)
 pnpm typecheck
 pnpm build        # produce dist/index.html: un solo file, si apre con un doppio clic
 node strumenti/contenuti.cjs                # controllo delle scoperte: tutte raggiungibili, nessun doppione
@@ -126,6 +136,9 @@ riga alla storia in `strumenti/misure.md`, da confrontare con le righe prima.
   `esitoDi` decide l'esito di una coppia, uno solo per Unisci e per il mondo, senza toccare niente.
   `cose.ts`: le invenzioni, le loro unioni e le ere di prima delle schede (`..._DI_PRIMA`: il gioco le legge dal
   registro); `ere.ts`: quale era (o grande evento) può scattare adesso.
+- `src/motore/suggerimenti.ts`: il solo modulo che sa cosa suggerire (le coppie scritte già provabili, cosa ha
+  ancora da dare ogni gettone, quale coppia indicare, la voce più vicina quando non c'è altro); `src/indizi.ts`: le
+  parole degli indizi e dei «niente», e il `Suggeritore` che decide quando darli (tre «niente», un minuto per il tasto).
 - `src/motore/bersaglio.ts`: che cosa c'è in un punto del mondo per chi ci porta sopra qualcosa (`cheCosaCe`: un
   omino, una cosa posata, un materiale, un appoggio, il vuoto). `porta.ts`: portare una scoperta sopra quel punto
   (`Mondo.porta`), con le regole in ordine e l'esito da raccontare.

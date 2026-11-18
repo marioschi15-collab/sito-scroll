@@ -1,3 +1,6 @@
+import { INDIZIO } from './indizi.js';
+import { type Quadro, resaDi } from './motore/suggerimenti.js';
+
 /** Crea un elemento della pagina con la sua classe e, se serve, il suo testo. */
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, classe = '', testo = ''): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -45,7 +48,9 @@ export function costruisciPagina(app: HTMLElement) {
   // Dopo «Nuovo», per qualche secondo, il modo di tornare indietro.
   const ripensa = el('div', 'ripensa');
   ripensa.hidden = true;
-  cielo.append(quadro, suggerimento, riga, nonSalvata, ripensa);
+  // Il tasto Indizio, sempre a portata sul mondo: in un angolo, dove non copre il paese.
+  const bIndizio = el('button', 'tasto tasto-indizio indizio-mondo', INDIZIO.tasto);
+  cielo.append(quadro, suggerimento, riga, nonSalvata, ripensa, bIndizio);
 
   const piede = el('footer', 'piede');
   const pennelli = el('div', 'pennelli');
@@ -55,7 +60,7 @@ export function costruisciPagina(app: HTMLElement) {
   const avvisi = el('div', 'avvisi');
   app.append(barra, cielo, piede, avvisi);
 
-  return { bLibro, bUnisci, bPausa, bNuovo, era, foglio, cielo, quadro, tele, suggerimento, riga, nonSalvata, ripensa, pennelli, tavolozza, avvisi };
+  return { bLibro, bUnisci, bPausa, bNuovo, bIndizio, era, foglio, cielo, quadro, tele, suggerimento, riga, nonSalvata, ripensa, pennelli, tavolozza, avvisi };
 }
 
 /**
@@ -66,4 +71,18 @@ export function vibra(ms: number): void {
   const n = navigator as Navigator & { userActivation?: { hasBeenActive: boolean } };
   if (n.userActivation && !n.userActivation.hasBeenActive) return;
   n.vibrate?.(ms);
+}
+
+/**
+ * Il segno di un gettone secondo quello che ha ancora da dare (vedi motore/suggerimenti.ts): un puntino se ha unioni
+ * scritte da scoprire con cose che chi gioca ha già, un segno discreto se le sue unioni hanno dato tutto.
+ */
+export function segnaResa(gettone: HTMLElement, q: Quadro, id: number): void {
+  const resa = resaDi(q, id);
+  gettone.dataset.resa = resa;
+  if (resa === 'daProvare') {
+    const puntino = el('span', 'puntino');
+    puntino.title = 'Ha ancora qualcosa da dare';
+    gettone.append(puntino);
+  } else if (resa === 'finito') gettone.classList.add('dato-tutto');
 }

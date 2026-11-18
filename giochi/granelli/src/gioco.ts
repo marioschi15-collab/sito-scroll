@@ -4,17 +4,21 @@ import { apriDeposito } from './deposito.js';
 import { Pittore } from './disegno/pittore.js';
 import { festaDovuta } from './feste.js';
 import { type Finestra, Finestre } from './finestre.js';
+import { INDIZIO, type Indizio, Suggeritore, rigaDelNiente } from './indizi.js';
 import { apriLibro, nomeDi, tondino } from './libro.js';
 import { M, OMINO, PRIMA_ID_MISCELA, VILLAGGIO } from './motore/materiali.js';
 import { accade } from './motore/eventi.js';
 import { Mondo } from './motore/mondo.js';
+import type { EsitoPorta } from './motore/porta.js';
+import { type Quadro, quadro } from './motore/suggerimenti.js';
 import { SUPERFICIE, terreno } from './motore/terreno.js';
 import { apriUnisci } from './unisci.js';
-import { costruisciPagina, el, vibra } from './pagina.js';
+import { costruisciPagina, el, segnaResa, vibra } from './pagina.js';
 import {
   ADDIO_MESTOLO,
   ANNUNCIO,
   ARRIVA,
+  UNISCI,
   NON_QUI,
   NON_SALVATA,
   NON_SALVATA_BENVENUTO,
@@ -166,7 +170,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     ricordi.recenti = [id, ...ricordi.recenti.filter((altro) => altro !== id)].slice(0, POSTI);
   }
 
-  function granello(id: number, nome: string): HTMLButtonElement {
+  function granello(id: number, nome: string, q?: Quadro): HTMLButtonElement {
     const b = el('button', 'granello');
     b.dataset.id = String(id);
     let segno: HTMLSpanElement;
@@ -176,6 +180,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     } else if (id === MANO) segno = el('span', 'pallino mano', '✥');
     else segno = tondino(mondo, id);
     b.append(segno, el('span', 'nome', nome));
+    if (q) segnaResa(b, q, id);
     b.addEventListener('click', () => scegli(id));
     return b;
   }
@@ -186,8 +191,10 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
     p.tavolozza.append(granello(MANO, 'Mano'), granello(GOMMA, 'Gomma'));
     ricordi.recenti = ricordi.recenti.filter((id) => mondo.visti.has(id) && versabile(id));
     if (ricordi.recenti.length === 0) ricordi.recenti = [...INIZIALI];
+    // Il puntino sui gettoni che hanno ancora qualcosa da dare: si ricalcola solo quando cambiano le scoperte.
+    const q = quadro(mondo.visti);
     for (const id of ricordi.recenti) {
-      const b = granello(id, nomeDi(mondo, id));
+      const b = granello(id, nomeDi(mondo, id), q);
       if (nuovi.includes(id)) b.classList.add('nuovo');
       p.tavolozza.append(b);
     }
@@ -298,6 +305,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
         p.riga.classList.remove('su');
         salvaTutto();
       }
+      raccontaPorta(scelto, esito);
       return;
     }
     if (eCostruzione(scelto)) {
@@ -352,13 +360,41 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
 
   /** Una riga breve in fondo al cielo: spiega una posa rifiutata o racconta un lutto, e dopo qualche secondo se ne va. */
   let viaLaRiga = 0;
-  function diRiga(testo: string): void {
+  function diRiga(testo: string, ms = 4500, indizio = false): void {
     if (!testo) return;
     p.riga.textContent = testo;
     p.riga.classList.add('su');
+    p.riga.classList.toggle('indizio', indizio);
     clearTimeout(viaLaRiga);
-    viaLaRiga = window.setTimeout(() => p.riga.classList.remove('su'), 4500);
+    viaLaRiga = window.setTimeout(() => p.riga.classList.remove('su'), ms);
   }
+  // ── Indizi: il tasto, e quello che arriva da solo dopo tre «niente» di fila ───
+  const suggeritore = new Suggeritore();
+  /** Un indizio sul mondo: nella riga in fondo al cielo, un po' più a lungo delle altre righe. */
+  function mostraIndizio(indizio: Indizio, attendi = 0): void {
+    diRiga(`${INDIZIO.tasto}: ${indizio.testo}${attendi > 0 ? ` ${INDIZIO.attendi(attendi)}` : ''}`, 9000, true);
+  }
+  p.bIndizio.addEventListener('click', () => {
+    const { indizio, attendi } = suggeritore.chiedi(mondo.visti, performance.now());
+    mostraIndizio(indizio, attendi);
+  });
+  /** Quando arriva l'indizio dopo un «niente»: lascia leggere prima la riga del «niente». */
+  let indizioInArrivo = 0;
+  /**
+   * Racconta il tentativo di unire una cosa portata nel mondo: un «niente» non è mai muto (una riga gentile, ogni
+   * volta diversa), e al terzo di fila arriva un indizio. Ciò che non era un tentativo di unire (posare, versare,
+   * un posto che non va) non conta.
+   */
+  function raccontaPorta(portata: number, esito: EsitoPorta): void {
+    if (esito.genere === 'messa' || esito.genere === 'nonQui' || esito.genere === 'torna') return;
+    const con = esito.genere === 'dato' ? esito.a : esito.con;
+    const niente = esito.genere === 'niente';
+    if (niente) diRiga(esito.perOra ? UNISCI.perOra : `${nomeDi(mondo, portata)} e ${nomeDi(mondo, con)}: ${rigaDelNiente(suggeritore.nienteInTutto)}`);
+    const indizio = suggeritore.dopo(portata, con, niente, mondo.visti, performance.now());
+    clearTimeout(indizioInArrivo);
+    if (indizio) indizioInArrivo = window.setTimeout(() => mostraIndizio(indizio), 2600);
+  }
+
   /** Quando è stato annunciato l'ultimo lutto: se ne dice al più uno ogni tanto. */
   let ultimoLutto = -Infinity;
 
@@ -534,7 +570,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
       'Sotto il cielo c’è solo roccia nuda. Tu hai quattro elementi: terra, acqua, fuoco e aria.',
       'Versali col dito e falli incontrare: ogni cosa nuova entra nella tavolozza e nel Libro. Il mondo è grande: con la Mano (o con due dita) sposti la vista.',
       'Con Unisci metti insieme due scoperte e ne nasce una terza: attrezzi, case, e via via le ere della storia.',
-      'Se ti blocchi, apri il Libro: ci sono gli indizi.',
+      'Se ti blocchi, tocca Indizio: ti dice cosa provare, senza svelarti tutto.',
     ];
     if (!deposito.salvabile) righe.push(NON_SALVATA_BENVENUTO);
     messaggio('Granelli', righe, 'Inizia');
@@ -648,7 +684,7 @@ export function avvia(app: HTMLElement, ripresa: unknown): { fotografa: () => un
 
   p.bLibro.addEventListener('click', () => libro());
   // Gli omini chiamati da Unisci arrivano, se possono, vicino a dove sta guardando chi gioca.
-  p.bUnisci.addEventListener('click', () => apriUnisci(finestre, mondo, () => camX + vistaW / 2));
+  p.bUnisci.addEventListener('click', () => apriUnisci(finestre, mondo, () => camX + vistaW / 2, suggeritore));
   p.bNuovo.addEventListener('click', chiediNuovo);
   p.bPausa.addEventListener('click', pausa);
   addEventListener('keydown', (e) => {

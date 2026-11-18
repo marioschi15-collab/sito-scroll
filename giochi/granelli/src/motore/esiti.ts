@@ -59,6 +59,16 @@ export function esitoNoto(a: number, b: number): number {
   return MATERIA.get(chiaveCoppia(a, b)) ?? -1;
 }
 
+/**
+ * Le coppie che hanno un esito nelle tavole di questo modulo (reazioni del mondo e vie dei fenomeni di prima), come
+ * [a, b]: servono ai suggerimenti, che vogliono sapere quali coppie scritte esistono. L'esito resta di `esitoDi`.
+ */
+export function coppieDelMondo(): [number, number][] {
+  const coppie: [number, number][] = [];
+  for (const chiave of [...MATERIA.keys(), ...FENOMENO.keys()]) coppie.push([Math.floor(chiave / 65536), chiave % 65536]);
+  return coppie;
+}
+
 /** Il fenomeno di cui la coppia è la via (un'esplosione, un temporale…); -1 se non lo è di nessuno. */
 export function fenomenoDi(a: number, b: number): number {
   return FENOMENO.get(chiaveCoppia(a, b)) ?? viaDiFenomeno(a, b);

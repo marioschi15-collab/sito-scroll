@@ -860,3 +860,78 @@ button.voce:active {
 .scheda.unisci .libro-corpo {
   border-top: 1px solid var(--bordo);
 }
+
+/* ── Indizi e puntini ── */
+/* Il tasto Indizio sul mondo: in alto a destra, piccolo, sopra il cielo (il segno «non salvata» sta a sinistra). */
+.indizio-mondo {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  background: #0b1020cc;
+}
+.tasto-indizio {
+  border-color: #8fd3ff;
+  color: #bfe6ff;
+}
+/* Un indizio nella riga in fondo al cielo: si distingue dalle altre righe per il bordo chiaro. */
+.riga.indizio {
+  border-color: #8fd3ff;
+  color: #e6f5ff;
+}
+/* Nel pannello Unisci l'indizio sta sotto l'esito, con la sua parola piccola sopra. */
+.consiglio {
+  margin: -2px 16px 10px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 12px;
+  background: #13213a;
+  border: 1px solid #8fd3ff88;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.consiglio-sopra {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8fd3ff;
+}
+.consiglio-sotto {
+  font-size: 12px;
+  color: var(--tenue);
+}
+/* Il puntino: questo gettone ha ancora qualcosa da dare con le cose che hai già. Un quadretto, come il mondo. */
+.granello,
+.scaffale .gettone {
+  position: relative;
+}
+.puntino {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background: var(--accento);
+  box-shadow:
+    0 0 0 2px #0b1020,
+    0 0 8px #ffd54a99;
+  pointer-events: none;
+}
+.scaffale .gettone .puntino {
+  top: -2px;
+  right: -2px;
+}
+/* Ha dato tutto quello che le unioni scritte promettono: il nome si fa più quieto, la grana resta com'è. */
+.dato-tutto .nome,
+.scaffale .gettone.dato-tutto > span:not(.pallino) {
+  color: var(--tenue);
+}
+.dato-tutto {
+  border-style: dashed;
+}
+/* Nella testa di Unisci il tasto Indizio sta accanto a «Chiudi», non in mezzo. */
+.scheda-testa .tasto-indizio {
+  margin-left: auto;
+}

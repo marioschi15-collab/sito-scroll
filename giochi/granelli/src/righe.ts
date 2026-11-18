@@ -34,6 +34,7 @@ export const NON_QUI: Record<PercheNo, string> = {
 /** Quello che il pannello Unisci risponde, oltre alle scoperte: le coppie già provate, quelle «per ora», gli omini. */
 export const UNISCI = {
   perOra: 'Queste due, per ora, non si uniscono.',
+  niente: 'Niente, stavolta',
   giaProvata: 'Già provata: niente',
   giaFatta: 'Già fatta:',
   arrivati: 'Sono arrivati due omini, vicino all’acqua.',
